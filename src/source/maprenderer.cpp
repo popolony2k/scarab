@@ -1,13 +1,13 @@
 /*
- * renderer.cpp
+ * maprenderer.cpp
  *
  *  Created on: Jun 17, 2021
  *      Author: popolony2k
  */
 
-#include "renderer.h"
 #include <memory.h>
 #include <chrono>
+#include "maprenderer.h"
 
 /*
  * Engine defaults.
@@ -15,7 +15,7 @@
 #define __DEFAULT_FPS                30
 #define __DEFAULT_LINE_THICKNESS    2.5
 
-bool Renderer :: m_bInitialized = false;
+bool MapRenderer :: m_bInitialized = false;
 
 using namespace std :: chrono;
 
@@ -24,7 +24,7 @@ using namespace std :: chrono;
  * Raylib texture loader callback implementation.
  * @param szPath Texture file path;
  */
-void* Renderer :: TextureLoaderCallback( const char *szPath )  {
+void* MapRenderer :: TextureLoaderCallback( const char *szPath )  {
 
     Texture2D *pTexture = new Texture2D;
 
@@ -37,7 +37,7 @@ void* Renderer :: TextureLoaderCallback( const char *szPath )  {
  * Raylib texture deallocation callback implementation.
  * @param pTexture Pointer to the texture that will be deallocated;
  */
-void Renderer :: TextureFreeCallback( void *pTexture )  {
+void MapRenderer :: TextureFreeCallback( void *pTexture )  {
 
     Texture2D    *pTexture2D = ( Texture2D * ) pTexture;
 
@@ -46,19 +46,21 @@ void Renderer :: TextureFreeCallback( void *pTexture )  {
     delete pTexture2D;
 }
 
-
-Color Renderer :: IntToColor( int color ) {
+/**
+ * Convert integer color representation to @link Color object;
+ */
+Color MapRenderer :: IntToColor( int color ) {
 
     tmx_col_bytes res = tmx_col_to_bytes( color );
 
     return *( ( Color * ) &res );
 }
 
-void Renderer :: DrawPolyline( double offset_x,
-                               double offset_y,
-                               double **points,
-                               int points_count,
-                               Color color ) {
+void MapRenderer :: DrawPolyline( double offset_x,
+                                  double offset_y,
+                                  double **points,
+                                  int points_count,
+                                  Color color ) {
 
     for( int i=1; i < points_count; i++ ) {
         DrawLineEx( ( Vector2 ) { offset_x + points[i-1][0],
@@ -69,11 +71,11 @@ void Renderer :: DrawPolyline( double offset_x,
     }
 }
 
-void Renderer :: DrawPolygon( double offset_x,
-                              double offset_y,
-                              double **points,
-                              int points_count,
-                              Color color ) {
+void MapRenderer :: DrawPolygon( double offset_x,
+                                 double offset_y,
+                                 double **points,
+                                 int points_count,
+                                 Color color ) {
     DrawPolyline( offset_x,
                   offset_y,
                   points,
@@ -89,10 +91,14 @@ void Renderer :: DrawPolygon( double offset_x,
     }
 }
 
-void Renderer :: DrawObjects( tmx_object_group *objgr ) {
+/**
+ * Draw objects on canvas;
+ * @param pObjgr Pointer to object group to draw;
+ */
+void MapRenderer :: DrawObjects( tmx_object_group *pObjgr ) {
 
-    tmx_object *head = objgr->head;
-    Color      color = IntToColor( objgr -> color );
+    tmx_object *head = pObjgr -> head;
+    Color      color = IntToColor( pObjgr -> color );
 
     while( head ) {
         if( head -> visible ) {
@@ -134,22 +140,26 @@ void Renderer :: DrawObjects( tmx_object_group *objgr ) {
     }
 }
 
-void Renderer :: DrawImageLayer( tmx_image *pImage ) {
+/**
+ * Draw image layer on canvas;
+ * @param pImage Pointer to image to draw;
+ */
+void MapRenderer :: DrawImageLayer( tmx_image *pImage ) {
 
     Texture2D *pTexture = ( Texture2D * ) pImage -> resource_image;
 
     DrawTexture( *pTexture, 0, 0, WHITE );
 }
 
-void Renderer :: DrawTile( void *pImage,
-                           unsigned int sx,
-                           unsigned int sy,
-                           unsigned int sw,
-                           unsigned int sh,
-                           unsigned int dx,
-                           unsigned int dy,
-                           float opacity,
-                           unsigned int flags ) {
+void MapRenderer :: DrawTile( void *pImage,
+                              unsigned int sx,
+                              unsigned int sy,
+                              unsigned int sw,
+                              unsigned int sh,
+                              unsigned int dx,
+                              unsigned int dy,
+                              float opacity,
+                              unsigned int flags ) {
 
     Texture2D      *pTexture = ( Texture2D * ) pImage;
     unsigned char  op        = ( 0xFF * opacity );
@@ -160,7 +170,12 @@ void Renderer :: DrawTile( void *pImage,
                     ( Color ) { op, op, op, op } );
 }
 
-void Renderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
+/**
+ * Draw layer on screen canvas;
+ * @param pMap Pointer to layer map;
+ * @param pLayer Pointer to layer with objects to draw;
+ */
+void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
 
     float         opacity;
 
@@ -202,7 +217,7 @@ void Renderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                         m_AnimInfoList.push_back( pAnimInfo );
                     }
 
-                    if( nMillis > pAnimInfo -> nMillis )  {
+                    if( pAnimInfo -> nMillis < nMillis )  {
                         unsigned int     nNextFrmGID;
                         _tmx_frame&      tmxAnimFrm = pTile -> animation[pAnimInfo -> nCounter];
 
@@ -250,7 +265,12 @@ void Renderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
     }
 }
 
-void Renderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
+/**
+ * Draw all layers on screen canvas;
+ * @param pMap Pointer to layers map;
+ * @param pLayer Array of layer objects to draw;
+ */
+void MapRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
 
     while( pLayers ) {
         if( pLayers -> visible ) {
@@ -277,7 +297,7 @@ void Renderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
 /**
  * Render all map objects.
  */
-void Renderer :: RenderMap( void ) {
+void MapRenderer :: RenderMap( void ) {
 
     // TODO: Check if ClearBackground is really needed;
     //ClearBackground( IntToColor( m_pTmxMap -> backgroundcolor ) );
@@ -287,7 +307,7 @@ void Renderer :: RenderMap( void ) {
 /**
  * Release all allocated layer needed data.
  */
-void Renderer :: ReleaseLayer( void )  {
+void MapRenderer :: ReleaseLayer( void )  {
 
     /*
      * Release all allocated animations data structure.
@@ -308,11 +328,11 @@ void Renderer :: ReleaseLayer( void )  {
  * @param szTmxMapFile Renderer map file;
  * @param nTargetFps Renderer desired FPS;
  */
-Renderer :: Renderer( int nWidth,
-                      int nHeight,
-                      const char *szTitle,
-                      const char *szTmxMapFile,
-                      int nTargetFps )  {
+MapRenderer :: MapRenderer( int nWidth,
+                            int nHeight,
+                            const char *szTitle,
+                            const char *szTmxMapFile,
+                            int nTargetFps )  {
 
     m_nWidth         = nWidth;
     m_nHeight        = nHeight;
@@ -337,7 +357,7 @@ Renderer :: Renderer( int nWidth,
 /**
  * Destructor. Finalize all class data.
  */
-Renderer :: ~Renderer( void )  {
+MapRenderer :: ~MapRenderer( void )  {
 
     ReleaseLayer();
 }
@@ -346,7 +366,7 @@ Renderer :: ~Renderer( void )  {
  * Set the line thickness for all primitive operations.
  * @param fLineThickness The new line thickness;
  */
-void Renderer :: SetLineThickness( float fLineThickness )  {
+void MapRenderer :: SetLineThickness( float fLineThickness )  {
 
     m_fLineThickness = fLineThickness;
 }
@@ -354,7 +374,7 @@ void Renderer :: SetLineThickness( float fLineThickness )  {
 /**
  * Get the line thickness current set to all primitive operations.
  */
-float Renderer :: GetLineThickness( void )  {
+float MapRenderer :: GetLineThickness( void )  {
 
     return m_fLineThickness;
 }
@@ -362,7 +382,7 @@ float Renderer :: GetLineThickness( void )  {
 /**
  * Start engine renderer.
  */
-bool Renderer :: Start( void )  {
+bool MapRenderer :: Start( void )  {
 
     InitWindow( m_nWidth, m_nHeight, m_strTitle.c_str() );
 
@@ -388,7 +408,7 @@ bool Renderer :: Start( void )  {
 /**
  * Stop renderer freeing all allocated resources.
  */
-void Renderer :: Stop( void )  {
+void MapRenderer :: Stop( void )  {
 
     if( m_bIsStarted )  {
         if( m_pTmxMap )  {
@@ -404,7 +424,7 @@ void Renderer :: Stop( void )  {
 /**
  * Run renderer.
  */
-bool Renderer :: Run( void )  {
+bool MapRenderer :: Run( void )  {
 
     if( m_bIsStarted )  {
         while ( !WindowShouldClose() ) {

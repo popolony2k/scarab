@@ -1,12 +1,12 @@
 /*
- * renderer.h
+ * maprenderer.h
  *
  *  Created on: Jun 17, 2021
  *      Author: popolony2k
  */
 
-#ifndef __RENDERER_H__
-#define __RENDERER_H__
+#ifndef __MAPRENDERER_H__
+#define __MAPRENDERER_H__
 
 #include <tmx.h>
 #include <raylib.h>
@@ -14,7 +14,7 @@
 #include <queue>
 
 
-class Renderer  {
+class MapRenderer  {
 
     /**
      * Tile animation information.
@@ -52,7 +52,7 @@ class Renderer  {
                       double **points,
                       int points_count,
                       Color color );
-    void DrawObjects( tmx_object_group *objgr );
+    void DrawObjects( tmx_object_group *pObjgr );
     void DrawImageLayer( tmx_image *pImage );
     void DrawTile( void *pImage,
                    unsigned int sx,
@@ -71,12 +71,12 @@ class Renderer  {
 
     public:
 
-    Renderer( int nWidth,
-              int nHeight,
-              const char* szTitle,
-              const char *szTmxMapFile,
-              int nTargetFps = -1);
-    ~Renderer( void );
+    MapRenderer( int nWidth,
+                 int nHeight,
+                 const char* szTitle,
+                 const char *szTmxMapFile,
+                 int nTargetFps = -1);
+    ~MapRenderer( void );
 
     void SetLineThickness( float fLineThickness );
     float GetLineThickness( void );
@@ -86,4 +86,4 @@ class Renderer  {
     bool Run( void );
 };
 
-#endif /* __RENDERER_H__ */
+#endif /* __MAPRENDERER_H__ */
