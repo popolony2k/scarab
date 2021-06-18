@@ -11,18 +11,31 @@
 #include <tmx.h>
 #include <raylib.h>
 #include <string>
+#include <queue>
 
 
 class Renderer  {
 
-    int            m_nWidth;
-    int            m_nHeight;
-    int            m_nTargetFps;
-    std :: string  m_strTitle;
-    std :: string  m_strTmxMapFile;
-    tmx_map        *m_pTmxMap;
-    bool           m_bIsStarted;
-    static bool    m_bInitialized;
+    /**
+     * Tile animation information.
+     */
+    struct __stTileAnimInfo  {
+        int64_t      nMillis;
+        int          nCounter;
+        tmx_tile     *pNextTile;
+    };
+    typedef std ::deque<__stTileAnimInfo*> __AnimInfoList;
+
+    int              m_nWidth;
+    int              m_nHeight;
+    int              m_nTargetFps;
+    float            m_fLineThickness;
+    __AnimInfoList   m_AnimInfoList;
+    std :: string    m_strTitle;
+    std :: string    m_strTmxMapFile;
+    tmx_map          *m_pTmxMap;
+    bool             m_bIsStarted;
+    static bool      m_bInitialized;
 
 
     static void* TextureLoaderCallback( const char *szPath );
@@ -53,6 +66,7 @@ class Renderer  {
     void DrawLayer( tmx_map *pMap, tmx_layer *pLayer );
     void DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers );
     void RenderMap( void );
+    void ReleaseLayer( void );
 
 
     public:
@@ -63,6 +77,9 @@ class Renderer  {
               const char *szTmxMapFile,
               int nTargetFps = -1);
     ~Renderer( void );
+
+    void SetLineThickness( float fLineThickness );
+    float GetLineThickness( void );
 
     bool Start( void );
     void Stop( void );

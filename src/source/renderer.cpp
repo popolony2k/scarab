@@ -6,13 +6,18 @@
  */
 
 #include "renderer.h"
+#include <memory.h>
+#include <chrono>
 
-#define __DEFAULT_FPS       30
-#define __LINE_THICKNESS    2.5
-
-
+/*
+ * Engine defaults.
+ */
+#define __DEFAULT_FPS                30
+#define __DEFAULT_LINE_THICKNESS    2.5
 
 bool Renderer :: m_bInitialized = false;
+
+using namespace std :: chrono;
 
 
 /**
@@ -60,7 +65,7 @@ void Renderer :: DrawPolyline( double offset_x,
                                   offset_y + points[i-1][1] },
                     ( Vector2 ) { offset_x + points[i][0],
                                   offset_y + points[i][1] },
-                    __LINE_THICKNESS, color );
+                    m_fLineThickness, color );
     }
 }
 
@@ -80,7 +85,7 @@ void Renderer :: DrawPolygon( double offset_x,
                                   offset_y + points[0][1] },
                     ( Vector2 ) { offset_x + points[points_count-1][0],
                                   offset_y + points[points_count-1][1] },
-                    __LINE_THICKNESS, color );
+                    m_fLineThickness, color );
     }
 }
 
@@ -96,7 +101,7 @@ void Renderer :: DrawObjects( tmx_object_group *objgr ) {
                     DrawRectangleLinesEx( ( Rectangle ){ head->x, head->y,
                                           head -> width,
                                           head -> height },
-                                          __LINE_THICKNESS,
+                                          m_fLineThickness,
                                           color );
                     break;
                 case OT_POLYGON :
@@ -146,8 +151,8 @@ void Renderer :: DrawTile( void *pImage,
                            float opacity,
                            unsigned int flags ) {
 
-    Texture2D *pTexture = (Texture2D*) pImage;
-    int       op        = 0xFF * opacity;
+    Texture2D      *pTexture = ( Texture2D * ) pImage;
+    unsigned char  op        = ( 0xFF * opacity );
 
     DrawTextureRec( *pTexture,
                     ( Rectangle ) { sx, sy, sw, sh },
@@ -157,36 +162,89 @@ void Renderer :: DrawTile( void *pImage,
 
 void Renderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
 
-    unsigned long i, j;
-    unsigned int  gid, x, y, w, h, flags;
-    float         op;
-    tmx_tileset   *ts;
-    tmx_image     *im;
-    void          *image;
+    float         opacity;
 
-    op = pLayer->opacity;
+    opacity = pLayer -> opacity;
 
-    for (i=0; i < pMap -> height; i++) {
-        for (j=0; j < pMap -> width; j++) {
-            gid = (pLayer -> content.gids[(i * pMap -> width)+j]) & TMX_FLIP_BITS_REMOVAL;
+    for( unsigned long i = 0; i < pMap -> height; i++ ) {
+        for( unsigned long j = 0; j < pMap -> width; j++ ) {
+            tmx_tile      *pTile;
+            uint32_t       nLayerGID = pLayer -> content.gids[( i * pMap -> width ) + j];
+            uint32_t       nGID      = nLayerGID & TMX_FLIP_BITS_REMOVAL;
 
-            if( pMap -> tiles[gid] != NULL ) {
-                ts = pMap->tiles[gid]->tileset;
-                im = pMap->tiles[gid]->image;
-                x  = pMap->tiles[gid]->ul_x;
-                y  = pMap->tiles[gid]->ul_y;
-                w  = ts->tile_width;
-                h  = ts->tile_height;
+            pTile = pMap -> tiles[nGID];
 
-                if (im) {
-                    image = im->resource_image;
+            if( pTile != NULL ) {
+                uint32_t       nFlags = nLayerGID & ~TMX_FLIP_BITS_REMOVAL;
+                tmx_image      *pIm   = pTile -> image;
+                tmx_tileset    *pTs;
+                void           *pImage;
+                unsigned int   x;
+                unsigned int   y;
+                unsigned int   w;
+                unsigned int   h;
+
+
+                /*
+                 * Perform tile animation
+                 */
+                if( pTile -> animation_len )  {
+                    steady_clock :: time_point now     = steady_clock :: now();
+                    int64_t                    nMillis = duration_cast<milliseconds>( now.time_since_epoch() ).count();
+                    __stTileAnimInfo           *pAnimInfo = ( __stTileAnimInfo * ) pTile -> user_data.pointer;
+
+                    if( !pAnimInfo )  {
+                        pAnimInfo = new __stTileAnimInfo;
+                        memset( pAnimInfo, 0, sizeof( __stTileAnimInfo ) );
+                        pAnimInfo -> nMillis   = nMillis;
+                        pAnimInfo -> pNextTile = pTile;
+                        pTile -> user_data.pointer = pAnimInfo;
+                        m_AnimInfoList.push_back( pAnimInfo );
+                    }
+
+                    if( nMillis > pAnimInfo -> nMillis )  {
+                        unsigned int     nNextFrmGID;
+                        _tmx_frame&      tmxAnimFrm = pTile -> animation[pAnimInfo -> nCounter];
+
+                        if( pAnimInfo -> nCounter < pTile -> animation_len )  {
+                            pAnimInfo -> nCounter++;
+                            nNextFrmGID = ( pMap -> ts_head -> firstgid +
+                                            tmxAnimFrm.tile_id );
+                        }
+                        else  {
+                            nNextFrmGID = nGID;
+                            pAnimInfo -> nCounter = 0;
+                        }
+
+                        pAnimInfo -> nMillis   = ( tmxAnimFrm.duration + nMillis );
+                        pAnimInfo -> pNextTile = pMap -> tiles[nNextFrmGID];
+                        pTile = pAnimInfo -> pNextTile;
+
+                        if( !pTile )
+                            pTile = pMap -> tiles[nGID];
+                    }
+                    else  {
+                        pTile = ( ( __stTileAnimInfo * ) pTile -> user_data.pointer ) -> pNextTile;
+                    }
+                }
+
+                pTs = pTile -> tileset;
+                x   = pTile -> ul_x;
+                y   = pTile -> ul_y;
+                w   = pTs -> tile_width;
+                h   = pTs -> tile_height;
+
+                if( pIm ) {
+                    pImage = pIm -> resource_image;
                 }
                 else {
-                    image = ts->image->resource_image;
+                    pImage = pTs -> image -> resource_image;
                 }
 
-                flags = ( pLayer->content.gids[(i*pMap->width)+j]) & ~TMX_FLIP_BITS_REMOVAL;
-                DrawTile( image, x, y, w, h, j*ts->tile_width, i*ts->tile_height, op, flags);
+                DrawTile( pImage, x, y, w, h,
+                          ( j * pTs -> tile_width ),
+                          ( i * pTs -> tile_height ),
+                          opacity, nFlags );
             }
         }
     }
@@ -208,6 +266,7 @@ void Renderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
                     break;
                 case L_LAYER :
                     DrawLayer( pMap, pLayers );
+                    break;
             }
         }
 
@@ -215,10 +274,30 @@ void Renderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
     }
 }
 
+/**
+ * Render all map objects.
+ */
 void Renderer :: RenderMap( void ) {
 
-    ClearBackground( IntToColor( m_pTmxMap -> backgroundcolor ) );
+    // TODO: Check if ClearBackground is really needed;
+    //ClearBackground( IntToColor( m_pTmxMap -> backgroundcolor ) );
     DrawAllLayers( m_pTmxMap, m_pTmxMap -> ly_head );
+}
+
+/**
+ * Release all allocated layer needed data.
+ */
+void Renderer :: ReleaseLayer( void )  {
+
+    /*
+     * Release all allocated animations data structure.
+     */
+    __AnimInfoList :: iterator itItem = m_AnimInfoList.begin();
+
+    while( itItem != m_AnimInfoList.end() )  {
+        delete *itItem;
+        itItem = m_AnimInfoList.erase( itItem );
+    }
 }
 
 /**
@@ -235,13 +314,14 @@ Renderer :: Renderer( int nWidth,
                       const char *szTmxMapFile,
                       int nTargetFps )  {
 
-    m_nWidth        = nWidth;
-    m_nHeight       = nHeight;
-    m_nTargetFps    = nTargetFps;
-    m_strTitle      = szTitle;
-    m_strTmxMapFile = szTmxMapFile;
-    m_pTmxMap       = NULL;
-    m_bIsStarted    = false;
+    m_nWidth         = nWidth;
+    m_nHeight        = nHeight;
+    m_nTargetFps     = nTargetFps;
+    m_strTitle       = szTitle;
+    m_strTmxMapFile  = szTmxMapFile;
+    m_pTmxMap        = NULL;
+    m_bIsStarted     = false;
+    m_fLineThickness = __DEFAULT_LINE_THICKNESS;
 
     /*
      * Set the raylib callback texture handlers (this call is protected
@@ -259,6 +339,24 @@ Renderer :: Renderer( int nWidth,
  */
 Renderer :: ~Renderer( void )  {
 
+    ReleaseLayer();
+}
+
+/**
+ * Set the line thickness for all primitive operations.
+ * @param fLineThickness The new line thickness;
+ */
+void Renderer :: SetLineThickness( float fLineThickness )  {
+
+    m_fLineThickness = fLineThickness;
+}
+
+/**
+ * Get the line thickness current set to all primitive operations.
+ */
+float Renderer :: GetLineThickness( void )  {
+
+    return m_fLineThickness;
 }
 
 /**
@@ -293,8 +391,10 @@ bool Renderer :: Start( void )  {
 void Renderer :: Stop( void )  {
 
     if( m_bIsStarted )  {
-        if( m_pTmxMap )
+        if( m_pTmxMap )  {
             tmx_map_free( m_pTmxMap );
+            ReleaseLayer();
+        }
 
         CloseWindow();
         m_bIsStarted = false;
@@ -307,7 +407,7 @@ void Renderer :: Stop( void )  {
 bool Renderer :: Run( void )  {
 
     if( m_bIsStarted )  {
-        while (!WindowShouldClose()) {
+        while ( !WindowShouldClose() ) {
             BeginDrawing();
             RenderMap();
             EndDrawing();
