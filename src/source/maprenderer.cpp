@@ -305,19 +305,29 @@ void MapRenderer :: RenderMap( void ) {
 }
 
 /**
- * Release all allocated layer needed data.
+ * Unload a previously loaded map and it's related data (animations, etc...);
  */
-void MapRenderer :: ReleaseLayer( void )  {
+bool MapRenderer :: UnloadMap( void )  {
 
-    /*
-     * Release all allocated animations data structure.
-     */
-    __AnimInfoList :: iterator itItem = m_AnimInfoList.begin();
+    if( m_pTmxMap )  {
+        tmx_map_free( m_pTmxMap );
 
-    while( itItem != m_AnimInfoList.end() )  {
-        delete *itItem;
-        itItem = m_AnimInfoList.erase( itItem );
+        /*
+         * Release all allocated animations data structure.
+         */
+        __AnimInfoList :: iterator itItem = m_AnimInfoList.begin();
+
+        while( itItem != m_AnimInfoList.end() )  {
+            delete *itItem;
+            itItem = m_AnimInfoList.erase( itItem );
+        }
+
+        m_pTmxMap = NULL;
+
+        return true;
     }
+
+    return false;
 }
 
 /**
@@ -325,23 +335,21 @@ void MapRenderer :: ReleaseLayer( void )  {
  * @param nWidth Screen renderer width;
  * @param nHeight Screen renderer height;
  * @param szTitle Screen renderer title;
- * @param szTmxMapFile Renderer map file;
  * @param nTargetFps Renderer desired FPS;
  */
 MapRenderer :: MapRenderer( int nWidth,
                             int nHeight,
                             const char *szTitle,
-                            const char *szTmxMapFile,
                             int nTargetFps )  {
 
     m_nWidth         = nWidth;
     m_nHeight        = nHeight;
     m_nTargetFps     = nTargetFps;
     m_strTitle       = szTitle;
-    m_strTmxMapFile  = szTmxMapFile;
     m_pTmxMap        = NULL;
     m_bIsStarted     = false;
     m_fLineThickness = __DEFAULT_LINE_THICKNESS;
+    m_strTxMapFile.clear();
 
     /*
      * Set the raylib callback texture handlers (this call is protected
@@ -359,7 +367,7 @@ MapRenderer :: MapRenderer( int nWidth,
  */
 MapRenderer :: ~MapRenderer( void )  {
 
-    ReleaseLayer();
+    UnloadMap();
 }
 
 /**
@@ -392,15 +400,14 @@ bool MapRenderer :: Start( void )  {
     }
 
     SetTargetFPS( m_nTargetFps != -1 ? m_nTargetFps : __DEFAULT_FPS );
-
-    m_pTmxMap = tmx_load( m_strTmxMapFile.c_str() );
+    m_pTmxMap = tmx_load( m_strTxMapFile.c_str() );
 
     if( !m_pTmxMap ) {
         tmx_perror( "Cannot load map" );
         return false;
     }
 
-    m_bIsStarted = true;
+    m_bIsStarted = ( m_pTmxMap != NULL );
 
     return m_bIsStarted;
 }
@@ -411,11 +418,7 @@ bool MapRenderer :: Start( void )  {
 void MapRenderer :: Stop( void )  {
 
     if( m_bIsStarted )  {
-        if( m_pTmxMap )  {
-            tmx_map_free( m_pTmxMap );
-            ReleaseLayer();
-        }
-
+        UnloadMap();
         CloseWindow();
         m_bIsStarted = false;
     }
@@ -437,4 +440,15 @@ bool MapRenderer :: Run( void )  {
     }
 
     return false;
+}
+
+/**
+ * Set the TMX map file to engine load on start.
+ * @param szTmxMapFile Renderer map file;
+ */
+void MapRenderer :: SetMapFile( const char *szTmxMapFile )  {
+
+    m_strTxMapFile = szTmxMapFile;
+
+    return;
 }

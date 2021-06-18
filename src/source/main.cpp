@@ -9,9 +9,11 @@ int main(int argc, char **argv) {
     MapRenderer   renderer( DISPLAY_W,
                             DISPLAY_H,
                             "Sunlight Engine",
-                            "/home/popolony2k/Projects/C_CPP/tiled/examples/rpg/island.tmx",
                             FRAMES_PER_SECOND );
+    std :: string strTmxMapFile = "/home/popolony2k/Projects/C_CPP/tiled/examples/rpg/island.tmx";
+    std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled/examples/orthogonal-outside.tmx";
 
+    renderer.SetMapFile( strTmxMapFile.c_str() );
     renderer.Start();
     renderer.Run();
     renderer.Stop();

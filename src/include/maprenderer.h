@@ -32,7 +32,7 @@ class MapRenderer  {
     float            m_fLineThickness;
     __AnimInfoList   m_AnimInfoList;
     std :: string    m_strTitle;
-    std :: string    m_strTmxMapFile;
+    std :: string    m_strTxMapFile;
     tmx_map          *m_pTmxMap;
     bool             m_bIsStarted;
     static bool      m_bInitialized;
@@ -66,7 +66,7 @@ class MapRenderer  {
     void DrawLayer( tmx_map *pMap, tmx_layer *pLayer );
     void DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers );
     void RenderMap( void );
-    void ReleaseLayer( void );
+    bool UnloadMap( void );
 
 
     public:
@@ -74,8 +74,7 @@ class MapRenderer  {
     MapRenderer( int nWidth,
                  int nHeight,
                  const char* szTitle,
-                 const char *szTmxMapFile,
-                 int nTargetFps = -1);
+                 int nTargetFps = -1 );
     ~MapRenderer( void );
 
     void SetLineThickness( float fLineThickness );
@@ -84,6 +83,8 @@ class MapRenderer  {
     bool Start( void );
     void Stop( void );
     bool Run( void );
+
+    void SetMapFile( const char *szTxMapFile );
 };
 
 #endif /* __MAPRENDERER_H__ */
