@@ -14,6 +14,16 @@
 #include <queue>
 
 
+/**
+ * Viewport control mode (active and reactive)
+ * Active, the view port reacts to a single key pressing continuously;
+ * Reactive, the view port reacts only for each key pressing;
+ */
+enum ViewControlMode  {
+    VIEW_CONTROL_MODE_ACTIVE,
+    VIEW_CONTROL_MODE_REACTIVE
+};
+
 class MapRenderer  {
 
     /**
@@ -26,6 +36,10 @@ class MapRenderer  {
     };
     typedef std ::deque<__stTileAnimInfo*> __AnimInfoList;
 
+    Vector2          m_CameraPos;
+    ViewControlMode  m_ViewControlMode;
+    int              m_nScrollStepWidth;
+    int              m_nScrollStepHeight;
     int              m_nWidth;
     int              m_nHeight;
     int              m_nTargetFps;
@@ -41,6 +55,7 @@ class MapRenderer  {
     static void* TextureLoaderCallback( const char *szPath );
     static void TextureFreeCallback( void *pTexture );
 
+    // Primitives
     Color IntToColor( int color );
     void DrawPolyline( double offset_x,
                        double offset_y,
@@ -52,8 +67,6 @@ class MapRenderer  {
                       double **points,
                       int points_count,
                       Color color );
-    void DrawObjects( tmx_object_group *pObjgr );
-    void DrawImageLayer( tmx_image *pImage );
     void DrawTile( void *pImage,
                    unsigned int sx,
                    unsigned int sy,
@@ -63,10 +76,17 @@ class MapRenderer  {
                    unsigned int dy,
                    float opacity,
                    unsigned int flags );
+
+    // High level primitive map handlers
+    void DrawObjects( tmx_object_group *pObjgr );
+    void DrawImageLayer( tmx_image *pImage );
     void DrawLayer( tmx_map *pMap, tmx_layer *pLayer );
     void DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers );
     void RenderMap( void );
     bool UnloadMap( void );
+
+    // User input handling
+    void HandleUserInput( void );
 
 
     public:
@@ -79,6 +99,11 @@ class MapRenderer  {
 
     void SetLineThickness( float fLineThickness );
     float GetLineThickness( void );
+
+    void SetExitKey( KeyboardKey key );
+
+    void SetScrollStepSize( int nStepWidth, int nStepHeight );
+    void SetViewControlMode( ViewControlMode mode );
 
     bool Start( void );
     void Stop( void );

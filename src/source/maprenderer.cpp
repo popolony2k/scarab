@@ -12,8 +12,13 @@
 /*
  * Engine defaults.
  */
-#define __DEFAULT_FPS                30
-#define __DEFAULT_LINE_THICKNESS    2.5
+#define __DEFAULT_FPS                   30
+#define __DEFAULT_LINE_THICKNESS       2.5
+#define __DEFAULT_SCROLL_STEP_WIDTH     -1
+#define __DEFAULT_SCROLL_STEP_HEIGHT    -1
+#define __DEFAULT_SCROLL_STEP           -1
+#define __DEFAULT_VIEW_CONTROL_MODE     VIEW_CONTROL_MODE_ACTIVE
+#define __DEFAULT_EXIT_KEY              KEY_ESCAPE
 
 bool MapRenderer :: m_bInitialized = false;
 
@@ -91,6 +96,25 @@ void MapRenderer :: DrawPolygon( double offset_x,
     }
 }
 
+void MapRenderer :: DrawTile( void *pImage,
+                              unsigned int sx,
+                              unsigned int sy,
+                              unsigned int sw,
+                              unsigned int sh,
+                              unsigned int dx,
+                              unsigned int dy,
+                              float opacity,
+                              unsigned int flags ) {
+
+    Texture2D      *pTexture = ( Texture2D * ) pImage;
+    unsigned char  op        = ( 0xFF * opacity );
+
+    DrawTextureRec( *pTexture,
+                    ( Rectangle ) { sx, sy, sw, sh },
+                    ( Vector2 ) { dx, dy },
+                    ( Color ) { op, op, op, op } );
+}
+
 /**
  * Draw objects on canvas;
  * @param pObjgr Pointer to object group to draw;
@@ -102,35 +126,40 @@ void MapRenderer :: DrawObjects( tmx_object_group *pObjgr ) {
 
     while( head ) {
         if( head -> visible ) {
+            float    fPosX = ( head -> x + m_CameraPos.x );
+            float    fPosY = ( head -> y + m_CameraPos.y );
+
             switch(head -> obj_type)  {
                 case OT_SQUARE :
-                    DrawRectangleLinesEx( ( Rectangle ){ head->x, head->y,
-                                          head -> width,
-                                          head -> height },
+                    DrawRectangleLinesEx( ( Rectangle ){
+                                          fPosX,
+                                          fPosY,
+                                          ( float ) head -> width,
+                                          ( float ) head -> height },
                                           m_fLineThickness,
                                           color );
                     break;
                 case OT_POLYGON :
-                    DrawPolygon( head -> x,
-                                 head -> y,
+                    DrawPolygon( fPosX,
+                                 fPosY,
                                  head -> content.shape -> points,
                                  head -> content.shape -> points_len,
                                  color );
                     break;
 
                 case OT_POLYLINE :
-                    DrawPolyline( head -> x,
-                                  head -> y,
+                    DrawPolyline( fPosX,
+                                  fPosY,
                                   head -> content.shape -> points,
                                   head -> content.shape -> points_len,
                                   color );
                     break;
 
                 case OT_ELLIPSE :
-                    DrawEllipseLines( head -> x + head -> width / 2.0,
-                                      head -> y + head -> height / 2.0,
-                                      head -> width / 2.0,
-                                      head -> height / 2.0,
+                    DrawEllipseLines( fPosX + head -> width / 2.0,
+                                      fPosY + head -> height / 2.0,
+                                      ( float ) head -> width / 2.0,
+                                      ( float ) head -> height / 2.0,
                                       color );
                     break;
             }
@@ -149,25 +178,6 @@ void MapRenderer :: DrawImageLayer( tmx_image *pImage ) {
     Texture2D *pTexture = ( Texture2D * ) pImage -> resource_image;
 
     DrawTexture( *pTexture, 0, 0, WHITE );
-}
-
-void MapRenderer :: DrawTile( void *pImage,
-                              unsigned int sx,
-                              unsigned int sy,
-                              unsigned int sw,
-                              unsigned int sh,
-                              unsigned int dx,
-                              unsigned int dy,
-                              float opacity,
-                              unsigned int flags ) {
-
-    Texture2D      *pTexture = ( Texture2D * ) pImage;
-    unsigned char  op        = ( 0xFF * opacity );
-
-    DrawTextureRec( *pTexture,
-                    ( Rectangle ) { sx, sy, sw, sh },
-                    ( Vector2 ) { dx, dy },
-                    ( Color ) { op, op, op, op } );
 }
 
 /**
@@ -256,9 +266,11 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                     pImage = pTs -> image -> resource_image;
                 }
 
-                DrawTile( pImage, x, y, w, h,
-                          ( j * pTs -> tile_width ),
-                          ( i * pTs -> tile_height ),
+                DrawTile( pImage,
+                          x, y,
+                          w, h,
+                          ( j * pTs -> tile_width ) + m_CameraPos.x,
+                          ( i * pTs -> tile_height ) + m_CameraPos.y,
                           opacity, nFlags );
             }
         }
@@ -331,6 +343,45 @@ bool MapRenderer :: UnloadMap( void )  {
 }
 
 /**
+ * Check user input selected previously by user (mouse,
+ * joystick, keyboard, etc...)
+ */
+void MapRenderer :: HandleUserInput( void )  {
+
+    switch( m_ViewControlMode )  {
+        case VIEW_CONTROL_MODE_REACTIVE :
+            switch( GetKeyPressed() )  {
+                case KEY_UP :
+                    m_CameraPos.y-=m_nScrollStepWidth;
+                    break;
+                case KEY_DOWN :
+                    m_CameraPos.y+=m_nScrollStepWidth;
+                    break;
+                case KEY_LEFT :
+                    m_CameraPos.x-=m_nScrollStepWidth;
+                    break;
+                case KEY_RIGHT :
+                    m_CameraPos.x+=m_nScrollStepWidth;
+                    break;
+            }
+            break;
+        case VIEW_CONTROL_MODE_ACTIVE :
+            if( ::IsKeyDown( KEY_UP ) )
+                m_CameraPos.y-=m_nScrollStepWidth;
+            else
+            if( ::IsKeyDown( KEY_DOWN ) )
+                m_CameraPos.y+=m_nScrollStepWidth;
+            else
+            if( ::IsKeyDown( KEY_LEFT ) )
+                m_CameraPos.x-=m_nScrollStepWidth;
+            else
+            if( ::IsKeyDown( KEY_RIGHT ) )
+                m_CameraPos.x+=m_nScrollStepWidth;
+            break;
+    }
+}
+
+/**
  * Initialize all class data.
  * @param nWidth Screen renderer width;
  * @param nHeight Screen renderer height;
@@ -342,14 +393,18 @@ MapRenderer :: MapRenderer( int nWidth,
                             const char *szTitle,
                             int nTargetFps )  {
 
-    m_nWidth         = nWidth;
-    m_nHeight        = nHeight;
-    m_nTargetFps     = nTargetFps;
-    m_strTitle       = szTitle;
-    m_pTmxMap        = NULL;
-    m_bIsStarted     = false;
-    m_fLineThickness = __DEFAULT_LINE_THICKNESS;
+    m_nWidth            = nWidth;
+    m_nHeight           = nHeight;
+    m_nTargetFps        = nTargetFps;
+    m_strTitle          = szTitle;
+    m_pTmxMap           = NULL;
+    m_bIsStarted        = false;
+    m_fLineThickness    = __DEFAULT_LINE_THICKNESS;
+    m_nScrollStepWidth  = __DEFAULT_SCROLL_STEP_WIDTH;
+    m_nScrollStepHeight = __DEFAULT_SCROLL_STEP_HEIGHT;
+    m_ViewControlMode   = __DEFAULT_VIEW_CONTROL_MODE;
     m_strTxMapFile.clear();
+    memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
 
     /*
      * Set the raylib callback texture handlers (this call is protected
@@ -388,6 +443,42 @@ float MapRenderer :: GetLineThickness( void )  {
 }
 
 /**
+ * Set exit key to leave the renderer when it is in running state;
+ * @param key The key code representing the exit key (check raylib
+ * KeyboardKey enum);
+ * The default exit is ESC Key;
+ */
+void MapRenderer :: SetExitKey( KeyboardKey key )  {
+
+    ::SetExitKey( key );
+}
+
+/**
+ * Set the default scroll step size.
+ * @param nStepWidth The new scroll step size Width
+ * (-1 uses the map tile size width);
+ * @param nStepHeight The new scroll step size Height
+ * (-1 uses the map tile size height);
+ */
+void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
+
+    m_nScrollStepWidth  = nStepWidth;
+    m_nScrollStepHeight = nStepHeight;
+}
+
+/**
+ * Set the view port control mode;
+ * Viewport control mode (active and reactive)
+ * Active, the view port reacts to a single key pressing continuously;
+ * Reactive, the view port reacts only for each key pressing;
+ * @param mode The new view control mode;
+ */
+void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
+
+    m_ViewControlMode = mode;
+}
+
+/**
  * Start engine renderer.
  */
 bool MapRenderer :: Start( void )  {
@@ -399,6 +490,7 @@ bool MapRenderer :: Start( void )  {
         return false;
     }
 
+    SetExitKey( __DEFAULT_EXIT_KEY );
     SetTargetFPS( m_nTargetFps != -1 ? m_nTargetFps : __DEFAULT_FPS );
     m_pTmxMap = tmx_load( m_strTxMapFile.c_str() );
 
@@ -406,6 +498,15 @@ bool MapRenderer :: Start( void )  {
         tmx_perror( "Cannot load map" );
         return false;
     }
+
+    /*
+     * Set scrolling properties.
+     */
+    if( m_nScrollStepWidth < 0 )
+        m_nScrollStepWidth = m_pTmxMap -> tile_width;
+
+    if( m_nScrollStepHeight < 0 )
+        m_nScrollStepHeight = m_pTmxMap -> tile_height;
 
     m_bIsStarted = ( m_pTmxMap != NULL );
 
@@ -433,6 +534,7 @@ bool MapRenderer :: Run( void )  {
         while ( !WindowShouldClose() ) {
             BeginDrawing();
             RenderMap();
+            HandleUserInput();
             EndDrawing();
         }
 
