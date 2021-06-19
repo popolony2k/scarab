@@ -17,6 +17,7 @@
 #define __DEFAULT_SCROLL_STEP_WIDTH     -1
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
 #define __DEFAULT_SCROLL_STEP           -1
+#define __DEFAULT_CLEAR_BACKGROUND      true
 #define __DEFAULT_VIEW_CONTROL_MODE     VIEW_CONTROL_MODE_ACTIVE
 #define __DEFAULT_EXIT_KEY              KEY_ESCAPE
 
@@ -26,7 +27,7 @@ using namespace std :: chrono;
 
 
 /**
- * Raylib texture loader callback implementation.
+ * TxmLib texture loader callback implementation.
  * @param szPath Texture file path;
  */
 void* MapRenderer :: TextureLoaderCallback( const char *szPath )  {
@@ -39,7 +40,7 @@ void* MapRenderer :: TextureLoaderCallback( const char *szPath )  {
 }
 
 /**
- * Raylib texture deallocation callback implementation.
+ * TxmLib texture deallocation callback implementation.
  * @param pTexture Pointer to the texture that will be deallocated;
  */
 void MapRenderer :: TextureFreeCallback( void *pTexture )  {
@@ -286,7 +287,7 @@ void MapRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
 
     while( pLayers ) {
         if( pLayers -> visible ) {
-            switch( pLayers->type )  {
+            switch( pLayers -> type )  {
                 case L_GROUP :
                     DrawAllLayers( pMap, pLayers -> content.group_head ); // recursive call
                     break;
@@ -311,8 +312,9 @@ void MapRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
  */
 void MapRenderer :: RenderMap( void ) {
 
-    // TODO: Check if ClearBackground is really needed;
-    //ClearBackground( IntToColor( m_pTmxMap -> backgroundcolor ) );
+    if( m_bClearBackground )
+        ClearBackground( IntToColor( m_pTmxMap -> backgroundcolor ) );
+
     DrawAllLayers( m_pTmxMap, m_pTmxMap -> ly_head );
 }
 
@@ -399,6 +401,7 @@ MapRenderer :: MapRenderer( int nWidth,
     m_strTitle          = szTitle;
     m_pTmxMap           = NULL;
     m_bIsStarted        = false;
+    m_bClearBackground  = __DEFAULT_CLEAR_BACKGROUND;
     m_fLineThickness    = __DEFAULT_LINE_THICKNESS;
     m_nScrollStepWidth  = __DEFAULT_SCROLL_STEP_WIDTH;
     m_nScrollStepHeight = __DEFAULT_SCROLL_STEP_HEIGHT;
@@ -440,6 +443,16 @@ void MapRenderer :: SetLineThickness( float fLineThickness )  {
 float MapRenderer :: GetLineThickness( void )  {
 
     return m_fLineThickness;
+}
+
+/**
+ * Set the status of background cleaning for each
+ * rendering cycle;
+ * @param bStatus The new background clear status settings;
+ */
+void MapRenderer :: SetClearBackground( bool bStatus )  {
+
+    m_bClearBackground = bStatus;
 }
 
 /**

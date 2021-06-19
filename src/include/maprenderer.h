@@ -48,15 +48,18 @@ class MapRenderer  {
     std :: string    m_strTitle;
     std :: string    m_strTxMapFile;
     tmx_map          *m_pTmxMap;
+    bool             m_bClearBackground;
     bool             m_bIsStarted;
     static bool      m_bInitialized;
 
-
+    // TmxLib overrides
     static void* TextureLoaderCallback( const char *szPath );
     static void TextureFreeCallback( void *pTexture );
 
-    // Primitives
+    // Color control
     Color IntToColor( int color );
+
+    // Engine primitives
     void DrawPolyline( double offset_x,
                        double offset_y,
                        double **points,
@@ -102,6 +105,7 @@ class MapRenderer  {
 
     void SetExitKey( KeyboardKey key );
 
+    void SetClearBackground( bool bStatus );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
     void SetViewControlMode( ViewControlMode mode );
     void SetMapFile( const char *szTxMapFile );
