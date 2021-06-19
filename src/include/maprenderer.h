@@ -104,12 +104,11 @@ class MapRenderer  {
 
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
     void SetViewControlMode( ViewControlMode mode );
+    void SetMapFile( const char *szTxMapFile );
 
     bool Start( void );
     void Stop( void );
     bool Run( void );
-
-    void SetMapFile( const char *szTxMapFile );
 };
 
 #endif /* __MAPRENDERER_H__ */

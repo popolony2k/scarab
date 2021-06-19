@@ -479,6 +479,17 @@ void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
 }
 
 /**
+ * Set the TMX map file to engine load on start.
+ * @param szTmxMapFile Renderer map file;
+ */
+void MapRenderer :: SetMapFile( const char *szTmxMapFile )  {
+
+    m_strTxMapFile = szTmxMapFile;
+
+    return;
+}
+
+/**
  * Start engine renderer.
  */
 bool MapRenderer :: Start( void )  {
@@ -542,15 +553,4 @@ bool MapRenderer :: Run( void )  {
     }
 
     return false;
-}
-
-/**
- * Set the TMX map file to engine load on start.
- * @param szTmxMapFile Renderer map file;
- */
-void MapRenderer :: SetMapFile( const char *szTmxMapFile )  {
-
-    m_strTxMapFile = szTmxMapFile;
-
-    return;
 }
