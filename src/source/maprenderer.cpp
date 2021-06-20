@@ -13,13 +13,19 @@
  * Engine defaults.
  */
 #define __DEFAULT_FPS                   30
-#define __DEFAULT_LINE_THICKNESS       2.5
+#define __DEFAULT_LINE_THICKNESS        2.5f
+#define __DEFAULT_MAP_ZOOM_SCALE_STEP   0.0625f
 #define __DEFAULT_SCROLL_STEP_WIDTH     -1
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
 #define __DEFAULT_SCROLL_STEP           -1
 #define __DEFAULT_CLEAR_BACKGROUND      true
 #define __DEFAULT_VIEW_CONTROL_MODE     VIEW_CONTROL_MODE_ACTIVE
 #define __DEFAULT_EXIT_KEY              KEY_ESCAPE
+
+/*
+ * Engine limits.
+ */
+#define __MAX_ZOOM_SCALES               256
 
 bool MapRenderer :: m_bInitialized = false;
 
@@ -109,11 +115,23 @@ void MapRenderer :: DrawTile( void *pImage,
 
     Texture2D      *pTexture = ( Texture2D * ) pImage;
     unsigned char  op        = ( 0xFF * opacity );
+    float          fZoom     = *m_itCurrentZoom;
 
-    DrawTextureRec( *pTexture,
+    DrawTextureTiled( *pTexture,
                     ( Rectangle ) { sx, sy, sw, sh },
-                    ( Vector2 ) { dx, dy },
+                    ( Rectangle ) { ( dx * fZoom ),
+                                    ( dy * fZoom ),
+                                    ( sw * fZoom ),
+                                    ( sh * fZoom ) },
+                    ( Vector2 ) { 0, 0 },
+                    0.0f,
+                    fZoom,
                     ( Color ) { op, op, op, op } );
+
+    //DrawTextureRec( *pTexture,
+    //                ( Rectangle ) { sx, sy, sw, sh },
+    //                ( Vector2 ) { dx, dy },
+    //                ( Color ) { op, op, op, op } );
 }
 
 /**
@@ -345,10 +363,30 @@ bool MapRenderer :: UnloadMap( void )  {
 }
 
 /**
+ * Reset zoom to it's default state.
+ */
+void MapRenderer :: ResetZoom( void )  {
+
+    m_itCurrentZoom = m_vZoomFactors.begin() +
+                      ( int )( ( 1 / __DEFAULT_MAP_ZOOM_SCALE_STEP ) - 1 );
+}
+
+void MapRenderer :: InitializeZoomFactors( void )  {
+
+    float   fZoomStep = 0.0;
+
+    for( int nCount = 0; nCount < __MAX_ZOOM_SCALES; nCount++ )  {
+        m_vZoomFactors.push_back(fZoomStep+=__DEFAULT_MAP_ZOOM_SCALE_STEP );
+    }
+}
+
+/**
  * Check user input selected previously by user (mouse,
  * joystick, keyboard, etc...)
  */
 void MapRenderer :: HandleUserInput( void )  {
+
+    bool     bKeyHandled = true;
 
     switch( m_ViewControlMode )  {
         case VIEW_CONTROL_MODE_REACTIVE :
@@ -365,6 +403,16 @@ void MapRenderer :: HandleUserInput( void )  {
                 case KEY_RIGHT :
                     m_CameraPos.x+=m_nScrollStepWidth;
                     break;
+                case KEY_PAGE_UP :
+                    if( m_itCurrentZoom != m_vZoomFactors.end() )
+                        m_itCurrentZoom++;
+                    break;
+                case KEY_PAGE_DOWN :
+                    if( m_itCurrentZoom != m_vZoomFactors.begin() )
+                        m_itCurrentZoom--;
+                    break;
+                default :
+                    bKeyHandled = false;
             }
             break;
         case VIEW_CONTROL_MODE_ACTIVE :
@@ -379,7 +427,26 @@ void MapRenderer :: HandleUserInput( void )  {
             else
             if( ::IsKeyDown( KEY_RIGHT ) )
                 m_CameraPos.x+=m_nScrollStepWidth;
+            else
+            if( ::IsKeyDown( KEY_PAGE_UP ) && ( m_itCurrentZoom != m_vZoomFactors.end() ) )
+                m_itCurrentZoom++;
+            else
+            if( ::IsKeyDown( KEY_PAGE_DOWN ) && ( m_itCurrentZoom != m_vZoomFactors.begin() ) )
+                m_itCurrentZoom--;
+            else
+                bKeyHandled = false;
             break;
+    }
+
+    /*
+     * Not controller handled keys.
+     */
+    if( !bKeyHandled )  {
+        switch( GetKeyPressed() )  {
+            case KEY_HOME :
+                ResetZoom();
+                break;
+        }
     }
 }
 
@@ -408,6 +475,8 @@ MapRenderer :: MapRenderer( int nWidth,
     m_ViewControlMode   = __DEFAULT_VIEW_CONTROL_MODE;
     m_strTxMapFile.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
+    InitializeZoomFactors();
+    ResetZoom();
 
     /*
      * Set the raylib callback texture handlers (this call is protected

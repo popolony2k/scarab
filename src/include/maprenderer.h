@@ -12,6 +12,7 @@
 #include <raylib.h>
 #include <string>
 #include <queue>
+#include <vector>
 
 
 /**
@@ -34,23 +35,26 @@ class MapRenderer  {
         int          nCounter;
         tmx_tile     *pNextTile;
     };
-    typedef std ::deque<__stTileAnimInfo*> __AnimInfoList;
+    typedef std :: deque<__stTileAnimInfo*> __AnimInfoList;
+    typedef std :: vector<float> ZoomFactors;
 
-    Vector2          m_CameraPos;
-    ViewControlMode  m_ViewControlMode;
-    int              m_nScrollStepWidth;
-    int              m_nScrollStepHeight;
-    int              m_nWidth;
-    int              m_nHeight;
-    int              m_nTargetFps;
-    float            m_fLineThickness;
-    __AnimInfoList   m_AnimInfoList;
-    std :: string    m_strTitle;
-    std :: string    m_strTxMapFile;
-    tmx_map          *m_pTmxMap;
-    bool             m_bClearBackground;
-    bool             m_bIsStarted;
-    static bool      m_bInitialized;
+    Vector2                 m_CameraPos;
+    ViewControlMode         m_ViewControlMode;
+    int                     m_nScrollStepWidth;
+    int                     m_nScrollStepHeight;
+    int                     m_nWidth;
+    int                     m_nHeight;
+    int                     m_nTargetFps;
+    float                   m_fLineThickness;
+    ZoomFactors             m_vZoomFactors;
+    ZoomFactors :: iterator m_itCurrentZoom;
+    __AnimInfoList          m_AnimInfoList;
+    std :: string           m_strTitle;
+    std :: string           m_strTxMapFile;
+    tmx_map                 *m_pTmxMap;
+    bool                    m_bClearBackground;
+    bool                    m_bIsStarted;
+    static bool             m_bInitialized;
 
     // TmxLib overrides
     static void* TextureLoaderCallback( const char *szPath );
@@ -86,7 +90,10 @@ class MapRenderer  {
     void DrawLayer( tmx_map *pMap, tmx_layer *pLayer );
     void DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers );
     void RenderMap( void );
+
     bool UnloadMap( void );
+    void ResetZoom( void );
+    void InitializeZoomFactors( void );
 
     // User input handling
     void HandleUserInput( void );
