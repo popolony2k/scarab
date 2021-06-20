@@ -20,6 +20,7 @@
 #define __DEFAULT_SCROLL_STEP           -1
 #define __DEFAULT_CLEAR_BACKGROUND      true
 #define __DEFAULT_USER_ZOOM_STATUS      true
+#define __DEFAULT_PREFERRED_ZOOM_POS    ( ( unsigned )( ( 1 / __DEFAULT_MAP_ZOOM_SCALE_STEP ) - 1 ) )
 #define __DEFAULT_VIEW_CONTROL_MODE     VIEW_CONTROL_MODE_ACTIVE
 #define __DEFAULT_EXIT_KEY              KEY_ESCAPE
 
@@ -100,7 +101,8 @@ void MapRenderer :: DrawPolygon( double offset_x,
                                   offset_y + points[0][1] },
                     ( Vector2 ) { offset_x + points[points_count-1][0],
                                   offset_y + points[points_count-1][1] },
-                    m_fLineThickness, color );
+                    m_fLineThickness,
+                    color );
     }
 }
 
@@ -116,17 +118,16 @@ void MapRenderer :: DrawTile( void *pImage,
 
     Texture2D      *pTexture = ( Texture2D * ) pImage;
     unsigned char  op        = ( 0xFF * opacity );
-    float          fZoom     = m_vZoomFactorList[m_nCurrentZoomPos];
 
     DrawTextureTiled( *pTexture,
                     ( Rectangle ) { sx, sy, sw, sh },
-                    ( Rectangle ) { ( dx * fZoom ),
-                                    ( dy * fZoom ),
-                                    ( sw * fZoom ),
-                                    ( sh * fZoom ) },
+                    ( Rectangle ) { ( dx * m_fZoomFactor ),
+                                    ( dy * m_fZoomFactor ),
+                                    ( sw * m_fZoomFactor ),
+                                    ( sh * m_fZoomFactor ) },
                     ( Vector2 ) { 0, 0 },
                     0.0f,
-                    fZoom,
+                    m_fZoomFactor,
                     ( Color ) { op, op, op, op } );
 
     //DrawTextureRec( *pTexture,
@@ -381,6 +382,8 @@ void MapRenderer :: ZoomIn( void )  {
 
         if( m_nCurrentZoomPos == m_ZoomBorderLimits.second )
             m_nCurrentZoomPos--;
+
+        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
     }
 }
 
@@ -389,8 +392,10 @@ void MapRenderer :: ZoomIn( void )  {
  */
 void MapRenderer :: ZoomOut( void )  {
 
-    if( ( m_nCurrentZoomPos > m_ZoomBorderLimits.first ) && m_bEnabledUserZoom )
+    if( ( m_nCurrentZoomPos > m_ZoomBorderLimits.first ) && m_bEnabledUserZoom )  {
         m_nCurrentZoomPos--;
+        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
+    }
 }
 
 /**
@@ -407,12 +412,12 @@ void MapRenderer :: InitializeZoomEngine( void )  {
         m_vZoomFactorList.push_back(fZoomStep+=__DEFAULT_MAP_ZOOM_SCALE_STEP );
     }
 
+    SetPreferredZoom( __DEFAULT_PREFERRED_ZOOM_POS );
+
     m_ZoomBorderLimits.first  = 0;
     m_ZoomBorderLimits.second = __MAX_ZOOM_DEPTH;
     m_bEnabledUserZoom        = __DEFAULT_USER_ZOOM_STATUS;
-
-    SetPreferredZoom( ( unsigned )( ( 1 / __DEFAULT_MAP_ZOOM_SCALE_STEP ) - 1 ) );
-
+    m_fZoomFactor             = m_vZoomFactorList[m_nPreferredZoomPos];
 }
 
 /**

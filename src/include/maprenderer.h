@@ -47,6 +47,7 @@ class MapRenderer  {
     int                        m_nHeight;
     int                        m_nTargetFps;
     float                      m_fLineThickness;
+    float                      m_fZoomFactor;
     ZoomFactorList             m_vZoomFactorList;
     unsigned                   m_nCurrentZoomPos;
     unsigned                   m_nPreferredZoomPos;
