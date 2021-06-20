@@ -370,6 +370,7 @@ bool MapRenderer :: UnloadMap( void )  {
 void MapRenderer :: ResetZoom( void )  {
 
     m_nCurrentZoomPos = m_nPreferredZoomPos;
+    m_fZoomFactor     = m_vZoomFactorList[m_nCurrentZoomPos];
 }
 
 /**
