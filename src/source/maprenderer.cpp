@@ -25,7 +25,7 @@
 /*
  * Engine limits.
  */
-#define __MAX_ZOOM_SCALES               256
+#define __MAX_ZOOM_DEPTH               256
 
 bool MapRenderer :: m_bInitialized = false;
 
@@ -375,7 +375,7 @@ void MapRenderer :: InitializeZoomFactors( void )  {
 
     float   fZoomStep = 0.0;
 
-    for( int nCount = 0; nCount < __MAX_ZOOM_SCALES; nCount++ )  {
+    for( int nCount = 0; nCount < __MAX_ZOOM_DEPTH; nCount++ )  {
         m_vZoomFactors.push_back(fZoomStep+=__DEFAULT_MAP_ZOOM_SCALE_STEP );
     }
 }
@@ -404,8 +404,12 @@ void MapRenderer :: HandleUserInput( void )  {
                     m_CameraPos.x+=m_nScrollStepWidth;
                     break;
                 case KEY_PAGE_UP :
-                    if( m_itCurrentZoom != m_vZoomFactors.end() )
+                    if( m_itCurrentZoom != m_vZoomFactors.end() )  {
                         m_itCurrentZoom++;
+
+                        if( m_itCurrentZoom == m_vZoomFactors.end() )
+                            m_itCurrentZoom--;
+                    }
                     break;
                 case KEY_PAGE_DOWN :
                     if( m_itCurrentZoom != m_vZoomFactors.begin() )
@@ -428,8 +432,12 @@ void MapRenderer :: HandleUserInput( void )  {
             if( ::IsKeyDown( KEY_RIGHT ) )
                 m_CameraPos.x+=m_nScrollStepWidth;
             else
-            if( ::IsKeyDown( KEY_PAGE_UP ) && ( m_itCurrentZoom != m_vZoomFactors.end() ) )
+            if( ::IsKeyDown( KEY_PAGE_UP ) && ( m_itCurrentZoom != m_vZoomFactors.end() ) )  {
                 m_itCurrentZoom++;
+
+                if( m_itCurrentZoom == m_vZoomFactors.end() )
+                    m_itCurrentZoom--;
+            }
             else
             if( ::IsKeyDown( KEY_PAGE_DOWN ) && ( m_itCurrentZoom != m_vZoomFactors.begin() ) )
                 m_itCurrentZoom--;
