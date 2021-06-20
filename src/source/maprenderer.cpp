@@ -19,6 +19,7 @@
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
 #define __DEFAULT_SCROLL_STEP           -1
 #define __DEFAULT_CLEAR_BACKGROUND      true
+#define __DEFAULT_USER_ZOOM_STATUS      true
 #define __DEFAULT_VIEW_CONTROL_MODE     VIEW_CONTROL_MODE_ACTIVE
 #define __DEFAULT_EXIT_KEY              KEY_ESCAPE
 
@@ -115,7 +116,7 @@ void MapRenderer :: DrawTile( void *pImage,
 
     Texture2D      *pTexture = ( Texture2D * ) pImage;
     unsigned char  op        = ( 0xFF * opacity );
-    float          fZoom     = *m_itCurrentZoom;
+    float          fZoom     = m_vZoomFactorList[m_nCurrentZoomPos];
 
     DrawTextureTiled( *pTexture,
                     ( Rectangle ) { sx, sy, sw, sh },
@@ -367,17 +368,51 @@ bool MapRenderer :: UnloadMap( void )  {
  */
 void MapRenderer :: ResetZoom( void )  {
 
-    m_itCurrentZoom = m_vZoomFactors.begin() +
-                      ( int )( ( 1 / __DEFAULT_MAP_ZOOM_SCALE_STEP ) - 1 );
+    m_nCurrentZoomPos = m_nPreferredZoomPos;
 }
 
-void MapRenderer :: InitializeZoomFactors( void )  {
+/**
+ * Performs Zoom In effect.
+ */
+void MapRenderer :: ZoomIn( void )  {
+
+    if( ( m_nCurrentZoomPos < m_ZoomBorderLimits.second ) && m_bEnabledUserZoom )  {
+        m_nCurrentZoomPos++;
+
+        if( m_nCurrentZoomPos == m_ZoomBorderLimits.second )
+            m_nCurrentZoomPos--;
+    }
+}
+
+/**
+ * Performs Zoom Out effect.
+ */
+void MapRenderer :: ZoomOut( void )  {
+
+    if( ( m_nCurrentZoomPos > m_ZoomBorderLimits.first ) && m_bEnabledUserZoom )
+        m_nCurrentZoomPos--;
+}
+
+/**
+ * Initialize the zoom engine.
+ */
+void MapRenderer :: InitializeZoomEngine( void )  {
 
     float   fZoomStep = 0.0;
 
+    /*
+     * Fill all zoom factor list.
+     */
     for( int nCount = 0; nCount < __MAX_ZOOM_DEPTH; nCount++ )  {
-        m_vZoomFactors.push_back(fZoomStep+=__DEFAULT_MAP_ZOOM_SCALE_STEP );
+        m_vZoomFactorList.push_back(fZoomStep+=__DEFAULT_MAP_ZOOM_SCALE_STEP );
     }
+
+    m_ZoomBorderLimits.first  = 0;
+    m_ZoomBorderLimits.second = __MAX_ZOOM_DEPTH;
+    m_bEnabledUserZoom        = __DEFAULT_USER_ZOOM_STATUS;
+
+    SetPreferredZoom( ( unsigned )( ( 1 / __DEFAULT_MAP_ZOOM_SCALE_STEP ) - 1 ) );
+
 }
 
 /**
@@ -404,16 +439,10 @@ void MapRenderer :: HandleUserInput( void )  {
                     m_CameraPos.x+=m_nScrollStepWidth;
                     break;
                 case KEY_PAGE_UP :
-                    if( m_itCurrentZoom != m_vZoomFactors.end() )  {
-                        m_itCurrentZoom++;
-
-                        if( m_itCurrentZoom == m_vZoomFactors.end() )
-                            m_itCurrentZoom--;
-                    }
+                    ZoomIn();
                     break;
                 case KEY_PAGE_DOWN :
-                    if( m_itCurrentZoom != m_vZoomFactors.begin() )
-                        m_itCurrentZoom--;
+                    ZoomOut();
                     break;
                 default :
                     bKeyHandled = false;
@@ -432,15 +461,11 @@ void MapRenderer :: HandleUserInput( void )  {
             if( ::IsKeyDown( KEY_RIGHT ) )
                 m_CameraPos.x+=m_nScrollStepWidth;
             else
-            if( ::IsKeyDown( KEY_PAGE_UP ) && ( m_itCurrentZoom != m_vZoomFactors.end() ) )  {
-                m_itCurrentZoom++;
-
-                if( m_itCurrentZoom == m_vZoomFactors.end() )
-                    m_itCurrentZoom--;
-            }
+            if( ::IsKeyDown( KEY_PAGE_UP ) )
+                ZoomIn();
             else
-            if( ::IsKeyDown( KEY_PAGE_DOWN ) && ( m_itCurrentZoom != m_vZoomFactors.begin() ) )
-                m_itCurrentZoom--;
+            if( ::IsKeyDown( KEY_PAGE_DOWN ) )
+                ZoomOut();
             else
                 bKeyHandled = false;
             break;
@@ -483,7 +508,7 @@ MapRenderer :: MapRenderer( int nWidth,
     m_ViewControlMode   = __DEFAULT_VIEW_CONTROL_MODE;
     m_strTxMapFile.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
-    InitializeZoomFactors();
+    InitializeZoomEngine();
     ResetZoom();
 
     /*
@@ -554,6 +579,72 @@ void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
 
     m_nScrollStepWidth  = nStepWidth;
     m_nScrollStepHeight = nStepHeight;
+}
+
+/**
+ * Enable or disable the user zoom mode (false disables user zoom by
+ * mouse, keyboard, joystick, touch, ...);
+ * @param bEnabled The new user zoom mode;
+ */
+void MapRenderer :: SetEnableUserZoom( bool bEnabled )  {
+
+    m_bEnabledUserZoom = bEnabled;
+}
+
+/**
+ * Set the minimum zoom border limit;
+ * @param nMinPos The new minimum zoom limit;
+ */
+void MapRenderer :: SetMinZoom( unsigned nMinPos )  {
+
+    std::numeric_limits<unsigned>  limits;
+
+    if( ( nMinPos >= limits.min() ) &&  ( nMinPos <= limits.max() ) )
+        m_ZoomBorderLimits.first = nMinPos;
+}
+
+/**
+ * Set the maximum zoom border limit;
+ * @param nMaxPos The new maximum zoom limit;
+ */
+void MapRenderer :: SetMaxZoom( unsigned nMaxPos )  {
+
+    std::numeric_limits<unsigned>  limits;
+
+    if( ( nMaxPos >= limits.min() ) &&  ( nMaxPos <= limits.max() ) )
+        m_ZoomBorderLimits.second = nMaxPos;
+}
+
+/**
+ * Set the preferred zoom to be used when engine apply
+ * reset operations.
+ * @param nZoomPos The new preferred zoom;
+ */
+void MapRenderer :: SetPreferredZoom( unsigned nZoomPos )  {
+
+    std::numeric_limits<unsigned>  limits;
+
+    if( ( nZoomPos >= limits.min() ) &&  ( nZoomPos <= limits.max() ) )
+        m_nPreferredZoomPos = nZoomPos;
+}
+
+/**
+ * Set zoom programatically.
+ * @param nZoomPos The zoom to be applied;
+ */
+void MapRenderer :: SetZoom( unsigned nZoomPos )  {
+
+    bool  bEnabledUserZoom = m_bEnabledUserZoom;
+
+    m_bEnabledUserZoom = false;
+
+    if( nZoomPos > m_nCurrentZoomPos )
+       ZoomIn();
+    else
+        if( nZoomPos < m_nCurrentZoomPos )
+            ZoomOut();
+
+    m_bEnabledUserZoom = bEnabledUserZoom;
 }
 
 /**

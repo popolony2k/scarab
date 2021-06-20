@@ -36,25 +36,29 @@ class MapRenderer  {
         tmx_tile     *pNextTile;
     };
     typedef std :: deque<__stTileAnimInfo*> __AnimInfoList;
-    typedef std :: vector<float> ZoomFactors;
+    typedef std :: vector<float> ZoomFactorList;
+    typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
 
-    Vector2                 m_CameraPos;
-    ViewControlMode         m_ViewControlMode;
-    int                     m_nScrollStepWidth;
-    int                     m_nScrollStepHeight;
-    int                     m_nWidth;
-    int                     m_nHeight;
-    int                     m_nTargetFps;
-    float                   m_fLineThickness;
-    ZoomFactors             m_vZoomFactors;
-    ZoomFactors :: iterator m_itCurrentZoom;
-    __AnimInfoList          m_AnimInfoList;
-    std :: string           m_strTitle;
-    std :: string           m_strTxMapFile;
-    tmx_map                 *m_pTmxMap;
-    bool                    m_bClearBackground;
-    bool                    m_bIsStarted;
-    static bool             m_bInitialized;
+    Vector2                    m_CameraPos;
+    ViewControlMode            m_ViewControlMode;
+    int                        m_nScrollStepWidth;
+    int                        m_nScrollStepHeight;
+    int                        m_nWidth;
+    int                        m_nHeight;
+    int                        m_nTargetFps;
+    float                      m_fLineThickness;
+    ZoomFactorList             m_vZoomFactorList;
+    unsigned                   m_nCurrentZoomPos;
+    unsigned                   m_nPreferredZoomPos;
+    ZoomBorderLimits           m_ZoomBorderLimits;
+    __AnimInfoList             m_AnimInfoList;
+    std :: string              m_strTitle;
+    std :: string              m_strTxMapFile;
+    tmx_map                    *m_pTmxMap;
+    bool                       m_bClearBackground;
+    bool                       m_bIsStarted;
+    bool                       m_bEnabledUserZoom;
+    static bool                m_bInitialized;
 
     // TmxLib overrides
     static void* TextureLoaderCallback( const char *szPath );
@@ -93,7 +97,9 @@ class MapRenderer  {
 
     bool UnloadMap( void );
     void ResetZoom( void );
-    void InitializeZoomFactors( void );
+    void ZoomIn( void );
+    void ZoomOut( void );
+    void InitializeZoomEngine( void );
 
     // User input handling
     void HandleUserInput( void );
@@ -114,6 +120,11 @@ class MapRenderer  {
 
     void SetClearBackground( bool bStatus );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
+    void SetEnableUserZoom( bool bEnabled );
+    void SetMinZoom( unsigned nMinPos );
+    void SetMaxZoom( unsigned nMaxPos );
+    void SetPreferredZoom( unsigned nZoomPos );
+    void SetZoom( unsigned nZoomPos );
     void SetViewControlMode( ViewControlMode mode );
     void SetMapFile( const char *szTxMapFile );
 
