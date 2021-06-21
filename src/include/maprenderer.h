@@ -59,6 +59,8 @@ class MapRenderer  {
     bool                       m_bClearBackground;
     bool                       m_bIsStarted;
     bool                       m_bEnabledUserZoom;
+    bool                       m_bWindowResizeable;
+    bool                       m_bDrawFPS;
     static bool                m_bInitialized;
 
     // TmxLib overrides
@@ -119,7 +121,10 @@ class MapRenderer  {
 
     void SetExitKey( KeyboardKey key );
 
+    void SetWindowResizeable( bool bResizeable );
     void SetClearBackground( bool bStatus );
+    void SetDrawFPS( bool bDrawFPS );
+
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
     void SetEnableUserZoom( bool bEnabled );
     void SetMinZoom( unsigned nMinPos );
@@ -127,6 +132,7 @@ class MapRenderer  {
     void SetPreferredZoom( unsigned nZoomPos );
     void SetZoom( unsigned nZoomPos );
     void SetViewControlMode( ViewControlMode mode );
+
     void SetMapFile( const char *szTxMapFile );
 
     bool Start( void );

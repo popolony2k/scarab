@@ -20,6 +20,8 @@
 #define __DEFAULT_SCROLL_STEP           -1
 #define __DEFAULT_CLEAR_BACKGROUND      true
 #define __DEFAULT_USER_ZOOM_STATUS      true
+#define __DEFAULT_RESIZEABLE_STATUS     false
+#define __DEFAULT_DRAW_FPS_STATUS       false
 #define __DEFAULT_PREFERRED_ZOOM_POS    ( ( unsigned )( ( 1 / __DEFAULT_MAP_ZOOM_SCALE_STEP ) - 1 ) )
 #define __DEFAULT_VIEW_CONTROL_MODE     VIEW_CONTROL_MODE_ACTIVE
 #define __DEFAULT_EXIT_KEY              KEY_ESCAPE
@@ -225,10 +227,6 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                 tmx_image      *pIm   = pTile -> image;
                 tmx_tileset    *pTs;
                 void           *pImage;
-                unsigned int   x;
-                unsigned int   y;
-                unsigned int   w;
-                unsigned int   h;
 
 
                 /*
@@ -275,10 +273,6 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                 }
 
                 pTs = pTile -> tileset;
-                x   = pTile -> ul_x;
-                y   = pTile -> ul_y;
-                w   = pTs -> tile_width;
-                h   = pTs -> tile_height;
 
                 if( pIm ) {
                     pImage = pIm -> resource_image;
@@ -288,8 +282,10 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                 }
 
                 DrawTile( pImage,
-                          x, y,
-                          w, h,
+                          pTile -> ul_x,
+                          pTile -> ul_y,
+                          pTs -> tile_width,
+                          pTs -> tile_height,
                           ( j * pTs -> tile_width ) + m_CameraPos.x,
                           ( i * pTs -> tile_height ) + m_CameraPos.y,
                           opacity, nFlags );
@@ -336,6 +332,9 @@ void MapRenderer :: RenderMap( void ) {
         ClearBackground( IntToColor( m_pTmxMap -> backgroundcolor ) );
 
     DrawAllLayers( m_pTmxMap, m_pTmxMap -> ly_head );
+
+    if( m_bDrawFPS )
+        DrawFPS( 0,  0 );
 }
 
 /**
@@ -507,7 +506,9 @@ MapRenderer :: MapRenderer( int nWidth,
     m_strTitle          = szTitle;
     m_pTmxMap           = NULL;
     m_bIsStarted        = false;
+    m_bWindowResizeable = __DEFAULT_RESIZEABLE_STATUS;
     m_bClearBackground  = __DEFAULT_CLEAR_BACKGROUND;
+    m_bDrawFPS          = __DEFAULT_DRAW_FPS_STATUS;
     m_fLineThickness    = __DEFAULT_LINE_THICKNESS;
     m_nScrollStepWidth  = __DEFAULT_SCROLL_STEP_WIDTH;
     m_nScrollStepHeight = __DEFAULT_SCROLL_STEP_HEIGHT;
@@ -564,6 +565,15 @@ void MapRenderer :: SetClearBackground( bool bStatus )  {
 }
 
 /**
+ * Enable/disable draw FPS information on top left corner of screen
+ * @param bDrawFPS The new draw FPS status;
+ */
+void MapRenderer :: SetDrawFPS( bool bDrawFPS )  {
+
+    m_bDrawFPS = bDrawFPS;
+}
+
+/**
  * Set exit key to leave the renderer when it is in running state;
  * @param key The key code representing the exit key (check raylib
  * KeyboardKey enum);
@@ -572,6 +582,15 @@ void MapRenderer :: SetClearBackground( bool bStatus )  {
 void MapRenderer :: SetExitKey( KeyboardKey key )  {
 
     ::SetExitKey( key );
+}
+
+/**
+ * Set window resizeable status.
+ * @param bResizeable The new resizeable status for window;
+ */
+void MapRenderer :: SetWindowResizeable( bool bResizeable )  {
+
+    m_bWindowResizeable = bResizeable;
 }
 
 /**
@@ -680,6 +699,9 @@ void MapRenderer :: SetMapFile( const char *szTmxMapFile )  {
  * Start engine renderer.
  */
 bool MapRenderer :: Start( void )  {
+
+    if( m_bWindowResizeable )
+        SetConfigFlags( FLAG_WINDOW_RESIZABLE );
 
     InitWindow( m_nWidth, m_nHeight, m_strTitle.c_str() );
 
