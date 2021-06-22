@@ -7,6 +7,7 @@
 
 #include <memory.h>
 #include <chrono>
+#include <cmath>
 #include "maprenderer.h"
 
 /*
@@ -108,6 +109,17 @@ void MapRenderer :: DrawPolygon( double offset_x,
     }
 }
 
+/**
+ * Draw a tile to specified position on texture.
+ * @param pImage Pointer to a @link Texture2D object used as renderer.
+ * @param sx Source tile X coordinate;
+ * @param sy Source tile Y coordinate;
+ * @param sw Source tile width;
+ * @param sh Source tile height;
+ * @param dx destination X coordinate on texture;
+ * @param dy destination Y coordinate on texture;
+ * @param opacity opacity level to be applied on texture;
+ */
 void MapRenderer :: DrawTile( void *pImage,
                               unsigned int sx,
                               unsigned int sy,
@@ -115,18 +127,45 @@ void MapRenderer :: DrawTile( void *pImage,
                               unsigned int sh,
                               unsigned int dx,
                               unsigned int dy,
-                              float opacity,
-                              unsigned int flags ) {
+                              float opacity ) {
 
-    Texture2D      *pTexture = ( Texture2D * ) pImage;
-    unsigned char  op        = ( 0xFF * opacity );
+    if( ( dx > ( m_Viewport.x + m_Viewport.width ) ) ||
+        ( dy > ( m_Viewport.y + m_Viewport.height ) ) )
+        return;
+
+    Texture2D      *pTexture   = ( Texture2D * ) pImage;
+    unsigned char  op          = ( 0xFF * opacity );
+    float          fViewportX  = ( ( dx * m_fZoomFactor ) + m_Viewport.x );
+    float          fViewportY  = ( ( dy * m_fZoomFactor ) + m_Viewport.y );
+    float          fWidth      = ( sw * m_fZoomFactor );
+    float          fHeight     = ( sh * m_fZoomFactor );
+    float          fClippingX  = ( fViewportX + fWidth );
+    float          fClippingY  = ( fViewportY + fHeight );
+
+    if( fClippingX > m_Viewport.width )  {
+        fClippingX = ( fClippingX - m_Viewport.width );
+
+        if( fClippingX > fWidth )
+            return;
+
+        fWidth = fWidth - fClippingX;
+    }
+
+    if( fClippingY > m_Viewport.height )  {
+        fClippingY = ( fClippingY - m_Viewport.height );
+
+        if( fClippingY > fHeight )
+            return;
+
+        fHeight = fHeight - fClippingY;
+    }
 
     DrawTextureTiled( *pTexture,
                     ( Rectangle ) { sx, sy, sw, sh },
-                    ( Rectangle ) { ( dx * m_fZoomFactor ),
-                                    ( dy * m_fZoomFactor ),
-                                    ( sw * m_fZoomFactor ),
-                                    ( sh * m_fZoomFactor ) },
+                    ( Rectangle ) { fViewportX,
+                                    fViewportY,
+                                    fWidth,
+                                    fHeight },
                     ( Vector2 ) { 0, 0 },
                     0.0f,
                     m_fZoomFactor,
@@ -223,7 +262,6 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
             pTile = pMap -> tiles[nGID];
 
             if( pTile != NULL ) {
-                uint32_t       nFlags = nLayerGID & ~TMX_FLIP_BITS_REMOVAL;
                 tmx_image      *pIm   = pTile -> image;
                 tmx_tileset    *pTs;
                 void           *pImage;
@@ -288,7 +326,7 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                           pTs -> tile_height,
                           ( j * pTs -> tile_width ) + m_CameraPos.x,
                           ( i * pTs -> tile_height ) + m_CameraPos.y,
-                          opacity, nFlags );
+                          opacity );
             }
         }
     }
@@ -490,18 +528,22 @@ void MapRenderer :: HandleUserInput( void )  {
 
 /**
  * Initialize all class data.
- * @param nWidth Screen renderer width;
- * @param nHeight Screen renderer height;
+ * @param fWidth Screen renderer width;
+ * @param fHeight Screen renderer height;
  * @param szTitle Screen renderer title;
  * @param nTargetFps Renderer desired FPS;
  */
-MapRenderer :: MapRenderer( int nWidth,
-                            int nHeight,
+MapRenderer :: MapRenderer( float fWidth,
+                            float fHeight,
                             const char *szTitle,
                             int nTargetFps )  {
 
-    m_nWidth            = nWidth;
-    m_nHeight           = nHeight;
+    m_Viewport.x        = 0;
+    m_Viewport.y        = 0;
+    m_Viewport.width    = fWidth;
+    m_Viewport.height   = fHeight;
+    m_fWidth            = fWidth;
+    m_fHeight           = fHeight;
     m_nTargetFps        = nTargetFps;
     m_strTitle          = szTitle;
     m_pTmxMap           = NULL;
@@ -607,6 +649,15 @@ void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
 }
 
 /**
+ * Set the new renderer viewport;
+ * @param viewport The new viewport rectangle;
+ */
+void MapRenderer :: SetViewport( Viewport viewport )  {
+
+    m_Viewport = viewport;
+}
+
+/**
  * Enable or disable the user zoom mode (false disables user zoom by
  * mouse, keyboard, joystick, touch, ...);
  * @param bEnabled The new user zoom mode;
@@ -703,7 +754,7 @@ bool MapRenderer :: Start( void )  {
     if( m_bWindowResizeable )
         SetConfigFlags( FLAG_WINDOW_RESIZABLE );
 
-    InitWindow( m_nWidth, m_nHeight, m_strTitle.c_str() );
+    InitWindow( ( int ) m_fWidth, ( int ) m_fHeight, m_strTitle.c_str() );
 
     if( !IsWindowReady() ) {
         tmx_perror( "Cannot create a window" );

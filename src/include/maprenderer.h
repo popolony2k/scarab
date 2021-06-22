@@ -16,6 +16,11 @@
 
 
 /**
+ * Viewport definition.
+ */
+typedef Rectangle  Viewport;
+
+/**
  * Viewport control mode (active and reactive)
  * Active, the view port reacts to a single key pressing continuously;
  * Reactive, the view port reacts only for each key pressing;
@@ -43,8 +48,8 @@ class MapRenderer  {
     ViewControlMode            m_ViewControlMode;
     int                        m_nScrollStepWidth;
     int                        m_nScrollStepHeight;
-    int                        m_nWidth;
-    int                        m_nHeight;
+    float                      m_fWidth;
+    float                      m_fHeight;
     int                        m_nTargetFps;
     float                      m_fLineThickness;
     float                      m_fZoomFactor;
@@ -53,6 +58,7 @@ class MapRenderer  {
     unsigned                   m_nPreferredZoomPos;
     ZoomBorderLimits           m_ZoomBorderLimits;
     __AnimInfoList             m_AnimInfoList;
+    Viewport                   m_Viewport;
     std :: string              m_strTitle;
     std :: string              m_strTxMapFile;
     tmx_map                    *m_pTmxMap;
@@ -88,8 +94,7 @@ class MapRenderer  {
                    unsigned int sh,
                    unsigned int dx,
                    unsigned int dy,
-                   float opacity,
-                   unsigned int flags );
+                   float opacity );
 
     // High level primitive map handlers
     void DrawObjects( tmx_object_group *pObjgr );
@@ -110,8 +115,8 @@ class MapRenderer  {
 
     public:
 
-    MapRenderer( int nWidth,
-                 int nHeight,
+    MapRenderer( float fWidth,
+                 float fHeight,
                  const char* szTitle,
                  int nTargetFps = -1 );
     ~MapRenderer( void );
@@ -125,6 +130,7 @@ class MapRenderer  {
     void SetClearBackground( bool bStatus );
     void SetDrawFPS( bool bDrawFPS );
 
+    void SetViewport( Viewport viewport );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
     void SetEnableUserZoom( bool bEnabled );
     void SetMinZoom( unsigned nMinPos );
