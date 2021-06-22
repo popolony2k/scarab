@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled/examples/orthogonal-outside.tmx";
 
     renderer.SetMapFile( strTmxMapFile.c_str() );
-    renderer.SetViewport( ( Viewport ) { 80.0, 80.0, 600.0, 400.0 } );
+    renderer.SetViewport( ( Viewport ) { 10.0, 10.0, 510.0, 590.0 } );
     renderer.SetDrawFPS( true );
     renderer.Start();
     renderer.Run();
