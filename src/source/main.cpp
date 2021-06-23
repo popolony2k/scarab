@@ -13,6 +13,7 @@ int main(int argc, char **argv) {
     std :: string strTmxMapFile = "/home/popolony2k/Projects/C_CPP/tiled/examples/rpg/island.tmx";
     std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled/examples/orthogonal-outside.tmx";
 
+    //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
     renderer.SetMapFile( strTmxMapFile.c_str() );
     renderer.SetViewport( ( Viewport ) { 10.0, 10.0, 510.0, 590.0 } );
     renderer.SetDrawFPS( true );

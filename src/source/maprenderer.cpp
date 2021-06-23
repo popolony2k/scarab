@@ -73,17 +73,105 @@ Color MapRenderer :: IntToColor( int color ) {
     return *( ( Color * ) &res );
 }
 
+/**
+ * Calculates the clipped rectangle area based on camera
+ * position and viewport boundaries;
+ * @param nSourceX Source object X coordinate;
+ * @param nSourceY Source object Y coordinate;
+ * @param nDestX destination X coordinate on texture;
+ * @param nDestY destination Y coordinate on texture;
+ * @param fViewX Calculated object x coordinate based on
+ * viewport boundaries;
+ * @param fViewY Calculated object y coordinate based on
+ * viewport boundaries;
+ * @param fViewWidth Calculated object width based on
+ * viewport boundaries;
+ * @param fViewHeight Calculated object height based on
+ * viewport boundaries;
+ * @param bResetViewOnNegative When this parameter is set
+ * the width parameters fViewX and fViewY are reset to 0.0
+ * coordinate when each related coordinate (x,y) are negative;
+ */
+bool MapRenderer :: GetClippedArea( int32_t nSourceW,
+                                    int32_t nSourceH,
+                                    int32_t nDestX,
+                                    int32_t nDestY,
+                                    float& fViewX,
+                                    float& fViewY,
+                                    float& fViewWidth,
+                                    float& fViewHeight,
+                                    bool bResetViewOnNegative )  {
+
+    float       fClippingX;
+    float       fClippingY;
+    int32_t     nTemp;
+
+    nDestX+=m_CameraPos.x;
+    nDestY+=m_CameraPos.y;
+
+    if( ( nDestX > ( m_Viewport.x + m_Viewport.width ) ) ||
+        ( nDestY > ( m_Viewport.y + m_Viewport.height ) )||
+        ( nDestX < 0.0 ) || ( nDestY < 0.0 ) )  {
+
+        if( !bResetViewOnNegative )
+            return false;
+
+        if( nDestX < m_Viewport.x )  {
+            nTemp = std :: abs( nDestX );
+            nSourceW-=( nTemp < nSourceW ? nTemp : nSourceW );
+        }
+
+        if( nDestY < m_Viewport.y )  {
+            nTemp = std :: abs( nDestY );
+            nSourceH-=( nTemp < nSourceH ? nTemp : nSourceH );
+        }
+
+        nDestX = ( nDestX < 0.0 ? 0.0 : nDestX );
+        nDestY = ( nDestY < 0.0 ? 0.0 : nDestY );
+    }
+
+    fViewX      = ( ( nDestX * m_fZoomFactor ) + m_Viewport.x );
+    fViewY      = ( ( nDestY * m_fZoomFactor ) + m_Viewport.y );
+    fViewWidth  = ( nSourceW * m_fZoomFactor );
+    fViewHeight = ( nSourceH * m_fZoomFactor );
+    fClippingX  = ( fViewX + fViewWidth );
+    fClippingY  = ( fViewY + fViewHeight );
+
+    if( fClippingX > m_Viewport.width )  {
+        fClippingX = ( fClippingX - m_Viewport.width );
+
+        if( fClippingX > fViewWidth )
+            return false;
+
+        fViewWidth = fViewWidth - fClippingX;
+    }
+
+    if( fClippingY > m_Viewport.height )  {
+        fClippingY = ( fClippingY - m_Viewport.height );
+
+        if( fClippingY > fViewHeight )
+            return false;
+
+        fViewHeight = fViewHeight - fClippingY;
+    }
+
+    return true;
+}
+
 void MapRenderer :: DrawPolyline( double offset_x,
                                   double offset_y,
                                   double **points,
                                   int points_count,
                                   Color color ) {
 
+    offset_x+=m_CameraPos.x;
+    offset_y+=m_CameraPos.y;
+
     for( int i=1; i < points_count; i++ ) {
-        DrawLineEx( ( Vector2 ) { offset_x + points[i-1][0],
-                                  offset_y + points[i-1][1] },
-                    ( Vector2 ) { offset_x + points[i][0],
-                                  offset_y + points[i][1] },
+        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[i-1][0] ),
+                                  ( float ) ( offset_y + points[i-1][1] ) },
+                    ( Vector2 ) { ( float ) ( offset_x + points[i][0] ),
+                                  ( float ) ( offset_y + points[i][1] ) },
                     m_fLineThickness, color );
     }
 }
@@ -93,6 +181,9 @@ void MapRenderer :: DrawPolygon( double offset_x,
                                  double **points,
                                  int points_count,
                                  Color color ) {
+    offset_x+=m_CameraPos.x;
+    offset_y+=m_CameraPos.y;
+
     DrawPolyline( offset_x,
                   offset_y,
                   points,
@@ -100,81 +191,122 @@ void MapRenderer :: DrawPolygon( double offset_x,
                   color );
 
     if( points_count > 2 ) {
-        DrawLineEx( ( Vector2 ) { offset_x + points[0][0],
-                                  offset_y + points[0][1] },
-                    ( Vector2 ) { offset_x + points[points_count-1][0],
-                                  offset_y + points[points_count-1][1] },
+        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[0][0] ),
+                                  ( float ) ( offset_y + points[0][1] ) },
+                    ( Vector2 ) { ( float ) ( offset_x + points[points_count-1][0] ),
+                                  ( float ) ( offset_y + points[points_count-1][1] ) },
                     m_fLineThickness,
                     color );
     }
 }
 
 /**
+ * Draw a square primitive to specified position on texture.
+ * @param fOffset_x X square coordinate;
+ * @param fOffset_y Y square coordinate;
+ * @param fWidth The square width;
+ * @param fHeight The square height;
+ * @param color Rectangle color;
+ */
+void MapRenderer :: DrawRectangle( double fOffset_x,
+                                   double fOffset_y,
+                                   double fWidth,
+                                   double fHeight,
+                                   Color color )  {
+
+    float          fViewStartX;
+    float          fViewStartY;
+    float          fClippedWidth;
+    float          fClippedHeight;
+
+    if( GetClippedArea( fWidth, fHeight,
+                        fOffset_x, fOffset_y,
+                        fViewStartX, fViewStartY,
+                        fClippedWidth, fClippedHeight, true ) ) {
+        float fViewEndX = ( float ) ( fViewStartX + fClippedWidth );
+        float fViewEndY = ( float ) ( fViewStartY + fClippedHeight );
+
+        if( ( fClippedWidth > 0.0 ) && ( fClippedHeight > 0.0 ) )  {
+            // Top line
+            DrawLineEx( ( Vector2 ) { fViewStartX,
+                                      fViewStartY },
+                        ( Vector2 ) { fViewEndX,
+                                      fViewStartY },
+                        m_fLineThickness,
+                        color );
+
+            // Bottom line
+            DrawLineEx( ( Vector2 ) { fViewStartX,
+                                      fViewEndY },
+                        ( Vector2 ) { fViewEndX,
+                                      fViewEndY },
+                        m_fLineThickness,
+                        color );
+
+            // Left line
+            DrawLineEx( ( Vector2 ) { fViewStartX,
+                                      fViewStartY },
+                        ( Vector2 ) { fViewStartX,
+                                      fViewEndY },
+                        m_fLineThickness,
+                        color );
+
+            // Right line
+            DrawLineEx( ( Vector2 ) { fViewEndX,
+                                      fViewStartY },
+                        ( Vector2 ) { fViewEndX,
+                                      fViewEndY },
+                        m_fLineThickness,
+                        color );
+        }
+    }
+}
+
+/**
  * Draw a tile to specified position on texture.
  * @param pImage Pointer to a @link Texture2D object used as renderer.
- * @param sx Source tile X coordinate;
- * @param sy Source tile Y coordinate;
- * @param sw Source tile width;
- * @param sh Source tile height;
- * @param dx destination X coordinate on texture;
- * @param dy destination Y coordinate on texture;
+ * @param uSourceX Source tile X coordinate;
+ * @param uSourceY Source tile Y coordinate;
+ * @param uSourceW Source tile width;
+ * @param uSourceH Source tile height;
+ * @param uDestX destination X coordinate on texture;
+ * @param uDestY destination Y coordinate on texture;
  * @param opacity opacity level to be applied on texture;
  */
 void MapRenderer :: DrawTile( void *pImage,
-                              unsigned int sx,
-                              unsigned int sy,
-                              unsigned int sw,
-                              unsigned int sh,
-                              unsigned int dx,
-                              unsigned int dy,
-                              float opacity ) {
-
-    if( ( dx > ( m_Viewport.x + m_Viewport.width ) ) ||
-        ( dy > ( m_Viewport.y + m_Viewport.height ) ) )
-        return;
+                              int32_t nSourceX,
+                              int32_t nSourceY,
+                              int32_t nSourceW,
+                              int32_t nSourceH,
+                              int32_t nDestX,
+                              int32_t nDestY,
+                              float fOpacity ) {
 
     Texture2D      *pTexture   = ( Texture2D * ) pImage;
-    unsigned char  op          = ( 0xFF * opacity );
-    float          fViewportX  = ( ( dx * m_fZoomFactor ) + m_Viewport.x );
-    float          fViewportY  = ( ( dy * m_fZoomFactor ) + m_Viewport.y );
-    float          fWidth      = ( sw * m_fZoomFactor );
-    float          fHeight     = ( sh * m_fZoomFactor );
-    float          fClippingX  = ( fViewportX + fWidth );
-    float          fClippingY  = ( fViewportY + fHeight );
+    unsigned char  op          = ( 0xFF * fOpacity );
+    float          fViewX;
+    float          fViewY;
+    float          fClippedWidth;
+    float          fClippedHeight;
 
-    if( fClippingX > m_Viewport.width )  {
-        fClippingX = ( fClippingX - m_Viewport.width );
-
-        if( fClippingX > fWidth )
-            return;
-
-        fWidth = fWidth - fClippingX;
+    if( GetClippedArea( nSourceW, nSourceH,
+                        nDestX, nDestY,
+                        fViewX, fViewY,
+                        fClippedWidth, fClippedHeight ) ) {
+        DrawTextureTiled( *pTexture,
+                        ( Rectangle ) { ( float ) nSourceX,
+                                        ( float ) nSourceY,
+                                        ( float ) nSourceW,
+                                        ( float ) nSourceH },
+                        ( Rectangle ) { fViewX,
+                                        fViewY,
+                                        fClippedWidth,
+                                        fClippedHeight },
+                        ( Vector2 ) { 0, 0 },
+                        0.0f,
+                        m_fZoomFactor,
+                        ( Color ) { op, op, op, op } );
     }
-
-    if( fClippingY > m_Viewport.height )  {
-        fClippingY = ( fClippingY - m_Viewport.height );
-
-        if( fClippingY > fHeight )
-            return;
-
-        fHeight = fHeight - fClippingY;
-    }
-
-    DrawTextureTiled( *pTexture,
-                    ( Rectangle ) { sx, sy, sw, sh },
-                    ( Rectangle ) { fViewportX,
-                                    fViewportY,
-                                    fWidth,
-                                    fHeight },
-                    ( Vector2 ) { 0, 0 },
-                    0.0f,
-                    m_fZoomFactor,
-                    ( Color ) { op, op, op, op } );
-
-    //DrawTextureRec( *pTexture,
-    //                ( Rectangle ) { sx, sy, sw, sh },
-    //                ( Vector2 ) { dx, dy },
-    //                ( Color ) { op, op, op, op } );
 }
 
 /**
@@ -188,36 +320,34 @@ void MapRenderer :: DrawObjects( tmx_object_group *pObjgr ) {
 
     while( head ) {
         if( head -> visible ) {
-            float    fPosX = ( head -> x + m_CameraPos.x );
-            float    fPosY = ( head -> y + m_CameraPos.y );
-
-            switch(head -> obj_type)  {
+            switch( head -> obj_type )  {
                 case OT_SQUARE :
-                    DrawRectangleLinesEx( ( Rectangle ){
-                                          fPosX,
-                                          fPosY,
-                                          ( float ) head -> width,
-                                          ( float ) head -> height },
-                                          m_fLineThickness,
-                                          color );
+                    DrawRectangle( head -> x,
+                                   head -> y,
+                                   head -> width,
+                                   head -> height,
+                                   color );
                     break;
                 case OT_POLYGON :
-                    DrawPolygon( fPosX,
-                                 fPosY,
+                    DrawPolygon( head -> x,
+                                 head -> y,
                                  head -> content.shape -> points,
                                  head -> content.shape -> points_len,
                                  color );
                     break;
 
                 case OT_POLYLINE :
-                    DrawPolyline( fPosX,
-                                  fPosY,
+                    DrawPolyline( head -> x,
+                                  head -> y,
                                   head -> content.shape -> points,
                                   head -> content.shape -> points_len,
                                   color );
                     break;
 
                 case OT_ELLIPSE :
+                    float    fPosX = ( head -> x + m_CameraPos.x );  // TODO: REMOVE AFTER
+                    float    fPosY = ( head -> y + m_CameraPos.y );  // FINISH DrawEllipseLines
+
                     DrawEllipseLines( fPosX + head -> width / 2.0,
                                       fPosY + head -> height / 2.0,
                                       ( float ) head -> width / 2.0,
@@ -249,9 +379,9 @@ void MapRenderer :: DrawImageLayer( tmx_image *pImage ) {
  */
 void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
 
-    float         opacity;
+    float         fOpacity;
 
-    opacity = pLayer -> opacity;
+    fOpacity = pLayer -> opacity;
 
     for( unsigned long i = 0; i < pMap -> height; i++ ) {
         for( unsigned long j = 0; j < pMap -> width; j++ ) {
@@ -324,9 +454,9 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                           pTile -> ul_y,
                           pTs -> tile_width,
                           pTs -> tile_height,
-                          ( j * pTs -> tile_width ) + m_CameraPos.x,
-                          ( i * pTs -> tile_height ) + m_CameraPos.y,
-                          opacity );
+                          ( j * pTs -> tile_width ),
+                          ( i * pTs -> tile_height ),
+                          fOpacity );
             }
         }
     }

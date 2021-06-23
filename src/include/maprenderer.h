@@ -76,6 +76,17 @@ class MapRenderer  {
     // Color control
     Color IntToColor( int color );
 
+    // Graphics primitives miscellaneous
+    bool GetClippedArea( int32_t nSourceW,
+                         int32_t nSourceH,
+                         int32_t nDestX,
+                         int32_t nDestY,
+                         float& fViewportX,
+                         float& fViewportY,
+                         float& fWidth,
+                         float& fHeight,
+                         bool bResetViewOnNegative = false );
+
     // Engine primitives
     void DrawPolyline( double offset_x,
                        double offset_y,
@@ -87,14 +98,19 @@ class MapRenderer  {
                       double **points,
                       int points_count,
                       Color color );
+    void DrawRectangle( double offset_x,
+                        double offset_y,
+                        double width,
+                        double height,
+                        Color color );
     void DrawTile( void *pImage,
-                   unsigned int sx,
-                   unsigned int sy,
-                   unsigned int sw,
-                   unsigned int sh,
-                   unsigned int dx,
-                   unsigned int dy,
-                   float opacity );
+                   int32_t nSourceX,
+                   int32_t nSourceY,
+                   int32_t nSourceW,
+                   int32_t nSourceH,
+                   int32_t nDestX,
+                   int32_t nDestY,
+                   float fOpacity );
 
     // High level primitive map handlers
     void DrawObjects( tmx_object_group *pObjgr );
