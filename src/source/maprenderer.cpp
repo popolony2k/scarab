@@ -268,6 +268,49 @@ void MapRenderer :: DrawRectangle( double fOffset_x,
 }
 
 /**
+ * Draw an ellipse primitive to specified position on texture.
+ * @param fOffset_x X square coordinate;
+ * @param fOffset_y Y square coordinate;
+ * @param fWidth The square width;
+ * @param fHeight The square height;
+ * @param color Rectangle color;
+ */
+void MapRenderer :: DrawEllipse( double fOffset_x,
+                                 double fOffset_y,
+                                 double fWidth,
+                                 double fHeight,
+                                 Color color )  {
+
+    float          fViewStartX;
+    float          fViewStartY;
+    float          fClippedWidth;
+    float          fClippedHeight;
+
+    // FIXME: Ellipses don't work well with rectangular clipping area
+    fWidth-=( fWidth / 2.0 );
+    fHeight-=( fHeight / 2.0 );
+    fOffset_x+=fWidth;
+    fOffset_y+=fHeight;
+
+    if( GetClippedArea( fWidth, fHeight,
+                        fOffset_x, fOffset_y,
+                        fViewStartX, fViewStartY,
+                        fClippedWidth, fClippedHeight, true ) ) {
+        float fViewEndX = ( float ) ( fViewStartX + fClippedWidth );
+        float fViewEndY = ( float ) ( fViewStartY + fClippedHeight );
+
+        if( ( fClippedWidth > 0.0 ) && ( fClippedHeight > 0.0 ) )  {
+
+            DrawEllipseLines( fViewStartX,
+                              fViewStartY,
+                              fClippedWidth,
+                              fClippedHeight,
+                              color );
+        }
+    }
+}
+
+/**
  * Draw a tile to specified position on texture.
  * @param pImage Pointer to a @link Texture2D object used as renderer.
  * @param uSourceX Source tile X coordinate;
@@ -333,6 +376,7 @@ void MapRenderer :: DrawObjects( tmx_object_group *pObjgr ) {
                                    head -> height,
                                    color );
                     break;
+
                 case OT_POLYGON :
                     DrawPolygon( head -> x,
                                  head -> y,
@@ -350,14 +394,11 @@ void MapRenderer :: DrawObjects( tmx_object_group *pObjgr ) {
                     break;
 
                 case OT_ELLIPSE :
-                    float    fPosX = ( head -> x + m_CameraPos.x );  // TODO: REMOVE AFTER
-                    float    fPosY = ( head -> y + m_CameraPos.y );  // FINISH DrawEllipseLines
-
-                    DrawEllipseLines( fPosX + head -> width / 2.0,
-                                      fPosY + head -> height / 2.0,
-                                      ( float ) head -> width / 2.0,
-                                      ( float ) head -> height / 2.0,
-                                      color );
+                    DrawEllipse( head -> x,
+                                 head -> y,
+                                 head -> width,
+                                 head -> height,
+                                 color );
                     break;
             }
         }

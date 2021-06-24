@@ -103,6 +103,11 @@ class MapRenderer  {
                         double width,
                         double height,
                         Color color );
+    void DrawEllipse( double offset_x,
+                      double offset_y,
+                      double width,
+                      double height,
+                      Color color );
     void DrawTile( void *pImage,
                    int32_t nSourceX,
                    int32_t nSourceY,

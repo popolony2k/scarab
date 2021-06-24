@@ -10,8 +10,8 @@ int main(int argc, char **argv) {
                             DISPLAY_H,
                             "Sunlight Engine",
                             FRAMES_PER_SECOND );
-    std :: string strTmxMapFile = "/home/popolony2k/Projects/C_CPP/tiled/examples/rpg/island.tmx";
-    std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled/examples/desert.tmx";
+    std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
+    std :: string strTmxMapFile = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
 
     //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
     renderer.SetMapFile( strTmxMapFile.c_str() );
