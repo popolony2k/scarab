@@ -454,8 +454,8 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                           pTile -> ul_y,
                           pTs -> tile_width,
                           pTs -> tile_height,
-                          ( j * pTs -> tile_width ),
-                          ( i * pTs -> tile_height ),
+                          ( ( j * pTs -> tile_width ) + pTs -> x_offset ),
+                          ( ( i * pTs -> tile_height ) + pTs -> y_offset ),
                           fOpacity );
             }
         }
