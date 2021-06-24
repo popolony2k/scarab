@@ -113,6 +113,11 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
         ( nDestY > ( m_Viewport.y + m_Viewport.height ) )||
         ( nDestX < 0.0 ) || ( nDestY < 0.0 ) )  {
 
+        /*
+         * Adjust origin coordinates (x,y) and dimension (width, height)
+         * when scenarioo is moving to negative positions outside viewport
+         * borders (left and top moving).
+         */
         if( !bResetViewOnNegative )
             return false;
 
