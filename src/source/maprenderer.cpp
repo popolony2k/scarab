@@ -790,6 +790,18 @@ void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
 }
 
 /**
+ * Set the view port control mode;
+ * Viewport control mode (active and reactive)
+ * Active, the view port reacts to a single key pressing continuously;
+ * Reactive, the view port reacts only for each key pressing;
+ * @param mode The new view control mode;
+ */
+void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
+
+    m_ViewControlMode = mode;
+}
+
+/**
  * Set the new renderer viewport;
  * @param viewport The new viewport rectangle;
  */
@@ -897,18 +909,6 @@ void MapRenderer :: ZoomOut( void )  {
         m_nCurrentZoomPos--;
         m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
     }
-}
-
-/**
- * Set the view port control mode;
- * Viewport control mode (active and reactive)
- * Active, the view port reacts to a single key pressing continuously;
- * Reactive, the view port reacts only for each key pressing;
- * @param mode The new view control mode;
- */
-void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
-
-    m_ViewControlMode = mode;
 }
 
 /**

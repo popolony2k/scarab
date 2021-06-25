@@ -148,6 +148,7 @@ class MapRenderer  {
     void SetClearBackground( bool bStatus );
     void SetDrawFPS( bool bDrawFPS );
 
+    void SetViewControlMode( ViewControlMode mode );
     void SetViewport( Viewport viewport );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
     void SetEnableUserZoom( bool bEnabled );
@@ -158,7 +159,6 @@ class MapRenderer  {
     void ResetZoom( void );
     void ZoomIn( void );
     void ZoomOut( void );
-    void SetViewControlMode( ViewControlMode mode );
 
     void MoveCameraUp( void );
     void MoveCameraDown( void );
