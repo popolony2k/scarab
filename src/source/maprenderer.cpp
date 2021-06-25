@@ -14,7 +14,6 @@
  * Engine defaults.
  */
 #define __DEFAULT_FPS                   30
-#define __DEFAULT_LINE_THICKNESS        2.5f
 #define __DEFAULT_MAP_ZOOM_SCALE_STEP   ( 0.0625f / 2.0 )
 #define __DEFAULT_SCROLL_STEP_WIDTH     -1
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
@@ -152,6 +151,17 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
 }
 
 /**
+ * Draw  pixel according the specified position.
+ * @param nCoordX The X coordinate to plot pixel;
+ * @param nCoordY The Y coordinate to plot pixel;
+ * @param color Color of pixel;
+ */
+void MapRenderer :: SetPixel( int nCoordX, int nCoordY, Color color )  {
+
+    DrawPixel( nCoordX, nCoordY, color );
+}
+
+/**
  * Midpoint ellipse drawing algorithm based on algorithm found at
  * https://www.geeksforgeeks.org/midpoint-ellipse-drawing-algorithm/
  * @param fCoordX Ellipse X coordinate;
@@ -168,9 +178,6 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
     double dx, dy, d1, d2, x, y;
     x = 0;
     y = fRadiusY;
-
-    // TODO: m_fLineThickness
-
 
     // Initial decision parameter of region 1
     d1 = ( fRadiusY * fRadiusY ) -
@@ -189,22 +196,22 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
         // Print points based on 4-way symmetry
         if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
             ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
-            DrawPixel( nXPos, nYPos, color );
+            SetPixel( nXPos, nYPos, color );
         }
 
         if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
             ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
-            DrawPixel( nXNeg, nYPos, color );
+            SetPixel( nXNeg, nYPos, color );
         }
 
         if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
             ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
-            DrawPixel( nXPos, nYNeg, color );
+            SetPixel( nXPos, nYNeg, color );
         }
 
         if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
             ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
-            DrawPixel( nXNeg, nYNeg, color );
+            SetPixel( nXNeg, nYNeg, color );
         }
 
         // Checking and updating value of
@@ -240,22 +247,22 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
         // Print points based on 4-way symmetry
         if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
             ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
-            DrawPixel( nXPos, nYPos, color );
+            SetPixel( nXPos, nYPos, color );
         }
 
         if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
             ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
-            DrawPixel( nXNeg, nYPos, color );
+            SetPixel( nXNeg, nYPos, color );
         }
 
         if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
             ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
-            DrawPixel( nXPos, nYNeg, color );
+            SetPixel( nXPos, nYNeg, color );
         }
 
         if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
             ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
-            DrawPixel( nXNeg, nYNeg, color );
+            SetPixel( nXNeg, nYNeg, color );
         }
 
         // Checking and updating parameter
@@ -304,7 +311,7 @@ void MapRenderer :: LineBresenham( int nX0,
     // Print points based on 4-way symmetry
     if( ( nX0 > m_Viewport.x ) && ( nX0 < m_Viewport.width ) &&
         ( nY0 > m_Viewport.y ) && ( nY0 < m_Viewport.height ) )  {
-        DrawPixel( nX0, nY0, color );
+        SetPixel( nX0, nY0, color );
     }
 
     if( ( nX0 == nX1 ) && ( nY0 == nY1 ) )
@@ -860,7 +867,6 @@ MapRenderer :: MapRenderer( float fWidth,
     m_bWindowResizeable = __DEFAULT_RESIZEABLE_STATUS;
     m_bClearBackground  = __DEFAULT_CLEAR_BACKGROUND;
     m_bDrawFPS          = __DEFAULT_DRAW_FPS_STATUS;
-    m_fLineThickness    = __DEFAULT_LINE_THICKNESS;
     m_nScrollStepWidth  = __DEFAULT_SCROLL_STEP_WIDTH;
     m_nScrollStepHeight = __DEFAULT_SCROLL_STEP_HEIGHT;
     m_ViewControlMode   = __DEFAULT_VIEW_CONTROL_MODE;
@@ -887,23 +893,6 @@ MapRenderer :: MapRenderer( float fWidth,
 MapRenderer :: ~MapRenderer( void )  {
 
     UnloadMap();
-}
-
-/**
- * Set the line thickness for all primitive operations.
- * @param fLineThickness The new line thickness;
- */
-void MapRenderer :: SetLineThickness( float fLineThickness )  {
-
-    m_fLineThickness = fLineThickness;
-}
-
-/**
- * Get the line thickness current set to all primitive operations.
- */
-float MapRenderer :: GetLineThickness( void )  {
-
-    return m_fLineThickness;
 }
 
 /**

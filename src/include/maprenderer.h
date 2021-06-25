@@ -78,7 +78,6 @@ class MapRenderer  {
     float                      m_fWidth;
     float                      m_fHeight;
     int                        m_nTargetFps;
-    float                      m_fLineThickness;
     float                      m_fZoomFactor;
     ZoomFactorList             m_vZoomFactorList;
     unsigned                   m_nCurrentZoomPos;
@@ -112,6 +111,7 @@ class MapRenderer  {
                          float& fViewportY,
                          float& fWidth,
                          float& fHeight );
+    void SetPixel( int nCoordX, int nCoordY, Color color );
     void MidPointEllipse( double fCoordX,
                           double fCoordY,
                           double fRadiusX,
@@ -176,10 +176,6 @@ class MapRenderer  {
                  const char* szTitle,
                  int nTargetFps = -1 );
     ~MapRenderer( void );
-
-    // Object line rendering
-    void SetLineThickness( float fLineThickness );
-    float GetLineThickness( void );
 
     // Window behavior
     void SetExitKey( KeyboardKey key );
