@@ -197,6 +197,7 @@ class MapRenderer  {
     void ResetZoom( void );
     void ZoomIn( void );
     void ZoomOut( void );
+    void ResetCamera( void );
     void MoveCameraUp( void );
     void MoveCameraDown( void );
     void MoveCameraLeft( void );

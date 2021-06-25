@@ -786,6 +786,7 @@ void MapRenderer :: InitializeControllerHandlers( void )  {
     m_UserEventHandlers[KEY_PAGE_UP]   = &MapRenderer :: ZoomIn;
     m_UserEventHandlers[KEY_PAGE_DOWN] = &MapRenderer :: ZoomOut;
     m_UserEventHandlers[KEY_HOME]      = &MapRenderer :: ResetZoom;
+    m_UserEventHandlers[KEY_END]       = &MapRenderer :: ResetCamera;
 }
 
 /**
@@ -818,6 +819,9 @@ int MapRenderer :: GetKeyPressed( void )  {
             else
             if( ::IsKeyDown( KEY_HOME ) )
                 return KEY_HOME;
+            else
+            if( ::IsKeyDown( KEY_END ) )
+                    return KEY_END;
     }
 
     return KEY_NULL;
@@ -1065,6 +1069,15 @@ void MapRenderer :: ZoomOut( void )  {
         m_nCurrentZoomPos--;
         m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
     }
+}
+
+/**
+ * Reset trhe camera position.
+ */
+void MapRenderer :: ResetCamera( void )  {
+
+    m_CameraPos.x = 0;
+    m_CameraPos.y = 0;
 }
 
 /**
