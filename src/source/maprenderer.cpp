@@ -158,6 +158,7 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
  * @param fCoordY Ellipse Y coordinate;
  * @param fRadiusX X radius;
  * @param fRadiusX Y radius;
+ * @param color Ellipse color;
  */
 void MapRenderer :: MidPointEllipse( double fCoordX,
                                      double fCoordY,
@@ -167,6 +168,9 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
     double dx, dy, d1, d2, x, y;
     x = 0;
     y = fRadiusY;
+
+    // TODO: m_fLineThickness
+
 
     // Initial decision parameter of region 1
     d1 = ( fRadiusY * fRadiusY ) -
@@ -271,45 +275,112 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
     }
 }
 
-void MapRenderer :: DrawPolyline( double offset_x,
-                                  double offset_y,
-                                  double **points,
-                                  int points_count,
+/**
+ * Bresenham line generation implementation based on algorithm found at
+ * https://gist.github.com/bert/1085538.
+ * @param nX0 Initial X line coordinate;
+ * @param nY0 Initial Y line coordinate;
+ * @param nX1 Final X line coordinate;
+ * @param nY1 Final Y line coordinate;
+ * @param color line color;
+ */
+void MapRenderer :: LineBresenham( int nX0,
+                                   int nY0,
+                                   int nX1,
+                                   int nY1,
+                                   Color color )  {
+
+  int   nDx  = std :: abs( nX1 - nX0 );
+  int   nSx  = ( nX0 < nX1 ? 1 : -1 );
+  int   nDy  = -std :: abs( nY1 - nY0 );
+  int   nSy  = ( nY0 < nY1 ? 1 : -1 );
+  int   nErr = nDx + nDy;
+  int   nE2; /* error value e_xy */
+
+  // TODO: m_fLineThickness
+
+  while( true )  {
+
+    // Print points based on 4-way symmetry
+    if( ( nX0 > m_Viewport.x ) && ( nX0 < m_Viewport.width ) &&
+        ( nY0 > m_Viewport.y ) && ( nY0 < m_Viewport.height ) )  {
+        DrawPixel( nX0, nY0, color );
+    }
+
+    if( ( nX0 == nX1 ) && ( nY0 == nY1 ) )
+        break;
+
+    nE2 = ( 2 * nErr );
+
+    if( nE2 >= nDy ) {
+        nErr+=nDy;
+        nX0+=nSx;
+    } /* e_xy+e_x > 0 */
+
+    if( nE2 <= nDx ) {
+        nErr+=nDx;
+        nY0+=nSy;
+    } /* e_xy+e_y < 0 */
+  }
+}
+
+/**
+ * Draw a polygon line (without close the polygon).
+ * @param fOffset_x X polygon coordinate;
+ * @param fOffset_y Y polygon coordinate;
+ * @param points array of points for this polygon;
+ * @param points_count Number of items of points array;
+ */
+void MapRenderer :: DrawPolyline( double fOffset_x,
+                                  double fOffset_y,
+                                  double **fPoints,
+                                  int nPointsCount,
                                   Color color ) {
 
-    offset_x+=m_CameraPos.x;
-    offset_y+=m_CameraPos.y;
+    fOffset_x = ( ( fOffset_x +
+                  m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+    fOffset_y = ( ( fOffset_y +
+                  m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
 
-    for( int i=1; i < points_count; i++ ) {
-        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[i-1][0] ),
-                                  ( float ) ( offset_y + points[i-1][1] ) },
-                    ( Vector2 ) { ( float ) ( offset_x + points[i][0] ),
-                                  ( float ) ( offset_y + points[i][1] ) },
-                    m_fLineThickness, color );
+    for( int i=1; i < nPointsCount; i++ ) {
+        LineBresenham( ( fOffset_x + ( fPoints[i-1][0] * m_fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[i-1][1] * m_fZoomFactor ) ) ,
+                       ( fOffset_x + ( fPoints[i][0] * m_fZoomFactor ) ) ,
+                       ( fOffset_y + ( fPoints[i][1] * m_fZoomFactor ) ),
+                       color );
     }
 }
 
-void MapRenderer :: DrawPolygon( double offset_x,
-                                 double offset_y,
-                                 double **points,
-                                 int points_count,
+/**
+ * Draw a polygon line (without close the polygon).
+ * @param fOffset_x X polygon coordinate;
+ * @param fOffset_y Y polygon coordinate;
+ * @param points array of points for this polygon;
+ * @param points_count Number of items of points array;
+ */
+void MapRenderer :: DrawPolygon( double fOffset_x,
+                                 double fOffset_y,
+                                 double **fPoints,
+                                 int nPointsCount,
                                  Color color ) {
-    offset_x+=m_CameraPos.x;
-    offset_y+=m_CameraPos.y;
 
-    DrawPolyline( offset_x,
-                  offset_y,
-                  points,
-                  points_count,
+    DrawPolyline( fOffset_x,
+                  fOffset_y,
+                  fPoints,
+                  nPointsCount,
                   color );
 
-    if( points_count > 2 ) {
-        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[0][0] ),
-                                  ( float ) ( offset_y + points[0][1] ) },
-                    ( Vector2 ) { ( float ) ( offset_x + points[points_count-1][0] ),
-                                  ( float ) ( offset_y + points[points_count-1][1] ) },
-                    m_fLineThickness,
-                    color );
+    if( nPointsCount > 2 ) {
+        fOffset_x = ( ( fOffset_x +
+                      m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+        fOffset_y = ( ( fOffset_y +
+                      m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
+
+        LineBresenham( ( fOffset_x + ( fPoints[0][0] * m_fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[0][1] * m_fZoomFactor ) ),
+                       ( fOffset_x + ( fPoints[nPointsCount-1][0] * m_fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[nPointsCount-1][1] * m_fZoomFactor ) ),
+                       color );
     }
 }
 
@@ -329,59 +400,55 @@ void MapRenderer :: DrawRectangle( double fOffset_x,
 
     float          fViewStartX;
     float          fViewStartY;
-    float          fClippedWidth;
-    float          fClippedHeight;
+    float          fViewEndX;
+    float          fViewEndY;
 
-    if( GetClippedArea( fWidth, fHeight,
-                        fOffset_x, fOffset_y,
-                        fViewStartX, fViewStartY,
-                        fClippedWidth, fClippedHeight ) ) {
-        float fViewEndX = ( float ) ( fViewStartX + fClippedWidth );
-        float fViewEndY = ( float ) ( fViewStartY + fClippedHeight );
+    fViewStartX = ( ( fOffset_x +
+                      m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+    fViewStartY = ( ( fOffset_y +
+                      m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
+    fViewEndX   = ( ( fOffset_x +
+                      fWidth +
+                      m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+    fViewEndY   = ( ( fOffset_y +
+                      fHeight +
+                      m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
 
-        if( ( fClippedWidth > 0.0 ) && ( fClippedHeight > 0.0 ) )  {
-            // Top line
-            DrawLineEx( ( Vector2 ) { fViewStartX,
-                                      fViewStartY },
-                        ( Vector2 ) { fViewEndX,
-                                      fViewStartY },
-                        m_fLineThickness,
-                        color );
+    // Top line
+    LineBresenham( fViewStartX,
+                   fViewStartY,
+                   fViewEndX,
+                   fViewStartY,
+                   color );
+    // Bottom line
+    LineBresenham( fViewStartX,
+                   fViewEndY,
+                   fViewEndX,
+                   fViewEndY,
+                   color );
 
-            // Bottom line
-            DrawLineEx( ( Vector2 ) { fViewStartX,
-                                      fViewEndY },
-                        ( Vector2 ) { fViewEndX,
-                                      fViewEndY },
-                        m_fLineThickness,
-                        color );
+    // Left line
+    LineBresenham( fViewStartX,
+                   fViewStartY,
+                   fViewStartX,
+                   fViewEndY,
+                   color );
 
-            // Left line
-            DrawLineEx( ( Vector2 ) { fViewStartX,
-                                      fViewStartY },
-                        ( Vector2 ) { fViewStartX,
-                                      fViewEndY },
-                        m_fLineThickness,
-                        color );
-
-            // Right line
-            DrawLineEx( ( Vector2 ) { fViewEndX,
-                                      fViewStartY },
-                        ( Vector2 ) { fViewEndX,
-                                      fViewEndY },
-                        m_fLineThickness,
-                        color );
-        }
-    }
+    // Right line
+    LineBresenham( fViewEndX,
+                   fViewStartY,
+                   fViewEndX,
+                   fViewEndY,
+                   color );
 }
 
 /**
  * Draw an ellipse primitive to specified position on texture.
- * @param fOffset_x X square coordinate;
- * @param fOffset_y Y square coordinate;
- * @param fWidth The square width;
- * @param fHeight The square height;
- * @param color Rectangle color;
+ * @param fOffset_x X ellipse coordinate;
+ * @param fOffset_y Y ellipse coordinate;
+ * @param fWidth The ellipse width;
+ * @param fHeight The ellipse height;
+ * @param color ellipse color;
  */
 void MapRenderer :: DrawEllipse( double fOffset_x,
                                  double fOffset_y,

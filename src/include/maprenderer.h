@@ -117,17 +117,22 @@ class MapRenderer  {
                           double fRadiusX,
                           double fRadiusY,
                           Color color );
+    void LineBresenham( int nX0,
+                        int nY0,
+                        int nX1,
+                        int nY1,
+                        Color color );
 
     // Engine primitives
-    void DrawPolyline( double offset_x,
-                       double offset_y,
-                       double **points,
-                       int points_count,
+    void DrawPolyline( double fOffset_x,
+                       double fOffset_y,
+                       double **fPoints,
+                       int nPointsCount,
                        Color color );
-    void DrawPolygon( double offset_x,
-                      double offset_y,
-                      double **points,
-                      int points_count,
+    void DrawPolygon( double fOffset_x,
+                      double fOffset_y,
+                      double **fPoints,
+                      int nPointsCount,
                       Color color );
     void DrawRectangle( double offset_x,
                         double offset_y,
