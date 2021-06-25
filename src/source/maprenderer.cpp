@@ -115,7 +115,7 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
 
         /*
          * Adjust origin coordinates (x,y) and dimension (width, height)
-         * when scenarioo is moving to negative positions outside viewport
+         * when scenario is moving to negative positions outside viewport
          * borders (left and top moving).
          */
         if( !bResetViewOnNegative )
@@ -1095,11 +1095,10 @@ bool MapRenderer :: Start( void )  {
     /*
      * Set scrolling properties.
      */
-    if( m_nScrollStepWidth < 0 )
-        m_nScrollStepWidth = m_pTmxMap -> tile_width;
-
-    if( m_nScrollStepHeight < 0 )
-        m_nScrollStepHeight = m_pTmxMap -> tile_height;
+    SetScrollStepSize( ( m_nScrollStepWidth < 0 ? m_pTmxMap -> tile_width :
+                                                  m_nScrollStepWidth ),
+                       ( m_nScrollStepHeight < 0 ? m_pTmxMap -> tile_height :
+                                                   m_nScrollStepHeight ) );
 
     m_bIsStarted = ( m_pTmxMap != NULL );
 
