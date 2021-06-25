@@ -304,8 +304,6 @@ void MapRenderer :: LineBresenham( int nX0,
   int   nErr = nDx + nDy;
   int   nE2; /* error value e_xy */
 
-  // TODO: m_fLineThickness
-
   while( true )  {
 
     // Print points based on 4-way symmetry
