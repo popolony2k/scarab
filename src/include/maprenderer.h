@@ -125,9 +125,6 @@ class MapRenderer  {
     void RenderMap( void );
 
     bool UnloadMap( void );
-    void ResetZoom( void );
-    void ZoomIn( void );
-    void ZoomOut( void );
     void InitializeZoomEngine( void );
 
     // User input handling
@@ -158,7 +155,15 @@ class MapRenderer  {
     void SetMaxZoom( unsigned nMaxPos );
     void SetPreferredZoom( unsigned nZoomPos );
     void SetZoom( unsigned nZoomPos );
+    void ResetZoom( void );
+    void ZoomIn( void );
+    void ZoomOut( void );
     void SetViewControlMode( ViewControlMode mode );
+
+    void MoveCameraUp( void );
+    void MoveCameraDown( void );
+    void MoveCameraLeft( void );
+    void MoveCameraRight( void );
 
     void SetMapFile( const char *szTxMapFile );
 

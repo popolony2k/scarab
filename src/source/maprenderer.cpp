@@ -578,41 +578,6 @@ bool MapRenderer :: UnloadMap( void )  {
 }
 
 /**
- * Reset zoom to it's default state.
- */
-void MapRenderer :: ResetZoom( void )  {
-
-    m_nCurrentZoomPos = m_nPreferredZoomPos;
-    m_fZoomFactor     = m_vZoomFactorList[m_nCurrentZoomPos];
-}
-
-/**
- * Performs Zoom In effect.
- */
-void MapRenderer :: ZoomIn( void )  {
-
-    if( ( m_nCurrentZoomPos < m_ZoomBorderLimits.second ) && m_bEnabledUserZoom )  {
-        m_nCurrentZoomPos++;
-
-        if( m_nCurrentZoomPos == m_ZoomBorderLimits.second )
-            m_nCurrentZoomPos--;
-
-        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
-    }
-}
-
-/**
- * Performs Zoom Out effect.
- */
-void MapRenderer :: ZoomOut( void )  {
-
-    if( ( m_nCurrentZoomPos > m_ZoomBorderLimits.first ) && m_bEnabledUserZoom )  {
-        m_nCurrentZoomPos--;
-        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
-    }
-}
-
-/**
  * Initialize the zoom engine.
  */
 void MapRenderer :: InitializeZoomEngine( void )  {
@@ -646,16 +611,16 @@ void MapRenderer :: HandleUserInput( void )  {
         case VIEW_CONTROL_MODE_REACTIVE :
             switch( GetKeyPressed() )  {
                 case KEY_UP :
-                    m_CameraPos.y-=m_nScrollStepWidth;
+                    MoveCameraUp();
                     break;
                 case KEY_DOWN :
-                    m_CameraPos.y+=m_nScrollStepWidth;
+                    MoveCameraDown();
                     break;
                 case KEY_LEFT :
-                    m_CameraPos.x-=m_nScrollStepWidth;
+                    MoveCameraLeft();
                     break;
                 case KEY_RIGHT :
-                    m_CameraPos.x+=m_nScrollStepWidth;
+                    MoveCameraRight();
                     break;
                 case KEY_PAGE_UP :
                     ZoomIn();
@@ -669,16 +634,16 @@ void MapRenderer :: HandleUserInput( void )  {
             break;
         case VIEW_CONTROL_MODE_ACTIVE :
             if( ::IsKeyDown( KEY_UP ) )
-                m_CameraPos.y-=m_nScrollStepWidth;
+                MoveCameraUp();
             else
             if( ::IsKeyDown( KEY_DOWN ) )
-                m_CameraPos.y+=m_nScrollStepWidth;
+                MoveCameraDown();
             else
             if( ::IsKeyDown( KEY_LEFT ) )
-                m_CameraPos.x-=m_nScrollStepWidth;
+                MoveCameraLeft();
             else
             if( ::IsKeyDown( KEY_RIGHT ) )
-                m_CameraPos.x+=m_nScrollStepWidth;
+                MoveCameraRight();
             else
             if( ::IsKeyDown( KEY_PAGE_UP ) )
                 ZoomIn();
@@ -900,6 +865,41 @@ void MapRenderer :: SetZoom( unsigned nZoomPos )  {
 }
 
 /**
+ * Reset zoom to it's default state.
+ */
+void MapRenderer :: ResetZoom( void )  {
+
+    m_nCurrentZoomPos = m_nPreferredZoomPos;
+    m_fZoomFactor     = m_vZoomFactorList[m_nCurrentZoomPos];
+}
+
+/**
+ * Performs Zoom In effect.
+ */
+void MapRenderer :: ZoomIn( void )  {
+
+    if( ( m_nCurrentZoomPos < m_ZoomBorderLimits.second ) && m_bEnabledUserZoom )  {
+        m_nCurrentZoomPos++;
+
+        if( m_nCurrentZoomPos == m_ZoomBorderLimits.second )
+            m_nCurrentZoomPos--;
+
+        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
+    }
+}
+
+/**
+ * Performs Zoom Out effect.
+ */
+void MapRenderer :: ZoomOut( void )  {
+
+    if( ( m_nCurrentZoomPos > m_ZoomBorderLimits.first ) && m_bEnabledUserZoom )  {
+        m_nCurrentZoomPos--;
+        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
+    }
+}
+
+/**
  * Set the view port control mode;
  * Viewport control mode (active and reactive)
  * Active, the view port reacts to a single key pressing continuously;
@@ -909,6 +909,38 @@ void MapRenderer :: SetZoom( unsigned nZoomPos )  {
 void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
 
     m_ViewControlMode = mode;
+}
+
+/**
+ * Move view camera up.
+ */
+void MapRenderer :: MoveCameraUp( void )  {
+
+    m_CameraPos.y-=m_nScrollStepWidth;
+}
+
+/**
+ * Move view camera down.
+ */
+void MapRenderer :: MoveCameraDown( void )  {
+
+    m_CameraPos.y+=m_nScrollStepWidth;
+}
+
+/**
+ * Move view camera left.
+ */
+void MapRenderer :: MoveCameraLeft( void )  {
+
+    m_CameraPos.x-=m_nScrollStepWidth;
+}
+
+/**
+ * Move view camera right.
+ */
+void MapRenderer :: MoveCameraRight( void )  {
+
+    m_CameraPos.x+=m_nScrollStepWidth;
 }
 
 /**
