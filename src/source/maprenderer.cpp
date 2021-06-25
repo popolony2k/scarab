@@ -163,110 +163,6 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
     return true;
 }
 
-void MapRenderer :: DrawPolyline( double offset_x,
-                                  double offset_y,
-                                  double **points,
-                                  int points_count,
-                                  Color color ) {
-
-    offset_x+=m_CameraPos.x;
-    offset_y+=m_CameraPos.y;
-
-    for( int i=1; i < points_count; i++ ) {
-        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[i-1][0] ),
-                                  ( float ) ( offset_y + points[i-1][1] ) },
-                    ( Vector2 ) { ( float ) ( offset_x + points[i][0] ),
-                                  ( float ) ( offset_y + points[i][1] ) },
-                    m_fLineThickness, color );
-    }
-}
-
-void MapRenderer :: DrawPolygon( double offset_x,
-                                 double offset_y,
-                                 double **points,
-                                 int points_count,
-                                 Color color ) {
-    offset_x+=m_CameraPos.x;
-    offset_y+=m_CameraPos.y;
-
-    DrawPolyline( offset_x,
-                  offset_y,
-                  points,
-                  points_count,
-                  color );
-
-    if( points_count > 2 ) {
-        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[0][0] ),
-                                  ( float ) ( offset_y + points[0][1] ) },
-                    ( Vector2 ) { ( float ) ( offset_x + points[points_count-1][0] ),
-                                  ( float ) ( offset_y + points[points_count-1][1] ) },
-                    m_fLineThickness,
-                    color );
-    }
-}
-
-/**
- * Draw a square primitive to specified position on texture.
- * @param fOffset_x X square coordinate;
- * @param fOffset_y Y square coordinate;
- * @param fWidth The square width;
- * @param fHeight The square height;
- * @param color Rectangle color;
- */
-void MapRenderer :: DrawRectangle( double fOffset_x,
-                                   double fOffset_y,
-                                   double fWidth,
-                                   double fHeight,
-                                   Color color )  {
-
-    float          fViewStartX;
-    float          fViewStartY;
-    float          fClippedWidth;
-    float          fClippedHeight;
-
-    if( GetClippedArea( fWidth, fHeight,
-                        fOffset_x, fOffset_y,
-                        fViewStartX, fViewStartY,
-                        fClippedWidth, fClippedHeight, true ) ) {
-        float fViewEndX = ( float ) ( fViewStartX + fClippedWidth );
-        float fViewEndY = ( float ) ( fViewStartY + fClippedHeight );
-
-        if( ( fClippedWidth > 0.0 ) && ( fClippedHeight > 0.0 ) )  {
-            // Top line
-            DrawLineEx( ( Vector2 ) { fViewStartX,
-                                      fViewStartY },
-                        ( Vector2 ) { fViewEndX,
-                                      fViewStartY },
-                        m_fLineThickness,
-                        color );
-
-            // Bottom line
-            DrawLineEx( ( Vector2 ) { fViewStartX,
-                                      fViewEndY },
-                        ( Vector2 ) { fViewEndX,
-                                      fViewEndY },
-                        m_fLineThickness,
-                        color );
-
-            // Left line
-            DrawLineEx( ( Vector2 ) { fViewStartX,
-                                      fViewStartY },
-                        ( Vector2 ) { fViewStartX,
-                                      fViewEndY },
-                        m_fLineThickness,
-                        color );
-
-            // Right line
-            DrawLineEx( ( Vector2 ) { fViewEndX,
-                                      fViewStartY },
-                        ( Vector2 ) { fViewEndX,
-                                      fViewEndY },
-                        m_fLineThickness,
-                        color );
-        }
-    }
-}
-
 /**
  * Midpoint ellipse drawing algorithm based on algorithm found at
  * https://www.geeksforgeeks.org/midpoint-ellipse-drawing-algorithm/
@@ -383,6 +279,110 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
             dx = ( dx + ( 2 * fRadiusY * fRadiusY ) );
             dy = ( dy - ( 2 * fRadiusX * fRadiusX ) );
             d2 = ( d2 + dx - dy + ( fRadiusX * fRadiusX ) );
+        }
+    }
+}
+
+void MapRenderer :: DrawPolyline( double offset_x,
+                                  double offset_y,
+                                  double **points,
+                                  int points_count,
+                                  Color color ) {
+
+    offset_x+=m_CameraPos.x;
+    offset_y+=m_CameraPos.y;
+
+    for( int i=1; i < points_count; i++ ) {
+        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[i-1][0] ),
+                                  ( float ) ( offset_y + points[i-1][1] ) },
+                    ( Vector2 ) { ( float ) ( offset_x + points[i][0] ),
+                                  ( float ) ( offset_y + points[i][1] ) },
+                    m_fLineThickness, color );
+    }
+}
+
+void MapRenderer :: DrawPolygon( double offset_x,
+                                 double offset_y,
+                                 double **points,
+                                 int points_count,
+                                 Color color ) {
+    offset_x+=m_CameraPos.x;
+    offset_y+=m_CameraPos.y;
+
+    DrawPolyline( offset_x,
+                  offset_y,
+                  points,
+                  points_count,
+                  color );
+
+    if( points_count > 2 ) {
+        DrawLineEx( ( Vector2 ) { ( float ) ( offset_x + points[0][0] ),
+                                  ( float ) ( offset_y + points[0][1] ) },
+                    ( Vector2 ) { ( float ) ( offset_x + points[points_count-1][0] ),
+                                  ( float ) ( offset_y + points[points_count-1][1] ) },
+                    m_fLineThickness,
+                    color );
+    }
+}
+
+/**
+ * Draw a square primitive to specified position on texture.
+ * @param fOffset_x X square coordinate;
+ * @param fOffset_y Y square coordinate;
+ * @param fWidth The square width;
+ * @param fHeight The square height;
+ * @param color Rectangle color;
+ */
+void MapRenderer :: DrawRectangle( double fOffset_x,
+                                   double fOffset_y,
+                                   double fWidth,
+                                   double fHeight,
+                                   Color color )  {
+
+    float          fViewStartX;
+    float          fViewStartY;
+    float          fClippedWidth;
+    float          fClippedHeight;
+
+    if( GetClippedArea( fWidth, fHeight,
+                        fOffset_x, fOffset_y,
+                        fViewStartX, fViewStartY,
+                        fClippedWidth, fClippedHeight, true ) ) {
+        float fViewEndX = ( float ) ( fViewStartX + fClippedWidth );
+        float fViewEndY = ( float ) ( fViewStartY + fClippedHeight );
+
+        if( ( fClippedWidth > 0.0 ) && ( fClippedHeight > 0.0 ) )  {
+            // Top line
+            DrawLineEx( ( Vector2 ) { fViewStartX,
+                                      fViewStartY },
+                        ( Vector2 ) { fViewEndX,
+                                      fViewStartY },
+                        m_fLineThickness,
+                        color );
+
+            // Bottom line
+            DrawLineEx( ( Vector2 ) { fViewStartX,
+                                      fViewEndY },
+                        ( Vector2 ) { fViewEndX,
+                                      fViewEndY },
+                        m_fLineThickness,
+                        color );
+
+            // Left line
+            DrawLineEx( ( Vector2 ) { fViewStartX,
+                                      fViewStartY },
+                        ( Vector2 ) { fViewStartX,
+                                      fViewEndY },
+                        m_fLineThickness,
+                        color );
+
+            // Right line
+            DrawLineEx( ( Vector2 ) { fViewEndX,
+                                      fViewStartY },
+                        ( Vector2 ) { fViewEndX,
+                                      fViewEndY },
+                        m_fLineThickness,
+                        color );
         }
     }
 }
@@ -712,69 +712,70 @@ void MapRenderer :: InitializeZoomEngine( void )  {
 }
 
 /**
+ * Initialize controller event handlers.
+ */
+void MapRenderer :: InitializeControllerHandlers( void )  {
+
+    for( KEY_EVENT_HANDLER pHandler : m_UserEventHandlers )
+        pHandler = NULL;
+
+    m_UserEventHandlers[KEY_UP]        = &MapRenderer :: MoveCameraUp;
+    m_UserEventHandlers[KEY_DOWN]      = &MapRenderer :: MoveCameraDown;
+    m_UserEventHandlers[KEY_LEFT]      = &MapRenderer :: MoveCameraLeft;
+    m_UserEventHandlers[KEY_RIGHT]     = &MapRenderer :: MoveCameraRight;
+    m_UserEventHandlers[KEY_PAGE_UP]   = &MapRenderer :: ZoomIn;
+    m_UserEventHandlers[KEY_PAGE_DOWN] = &MapRenderer :: ZoomOut;
+    m_UserEventHandlers[KEY_HOME]      = &MapRenderer :: ResetZoom;
+}
+
+/**
+ * Get last key from user input selected control.
+ */
+int MapRenderer :: GetKeyPressed( void )  {
+
+    switch( m_ViewControlMode )  {
+        case VIEW_CONTROL_MODE_REACTIVE :
+            return ::GetKeyPressed();
+
+        case VIEW_CONTROL_MODE_ACTIVE :
+            if( ::IsKeyDown( KEY_UP ) )
+                return KEY_UP;
+            else
+            if( ::IsKeyDown( KEY_DOWN ) )
+                return KEY_DOWN;
+            else
+            if( ::IsKeyDown( KEY_LEFT ) )
+                return KEY_LEFT;
+            else
+            if( ::IsKeyDown( KEY_RIGHT ) )
+                return KEY_RIGHT;
+            else
+            if( ::IsKeyDown( KEY_PAGE_UP ) )
+                return KEY_PAGE_UP;
+            else
+            if( ::IsKeyDown( KEY_PAGE_DOWN ) )
+                return KEY_PAGE_DOWN;
+            else
+            if( ::IsKeyDown( KEY_HOME ) )
+                return KEY_HOME;
+    }
+
+    return KEY_NULL;
+}
+
+/**
  * Check user input selected previously by user (mouse,
  * joystick, keyboard, etc...)
  */
 void MapRenderer :: HandleUserInput( void )  {
 
-    bool     bKeyHandled = true;
+    int      nKeyPressed = GetKeyPressed();
 
-    switch( m_ViewControlMode )  {
-        case VIEW_CONTROL_MODE_REACTIVE :
-            switch( GetKeyPressed() )  {
-                case KEY_UP :
-                    MoveCameraUp();
-                    break;
-                case KEY_DOWN :
-                    MoveCameraDown();
-                    break;
-                case KEY_LEFT :
-                    MoveCameraLeft();
-                    break;
-                case KEY_RIGHT :
-                    MoveCameraRight();
-                    break;
-                case KEY_PAGE_UP :
-                    ZoomIn();
-                    break;
-                case KEY_PAGE_DOWN :
-                    ZoomOut();
-                    break;
-                default :
-                    bKeyHandled = false;
-            }
-            break;
-        case VIEW_CONTROL_MODE_ACTIVE :
-            if( ::IsKeyDown( KEY_UP ) )
-                MoveCameraUp();
-            else
-            if( ::IsKeyDown( KEY_DOWN ) )
-                MoveCameraDown();
-            else
-            if( ::IsKeyDown( KEY_LEFT ) )
-                MoveCameraLeft();
-            else
-            if( ::IsKeyDown( KEY_RIGHT ) )
-                MoveCameraRight();
-            else
-            if( ::IsKeyDown( KEY_PAGE_UP ) )
-                ZoomIn();
-            else
-            if( ::IsKeyDown( KEY_PAGE_DOWN ) )
-                ZoomOut();
-            else
-                bKeyHandled = false;
-            break;
-    }
+    if( nKeyPressed < m_UserEventHandlers.size() )  {
+        KEY_EVENT_HANDLER pHandler = m_UserEventHandlers[nKeyPressed];
 
-    /*
-     * Not controller handled keys.
-     */
-    if( !bKeyHandled )  {
-        switch( GetKeyPressed() )  {
-            case KEY_HOME :
-                ResetZoom();
-                break;
+        if( pHandler )  {
+            CALL_MEMBER_FN(*this, pHandler )();
         }
     }
 }
@@ -811,6 +812,7 @@ MapRenderer :: MapRenderer( float fWidth,
     m_strTxMapFile.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
     InitializeZoomEngine();
+    InitializeControllerHandlers();
     ResetZoom();
 
     /*

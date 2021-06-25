@@ -13,7 +13,29 @@
 #include <string>
 #include <queue>
 #include <vector>
+#include <array>
 
+
+/*
+ * This is already defined when using baselibrary (maybe if this engine
+ * integrates baselibrary, or just start using it, consider removing
+ * this definition by using it's definition already defined in include
+ * <corefoundation/callable.h>.
+ */
+#ifndef CALL_MEMBER_FN
+/*
+ * Macro definition for calling member classes functions followed
+ * by parameters.
+ * Eg:
+ * CALL_MEMBER_FN( *this, pfnFunc)( 1, 2 );
+ */
+#define CALL_MEMBER_FN( obj, ptr_fn_member )  ( ( obj ).*( ptr_fn_member ) )
+#endif /* CALL_MEMBER_FN */
+
+/*
+ * Maximum key array.
+ */
+#define MAX_KEYS          400
 
 /**
  * Viewport definition.
@@ -44,6 +66,11 @@ class MapRenderer  {
     typedef std :: vector<float> ZoomFactorList;
     typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
 
+
+    typedef void ( MapRenderer :: *KEY_EVENT_HANDLER )( void );
+    typedef std :: array<KEY_EVENT_HANDLER, MAX_KEYS> KeyBindingEventHandler;
+
+    KeyBindingEventHandler     m_UserEventHandlers;
     Vector2                    m_CameraPos;
     ViewControlMode            m_ViewControlMode;
     int                        m_nScrollStepWidth;
@@ -86,6 +113,11 @@ class MapRenderer  {
                          float& fWidth,
                          float& fHeight,
                          bool bResetViewOnNegative = false );
+    void MidPointEllipse( double fCoordX,
+                          double fCoordY,
+                          double fRadiusX,
+                          double fRadiusY,
+                          Color color );
 
     // Engine primitives
     void DrawPolyline( double offset_x,
@@ -103,11 +135,6 @@ class MapRenderer  {
                         double width,
                         double height,
                         Color color );
-    void MidPointEllipse( double fCoordX,
-                          double fCoordY,
-                          double fRadiusX,
-                          double fRadiusY,
-                          Color color );
     void DrawEllipse( double offset_x,
                       double offset_y,
                       double width,
@@ -131,8 +158,10 @@ class MapRenderer  {
 
     bool UnloadMap( void );
     void InitializeZoomEngine( void );
+    void InitializeControllerHandlers( void );
 
     // User input handling
+    int GetKeyPressed( void );
     void HandleUserInput( void );
 
 
@@ -158,6 +187,8 @@ class MapRenderer  {
     void SetViewControlMode( ViewControlMode mode );
     void SetViewport( Viewport viewport );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
+
+    // Camera management
     void SetEnableUserZoom( bool bEnabled );
     void SetMinZoom( unsigned nMinPos );
     void SetMaxZoom( unsigned nMaxPos );
@@ -166,8 +197,6 @@ class MapRenderer  {
     void ResetZoom( void );
     void ZoomIn( void );
     void ZoomOut( void );
-
-    // Camera management
     void MoveCameraUp( void );
     void MoveCameraDown( void );
     void MoveCameraLeft( void );
