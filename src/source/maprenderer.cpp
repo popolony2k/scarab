@@ -268,6 +268,126 @@ void MapRenderer :: DrawRectangle( double fOffset_x,
 }
 
 /**
+ * Midpoint ellipse drawing algorithm based on algorithm found at
+ * https://www.geeksforgeeks.org/midpoint-ellipse-drawing-algorithm/
+ * @param fCoordX Ellipse X coordinate;
+ * @param fCoordY Ellipse Y coordinate;
+ * @param fRadiusX X radius;
+ * @param fRadiusX Y radius;
+ */
+void MapRenderer :: MidPointEllipse( double fCoordX,
+                                     double fCoordY,
+                                     double fRadiusX,
+                                     double fRadiusY,
+                                     Color color ) {
+    double dx, dy, d1, d2, x, y;
+    x = 0;
+    y = fRadiusY;
+
+    // Initial decision parameter of region 1
+    d1 = ( fRadiusY * fRadiusY ) -
+         ( fRadiusX * fRadiusX * fRadiusY ) +
+         ( 0.25 * fRadiusX * fRadiusX );
+    dx = ( 2 * fRadiusX * fRadiusY * x );
+    dy = ( 2 * fRadiusX * fRadiusX * y );
+
+    // For region 1
+    while( dx < dy )  {
+        int nXPos = ( x + fCoordX );
+        int nYPos = ( y + fCoordY );
+        int nXNeg = ( -x + fCoordX );
+        int nYNeg = ( -y + fCoordY );
+
+        // Print points based on 4-way symmetry
+        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
+            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+            DrawPixel( nXPos, nYPos, color );
+        }
+
+        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
+            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+            DrawPixel( nXNeg, nYPos, color );
+        }
+
+        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
+            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+            DrawPixel( nXPos, nYNeg, color );
+        }
+
+        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
+            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+            DrawPixel( nXNeg, nYNeg, color );
+        }
+
+        // Checking and updating value of
+        // decision parameter based on algorithm
+        if( d1 < 0 )  {
+            x++;
+            dx = ( dx + (2 * fRadiusY * fRadiusY ) );
+            d1 = ( d1 + dx + ( fRadiusY * fRadiusY ) );
+        }
+        else  {
+            x++;
+            y--;
+            dx = ( dx + ( 2 * fRadiusY * fRadiusY ) );
+            dy = ( dy - ( 2 * fRadiusX * fRadiusX ) );
+            d1 = ( d1 + dx - dy + ( fRadiusY * fRadiusY ) );
+        }
+    }
+
+    // Decision parameter of region 2
+    d2 = ( ( fRadiusY * fRadiusY ) * ( ( x + 0.5 ) * ( x + 0.5 ) ) ) +
+         ( ( fRadiusX * fRadiusX ) * ( ( y - 1 ) * ( y - 1 ) ) ) -
+           ( fRadiusX * fRadiusX * fRadiusY * fRadiusY );
+
+    // Plotting points of region 2
+    while( y >= 0 ) {
+
+        int nXPos = ( x + fCoordX );
+        int nYPos = ( y + fCoordY );
+        int nXNeg = ( -x + fCoordX );
+        int nYNeg = ( -y + fCoordY );
+
+        // Print points based on 4-way symmetry
+        // Print points based on 4-way symmetry
+        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
+            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+            DrawPixel( nXPos, nYPos, color );
+        }
+
+        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
+            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+            DrawPixel( nXNeg, nYPos, color );
+        }
+
+        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
+            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+            DrawPixel( nXPos, nYNeg, color );
+        }
+
+        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
+            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+            DrawPixel( nXNeg, nYNeg, color );
+        }
+
+        // Checking and updating parameter
+        // value based on algorithm
+        if( d2 > 0 ) {
+            y--;
+            dy = ( dy - ( 2 * fRadiusX * fRadiusX ) );
+            d2 = ( d2 + ( fRadiusX * fRadiusX ) - dy );
+        }
+        else  {
+            y--;
+            x++;
+            dx = ( dx + ( 2 * fRadiusY * fRadiusY ) );
+            dy = ( dy - ( 2 * fRadiusX * fRadiusX ) );
+            d2 = ( d2 + dx - dy + ( fRadiusX * fRadiusX ) );
+        }
+    }
+}
+
+/**
  * Draw an ellipse primitive to specified position on texture.
  * @param fOffset_x X square coordinate;
  * @param fOffset_y Y square coordinate;
@@ -286,28 +406,20 @@ void MapRenderer :: DrawEllipse( double fOffset_x,
     float          fClippedWidth;
     float          fClippedHeight;
 
-    // FIXME: Ellipses don't work well with rectangular clipping area
     fWidth-=( fWidth / 2.0 );
     fHeight-=( fHeight / 2.0 );
-    fOffset_x+=fWidth;
-    fOffset_y+=fHeight;
+    fOffset_x = ( ( fOffset_x +
+                    fWidth +
+                    m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+    fOffset_y = ( ( fOffset_y +
+                    fHeight +
+                    m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
 
-    if( GetClippedArea( fWidth, fHeight,
-                        fOffset_x, fOffset_y,
-                        fViewStartX, fViewStartY,
-                        fClippedWidth, fClippedHeight, true ) ) {
-        float fViewEndX = ( float ) ( fViewStartX + fClippedWidth );
-        float fViewEndY = ( float ) ( fViewStartY + fClippedHeight );
-
-        if( ( fClippedWidth > 0.0 ) && ( fClippedHeight > 0.0 ) )  {
-
-            DrawEllipseLines( fViewStartX,
-                              fViewStartY,
-                              fClippedWidth,
-                              fClippedHeight,
-                              color );
-        }
-    }
+    MidPointEllipse( fOffset_x,
+                     fOffset_y,
+                     ( fWidth * m_fZoomFactor ),
+                     ( fHeight * m_fZoomFactor ),
+                     color );
 }
 
 /**

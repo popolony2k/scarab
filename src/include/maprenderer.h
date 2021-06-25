@@ -103,6 +103,11 @@ class MapRenderer  {
                         double width,
                         double height,
                         Color color );
+    void MidPointEllipse( double fCoordX,
+                          double fCoordY,
+                          double fRadiusX,
+                          double fRadiusY,
+                          Color color );
     void DrawEllipse( double offset_x,
                       double offset_y,
                       double width,
