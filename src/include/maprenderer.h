@@ -111,8 +111,7 @@ class MapRenderer  {
                          float& fViewportX,
                          float& fViewportY,
                          float& fWidth,
-                         float& fHeight,
-                         bool bResetViewOnNegative = false );
+                         float& fHeight );
     void MidPointEllipse( double fCoordX,
                           double fCoordY,
                           double fRadiusX,

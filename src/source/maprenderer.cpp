@@ -15,7 +15,7 @@
  */
 #define __DEFAULT_FPS                   30
 #define __DEFAULT_LINE_THICKNESS        2.5f
-#define __DEFAULT_MAP_ZOOM_SCALE_STEP   0.0625f
+#define __DEFAULT_MAP_ZOOM_SCALE_STEP   ( 0.0625f / 2.0 )
 #define __DEFAULT_SCROLL_STEP_WIDTH     -1
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
 #define __DEFAULT_SCROLL_STEP           -1
@@ -88,9 +88,6 @@ Color MapRenderer :: IntToColor( int color ) {
  * viewport boundaries;
  * @param fViewHeight Calculated object height based on
  * viewport boundaries;
- * @param bResetViewOnNegative When this parameter is set
- * the width parameters fViewX and fViewY are reset to 0.0
- * coordinate when each related coordinate (x,y) are negative;
  */
 bool MapRenderer :: GetClippedArea( int32_t nSourceW,
                                     int32_t nSourceH,
@@ -99,8 +96,7 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
                                     float& fViewX,
                                     float& fViewY,
                                     float& fViewWidth,
-                                    float& fViewHeight,
-                                    bool bResetViewOnNegative )  {
+                                    float& fViewHeight )  {
 
     float       fClippingX;
     float       fClippingY;
@@ -112,14 +108,6 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
     if( ( nDestX > ( m_Viewport.x + m_Viewport.width ) ) ||
         ( nDestY > ( m_Viewport.y + m_Viewport.height ) )||
         ( nDestX < 0.0 ) || ( nDestY < 0.0 ) )  {
-
-        /*
-         * Adjust origin coordinates (x,y) and dimension (width, height)
-         * when scenario is moving to negative positions outside viewport
-         * borders (left and top moving).
-         */
-        if( !bResetViewOnNegative )
-            return false;
 
         if( nDestX < m_Viewport.x )  {
             nTemp = std :: abs( nDestX );
@@ -347,7 +335,7 @@ void MapRenderer :: DrawRectangle( double fOffset_x,
     if( GetClippedArea( fWidth, fHeight,
                         fOffset_x, fOffset_y,
                         fViewStartX, fViewStartY,
-                        fClippedWidth, fClippedHeight, true ) ) {
+                        fClippedWidth, fClippedHeight ) ) {
         float fViewEndX = ( float ) ( fViewStartX + fClippedWidth );
         float fViewEndY = ( float ) ( fViewStartY + fClippedHeight );
 
@@ -716,8 +704,8 @@ void MapRenderer :: InitializeZoomEngine( void )  {
  */
 void MapRenderer :: InitializeControllerHandlers( void )  {
 
-    for( KEY_EVENT_HANDLER pHandler : m_UserEventHandlers )
-        pHandler = NULL;
+    for( int nCount = 0; nCount < m_UserEventHandlers.size(); nCount++ )
+        m_UserEventHandlers[nCount] = NULL;
 
     m_UserEventHandlers[KEY_UP]        = &MapRenderer :: MoveCameraUp;
     m_UserEventHandlers[KEY_DOWN]      = &MapRenderer :: MoveCameraDown;
