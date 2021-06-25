@@ -139,15 +139,17 @@ class MapRenderer  {
                  int nTargetFps = -1 );
     ~MapRenderer( void );
 
+    // Object line rendering
     void SetLineThickness( float fLineThickness );
     float GetLineThickness( void );
 
+    // Window behavior
     void SetExitKey( KeyboardKey key );
-
     void SetWindowResizeable( bool bResizeable );
     void SetClearBackground( bool bStatus );
     void SetDrawFPS( bool bDrawFPS );
 
+    // View port control
     void SetViewControlMode( ViewControlMode mode );
     void SetViewport( Viewport viewport );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
@@ -160,13 +162,16 @@ class MapRenderer  {
     void ZoomIn( void );
     void ZoomOut( void );
 
+    // Camera management
     void MoveCameraUp( void );
     void MoveCameraDown( void );
     void MoveCameraLeft( void );
     void MoveCameraRight( void );
 
+    // Map file management
     void SetMapFile( const char *szTxMapFile );
 
+    // Renderer flow control.
     bool Start( void );
     void Stop( void );
     bool Run( void );
