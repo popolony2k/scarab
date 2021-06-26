@@ -244,7 +244,6 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
         int nYNeg = ( -y + fCoordY );
 
         // Print points based on 4-way symmetry
-        // Print points based on 4-way symmetry
         if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
             ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
             SetPixel( nXPos, nYPos, color );
