@@ -6,6 +6,7 @@
  */
 
 #include <memory.h>
+#include <cstring>
 #include <chrono>
 #include <cmath>
 #include "maprenderer.h"
@@ -30,6 +31,7 @@
  * Engine limits.
  */
 #define __MAX_ZOOM_DEPTH               256
+#define __MAX_OPACITY_LEVEL            0xFF
 
 bool MapRenderer :: m_bInitialized = false;
 
@@ -60,6 +62,25 @@ void MapRenderer :: TextureFreeCallback( void *pTexture )  {
     UnloadTexture( *pTexture2D );
 
     delete pTexture2D;
+}
+
+/**
+ * Get a pointer to a loaded layer based on it's Id.
+ * @param nLayerId The Layer Id to retrieve the layer;
+ */
+tmx_layer* MapRenderer :: GetLayer( int nLayerId )  {
+
+    return tmx_find_layer_by_id( m_pTmxMap, nLayerId );
+}
+
+/**
+ * Get a pointer to a loaded layer based on it's Id or name.
+ * @param szLayerName The Layer name used to retrieve the layer. If the layer
+ * name is NULL parameter nLayerId will be used for searching layer;
+ */
+tmx_layer* MapRenderer :: GetLayer( const char *szLayerName )  {
+
+    return tmx_find_layer_by_name( m_pTmxMap, szLayerName );
 }
 
 /**
@@ -1109,6 +1130,75 @@ void MapRenderer :: MoveCameraLeft( void )  {
 void MapRenderer :: MoveCameraRight( void )  {
 
     m_CameraPos.x+=m_nScrollStepWidth;
+}
+
+/**
+ * Set layer visible status.
+ * @param nLayerId The layer id to set visibility status;
+ * @param bVisible The new visibility status;
+ */
+bool MapRenderer :: SetLayerVisible( int nLayerId, bool bVisible )  {
+
+    tmx_layer *pLayer = GetLayer( nLayerId );
+
+    if( pLayer )  {
+        pLayer -> visible = bVisible;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Set layer visible status.
+ * @param szLayerName The layer name to set visibility status;
+ * @param bVisible The new visibility status;
+ */
+bool MapRenderer :: SetLayerVisible( const char *szLayerName, bool bVisible )  {
+
+    tmx_layer *pLayer = GetLayer( szLayerName );
+
+    if( pLayer )  {
+        pLayer -> visible = bVisible;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Set layer opacity.
+ * @param nLayerId The layer id to set opacity;
+ * @param nOpacity The new opacity level;
+ */
+bool MapRenderer :: SetLayerOpacity( int nLayerId, char nOpacity )  {
+
+
+    tmx_layer *pLayer = GetLayer( nLayerId );
+
+    if( pLayer )  {
+        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - nOpacity );
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Set layer opacity.
+ * @param szLayerName The layer name to set visibility status;
+ * @param nOpacity The new opacity level;
+ */
+bool MapRenderer :: SetLayerOpacity( const char *szLayerName, char nOpacity )  {
+
+    tmx_layer *pLayer = GetLayer( szLayerName );
+
+    if( pLayer )  {
+        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - nOpacity );
+        return true;
+    }
+
+    return false;
 }
 
 /**

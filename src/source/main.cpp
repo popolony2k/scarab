@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
     renderer.SetViewport( ( Viewport ) { 10.0, 10.0, 510.0, 590.0 } );
     renderer.SetDrawFPS( true );
     renderer.Start();
+    renderer.SetLayerOpacity( 1, 254 );
     renderer.Run();
     renderer.Stop();
 

@@ -99,6 +99,10 @@ class MapRenderer  {
     static void* TextureLoaderCallback( const char *szPath );
     static void TextureFreeCallback( void *pTexture );
 
+    // TmxLib miscelaneous
+    tmx_layer* GetLayer( int nLayerId );
+    tmx_layer* GetLayer( const char *szLayerName );
+
     // Color control
     Color IntToColor( int color );
 
@@ -202,6 +206,12 @@ class MapRenderer  {
     void MoveCameraDown( void );
     void MoveCameraLeft( void );
     void MoveCameraRight( void );
+
+    // Layer management
+    bool SetLayerVisible( int nLayerId, bool bVisible );
+    bool SetLayerVisible( const char *szLayerName, bool bVisible );
+    bool SetLayerOpacity( int nLayerId, char nOpacity );
+    bool SetLayerOpacity( const char *szLayerName, char nOpacity );
 
     // Map file management
     void SetMapFile( const char *szTxMapFile );
