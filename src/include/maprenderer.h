@@ -14,7 +14,7 @@
 #include <queue>
 #include <vector>
 #include <array>
-#include "layer.h"
+#include "mapdefs.h"
 
 
 /*
@@ -172,6 +172,10 @@ class MapRenderer  {
     // User input handling
     void HandleUserInput( void );
 
+    // Internal layer handling.
+    void CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer );
+    void CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer );
+
 
     public:
 
@@ -216,8 +220,9 @@ class MapRenderer  {
     bool GetLayer( int nLayerId, stLayer &layer );
     bool GetLayer( const char *szLayerName, stLayer &layer );
 
-    // Map file management
+    // Map management
     void SetMapFile( const char *szTxMapFile );
+    bool GetMapInfo( stMapInfo& mapInfo );
 
     // Renderer flow control.
     bool Start( void );

@@ -827,6 +827,32 @@ void MapRenderer :: HandleUserInput( void )  {
 }
 
 /**
+ * Copy user layer to tmx layer.
+ * @param pTmxLayer Pointer to Tmx that data will be copied to;
+ * @param layer User struct whose layer data will be copied from;
+ */
+void MapRenderer :: CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer )  {
+
+    pTmxLayer -> opacity = ( __MAX_OPACITY_LEVEL - layer.nOpacity );
+    pTmxLayer -> offsetx = layer.nOffsetX;
+    pTmxLayer -> offsety = layer.nOffsetY;
+    pTmxLayer -> visible = layer.bVisible;
+}
+
+/**
+ * Copy tmx layer to user layer.
+ * @param pTmxLayer Reference to user layer that data will be copied to;
+ * @param layer Pointer whose tmx layer data will be copied from;
+ */
+void MapRenderer :: CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer )  {
+
+    layer.nOpacity = ( pTmxLayer -> opacity + __MAX_OPACITY_LEVEL );
+    layer.nOffsetX = pTmxLayer -> offsetx;
+    layer.nOffsetY = pTmxLayer -> offsety;
+    layer.bVisible = pTmxLayer -> visible;
+}
+
+/**
  * Initialize all class data.
  * @param fWidth Screen renderer width;
  * @param fHeight Screen renderer height;
@@ -1139,13 +1165,10 @@ void MapRenderer :: MoveCameraRight( void )  {
  */
 bool MapRenderer :: SetLayer( int nLayerId, stLayer &layer )  {
 
-    tmx_layer *pLayer = GetLayer( nLayerId );
+    tmx_layer *pTmxLayer = GetLayer( nLayerId );
 
-    if( pLayer )  {
-        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - layer.nOpacity );
-        pLayer -> offsetx = layer.nOffsetX;
-        pLayer -> offsety = layer.nOffsetY;
-        pLayer -> visible = layer.bVisible;
+    if( pTmxLayer )  {
+        CopyLayerToTmx( pTmxLayer, layer );
         return true;
     }
 
@@ -1159,13 +1182,10 @@ bool MapRenderer :: SetLayer( int nLayerId, stLayer &layer )  {
  */
 bool MapRenderer :: SetLayer( const char *szLayerName, stLayer &layer )  {
 
-    tmx_layer *pLayer = GetLayer( szLayerName );
+    tmx_layer *pTmxLayer = GetLayer( szLayerName );
 
-    if( pLayer )  {
-        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - layer.nOpacity );
-        pLayer -> offsetx = layer.nOffsetX;
-        pLayer -> offsety = layer.nOffsetY;
-        pLayer -> visible = layer.bVisible;
+    if( pTmxLayer )  {
+        CopyLayerToTmx( pTmxLayer, layer );
         return true;
     }
 
@@ -1179,13 +1199,10 @@ bool MapRenderer :: SetLayer( const char *szLayerName, stLayer &layer )  {
  */
 bool MapRenderer :: GetLayer( int nLayerId, stLayer &layer )  {
 
-    tmx_layer *pLayer = GetLayer( nLayerId );
+    tmx_layer *pTmxLayer = GetLayer( nLayerId );
 
-    if( pLayer )  {
-        layer.nOpacity = ( pLayer -> opacity + __MAX_OPACITY_LEVEL );
-        layer.nOffsetX = pLayer -> offsetx;
-        layer.nOffsetY = pLayer -> offsety;
-        layer.bVisible = pLayer -> visible;
+    if( pTmxLayer )  {
+        CopyTmxToLayer( layer, pTmxLayer );
         return true;
     }
 
@@ -1200,13 +1217,10 @@ bool MapRenderer :: GetLayer( int nLayerId, stLayer &layer )  {
  */
 bool MapRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
 
-    tmx_layer *pLayer = GetLayer( szLayerName );
+    tmx_layer *pTmxLayer = GetLayer( szLayerName );
 
-    if( pLayer )  {
-        layer.nOpacity = ( pLayer -> opacity + __MAX_OPACITY_LEVEL );
-        layer.nOffsetX = pLayer -> offsetx;
-        layer.nOffsetY = pLayer -> offsety;
-        layer.bVisible = pLayer -> visible;
+    if( pTmxLayer )  {
+        CopyTmxToLayer( layer, pTmxLayer );
         return true;
     }
 
@@ -1222,6 +1236,25 @@ void MapRenderer :: SetMapFile( const char *szTmxMapFile )  {
     m_strTxMapFile = szTmxMapFile;
 
     return;
+}
+
+/**
+ * Get the current map information data.
+ * @param mapInfo Reference to the struct @link stMapInfo that will
+ * receive the map information.
+ */
+bool MapRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
+
+    if( m_pTmxMap )  {
+        mapInfo.nMapWidth   = m_pTmxMap -> width;
+        mapInfo.nMapHeight  = m_pTmxMap -> height;
+        mapInfo.nTileWidth  = m_pTmxMap -> tile_width;
+        mapInfo.nTileHeight = m_pTmxMap -> tile_height;
+
+        return true;
+    }
+
+    return false;
 }
 
 /**
