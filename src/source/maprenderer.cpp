@@ -551,43 +551,43 @@ void MapRenderer :: DrawTile( void *pImage,
 
 /**
  * Draw objects on canvas;
- * @param pObjgr Pointer to object group to draw;
+ * @param pLayer Pointer to layer containing object group to draw;
  */
-void MapRenderer :: DrawObjects( tmx_object_group *pObjgr ) {
+void MapRenderer :: DrawObjects( tmx_layer *pLayer ) {
 
-    tmx_object *head = pObjgr -> head;
-    Color      color = IntToColor( pObjgr -> color );
+    tmx_object *head = pLayer ->  content.objgr -> head;
+    Color      color = IntToColor( pLayer ->  content.objgr -> color );
 
     while( head ) {
         if( head -> visible ) {
             switch( head -> obj_type )  {
                 case OT_SQUARE :
-                    DrawRectangle( head -> x,
-                                   head -> y,
+                    DrawRectangle( ( head -> x + pLayer -> offsetx ),
+                                   ( head -> y + + pLayer -> offsety ),
                                    head -> width,
                                    head -> height,
                                    color );
                     break;
 
                 case OT_POLYGON :
-                    DrawPolygon( head -> x,
-                                 head -> y,
+                    DrawPolygon( ( head -> x + + pLayer -> offsetx ),
+                                 ( head -> y + + pLayer -> offsety ),
                                  head -> content.shape -> points,
                                  head -> content.shape -> points_len,
                                  color );
                     break;
 
                 case OT_POLYLINE :
-                    DrawPolyline( head -> x,
-                                  head -> y,
+                    DrawPolyline( ( head -> x + + pLayer -> offsetx ),
+                                  ( head -> y + + pLayer -> offsety ),
                                   head -> content.shape -> points,
                                   head -> content.shape -> points_len,
                                   color );
                     break;
 
                 case OT_ELLIPSE :
-                    DrawEllipse( head -> x,
-                                 head -> y,
+                    DrawEllipse( ( head -> x + + pLayer -> offsetx ),
+                                 ( head -> y + + pLayer -> offsety ),
                                  head -> width,
                                  head -> height,
                                  color );
@@ -601,11 +601,11 @@ void MapRenderer :: DrawObjects( tmx_object_group *pObjgr ) {
 
 /**
  * Draw image layer on canvas;
- * @param pImage Pointer to image to draw;
+ * @param pImage Pointer to layer containing image to draw;
  */
-void MapRenderer :: DrawImageLayer( tmx_image *pImage ) {
+void MapRenderer :: DrawImageLayer( tmx_layer *pLayer ) {
 
-    Texture2D *pTexture = ( Texture2D * ) pImage -> resource_image;
+    Texture2D *pTexture = ( Texture2D * ) pLayer -> content.image -> resource_image;
 
     DrawTexture( *pTexture, 0, 0, WHITE );
 }
@@ -692,8 +692,8 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                           pTile -> ul_y,
                           pTs -> tile_width,
                           pTs -> tile_height,
-                          ( ( j * pTs -> tile_width ) + pTs -> x_offset ),
-                          ( ( i * pTs -> tile_height ) + pTs -> y_offset ),
+                          ( ( j * pTs -> tile_width ) + pLayer -> offsetx ),
+                          ( ( i * pTs -> tile_height ) + pLayer -> offsety ),
                           fOpacity );
             }
         }
@@ -705,27 +705,27 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
  * @param pMap Pointer to layers map;
  * @param pLayer Array of layer objects to draw;
  */
-void MapRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers ) {
+void MapRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayer ) {
 
-    while( pLayers ) {
-        if( pLayers -> visible ) {
-            switch( pLayers -> type )  {
+    while( pLayer ) {
+        if( pLayer -> visible ) {
+            switch( pLayer -> type )  {
                 case L_GROUP :
-                    DrawAllLayers( pMap, pLayers -> content.group_head ); // recursive call
+                    DrawAllLayers( pMap, pLayer -> content.group_head ); // recursive call
                     break;
                 case L_OBJGR :
-                    DrawObjects( pLayers -> content.objgr );
+                    DrawObjects( pLayer );
                     break;
                 case L_IMAGE :
-                    DrawImageLayer( pLayers -> content.image );
+                    DrawImageLayer( pLayer );
                     break;
                 case L_LAYER :
-                    DrawLayer( pMap, pLayers );
+                    DrawLayer( pMap, pLayer );
                     break;
             }
         }
 
-        pLayers = pLayers -> next;
+        pLayer = pLayer -> next;
     }
 }
 

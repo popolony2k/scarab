@@ -158,10 +158,10 @@ class MapRenderer  {
                    float fOpacity );
 
     // High level primitive map handlers
-    void DrawObjects( tmx_object_group *pObjgr );
-    void DrawImageLayer( tmx_image *pImage );
+    void DrawObjects( tmx_layer *pLayer );
+    void DrawImageLayer( tmx_layer *pLayer );
     void DrawLayer( tmx_map *pMap, tmx_layer *pLayer );
-    void DrawAllLayers( tmx_map *pMap, tmx_layer *pLayers );
+    void DrawAllLayers( tmx_map *pMap, tmx_layer *pLayer );
     void RenderMap( void );
 
     bool UnloadMap( void );
