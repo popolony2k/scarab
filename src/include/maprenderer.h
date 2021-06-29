@@ -14,6 +14,7 @@
 #include <queue>
 #include <vector>
 #include <array>
+#include "layer.h"
 
 
 /*
@@ -99,7 +100,7 @@ class MapRenderer  {
     static void* TextureLoaderCallback( const char *szPath );
     static void TextureFreeCallback( void *pTexture );
 
-    // TmxLib miscelaneous
+    // TmxLib miscellaneous
     tmx_layer* GetLayer( int nLayerId );
     tmx_layer* GetLayer( const char *szLayerName );
 
@@ -169,7 +170,6 @@ class MapRenderer  {
     void InitializeControllerHandlers( void );
 
     // User input handling
-    int GetKeyPressed( void );
     void HandleUserInput( void );
 
 
@@ -192,6 +192,9 @@ class MapRenderer  {
     void SetViewport( Viewport viewport );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
 
+    // User input handling
+     int GetKeyPressed( void );
+
     // Camera management
     void SetEnableUserZoom( bool bEnabled );
     void SetMinZoom( unsigned nMinPos );
@@ -208,14 +211,10 @@ class MapRenderer  {
     void MoveCameraRight( void );
 
     // Layer management
-    bool SetLayerVisible( int nLayerId, bool bVisible );
-    bool SetLayerVisible( const char *szLayerName, bool bVisible );
-    bool SetLayerOpacity( int nLayerId, char nOpacity );
-    bool SetLayerOpacity( const char *szLayerName, char nOpacity );
-    bool SetLayerPosition( int nLayerId, int nPosX, int nPosY );
-    bool SetLayerPosition( const char *szLayerName, int nPosX, int nPosY );
-    bool GetLayerPosition( int nLayerId, int &nPosX, int &nPosY );
-    bool GetLayerPosition( const char *szLayerName, int &nPosX, int &nPosY );
+    bool SetLayer( int nLayerId, stLayer& layer );
+    bool SetLayer( const char *szLayerName, stLayer &layer );
+    bool GetLayer( int nLayerId, stLayer &layer );
+    bool GetLayer( const char *szLayerName, stLayer &layer );
 
     // Map file management
     void SetMapFile( const char *szTxMapFile );

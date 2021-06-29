@@ -12,13 +12,16 @@ int main(int argc, char **argv) {
                             FRAMES_PER_SECOND );
     std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
     std :: string strTmxMapFile = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
+    stLayer       layer;
 
     //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
     renderer.SetMapFile( strTmxMapFile.c_str() );
     renderer.SetViewport( ( Viewport ) { 10.0, 10.0, 510.0, 590.0 } );
     renderer.SetDrawFPS( true );
     renderer.Start();
-    renderer.SetLayerOpacity( 1, 254 );
+    renderer.GetLayer( 1, layer );
+    layer.nOpacity = 254;
+    renderer.SetLayer( 1, layer );
     renderer.Run();
     renderer.Stop();
 

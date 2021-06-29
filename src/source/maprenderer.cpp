@@ -810,44 +810,6 @@ void MapRenderer :: InitializeControllerHandlers( void )  {
 }
 
 /**
- * Get last key from user input selected control.
- */
-int MapRenderer :: GetKeyPressed( void )  {
-
-    switch( m_ViewControlMode )  {
-        case VIEW_CONTROL_MODE_REACTIVE :
-            return ::GetKeyPressed();
-
-        case VIEW_CONTROL_MODE_ACTIVE :
-            if( ::IsKeyDown( KEY_UP ) )
-                return KEY_UP;
-            else
-            if( ::IsKeyDown( KEY_DOWN ) )
-                return KEY_DOWN;
-            else
-            if( ::IsKeyDown( KEY_LEFT ) )
-                return KEY_LEFT;
-            else
-            if( ::IsKeyDown( KEY_RIGHT ) )
-                return KEY_RIGHT;
-            else
-            if( ::IsKeyDown( KEY_PAGE_UP ) )
-                return KEY_PAGE_UP;
-            else
-            if( ::IsKeyDown( KEY_PAGE_DOWN ) )
-                return KEY_PAGE_DOWN;
-            else
-            if( ::IsKeyDown( KEY_HOME ) )
-                return KEY_HOME;
-            else
-            if( ::IsKeyDown( KEY_END ) )
-                    return KEY_END;
-    }
-
-    return KEY_NULL;
-}
-
-/**
  * Check user input selected previously by user (mouse,
  * joystick, keyboard, etc...)
  */
@@ -918,25 +880,6 @@ MapRenderer :: ~MapRenderer( void )  {
 }
 
 /**
- * Set the status of background cleaning for each
- * rendering cycle;
- * @param bStatus The new background clear status settings;
- */
-void MapRenderer :: SetClearBackground( bool bStatus )  {
-
-    m_bClearBackground = bStatus;
-}
-
-/**
- * Enable/disable draw FPS information on top left corner of screen
- * @param bDrawFPS The new draw FPS status;
- */
-void MapRenderer :: SetDrawFPS( bool bDrawFPS )  {
-
-    m_bDrawFPS = bDrawFPS;
-}
-
-/**
  * Set exit key to leave the renderer when it is in running state;
  * @param key The key code representing the exit key (check raylib
  * KeyboardKey enum);
@@ -957,16 +900,22 @@ void MapRenderer :: SetWindowResizeable( bool bResizeable )  {
 }
 
 /**
- * Set the default scroll step size.
- * @param nStepWidth The new scroll step size Width
- * (-1 uses the map tile size width);
- * @param nStepHeight The new scroll step size Height
- * (-1 uses the map tile size height);
+ * Set the status of background cleaning for each
+ * rendering cycle;
+ * @param bStatus The new background clear status settings;
  */
-void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
+void MapRenderer :: SetClearBackground( bool bStatus )  {
 
-    m_nScrollStepWidth  = nStepWidth;
-    m_nScrollStepHeight = nStepHeight;
+    m_bClearBackground = bStatus;
+}
+
+/**
+ * Enable/disable draw FPS information on top left corner of screen
+ * @param bDrawFPS The new draw FPS status;
+ */
+void MapRenderer :: SetDrawFPS( bool bDrawFPS )  {
+
+    m_bDrawFPS = bDrawFPS;
 }
 
 /**
@@ -988,6 +937,57 @@ void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
 void MapRenderer :: SetViewport( Viewport viewport )  {
 
     m_Viewport = viewport;
+}
+
+/**
+ * Set the default scroll step size.
+ * @param nStepWidth The new scroll step size Width
+ * (-1 uses the map tile size width);
+ * @param nStepHeight The new scroll step size Height
+ * (-1 uses the map tile size height);
+ */
+void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
+
+    m_nScrollStepWidth  = nStepWidth;
+    m_nScrollStepHeight = nStepHeight;
+}
+
+/**
+ * Get last key from user input selected control.
+ */
+int MapRenderer :: GetKeyPressed( void )  {
+
+    switch( m_ViewControlMode )  {
+        case VIEW_CONTROL_MODE_REACTIVE :
+            return ::GetKeyPressed();
+
+        case VIEW_CONTROL_MODE_ACTIVE :
+            if( ::IsKeyDown( KEY_UP ) )
+                return KEY_UP;
+            else
+            if( ::IsKeyDown( KEY_DOWN ) )
+                return KEY_DOWN;
+            else
+            if( ::IsKeyDown( KEY_LEFT ) )
+                return KEY_LEFT;
+            else
+            if( ::IsKeyDown( KEY_RIGHT ) )
+                return KEY_RIGHT;
+            else
+            if( ::IsKeyDown( KEY_PAGE_UP ) )
+                return KEY_PAGE_UP;
+            else
+            if( ::IsKeyDown( KEY_PAGE_DOWN ) )
+                return KEY_PAGE_DOWN;
+            else
+            if( ::IsKeyDown( KEY_HOME ) )
+                return KEY_HOME;
+            else
+            if( ::IsKeyDown( KEY_END ) )
+                    return KEY_END;
+    }
+
+    return KEY_NULL;
 }
 
 /**
@@ -1092,7 +1092,7 @@ void MapRenderer :: ZoomOut( void )  {
 }
 
 /**
- * Reset trhe camera position.
+ * Reset the camera position.
  */
 void MapRenderer :: ResetCamera( void )  {
 
@@ -1133,16 +1133,19 @@ void MapRenderer :: MoveCameraRight( void )  {
 }
 
 /**
- * Set layer visible status.
- * @param nLayerId The layer id to set visibility status;
- * @param bVisible The new visibility status;
+ * Set layer parameters.
+ * @param nLayerId The layer id to set layer parameters;
+ * @param layer reference to layer parameters structure to set;
  */
-bool MapRenderer :: SetLayerVisible( int nLayerId, bool bVisible )  {
+bool MapRenderer :: SetLayer( int nLayerId, stLayer &layer )  {
 
     tmx_layer *pLayer = GetLayer( nLayerId );
 
     if( pLayer )  {
-        pLayer -> visible = bVisible;
+        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - layer.nOpacity );
+        pLayer -> offsetx = layer.nOffsetX;
+        pLayer -> offsety = layer.nOffsetY;
+        pLayer -> visible = layer.bVisible;
         return true;
     }
 
@@ -1150,16 +1153,19 @@ bool MapRenderer :: SetLayerVisible( int nLayerId, bool bVisible )  {
 }
 
 /**
- * Set layer visible status.
- * @param szLayerName The layer name to set visibility status;
- * @param bVisible The new visibility status;
+ * Set layer parameters.
+ * @param szLayerName The layer name to set layer parameters;
+ * @param layer reference to layer parameters structure to set;
  */
-bool MapRenderer :: SetLayerVisible( const char *szLayerName, bool bVisible )  {
+bool MapRenderer :: SetLayer( const char *szLayerName, stLayer &layer )  {
 
     tmx_layer *pLayer = GetLayer( szLayerName );
 
     if( pLayer )  {
-        pLayer -> visible = bVisible;
+        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - layer.nOpacity );
+        pLayer -> offsetx = layer.nOffsetX;
+        pLayer -> offsety = layer.nOffsetY;
+        pLayer -> visible = layer.bVisible;
         return true;
     }
 
@@ -1167,116 +1173,40 @@ bool MapRenderer :: SetLayerVisible( const char *szLayerName, bool bVisible )  {
 }
 
 /**
- * Set layer opacity.
- * @param nLayerId The layer id to set opacity;
- * @param nOpacity The new opacity level;
+ * Get the layer parameters.
+ * @param nLayerId The layer id to get layer parameters;
+ * @param layer reference to layer parameters structure to get;
  */
-bool MapRenderer :: SetLayerOpacity( int nLayerId, char nOpacity )  {
+bool MapRenderer :: GetLayer( int nLayerId, stLayer &layer )  {
 
     tmx_layer *pLayer = GetLayer( nLayerId );
 
     if( pLayer )  {
-        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - nOpacity );
+        layer.nOpacity = ( pLayer -> opacity + __MAX_OPACITY_LEVEL );
+        layer.nOffsetX = pLayer -> offsetx;
+        layer.nOffsetY = pLayer -> offsety;
+        layer.bVisible = pLayer -> visible;
         return true;
     }
 
     return false;
+
 }
 
 /**
- * Set layer opacity.
- * @param szLayerName The layer name to set visibility status;
- * @param nOpacity The new opacity level;
+ * Get the layer parameters.
+ * @param szLayerName The layer name to get layer parameters;
+ * @param layer reference to layer parameters structure to get;
  */
-bool MapRenderer :: SetLayerOpacity( const char *szLayerName, char nOpacity )  {
+bool MapRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
 
     tmx_layer *pLayer = GetLayer( szLayerName );
 
     if( pLayer )  {
-        pLayer -> opacity = ( __MAX_OPACITY_LEVEL - nOpacity );
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Set layer position .
- * @param nLayerId The layer id to set position;
- * @param nPosX new layer X coordinate;
- * @param nPosY new layer Y coordinate;
- */
-bool MapRenderer :: SetLayerPosition( int nLayerId,
-                                      int nPosX,
-                                      int nPosY )  {
-
-    tmx_layer *pLayer = GetLayer( nLayerId );
-
-    if( pLayer )  {
-        pLayer -> offsetx = nPosX;
-        pLayer -> offsety = nPosY;
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Set layer position.
- * @param szLayerName The layer name to set layer position;
- * @param nPosX new layer X coordinate;
- * @param nPosY new layer Y coordinate;
- */
-bool MapRenderer :: SetLayerPosition( const char *szLayerName,
-                                      int nPosX,
-                                      int nPosY )  {
-
-    tmx_layer *pLayer = GetLayer( szLayerName );
-
-    if( pLayer )  {
-        pLayer -> offsetx = nPosX;
-        pLayer -> offsety = nPosY;
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Get the layer position.
- * @param nLayerId The layer id to get position;
- * @param nPosX Reference variable that will receive X coordinate;
- * @param nPosY Reference variable that will receive Y coordinate;
- */
-bool MapRenderer :: GetLayerPosition( int nLayerId, int &nPosX, int &nPosY )  {
-
-    tmx_layer *pLayer = GetLayer( nLayerId );
-
-    if( pLayer )  {
-        nPosX = pLayer -> offsetx;
-        nPosY = pLayer -> offsety;
-        return true;
-    }
-
-    return false;
-
-}
-
-/**
- * Get the layer position.
- * @param szLayerName The layer name to set layer position;
- * @param nPosX Reference variable that will receive X coordinate;
- * @param nPosY Reference variable that will receive Y coordinate;
- */
-bool MapRenderer :: GetLayerPosition( const char *szLayerName,
-                                      int &nPosX,
-                                      int &nPosY )  {
-
-    tmx_layer *pLayer = GetLayer( szLayerName );
-
-    if( pLayer )  {
-        nPosX = pLayer -> offsetx;
-        nPosY = pLayer -> offsety;
+        layer.nOpacity = ( pLayer -> opacity + __MAX_OPACITY_LEVEL );
+        layer.nOffsetX = pLayer -> offsetx;
+        layer.nOffsetY = pLayer -> offsety;
+        layer.bVisible = pLayer -> visible;
         return true;
     }
 
