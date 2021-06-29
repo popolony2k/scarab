@@ -12,6 +12,8 @@
 *.db
 *.opendb
 *.user
+*.cproject
+*.project
 Debug
 Release
 GeneratedFiles
