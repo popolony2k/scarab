@@ -212,6 +212,10 @@ class MapRenderer  {
     bool SetLayerVisible( const char *szLayerName, bool bVisible );
     bool SetLayerOpacity( int nLayerId, char nOpacity );
     bool SetLayerOpacity( const char *szLayerName, char nOpacity );
+    bool SetLayerPosition( int nLayerId, int nPosX, int nPosY );
+    bool SetLayerPosition( const char *szLayerName, int nPosX, int nPosY );
+    bool GetLayerPosition( int nLayerId, int &nPosX, int &nPosY );
+    bool GetLayerPosition( const char *szLayerName, int &nPosX, int &nPosY );
 
     // Map file management
     void SetMapFile( const char *szTxMapFile );

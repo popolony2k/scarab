@@ -1173,7 +1173,6 @@ bool MapRenderer :: SetLayerVisible( const char *szLayerName, bool bVisible )  {
  */
 bool MapRenderer :: SetLayerOpacity( int nLayerId, char nOpacity )  {
 
-
     tmx_layer *pLayer = GetLayer( nLayerId );
 
     if( pLayer )  {
@@ -1195,6 +1194,89 @@ bool MapRenderer :: SetLayerOpacity( const char *szLayerName, char nOpacity )  {
 
     if( pLayer )  {
         pLayer -> opacity = ( __MAX_OPACITY_LEVEL - nOpacity );
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Set layer position .
+ * @param nLayerId The layer id to set position;
+ * @param nPosX new layer X coordinate;
+ * @param nPosY new layer Y coordinate;
+ */
+bool MapRenderer :: SetLayerPosition( int nLayerId,
+                                      int nPosX,
+                                      int nPosY )  {
+
+    tmx_layer *pLayer = GetLayer( nLayerId );
+
+    if( pLayer )  {
+        pLayer -> offsetx = nPosX;
+        pLayer -> offsety = nPosY;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Set layer position.
+ * @param szLayerName The layer name to set layer position;
+ * @param nPosX new layer X coordinate;
+ * @param nPosY new layer Y coordinate;
+ */
+bool MapRenderer :: SetLayerPosition( const char *szLayerName,
+                                      int nPosX,
+                                      int nPosY )  {
+
+    tmx_layer *pLayer = GetLayer( szLayerName );
+
+    if( pLayer )  {
+        pLayer -> offsetx = nPosX;
+        pLayer -> offsety = nPosY;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Get the layer position.
+ * @param nLayerId The layer id to get position;
+ * @param nPosX Reference variable that will receive X coordinate;
+ * @param nPosY Reference variable that will receive Y coordinate;
+ */
+bool MapRenderer :: GetLayerPosition( int nLayerId, int &nPosX, int &nPosY )  {
+
+    tmx_layer *pLayer = GetLayer( nLayerId );
+
+    if( pLayer )  {
+        nPosX = pLayer -> offsetx;
+        nPosY = pLayer -> offsety;
+        return true;
+    }
+
+    return false;
+
+}
+
+/**
+ * Get the layer position.
+ * @param szLayerName The layer name to set layer position;
+ * @param nPosX Reference variable that will receive X coordinate;
+ * @param nPosY Reference variable that will receive Y coordinate;
+ */
+bool MapRenderer :: GetLayerPosition( const char *szLayerName,
+                                      int &nPosX,
+                                      int &nPosY )  {
+
+    tmx_layer *pLayer = GetLayer( szLayerName );
+
+    if( pLayer )  {
+        nPosX = pLayer -> offsetx;
+        nPosY = pLayer -> offsety;
         return true;
     }
 
