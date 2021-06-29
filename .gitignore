@@ -14,6 +14,10 @@
 *.user
 *.cproject
 *.project
+*.directory
+*.settings
+*.maintenance
+*.cmake
 Debug
 Release
 GeneratedFiles
