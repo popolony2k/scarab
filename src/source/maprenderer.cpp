@@ -1,5 +1,5 @@
 /*
- * maprenderer.cpp
+ * worldrenderer.cpp
  *
  *  Created on: Jun 17, 2021
  *      Author: popolony2k
@@ -9,13 +9,14 @@
 #include <cstring>
 #include <chrono>
 #include <cmath>
-#include "maprenderer.h"
+
+#include "worldrenderer.h"
 
 /*
  * Engine defaults.
  */
 #define __DEFAULT_FPS                   30
-#define __DEFAULT_MAP_ZOOM_SCALE_STEP   ( 0.0625f / 2.0 )
+#define __DEFAULT_MAP_ZOOM_SCALE_STEP   0.0625f
 #define __DEFAULT_SCROLL_STEP_WIDTH     -1
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
 #define __DEFAULT_SCROLL_STEP           -1
@@ -33,7 +34,7 @@
 #define __MAX_ZOOM_DEPTH               256
 #define __MAX_OPACITY_LEVEL            0xFF
 
-bool MapRenderer :: m_bInitialized = false;
+bool WorldRenderer :: m_bInitialized = false;
 
 using namespace std :: chrono;
 
@@ -42,7 +43,7 @@ using namespace std :: chrono;
  * TxmLib texture loader callback implementation.
  * @param szPath Texture file path;
  */
-void* MapRenderer :: TextureLoaderCallback( const char *szPath )  {
+void* WorldRenderer :: TextureLoaderCallback( const char *szPath )  {
 
     Texture2D *pTexture = new Texture2D;
 
@@ -55,7 +56,7 @@ void* MapRenderer :: TextureLoaderCallback( const char *szPath )  {
  * TxmLib texture deallocation callback implementation.
  * @param pTexture Pointer to the texture that will be deallocated;
  */
-void MapRenderer :: TextureFreeCallback( void *pTexture )  {
+void WorldRenderer :: TextureFreeCallback( void *pTexture )  {
 
     Texture2D    *pTexture2D = ( Texture2D * ) pTexture;
 
@@ -68,7 +69,7 @@ void MapRenderer :: TextureFreeCallback( void *pTexture )  {
  * Get a pointer to a loaded layer based on it's Id.
  * @param nLayerId The Layer Id to retrieve the layer;
  */
-tmx_layer* MapRenderer :: GetLayer( int nLayerId )  {
+tmx_layer* WorldRenderer :: GetLayer( int nLayerId )  {
 
     return tmx_find_layer_by_id( m_pTmxMap, nLayerId );
 }
@@ -78,7 +79,7 @@ tmx_layer* MapRenderer :: GetLayer( int nLayerId )  {
  * @param szLayerName The Layer name used to retrieve the layer. If the layer
  * name is NULL parameter nLayerId will be used for searching layer;
  */
-tmx_layer* MapRenderer :: GetLayer( const char *szLayerName )  {
+tmx_layer* WorldRenderer :: GetLayer( const char *szLayerName )  {
 
     return tmx_find_layer_by_name( m_pTmxMap, szLayerName );
 }
@@ -86,7 +87,7 @@ tmx_layer* MapRenderer :: GetLayer( const char *szLayerName )  {
 /**
  * Convert integer color representation to @link Color object;
  */
-Color MapRenderer :: IntToColor( int color ) {
+Color WorldRenderer :: IntToColor( int color ) {
 
     tmx_col_bytes res = tmx_col_to_bytes( color );
 
@@ -109,14 +110,14 @@ Color MapRenderer :: IntToColor( int color ) {
  * @param fViewHeight Calculated object height based on
  * viewport boundaries;
  */
-bool MapRenderer :: GetClippedArea( int32_t nSourceW,
-                                    int32_t nSourceH,
-                                    int32_t nDestX,
-                                    int32_t nDestY,
-                                    float& fViewX,
-                                    float& fViewY,
-                                    float& fViewWidth,
-                                    float& fViewHeight )  {
+bool WorldRenderer :: GetClippedArea( int32_t nSourceW,
+                                      int32_t nSourceH,
+                                      int32_t nDestX,
+                                      int32_t nDestY,
+                                      float& fViewX,
+                                      float& fViewY,
+                                      float& fViewWidth,
+                                      float& fViewHeight )  {
 
     float       fClippingX;
     float       fClippingY;
@@ -177,7 +178,7 @@ bool MapRenderer :: GetClippedArea( int32_t nSourceW,
  * @param nCoordY The Y coordinate to plot pixel;
  * @param color Color of pixel;
  */
-void MapRenderer :: SetPixel( int nCoordX, int nCoordY, Color color )  {
+void WorldRenderer :: SetPixel( int nCoordX, int nCoordY, Color color )  {
 
     DrawPixel( nCoordX, nCoordY, color );
 }
@@ -191,11 +192,11 @@ void MapRenderer :: SetPixel( int nCoordX, int nCoordY, Color color )  {
  * @param fRadiusX Y radius;
  * @param color Ellipse color;
  */
-void MapRenderer :: MidPointEllipse( double fCoordX,
-                                     double fCoordY,
-                                     double fRadiusX,
-                                     double fRadiusY,
-                                     Color color ) {
+void WorldRenderer :: MidPointEllipse( double fCoordX,
+                                       double fCoordY,
+                                       double fRadiusX,
+                                       double fRadiusY,
+                                       Color color ) {
     double dx, dy, d1, d2, x, y;
     x = 0;
     y = fRadiusY;
@@ -311,11 +312,11 @@ void MapRenderer :: MidPointEllipse( double fCoordX,
  * @param nY1 Final Y line coordinate;
  * @param color line color;
  */
-void MapRenderer :: LineBresenham( int nX0,
-                                   int nY0,
-                                   int nX1,
-                                   int nY1,
-                                   Color color )  {
+void WorldRenderer :: LineBresenham( int nX0,
+                                     int nY0,
+                                     int nX1,
+                                     int nY1,
+                                     Color color )  {
 
   int   nDx  = std :: abs( nX1 - nX0 );
   int   nSx  = ( nX0 < nX1 ? 1 : -1 );
@@ -356,11 +357,11 @@ void MapRenderer :: LineBresenham( int nX0,
  * @param points array of points for this polygon;
  * @param points_count Number of items of points array;
  */
-void MapRenderer :: DrawPolyline( double fOffset_x,
-                                  double fOffset_y,
-                                  double **fPoints,
-                                  int nPointsCount,
-                                  Color color ) {
+void WorldRenderer :: DrawPolyline( double fOffset_x,
+                                    double fOffset_y,
+                                    double **fPoints,
+                                    int nPointsCount,
+                                    Color color ) {
 
     fOffset_x = ( ( fOffset_x +
                   m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
@@ -383,11 +384,11 @@ void MapRenderer :: DrawPolyline( double fOffset_x,
  * @param points array of points for this polygon;
  * @param points_count Number of items of points array;
  */
-void MapRenderer :: DrawPolygon( double fOffset_x,
-                                 double fOffset_y,
-                                 double **fPoints,
-                                 int nPointsCount,
-                                 Color color ) {
+void WorldRenderer :: DrawPolygon( double fOffset_x,
+                                   double fOffset_y,
+                                   double **fPoints,
+                                   int nPointsCount,
+                                   Color color ) {
 
     DrawPolyline( fOffset_x,
                   fOffset_y,
@@ -417,11 +418,11 @@ void MapRenderer :: DrawPolygon( double fOffset_x,
  * @param fHeight The square height;
  * @param color Rectangle color;
  */
-void MapRenderer :: DrawRectangle( double fOffset_x,
-                                   double fOffset_y,
-                                   double fWidth,
-                                   double fHeight,
-                                   Color color )  {
+void WorldRenderer :: DrawRectangle( double fOffset_x,
+                                     double fOffset_y,
+                                     double fWidth,
+                                     double fHeight,
+                                     Color color )  {
 
     float          fViewStartX;
     float          fViewStartY;
@@ -475,11 +476,11 @@ void MapRenderer :: DrawRectangle( double fOffset_x,
  * @param fHeight The ellipse height;
  * @param color ellipse color;
  */
-void MapRenderer :: DrawEllipse( double fOffset_x,
-                                 double fOffset_y,
-                                 double fWidth,
-                                 double fHeight,
-                                 Color color )  {
+void WorldRenderer :: DrawEllipse( double fOffset_x,
+                                   double fOffset_y,
+                                   double fWidth,
+                                   double fHeight,
+                                   Color color )  {
 
     float          fViewStartX;
     float          fViewStartY;
@@ -513,14 +514,14 @@ void MapRenderer :: DrawEllipse( double fOffset_x,
  * @param uDestY destination Y coordinate on texture;
  * @param opacity opacity level to be applied on texture;
  */
-void MapRenderer :: DrawTile( void *pImage,
-                              int32_t nSourceX,
-                              int32_t nSourceY,
-                              int32_t nSourceW,
-                              int32_t nSourceH,
-                              int32_t nDestX,
-                              int32_t nDestY,
-                              float fOpacity ) {
+void WorldRenderer :: DrawTile( void *pImage,
+                                int32_t nSourceX,
+                                int32_t nSourceY,
+                                int32_t nSourceW,
+                                int32_t nSourceH,
+                                int32_t nDestX,
+                                int32_t nDestY,
+                                float fOpacity ) {
 
     Texture2D      *pTexture   = ( Texture2D * ) pImage;
     unsigned char  op          = ( 0xFF * fOpacity );
@@ -553,7 +554,7 @@ void MapRenderer :: DrawTile( void *pImage,
  * Draw objects on canvas;
  * @param pLayer Pointer to layer containing object group to draw;
  */
-void MapRenderer :: DrawObjects( tmx_layer *pLayer ) {
+void WorldRenderer :: DrawObjects( tmx_layer *pLayer ) {
 
     tmx_object *head = pLayer ->  content.objgr -> head;
     Color      color = IntToColor( pLayer ->  content.objgr -> color );
@@ -603,7 +604,7 @@ void MapRenderer :: DrawObjects( tmx_layer *pLayer ) {
  * Draw image layer on canvas;
  * @param pImage Pointer to layer containing image to draw;
  */
-void MapRenderer :: DrawImageLayer( tmx_layer *pLayer ) {
+void WorldRenderer :: DrawImageLayer( tmx_layer *pLayer ) {
 
     Texture2D *pTexture = ( Texture2D * ) pLayer -> content.image -> resource_image;
 
@@ -615,25 +616,22 @@ void MapRenderer :: DrawImageLayer( tmx_layer *pLayer ) {
  * @param pMap Pointer to layer map;
  * @param pLayer Pointer to layer with objects to draw;
  */
-void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
+void WorldRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
 
-    float         fOpacity;
+    float         fOpacity = pLayer -> opacity;
 
-    fOpacity = pLayer -> opacity;
 
     for( unsigned long i = 0; i < pMap -> height; i++ ) {
         for( unsigned long j = 0; j < pMap -> width; j++ ) {
-            tmx_tile      *pTile;
-            uint32_t       nLayerGID = pLayer -> content.gids[( i * pMap -> width ) + j];
-            uint32_t       nGID      = nLayerGID & TMX_FLIP_BITS_REMOVAL;
+            stTile          tile;
+            stLayer         layer = { false, 0, 0, 0, pLayer };
+            stCoordinate2D  coord = { ( int ) j, ( int ) i };
 
-            pTile = pMap -> tiles[nGID];
-
-            if( pTile != NULL ) {
+            if( GetTile( coord, layer, tile ) )  {
+                tmx_tile       *pTile = tile.pTile;
                 tmx_image      *pIm   = pTile -> image;
                 tmx_tileset    *pTs;
                 void           *pImage;
-
 
                 /*
                  * Perform tile animation
@@ -662,7 +660,7 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                                             tmxAnimFrm.tile_id );
                         }
                         else  {
-                            nNextFrmGID = nGID;
+                            nNextFrmGID = tile.nGID;
                             pAnimInfo -> nCounter = 0;
                         }
 
@@ -671,7 +669,7 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                         pTile = pAnimInfo -> pNextTile;
 
                         if( !pTile )
-                            pTile = pMap -> tiles[nGID];
+                            pTile = pMap -> tiles[tile.nGID];
                     }
                     else  {
                         pTile = ( ( __stTileAnimInfo * ) pTile -> user_data.pointer ) -> pNextTile;
@@ -705,7 +703,7 @@ void MapRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
  * @param pMap Pointer to layers map;
  * @param pLayer Array of layer objects to draw;
  */
-void MapRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayer ) {
+void WorldRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayer ) {
 
     while( pLayer ) {
         if( pLayer -> visible ) {
@@ -732,7 +730,7 @@ void MapRenderer :: DrawAllLayers( tmx_map *pMap, tmx_layer *pLayer ) {
 /**
  * Render all map objects.
  */
-void MapRenderer :: RenderMap( void ) {
+void WorldRenderer :: RenderMap( void ) {
 
     if( m_bClearBackground )
         ClearBackground( IntToColor( m_pTmxMap -> backgroundcolor ) );
@@ -746,7 +744,7 @@ void MapRenderer :: RenderMap( void ) {
 /**
  * Unload a previously loaded map and it's related data (animations, etc...);
  */
-bool MapRenderer :: UnloadMap( void )  {
+bool WorldRenderer :: UnloadMap( void )  {
 
     if( m_pTmxMap )  {
         tmx_map_free( m_pTmxMap );
@@ -772,7 +770,7 @@ bool MapRenderer :: UnloadMap( void )  {
 /**
  * Initialize the zoom engine.
  */
-void MapRenderer :: InitializeZoomEngine( void )  {
+void WorldRenderer :: InitializeZoomEngine( void )  {
 
     float   fZoomStep = 0.0;
 
@@ -794,26 +792,26 @@ void MapRenderer :: InitializeZoomEngine( void )  {
 /**
  * Initialize controller event handlers.
  */
-void MapRenderer :: InitializeControllerHandlers( void )  {
+void WorldRenderer :: InitializeControllerHandlers( void )  {
 
     for( int nCount = 0; nCount < m_UserEventHandlers.size(); nCount++ )
         m_UserEventHandlers[nCount] = NULL;
 
-    m_UserEventHandlers[KEY_UP]        = &MapRenderer :: MoveCameraUp;
-    m_UserEventHandlers[KEY_DOWN]      = &MapRenderer :: MoveCameraDown;
-    m_UserEventHandlers[KEY_LEFT]      = &MapRenderer :: MoveCameraLeft;
-    m_UserEventHandlers[KEY_RIGHT]     = &MapRenderer :: MoveCameraRight;
-    m_UserEventHandlers[KEY_PAGE_UP]   = &MapRenderer :: ZoomIn;
-    m_UserEventHandlers[KEY_PAGE_DOWN] = &MapRenderer :: ZoomOut;
-    m_UserEventHandlers[KEY_HOME]      = &MapRenderer :: ResetZoom;
-    m_UserEventHandlers[KEY_END]       = &MapRenderer :: ResetCamera;
+    m_UserEventHandlers[KEY_UP]        = &WorldRenderer :: MoveCameraUp;
+    m_UserEventHandlers[KEY_DOWN]      = &WorldRenderer :: MoveCameraDown;
+    m_UserEventHandlers[KEY_LEFT]      = &WorldRenderer :: MoveCameraLeft;
+    m_UserEventHandlers[KEY_RIGHT]     = &WorldRenderer :: MoveCameraRight;
+    m_UserEventHandlers[KEY_PAGE_UP]   = &WorldRenderer :: ZoomIn;
+    m_UserEventHandlers[KEY_PAGE_DOWN] = &WorldRenderer :: ZoomOut;
+    m_UserEventHandlers[KEY_HOME]      = &WorldRenderer :: ResetZoom;
+    m_UserEventHandlers[KEY_END]       = &WorldRenderer :: ResetCamera;
 }
 
 /**
  * Check user input selected previously by user (mouse,
  * joystick, keyboard, etc...)
  */
-void MapRenderer :: HandleUserInput( void )  {
+void WorldRenderer :: HandleUserInput( void )  {
 
     int      nKeyPressed = GetKeyPressed();
 
@@ -831,12 +829,13 @@ void MapRenderer :: HandleUserInput( void )  {
  * @param pTmxLayer Pointer to Tmx that data will be copied to;
  * @param layer User struct whose layer data will be copied from;
  */
-void MapRenderer :: CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer )  {
+void WorldRenderer :: CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer )  {
 
     pTmxLayer -> opacity = ( __MAX_OPACITY_LEVEL - layer.nOpacity );
     pTmxLayer -> offsetx = layer.nOffsetX;
     pTmxLayer -> offsety = layer.nOffsetY;
     pTmxLayer -> visible = layer.bVisible;
+    layer.pLayer         = pTmxLayer;
 }
 
 /**
@@ -844,12 +843,13 @@ void MapRenderer :: CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer )  {
  * @param pTmxLayer Reference to user layer that data will be copied to;
  * @param layer Pointer whose tmx layer data will be copied from;
  */
-void MapRenderer :: CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer )  {
+void WorldRenderer :: CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer )  {
 
     layer.nOpacity = ( pTmxLayer -> opacity + __MAX_OPACITY_LEVEL );
     layer.nOffsetX = pTmxLayer -> offsetx;
     layer.nOffsetY = pTmxLayer -> offsety;
     layer.bVisible = pTmxLayer -> visible;
+    layer.pLayer         = pTmxLayer;
 }
 
 /**
@@ -859,10 +859,10 @@ void MapRenderer :: CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer )  {
  * @param szTitle Screen renderer title;
  * @param nTargetFps Renderer desired FPS;
  */
-MapRenderer :: MapRenderer( float fWidth,
-                            float fHeight,
-                            const char *szTitle,
-                            int nTargetFps )  {
+WorldRenderer :: WorldRenderer( float fWidth,
+                                float fHeight,
+                                const char *szTitle,
+                                int nTargetFps )  {
 
     m_Viewport.x        = 0;
     m_Viewport.y        = 0;
@@ -900,7 +900,7 @@ MapRenderer :: MapRenderer( float fWidth,
 /**
  * Destructor. Finalize all class data.
  */
-MapRenderer :: ~MapRenderer( void )  {
+WorldRenderer :: ~WorldRenderer( void )  {
 
     UnloadMap();
 }
@@ -911,7 +911,7 @@ MapRenderer :: ~MapRenderer( void )  {
  * KeyboardKey enum);
  * The default exit is ESC Key;
  */
-void MapRenderer :: SetExitKey( KeyboardKey key )  {
+void WorldRenderer :: SetExitKey( KeyboardKey key )  {
 
     ::SetExitKey( key );
 }
@@ -920,7 +920,7 @@ void MapRenderer :: SetExitKey( KeyboardKey key )  {
  * Set window resizeable status.
  * @param bResizeable The new resizeable status for window;
  */
-void MapRenderer :: SetWindowResizeable( bool bResizeable )  {
+void WorldRenderer :: SetWindowResizeable( bool bResizeable )  {
 
     m_bWindowResizeable = bResizeable;
 }
@@ -930,7 +930,7 @@ void MapRenderer :: SetWindowResizeable( bool bResizeable )  {
  * rendering cycle;
  * @param bStatus The new background clear status settings;
  */
-void MapRenderer :: SetClearBackground( bool bStatus )  {
+void WorldRenderer :: SetClearBackground( bool bStatus )  {
 
     m_bClearBackground = bStatus;
 }
@@ -939,7 +939,7 @@ void MapRenderer :: SetClearBackground( bool bStatus )  {
  * Enable/disable draw FPS information on top left corner of screen
  * @param bDrawFPS The new draw FPS status;
  */
-void MapRenderer :: SetDrawFPS( bool bDrawFPS )  {
+void WorldRenderer :: SetDrawFPS( bool bDrawFPS )  {
 
     m_bDrawFPS = bDrawFPS;
 }
@@ -951,7 +951,7 @@ void MapRenderer :: SetDrawFPS( bool bDrawFPS )  {
  * Reactive, the view port reacts only for each key pressing;
  * @param mode The new view control mode;
  */
-void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
+void WorldRenderer :: SetViewControlMode( ViewControlMode mode )  {
 
     m_ViewControlMode = mode;
 }
@@ -960,7 +960,7 @@ void MapRenderer :: SetViewControlMode( ViewControlMode mode )  {
  * Set the new renderer viewport;
  * @param viewport The new viewport rectangle;
  */
-void MapRenderer :: SetViewport( Viewport viewport )  {
+void WorldRenderer :: SetViewport( Viewport viewport )  {
 
     m_Viewport = viewport;
 }
@@ -972,7 +972,7 @@ void MapRenderer :: SetViewport( Viewport viewport )  {
  * @param nStepHeight The new scroll step size Height
  * (-1 uses the map tile size height);
  */
-void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
+void WorldRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
 
     m_nScrollStepWidth  = nStepWidth;
     m_nScrollStepHeight = nStepHeight;
@@ -981,7 +981,7 @@ void MapRenderer :: SetScrollStepSize( int nStepWidth, int nStepHeight )  {
 /**
  * Get last key from user input selected control.
  */
-int MapRenderer :: GetKeyPressed( void )  {
+int WorldRenderer :: GetKeyPressed( void )  {
 
     switch( m_ViewControlMode )  {
         case VIEW_CONTROL_MODE_REACTIVE :
@@ -1021,7 +1021,7 @@ int MapRenderer :: GetKeyPressed( void )  {
  * mouse, keyboard, joystick, touch, ...);
  * @param bEnabled The new user zoom mode;
  */
-void MapRenderer :: SetEnableUserZoom( bool bEnabled )  {
+void WorldRenderer :: SetEnableUserZoom( bool bEnabled )  {
 
     m_bEnabledUserZoom = bEnabled;
 }
@@ -1030,7 +1030,7 @@ void MapRenderer :: SetEnableUserZoom( bool bEnabled )  {
  * Set the minimum zoom border limit;
  * @param nMinPos The new minimum zoom limit;
  */
-void MapRenderer :: SetMinZoom( unsigned nMinPos )  {
+void WorldRenderer :: SetMinZoom( unsigned nMinPos )  {
 
     std::numeric_limits<unsigned>  limits;
 
@@ -1042,7 +1042,7 @@ void MapRenderer :: SetMinZoom( unsigned nMinPos )  {
  * Set the maximum zoom border limit;
  * @param nMaxPos The new maximum zoom limit;
  */
-void MapRenderer :: SetMaxZoom( unsigned nMaxPos )  {
+void WorldRenderer :: SetMaxZoom( unsigned nMaxPos )  {
 
     std::numeric_limits<unsigned>  limits;
 
@@ -1055,7 +1055,7 @@ void MapRenderer :: SetMaxZoom( unsigned nMaxPos )  {
  * reset operations.
  * @param nZoomPos The new preferred zoom;
  */
-void MapRenderer :: SetPreferredZoom( unsigned nZoomPos )  {
+void WorldRenderer :: SetPreferredZoom( unsigned nZoomPos )  {
 
     std::numeric_limits<unsigned>  limits;
 
@@ -1067,7 +1067,7 @@ void MapRenderer :: SetPreferredZoom( unsigned nZoomPos )  {
  * Set zoom programatically.
  * @param nZoomPos The zoom to be applied;
  */
-void MapRenderer :: SetZoom( unsigned nZoomPos )  {
+void WorldRenderer :: SetZoom( unsigned nZoomPos )  {
 
     bool  bEnabledUserZoom = m_bEnabledUserZoom;
 
@@ -1085,7 +1085,7 @@ void MapRenderer :: SetZoom( unsigned nZoomPos )  {
 /**
  * Reset zoom to it's default state.
  */
-void MapRenderer :: ResetZoom( void )  {
+void WorldRenderer :: ResetZoom( void )  {
 
     m_nCurrentZoomPos = m_nPreferredZoomPos;
     m_fZoomFactor     = m_vZoomFactorList[m_nCurrentZoomPos];
@@ -1094,7 +1094,7 @@ void MapRenderer :: ResetZoom( void )  {
 /**
  * Performs Zoom In effect.
  */
-void MapRenderer :: ZoomIn( void )  {
+void WorldRenderer :: ZoomIn( void )  {
 
     if( ( m_nCurrentZoomPos < m_ZoomBorderLimits.second ) && m_bEnabledUserZoom )  {
         m_nCurrentZoomPos++;
@@ -1109,7 +1109,7 @@ void MapRenderer :: ZoomIn( void )  {
 /**
  * Performs Zoom Out effect.
  */
-void MapRenderer :: ZoomOut( void )  {
+void WorldRenderer :: ZoomOut( void )  {
 
     if( ( m_nCurrentZoomPos > m_ZoomBorderLimits.first ) && m_bEnabledUserZoom )  {
         m_nCurrentZoomPos--;
@@ -1120,7 +1120,7 @@ void MapRenderer :: ZoomOut( void )  {
 /**
  * Reset the camera position.
  */
-void MapRenderer :: ResetCamera( void )  {
+void WorldRenderer :: ResetCamera( void )  {
 
     m_CameraPos.x = 0;
     m_CameraPos.y = 0;
@@ -1129,7 +1129,7 @@ void MapRenderer :: ResetCamera( void )  {
 /**
  * Move view camera up.
  */
-void MapRenderer :: MoveCameraUp( void )  {
+void WorldRenderer :: MoveCameraUp( void )  {
 
     m_CameraPos.y-=m_nScrollStepHeight;
 }
@@ -1137,7 +1137,7 @@ void MapRenderer :: MoveCameraUp( void )  {
 /**
  * Move view camera down.
  */
-void MapRenderer :: MoveCameraDown( void )  {
+void WorldRenderer :: MoveCameraDown( void )  {
 
     m_CameraPos.y+=m_nScrollStepHeight;
 }
@@ -1145,7 +1145,7 @@ void MapRenderer :: MoveCameraDown( void )  {
 /**
  * Move view camera left.
  */
-void MapRenderer :: MoveCameraLeft( void )  {
+void WorldRenderer :: MoveCameraLeft( void )  {
 
     m_CameraPos.x-=m_nScrollStepWidth;
 }
@@ -1153,7 +1153,7 @@ void MapRenderer :: MoveCameraLeft( void )  {
 /**
  * Move view camera right.
  */
-void MapRenderer :: MoveCameraRight( void )  {
+void WorldRenderer :: MoveCameraRight( void )  {
 
     m_CameraPos.x+=m_nScrollStepWidth;
 }
@@ -1163,7 +1163,7 @@ void MapRenderer :: MoveCameraRight( void )  {
  * @param nLayerId The layer id to set layer parameters;
  * @param layer reference to layer parameters structure to set;
  */
-bool MapRenderer :: SetLayer( int nLayerId, stLayer &layer )  {
+bool WorldRenderer :: SetLayer( int nLayerId, stLayer &layer )  {
 
     tmx_layer *pTmxLayer = GetLayer( nLayerId );
 
@@ -1180,7 +1180,7 @@ bool MapRenderer :: SetLayer( int nLayerId, stLayer &layer )  {
  * @param szLayerName The layer name to set layer parameters;
  * @param layer reference to layer parameters structure to set;
  */
-bool MapRenderer :: SetLayer( const char *szLayerName, stLayer &layer )  {
+bool WorldRenderer :: SetLayer( const char *szLayerName, stLayer &layer )  {
 
     tmx_layer *pTmxLayer = GetLayer( szLayerName );
 
@@ -1197,7 +1197,7 @@ bool MapRenderer :: SetLayer( const char *szLayerName, stLayer &layer )  {
  * @param nLayerId The layer id to get layer parameters;
  * @param layer reference to layer parameters structure to get;
  */
-bool MapRenderer :: GetLayer( int nLayerId, stLayer &layer )  {
+bool WorldRenderer :: GetLayer( int nLayerId, stLayer &layer )  {
 
     tmx_layer *pTmxLayer = GetLayer( nLayerId );
 
@@ -1207,7 +1207,6 @@ bool MapRenderer :: GetLayer( int nLayerId, stLayer &layer )  {
     }
 
     return false;
-
 }
 
 /**
@@ -1215,7 +1214,7 @@ bool MapRenderer :: GetLayer( int nLayerId, stLayer &layer )  {
  * @param szLayerName The layer name to get layer parameters;
  * @param layer reference to layer parameters structure to get;
  */
-bool MapRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
+bool WorldRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
 
     tmx_layer *pTmxLayer = GetLayer( szLayerName );
 
@@ -1228,10 +1227,37 @@ bool MapRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
 }
 
 /**
+ * Get a tile based X and Y coordinates on specied layer;
+ * @param coord Tile 2D coordinates of tile on layer;
+ * @param layer Reference to the layer whose tile will be
+ * retrieved;
+ * @param tile reference to @link stTile object to receive
+ * tile information;
+ *
+ */
+bool WorldRenderer :: GetTile( stCoordinate2D coord, stLayer& layer, stTile& tile ) {
+
+    tmx_tile      *pTile;
+
+    tile.nGID = layer.pLayer -> content.gids[( coord.y * m_pTmxMap -> width ) +
+                                               coord.x] & TMX_FLIP_BITS_REMOVAL;
+    pTile = m_pTmxMap -> tiles[tile.nGID];
+
+    if( pTile )  {
+        tile.pTile = pTile;
+    }
+    else  {
+        tile.nGID = 0;
+    }
+
+    return ( pTile != NULL );
+}
+
+/**
  * Set the TMX map file to engine load on start.
  * @param szTmxMapFile Renderer map file;
  */
-void MapRenderer :: SetMapFile( const char *szTmxMapFile )  {
+void WorldRenderer :: SetMapFile( const char *szTmxMapFile )  {
 
     m_strTxMapFile = szTmxMapFile;
 
@@ -1243,7 +1269,7 @@ void MapRenderer :: SetMapFile( const char *szTmxMapFile )  {
  * @param mapInfo Reference to the struct @link stMapInfo that will
  * receive the map information.
  */
-bool MapRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
+bool WorldRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
 
     if( m_pTmxMap )  {
         mapInfo.nMapWidth   = m_pTmxMap -> width;
@@ -1260,7 +1286,7 @@ bool MapRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
 /**
  * Start engine renderer.
  */
-bool MapRenderer :: Start( void )  {
+bool WorldRenderer :: Start( void )  {
 
     if( m_bWindowResizeable )
         SetConfigFlags( FLAG_WINDOW_RESIZABLE );
@@ -1297,7 +1323,7 @@ bool MapRenderer :: Start( void )  {
 /**
  * Stop renderer freeing all allocated resources.
  */
-void MapRenderer :: Stop( void )  {
+void WorldRenderer :: Stop( void )  {
 
     if( m_bIsStarted )  {
         UnloadMap();
@@ -1309,7 +1335,7 @@ void MapRenderer :: Stop( void )  {
 /**
  * Run renderer.
  */
-bool MapRenderer :: Run( void )  {
+bool WorldRenderer :: Run( void )  {
 
     if( m_bIsStarted )  {
         while ( !WindowShouldClose() ) {

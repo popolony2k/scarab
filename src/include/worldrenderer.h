@@ -1,20 +1,19 @@
 /*
- * maprenderer.h
+ * worldrenderer.h
  *
  *  Created on: Jun 17, 2021
  *      Author: popolony2k
  */
 
-#ifndef __MAPRENDERER_H__
-#define __MAPRENDERER_H__
+#ifndef __WORLDRENDERER_H__
+#define __WORLDRENDERER_H__
 
-#include <tmx.h>
 #include <raylib.h>
 #include <string>
 #include <queue>
 #include <vector>
 #include <array>
-#include "mapdefs.h"
+#include "worldbasedefs.h"
 
 
 /*
@@ -53,7 +52,7 @@ enum ViewControlMode  {
     VIEW_CONTROL_MODE_REACTIVE
 };
 
-class MapRenderer  {
+class WorldRenderer  {
 
     /**
      * Tile animation information.
@@ -68,7 +67,7 @@ class MapRenderer  {
     typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
 
 
-    typedef void ( MapRenderer :: *KEY_EVENT_HANDLER )( void );
+    typedef void ( WorldRenderer :: *KEY_EVENT_HANDLER )( void );
     typedef std :: array<KEY_EVENT_HANDLER, MAX_KEYS> KeyBindingEventHandler;
 
     KeyBindingEventHandler     m_UserEventHandlers;
@@ -179,11 +178,11 @@ class MapRenderer  {
 
     public:
 
-    MapRenderer( float fWidth,
-                 float fHeight,
-                 const char* szTitle,
-                 int nTargetFps = -1 );
-    ~MapRenderer( void );
+    WorldRenderer( float fWidth,
+                   float fHeight,
+                   const char* szTitle,
+                   int nTargetFps = -1 );
+    ~WorldRenderer( void );
 
     // Window behavior
     void SetExitKey( KeyboardKey key );
@@ -220,6 +219,9 @@ class MapRenderer  {
     bool GetLayer( int nLayerId, stLayer &layer );
     bool GetLayer( const char *szLayerName, stLayer &layer );
 
+    // Tile management
+    bool GetTile( stCoordinate2D coord, stLayer& layer, stTile& tile );
+
     // Map management
     void SetMapFile( const char *szTxMapFile );
     bool GetMapInfo( stMapInfo& mapInfo );
@@ -230,4 +232,4 @@ class MapRenderer  {
     bool Run( void );
 };
 
-#endif /* __MAPRENDERER_H__ */
+#endif /* __WORLDRENDERER_H__ */

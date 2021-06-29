@@ -1,4 +1,4 @@
-#include "maprenderer.h"
+#include "worldrenderer.h"
 
 #define DISPLAY_H         600
 #define DISPLAY_W         800
@@ -6,12 +6,13 @@
 
 int main(int argc, char **argv) {
 
-    MapRenderer   renderer( DISPLAY_W,
-                            DISPLAY_H,
-                            "Sunlight Engine",
-                            FRAMES_PER_SECOND );
-    std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
-    std :: string strTmxMapFile = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
+    WorldRenderer   renderer( DISPLAY_W,
+                              DISPLAY_H,
+                              "Sunlight Engine",
+                              FRAMES_PER_SECOND );
+    std :: string strTmxMapFile0 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
+    std :: string strTmxMapFile1 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
+    std :: string strTmxMapFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
     stLayer       layer;
 
     //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
