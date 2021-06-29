@@ -220,7 +220,7 @@ class WorldRenderer  {
     bool GetLayer( const char *szLayerName, stLayer &layer );
 
     // Tile management
-    bool GetTile( stCoordinate2D coord, stLayer& layer, stTile& tile );
+    bool GetTile( int nTileRow, int nTileCol, stLayer& layer, stTile& tile );
 
     // Map management
     void SetMapFile( const char *szTxMapFile );

@@ -627,7 +627,7 @@ void WorldRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
             stLayer         layer = { false, 0, 0, 0, pLayer };
             stCoordinate2D  coord = { ( int ) j, ( int ) i };
 
-            if( GetTile( coord, layer, tile ) )  {
+            if( GetTile( i, j, layer, tile ) )  {
                 tmx_tile       *pTile = tile.pTile;
                 tmx_image      *pIm   = pTile -> image;
                 tmx_tileset    *pTs;
@@ -1227,20 +1227,21 @@ bool WorldRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
 }
 
 /**
- * Get a tile based X and Y coordinates on specied layer;
- * @param coord Tile 2D coordinates of tile on layer;
+ * Get a tile based row and column on specified layer;
+ * @param nTileRow The tile row on layer.
+ * @param nTileCol The tile column on layer.
  * @param layer Reference to the layer whose tile will be
  * retrieved;
  * @param tile reference to @link stTile object to receive
  * tile information;
  *
  */
-bool WorldRenderer :: GetTile( stCoordinate2D coord, stLayer& layer, stTile& tile ) {
+bool WorldRenderer :: GetTile( int nTileRow, int nTileCol, stLayer& layer, stTile& tile ) {
 
     tmx_tile      *pTile;
 
-    tile.nGID = layer.pLayer -> content.gids[( coord.y * m_pTmxMap -> width ) +
-                                               coord.x] & TMX_FLIP_BITS_REMOVAL;
+    tile.nGID = layer.pLayer -> content.gids[( nTileRow * m_pTmxMap -> width ) +
+                                               nTileCol] & TMX_FLIP_BITS_REMOVAL;
     pTile = m_pTmxMap -> tiles[tile.nGID];
 
     if( pTile )  {
