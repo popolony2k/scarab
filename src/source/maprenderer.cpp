@@ -563,31 +563,31 @@ void MapRenderer :: DrawObjects( tmx_layer *pLayer ) {
             switch( head -> obj_type )  {
                 case OT_SQUARE :
                     DrawRectangle( ( head -> x + pLayer -> offsetx ),
-                                   ( head -> y + + pLayer -> offsety ),
+                                   ( head -> y + pLayer -> offsety ),
                                    head -> width,
                                    head -> height,
                                    color );
                     break;
 
                 case OT_POLYGON :
-                    DrawPolygon( ( head -> x + + pLayer -> offsetx ),
-                                 ( head -> y + + pLayer -> offsety ),
+                    DrawPolygon( ( head -> x + pLayer -> offsetx ),
+                                 ( head -> y + pLayer -> offsety ),
                                  head -> content.shape -> points,
                                  head -> content.shape -> points_len,
                                  color );
                     break;
 
                 case OT_POLYLINE :
-                    DrawPolyline( ( head -> x + + pLayer -> offsetx ),
-                                  ( head -> y + + pLayer -> offsety ),
+                    DrawPolyline( ( head -> x + pLayer -> offsetx ),
+                                  ( head -> y + pLayer -> offsety ),
                                   head -> content.shape -> points,
                                   head -> content.shape -> points_len,
                                   color );
                     break;
 
                 case OT_ELLIPSE :
-                    DrawEllipse( ( head -> x + + pLayer -> offsetx ),
-                                 ( head -> y + + pLayer -> offsety ),
+                    DrawEllipse( ( head -> x + pLayer -> offsetx ),
+                                 ( head -> y + pLayer -> offsety ),
                                  head -> width,
                                  head -> height,
                                  color );
@@ -1105,7 +1105,7 @@ void MapRenderer :: ResetCamera( void )  {
  */
 void MapRenderer :: MoveCameraUp( void )  {
 
-    m_CameraPos.y-=m_nScrollStepWidth;
+    m_CameraPos.y-=m_nScrollStepHeight;
 }
 
 /**
@@ -1113,7 +1113,7 @@ void MapRenderer :: MoveCameraUp( void )  {
  */
 void MapRenderer :: MoveCameraDown( void )  {
 
-    m_CameraPos.y+=m_nScrollStepWidth;
+    m_CameraPos.y+=m_nScrollStepHeight;
 }
 
 /**
