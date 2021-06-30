@@ -41,7 +41,7 @@
  * Primitive structures definition.
  */
 typedef Rectangle  stViewport;
-typedef Vector2    stVector;    // TODO: Check 'who' is the 'ambiguous'
+typedef Vector2    stVector;
 
 /**
  * View port control mode (active and reactive)
