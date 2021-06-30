@@ -1301,6 +1301,7 @@ bool WorldRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
         mapInfo.nMapHeight  = m_pTmxMap -> height;
         mapInfo.nTileWidth  = m_pTmxMap -> tile_width;
         mapInfo.nTileHeight = m_pTmxMap -> tile_height;
+        mapInfo.pMap        = m_pTmxMap;
 
         return true;
     }

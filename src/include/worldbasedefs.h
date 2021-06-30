@@ -58,6 +58,7 @@ struct stMapInfo  {
     unsigned int   nMapHeight;
     unsigned int   nTileWidth;
     unsigned int   nTileHeight;
+    tmx_map        *pMap;
 };
 
 #endif /* __WORLDBASEDEFS_H__ */
