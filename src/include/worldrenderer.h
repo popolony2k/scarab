@@ -13,7 +13,7 @@
 #include <queue>
 #include <vector>
 #include <array>
-#include "worldbasedefs.h"
+#include "iworldlistener.h"
 
 
 /*
@@ -38,12 +38,13 @@
 #define MAX_KEYS          400
 
 /**
- * Viewport definition.
+ * Primitive structures definition.
  */
-typedef Rectangle  Viewport;
+typedef Rectangle  stViewport;
+typedef Vector2    stVector;    // TODO: Check 'who' is the 'ambiguous'
 
 /**
- * Viewport control mode (active and reactive)
+ * View port control mode (active and reactive)
  * Active, the view port reacts to a single key pressing continuously;
  * Reactive, the view port reacts only for each key pressing;
  */
@@ -52,7 +53,7 @@ enum ViewControlMode  {
     VIEW_CONTROL_MODE_REACTIVE
 };
 
-class WorldRenderer  {
+class WorldRenderer : public IWorld  {
 
     /**
      * Tile animation information.
@@ -65,13 +66,15 @@ class WorldRenderer  {
     typedef std :: deque<__stTileAnimInfo*> __AnimInfoList;
     typedef std :: vector<float> ZoomFactorList;
     typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
+    typedef std :: deque<IWorldListener*> WorldListenerList;
 
 
     typedef void ( WorldRenderer :: *KEY_EVENT_HANDLER )( void );
     typedef std :: array<KEY_EVENT_HANDLER, MAX_KEYS> KeyBindingEventHandler;
 
+    WorldListenerList          m_WorldListenerList;
     KeyBindingEventHandler     m_UserEventHandlers;
-    Vector2                    m_CameraPos;
+    stVector                   m_CameraPos;
     ViewControlMode            m_ViewControlMode;
     int                        m_nScrollStepWidth;
     int                        m_nScrollStepHeight;
@@ -84,7 +87,7 @@ class WorldRenderer  {
     unsigned                   m_nPreferredZoomPos;
     ZoomBorderLimits           m_ZoomBorderLimits;
     __AnimInfoList             m_AnimInfoList;
-    Viewport                   m_Viewport;
+    stViewport                 m_Viewport;
     std :: string              m_strTitle;
     std :: string              m_strTxMapFile;
     tmx_map                    *m_pTmxMap;
@@ -168,8 +171,10 @@ class WorldRenderer  {
     void InitializeZoomEngine( void );
     void InitializeControllerHandlers( void );
 
-    // User input handling
+    // User interaction handling
     void HandleUserInput( void );
+    void HandleUserUpdate( void );
+
 
     // Internal layer handling.
     void CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer );
@@ -182,7 +187,11 @@ class WorldRenderer  {
                    float fHeight,
                    const char* szTitle,
                    int nTargetFps = -1 );
-    ~WorldRenderer( void );
+    virtual ~WorldRenderer( void );
+
+    // World user listener interaction
+    void AddWorldListener( IWorldListener *pListener );
+    void RemoveWorldListener( IWorldListener *pListener );
 
     // Window behavior
     void SetExitKey( KeyboardKey key );
@@ -192,7 +201,7 @@ class WorldRenderer  {
 
     // View port control
     void SetViewControlMode( ViewControlMode mode );
-    void SetViewport( Viewport viewport );
+    void SetViewport( stViewport viewport );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
 
     // User input handling

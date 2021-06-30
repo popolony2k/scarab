@@ -4,8 +4,23 @@
 #define DISPLAY_W         800
 #define FRAMES_PER_SECOND  60
 
+
+class MyListener : public IWorldListener  {
+
+    public:
+
+    virtual ~MyListener()  {}
+
+    void OnUpdate( IWorld& world )  {
+
+        // Add user interaction here
+    }
+
+};
+
 int main(int argc, char **argv) {
 
+    MyListener      my;
     WorldRenderer   renderer( DISPLAY_W,
                               DISPLAY_H,
                               "Sunlight Engine",
@@ -15,9 +30,11 @@ int main(int argc, char **argv) {
     std :: string strTmxMapFile0 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
     stLayer       layer;
 
+    renderer.AddWorldListener( &my );
+
     //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
     renderer.SetMapFile( strTmxMapFile.c_str() );
-    renderer.SetViewport( ( Viewport ) { 10.0, 10.0, 510.0, 590.0 } );
+    renderer.SetViewport( ( stViewport ) { 10.0, 10.0, 510.0, 590.0 } );
     renderer.SetDrawFPS( true );
     renderer.Start();
     renderer.GetLayer( 1, layer );

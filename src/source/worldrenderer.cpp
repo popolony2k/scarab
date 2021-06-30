@@ -9,7 +9,7 @@
 #include <cstring>
 #include <chrono>
 #include <cmath>
-
+#include <algorithm>
 #include "worldrenderer.h"
 
 /*
@@ -825,6 +825,16 @@ void WorldRenderer :: HandleUserInput( void )  {
 }
 
 /**
+ * Handle user updates from user listeners;
+ */
+void WorldRenderer :: HandleUserUpdate( void )  {
+
+    for( IWorldListener* pListener : m_WorldListenerList )  {
+        pListener -> OnUpdate( *this );
+    }
+}
+
+/**
  * Copy user layer to tmx layer.
  * @param pTmxLayer Pointer to Tmx that data will be copied to;
  * @param layer User struct whose layer data will be copied from;
@@ -881,6 +891,7 @@ WorldRenderer :: WorldRenderer( float fWidth,
     m_nScrollStepHeight = __DEFAULT_SCROLL_STEP_HEIGHT;
     m_ViewControlMode   = __DEFAULT_VIEW_CONTROL_MODE;
     m_strTxMapFile.clear();
+    m_WorldListenerList.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
     InitializeZoomEngine();
     InitializeControllerHandlers();
@@ -903,6 +914,36 @@ WorldRenderer :: WorldRenderer( float fWidth,
 WorldRenderer :: ~WorldRenderer( void )  {
 
     UnloadMap();
+    m_WorldListenerList.clear();
+}
+
+/**
+ * Add a World listener to internal listener list renderer.
+ * All listeners will be called for each update step;
+ * @param pListener Pointer to the @IWorldListener object to add;
+ */
+void WorldRenderer :: AddWorldListener( IWorldListener *pListener )  {
+
+    WorldListenerList :: iterator itItem = std :: find( m_WorldListenerList.begin(),
+                                                        m_WorldListenerList.end(),
+                                                        pListener );
+
+    if( itItem == m_WorldListenerList.end() )
+        m_WorldListenerList.push_back( pListener );
+}
+
+/**
+ * Remove a World listener from internal listener list renderer.
+ * @param pListener Pointer to the @IWorldListener object to remove;
+ */
+void WorldRenderer :: RemoveWorldListener( IWorldListener *pListener )  {
+
+    WorldListenerList :: iterator itItem = std :: find( m_WorldListenerList.begin(),
+                                                        m_WorldListenerList.end(),
+                                                        pListener );
+
+    if( itItem != m_WorldListenerList.end() )
+        m_WorldListenerList.erase( itItem );
 }
 
 /**
@@ -960,7 +1001,7 @@ void WorldRenderer :: SetViewControlMode( ViewControlMode mode )  {
  * Set the new renderer viewport;
  * @param viewport The new viewport rectangle;
  */
-void WorldRenderer :: SetViewport( Viewport viewport )  {
+void WorldRenderer :: SetViewport( stViewport viewport )  {
 
     m_Viewport = viewport;
 }
@@ -1370,6 +1411,7 @@ bool WorldRenderer :: Run( void )  {
             BeginDrawing();
             RenderMap();
             HandleUserInput();
+            HandleUserUpdate();
             EndDrawing();
         }
 
