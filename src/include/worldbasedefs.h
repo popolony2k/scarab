@@ -43,7 +43,11 @@ struct stLayer  {
  */
 struct stTile  {
     tmx_tile       *pTile;
-    uint32_t       nGID;    /* Tmx Unique Graphical Id  */
+    uint32_t       nGID;    /* Tmx Global tile Identifier,
+                             * uniquely identifies a tile at
+                             * map scope.
+                             * https://libtmx.readthedocs.io/en/latest/glossary.html#term-gid
+                             */
 };
 
 /**
