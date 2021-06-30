@@ -75,8 +75,8 @@ class WorldRenderer  {
     ViewControlMode            m_ViewControlMode;
     int                        m_nScrollStepWidth;
     int                        m_nScrollStepHeight;
-    float                      m_fWidth;
-    float                      m_fHeight;
+    float                      m_fWindowWidth;
+    float                      m_fWindowHeight;
     int                        m_nTargetFps;
     float                      m_fZoomFactor;
     ZoomFactorList             m_vZoomFactorList;
@@ -220,7 +220,12 @@ class WorldRenderer  {
     bool GetLayer( const char *szLayerName, stLayer &layer );
 
     // Tile management
-    bool GetTile( int nTileRow, int nTileCol, stLayer& layer, stTile& tile );
+    bool GetTile( const stTilePosition& pos,
+                  const stLayer& layer,
+                  stTile& tile );
+
+    // Coordinate conversion
+    bool WorldToTile( const stCoordinate2D& coord, stTilePosition& pos );
 
     // Map management
     void SetMapFile( const char *szTxMapFile );

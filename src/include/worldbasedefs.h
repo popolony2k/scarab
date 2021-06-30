@@ -12,11 +12,19 @@
 
 
 /**
- * 2D coordinate struct.
+ * 2D coordinate structs.
  */
 struct stCoordinate2D  {
     int    x;
     int    y;
+};
+
+/**
+ * Tile position struct.
+ */
+struct stTilePosition  {
+    int            nTileRow;
+    int            nTileCol;
 };
 
 /**

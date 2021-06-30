@@ -624,10 +624,10 @@ void WorldRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
     for( unsigned long i = 0; i < pMap -> height; i++ ) {
         for( unsigned long j = 0; j < pMap -> width; j++ ) {
             stTile          tile;
+            stTilePosition  pos   = { ( int ) i, ( int ) j };
             stLayer         layer = { false, 0, 0, 0, pLayer };
-            stCoordinate2D  coord = { ( int ) j, ( int ) i };
 
-            if( GetTile( i, j, layer, tile ) )  {
+            if( GetTile( pos, layer, tile ) )  {
                 tmx_tile       *pTile = tile.pTile;
                 tmx_image      *pIm   = pTile -> image;
                 tmx_tileset    *pTs;
@@ -868,8 +868,8 @@ WorldRenderer :: WorldRenderer( float fWidth,
     m_Viewport.y        = 0;
     m_Viewport.width    = fWidth;
     m_Viewport.height   = fHeight;
-    m_fWidth            = fWidth;
-    m_fHeight           = fHeight;
+    m_fWindowWidth      = fWidth;
+    m_fWindowHeight     = fHeight;
     m_nTargetFps        = nTargetFps;
     m_strTitle          = szTitle;
     m_pTmxMap           = NULL;
@@ -1227,31 +1227,55 @@ bool WorldRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
 }
 
 /**
- * Get a tile based row and column on specified layer;
- * @param nTileRow The tile row on layer.
- * @param nTileCol The tile column on layer.
+ * Get a tile based row and column on specified map layer;
+ * @param pos The tile position on layer map.
  * @param layer Reference to the layer whose tile will be
  * retrieved;
  * @param tile reference to @link stTile object to receive
  * tile information;
- *
  */
-bool WorldRenderer :: GetTile( int nTileRow, int nTileCol, stLayer& layer, stTile& tile ) {
+bool WorldRenderer :: GetTile( const stTilePosition& pos,
+                               const stLayer& layer,
+                               stTile& tile ) {
 
-    tmx_tile      *pTile;
+    tile.nGID = layer.pLayer -> content.gids[( pos.nTileRow *
+                                               m_pTmxMap -> width ) +
+                                               pos.nTileCol] &
+                                               TMX_FLIP_BITS_REMOVAL;
+    tile.pTile = m_pTmxMap -> tiles[tile.nGID];
 
-    tile.nGID = layer.pLayer -> content.gids[( nTileRow * m_pTmxMap -> width ) +
-                                               nTileCol] & TMX_FLIP_BITS_REMOVAL;
-    pTile = m_pTmxMap -> tiles[tile.nGID];
+    if( !tile.pTile )  {
+        tile.nGID  = 0;
+        tile.pTile = NULL;
 
-    if( pTile )  {
-        tile.pTile = pTile;
+        return false;
     }
-    else  {
-        tile.nGID = 0;
+
+    return true;
+}
+
+/**
+ * Get the tile position based on world coordinate passed as parameter.
+ * @param coord The World coordinate to translate to tile position;
+ * @param pos Reference to struct @link stTilePosition to receive the
+ * tile position based on world coordinate passed as parameter;
+ */
+bool WorldRenderer :: WorldToTile( const stCoordinate2D& coord,
+                                   stTilePosition& pos )  {
+
+    if( m_pTmxMap )  {
+        int     nCoordX = ( coord.x / m_fZoomFactor );
+        int     nCoordY = ( coord.y / m_fZoomFactor );
+
+        if( ( ( nCoordX >= 0 ) && ( nCoordX < m_pTmxMap -> width ) ) &&
+            ( ( nCoordY >= 0 ) && ( nCoordY < m_pTmxMap -> height ) ) ) {
+            pos.nTileCol = ( coord.x / m_pTmxMap -> tile_width );
+            pos.nTileRow = ( coord.y / m_pTmxMap -> tile_height );
+            return true;
+        }
     }
 
-    return ( pTile != NULL );
+    return false;
 }
 
 /**
@@ -1292,7 +1316,9 @@ bool WorldRenderer :: Start( void )  {
     if( m_bWindowResizeable )
         SetConfigFlags( FLAG_WINDOW_RESIZABLE );
 
-    InitWindow( ( int ) m_fWidth, ( int ) m_fHeight, m_strTitle.c_str() );
+    InitWindow( ( int ) m_fWindowWidth,
+                ( int ) m_fWindowHeight,
+                m_strTitle.c_str() );
 
     if( !IsWindowReady() ) {
         tmx_perror( "Cannot create a window" );
