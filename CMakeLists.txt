@@ -9,8 +9,9 @@ include_directories("src/include")
 file( GLOB_RECURSE APPLICATION_SOURCES "src/source" *.cpp )
 file( GLOB APPLICATION_HEADERS src/include/*.h )
 
-file(GLOB_RECURSE REMOVE_CMAKE "build/*")
-list(REMOVE_ITEM APPLICATION_SOURCES ${REMOVE_CMAKE})
+file(GLOB_RECURSE REMOVE_CMAKE_FILES CMakeFiles/*)
+file(GLOB_RECURSE REMOVE_BUILD_FILES build/*)
+list(REMOVE_ITEM APPLICATION_SOURCES ${REMOVE_BUILD_FILES} ${REMOVE_CMAKE_FILES})
 
 # Debug information (comment to turn off)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g2")

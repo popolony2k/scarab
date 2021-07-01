@@ -23,3 +23,7 @@ Release
 GeneratedFiles
 Build
 build
+CMakeFiles
+GameEngine
+Makefile
+CMakeCache.txt
