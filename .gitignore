@@ -18,12 +18,12 @@
 *.settings
 *.maintenance
 *.cmake
+GameEngine
+Makefile
+CMakeCache.txt
 Debug
 Release
 GeneratedFiles
 Build
 build
 CMakeFiles
-GameEngine
-Makefile
-CMakeCache.txt
