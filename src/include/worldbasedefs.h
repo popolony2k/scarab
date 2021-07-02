@@ -15,8 +15,24 @@
  * 2D coordinate structs.
  */
 struct stCoordinate2D  {
-    int    x;
-    int    y;
+    int            x;
+    int            y;
+};
+
+/**
+ * 2D size struct.
+ */
+struct stSize2D  {
+    int            nWidth;
+    int            nHeight;
+};
+
+/**
+ * 2D dimension struct;
+ */
+struct stDimension2D  {
+    stCoordinate2D pos;
+    stSize2D       size;
 };
 
 /**
@@ -33,8 +49,7 @@ struct stTilePosition  {
 struct stLayer  {
     bool           bVisible;
     int            nOpacity;
-    int            nOffsetX;
-    int            nOffsetY;
+    stCoordinate2D offset;
     tmx_layer      *pLayer;
 };
 
@@ -42,22 +57,19 @@ struct stLayer  {
  * Tile definition.
  */
 struct stTile  {
+    uint32_t       nGID;    /* Tmx Global tile Identifier, uniquely identifies
+                              * a tile at map scope.
+                              * https://libtmx.readthedocs.io/en/latest/glossary.html#term-gid
+                              */
     tmx_tile       *pTile;
-    uint32_t       nGID;    /* Tmx Global tile Identifier,
-                             * uniquely identifies a tile at
-                             * map scope.
-                             * https://libtmx.readthedocs.io/en/latest/glossary.html#term-gid
-                             */
 };
 
 /**
  * Map definition struct.
  */
 struct stMapInfo  {
-    unsigned int   nMapWidth;
-    unsigned int   nMapHeight;
-    unsigned int   nTileWidth;
-    unsigned int   nTileHeight;
+    stSize2D       mapSize;
+    stSize2D       tileSize;
     tmx_map        *pMap;
 };
 

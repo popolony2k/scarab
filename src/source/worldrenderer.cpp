@@ -184,7 +184,7 @@ void WorldRenderer :: SetPixel( int nCoordX, int nCoordY, Color color )  {
 }
 
 /**
- * Midpoint ellipse drawing algorithm based on algorithm found at
+ * Midpoint ellipse drawing algorithm based on implementation found at
  * https://www.geeksforgeeks.org/midpoint-ellipse-drawing-algorithm/
  * @param fCoordX Ellipse X coordinate;
  * @param fCoordY Ellipse Y coordinate;
@@ -304,7 +304,7 @@ void WorldRenderer :: MidPointEllipse( double fCoordX,
 }
 
 /**
- * Bresenham line generation implementation based on algorithm found at
+ * Bresenham line generation algorithm based on implementation found at
  * https://gist.github.com/bert/1085538.
  * @param nX0 Initial X line coordinate;
  * @param nY0 Initial Y line coordinate;
@@ -625,7 +625,7 @@ void WorldRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
         for( unsigned long j = 0; j < pMap -> width; j++ ) {
             stTile          tile;
             stTilePosition  pos   = { ( int ) i, ( int ) j };
-            stLayer         layer = { false, 0, 0, 0, pLayer };
+            stLayer         layer = { false, 0, {0, 0}, pLayer };
 
             if( GetTile( pos, layer, tile ) )  {
                 tmx_tile       *pTile = tile.pTile;
@@ -844,8 +844,8 @@ void WorldRenderer :: HandleUserUpdate( void )  {
 void WorldRenderer :: CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer )  {
 
     pTmxLayer -> opacity = ( __MAX_OPACITY_LEVEL - layer.nOpacity );
-    pTmxLayer -> offsetx = layer.nOffsetX;
-    pTmxLayer -> offsety = layer.nOffsetY;
+    pTmxLayer -> offsetx = layer.offset.x;
+    pTmxLayer -> offsety = layer.offset.y;
     pTmxLayer -> visible = layer.bVisible;
     layer.pLayer         = pTmxLayer;
 }
@@ -858,8 +858,8 @@ void WorldRenderer :: CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer )  {
 void WorldRenderer :: CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer )  {
 
     layer.nOpacity = ( pTmxLayer -> opacity + __MAX_OPACITY_LEVEL );
-    layer.nOffsetX = pTmxLayer -> offsetx;
-    layer.nOffsetY = pTmxLayer -> offsety;
+    layer.offset.x = pTmxLayer -> offsetx;
+    layer.offset.y = pTmxLayer -> offsety;
     layer.bVisible = pTmxLayer -> visible;
     layer.pLayer         = pTmxLayer;
 }
@@ -1340,11 +1340,11 @@ void WorldRenderer :: SetMapFile( const char *szTmxMapFile )  {
 bool WorldRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
 
     if( m_pTmxMap )  {
-        mapInfo.nMapWidth   = m_pTmxMap -> width;
-        mapInfo.nMapHeight  = m_pTmxMap -> height;
-        mapInfo.nTileWidth  = m_pTmxMap -> tile_width;
-        mapInfo.nTileHeight = m_pTmxMap -> tile_height;
-        mapInfo.pMap        = m_pTmxMap;
+        mapInfo.mapSize.nWidth   = m_pTmxMap -> width;
+        mapInfo.mapSize.nHeight  = m_pTmxMap -> height;
+        mapInfo.tileSize.nWidth  = m_pTmxMap -> tile_width;
+        mapInfo.tileSize.nHeight = m_pTmxMap -> tile_height;
+        mapInfo.pMap = m_pTmxMap;
 
         return true;
     }
