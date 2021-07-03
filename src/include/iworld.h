@@ -107,7 +107,7 @@ class IWorld  {
      * @param tile reference to @link stTile object to receive
      * tile information;
      */
-    virtual bool GetTile( const stTilePosition& pos,
+    virtual bool GetTile( const stMatrixPosition& pos,
                           const stLayer& layer,
                           stTile& tile ) = 0;
 
@@ -117,8 +117,8 @@ class IWorld  {
      * @param pos Reference to struct @link stTilePosition to receive the
      * tile position based on world coordinate passed as parameter;
      */
-    virtual bool WorldToTile( const stCoordinate2D& coord,
-                              stTilePosition& pos ) = 0;
+    virtual bool WorldToTileMatrix( const stCoordinate2D& coord,
+                                    stMatrixPosition& pos ) = 0;
 
     /**
      * Get the current map information data.

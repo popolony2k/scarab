@@ -60,7 +60,7 @@ class WorldRenderer : public IWorld  {
      */
     struct __stTileAnimInfo  {
         int64_t      nMillis;
-        int          nCounter;
+        uint16_t     nCounter;
         tmx_tile     *pNextTile;
     };
     typedef std :: deque<__stTileAnimInfo*> __AnimInfoList;
@@ -76,6 +76,8 @@ class WorldRenderer : public IWorld  {
     KeyBindingEventHandler     m_UserEventHandlers;
     stVector                   m_CameraPos;
     ViewControlMode            m_ViewControlMode;
+    uint16_t                   m_nMapWidth;
+    uint16_t                   m_nMapHeight;
     int                        m_nScrollStepWidth;
     int                        m_nScrollStepHeight;
     float                      m_fWindowWidth;
@@ -166,17 +168,17 @@ class WorldRenderer : public IWorld  {
     void DrawLayer( tmx_map *pMap, tmx_layer *pLayer );
     void DrawAllLayers( tmx_map *pMap, tmx_layer *pLayer );
     void RenderMap( void );
-
     bool UnloadMap( void );
+
+    // General engine handlers
     void InitializeZoomEngine( void );
     void InitializeControllerHandlers( void );
 
-    // User interaction handling
+    // User interaction handlers
     void HandleUserInput( void );
     void HandleUserUpdate( void );
 
-
-    // Internal layer handling.
+    // Internal layer handlers
     void CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer );
     void CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer );
 
@@ -229,12 +231,13 @@ class WorldRenderer : public IWorld  {
     bool GetLayer( const char *szLayerName, stLayer &layer );
 
     // Tile management
-    bool GetTile( const stTilePosition& pos,
+    bool GetTile( const stMatrixPosition& pos,
                   const stLayer& layer,
                   stTile& tile );
 
     // Coordinate conversion
-    bool WorldToTile( const stCoordinate2D& coord, stTilePosition& pos );
+    bool WorldToTileMatrix( const stCoordinate2D& coord,
+                            stMatrixPosition& pos );
 
     // Map management
     void SetMapFile( const char *szTxMapFile );

@@ -36,9 +36,9 @@ struct stDimension2D  {
 };
 
 /**
- * Tile position struct.
+ * Matrix position struct.
  */
-struct stTilePosition  {
+struct stMatrixPosition  {
     int            nTileRow;
     int            nTileCol;
 };

@@ -1,4 +1,5 @@
 #include "worldrenderer.h"
+#include "collider.h"
 
 #define DISPLAY_H         600
 #define DISPLAY_W         800
@@ -7,15 +8,34 @@
 
 class MyListener : public IWorldListener  {
 
+    stDimension2D     pos;
+    Collider          collider;
+
     public:
+
+    MyListener( void ) : collider( &pos )  {
+        pos.pos.x = 10;
+        pos.pos.y = 10;
+        pos.size.nWidth  = 16;
+        pos.size.nHeight = 16;
+    }
 
     virtual ~MyListener()  {}
 
     void OnUpdate( IWorld& world )  {
+        stMatrixPosition  tilePos = { 0, 0 };
+        stTile            tile;
+        stLayer           layer;
 
-        // Add user interaction here
+        if( world.GetLayer( 6, layer ) )  {
+            if( world.WorldToTileMatrix( pos.pos, tilePos ) ) {
+                if( world.GetTile(tilePos, layer, tile) &&
+                    collider.Hit( tile ) ) {
+                    //printf( "HIT\n" );
+                }
+            }
+        }
     }
-
 };
 
 int main(int argc, char **argv) {
@@ -25,9 +45,9 @@ int main(int argc, char **argv) {
                               DISPLAY_H,
                               "Sunlight Engine",
                               FRAMES_PER_SECOND );
-    std :: string strTmxMapFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
+    std :: string strTmxMapFile1  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
     std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
-    std :: string strTmxMapFile0 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
+    std :: string strTmxMapFile = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
     stLayer       layer;
 
     renderer.AddWorldListener( &my );

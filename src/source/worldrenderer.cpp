@@ -623,9 +623,9 @@ void WorldRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
 
     for( unsigned long i = 0; i < pMap -> height; i++ ) {
         for( unsigned long j = 0; j < pMap -> width; j++ ) {
-            stTile          tile;
-            stTilePosition  pos   = { ( int ) i, ( int ) j };
-            stLayer         layer = { false, 0, {0, 0}, pLayer };
+            stTile            tile;
+            stMatrixPosition  pos   = { ( int ) i, ( int ) j };
+            stLayer           layer = { false, 0, {0, 0}, pLayer };
 
             if( GetTile( pos, layer, tile ) )  {
                 tmx_tile       *pTile = tile.pTile;
@@ -761,7 +761,9 @@ bool WorldRenderer :: UnloadMap( void )  {
             itItem = m_AnimInfoList.erase( itItem );
         }
 
-        m_pTmxMap = NULL;
+        m_pTmxMap    = NULL;
+        m_nMapWidth  = 0;
+        m_nMapHeight = 0;
 
         return true;
     }
@@ -876,6 +878,8 @@ WorldRenderer :: WorldRenderer( float fWidth,
                                 const char *szTitle,
                                 int nTargetFps )  {
 
+    m_nMapWidth         = 0;
+    m_nMapHeight        = 0;
     m_Viewport.x        = 0;
     m_Viewport.y        = 0;
     m_Viewport.width    = fWidth;
@@ -1277,7 +1281,7 @@ bool WorldRenderer :: GetLayer( const char *szLayerName, stLayer &layer )  {
  * @param tile reference to @link stTile object to receive
  * tile information;
  */
-bool WorldRenderer :: GetTile( const stTilePosition& pos,
+bool WorldRenderer :: GetTile( const stMatrixPosition& pos,
                                const stLayer& layer,
                                stTile& tile ) {
 
@@ -1298,20 +1302,20 @@ bool WorldRenderer :: GetTile( const stTilePosition& pos,
 }
 
 /**
- * Get the tile position based on world coordinate passed as parameter.
- * @param coord The World coordinate to translate to tile position;
- * @param pos Reference to struct @link stTilePosition to receive the
- * tile position based on world coordinate passed as parameter;
+ * Convert world coordinate to tile matrix coordinate.
+ * @param coord The World coordinate to translate to tile matrix coordinate;
+ * @param pos Reference to struct @link stMatrixPosition to receive the
+ * tile matrix position based on world coordinate passed as parameter;
  */
-bool WorldRenderer :: WorldToTile( const stCoordinate2D& coord,
-                                   stTilePosition& pos )  {
+bool WorldRenderer :: WorldToTileMatrix( const stCoordinate2D& coord,
+                                         stMatrixPosition& pos )  {
 
     if( m_pTmxMap )  {
         int     nCoordX = ( coord.x / m_fZoomFactor );
         int     nCoordY = ( coord.y / m_fZoomFactor );
 
-        if( ( ( nCoordX >= 0 ) && ( nCoordX < m_pTmxMap -> width ) ) &&
-            ( ( nCoordY >= 0 ) && ( nCoordY < m_pTmxMap -> height ) ) ) {
+        if( ( ( nCoordX >= 0 ) && ( nCoordX < m_nMapWidth ) ) &&
+            ( ( nCoordY >= 0 ) && ( nCoordY < m_nMapHeight ) ) ) {
             pos.nTileCol = ( coord.x / m_pTmxMap -> tile_width );
             pos.nTileRow = ( coord.y / m_pTmxMap -> tile_height );
             return true;
@@ -1377,6 +1381,9 @@ bool WorldRenderer :: Start( void )  {
         tmx_perror( "Cannot load map" );
         return false;
     }
+
+    m_nMapWidth  = ( m_pTmxMap -> width * m_pTmxMap -> tile_width );
+    m_nMapHeight = ( m_pTmxMap -> height * m_pTmxMap -> tile_height );
 
     /*
      * Set scrolling properties.
