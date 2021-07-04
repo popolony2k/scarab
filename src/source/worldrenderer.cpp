@@ -657,17 +657,17 @@ void WorldRenderer :: DrawLayer( tmx_map *pMap, tmx_layer *pLayer ) {
                         if( pAnimInfo -> nCounter < pTile -> animation_len )  {
                             pTmxAnimFrm = &pTile -> animation[pAnimInfo -> nCounter];
                             pAnimInfo -> nCounter++;
-                            nNextFrmGID = ( pMap -> ts_head -> firstgid +
-                                            pTmxAnimFrm -> tile_id );
                         }
                         else  {
-                            nNextFrmGID = tile.nGID;
                             pAnimInfo -> nCounter = 0;
                             pTmxAnimFrm = &pTile -> animation[0];
                         }
 
-                        pAnimInfo -> nMillis   = ( pTmxAnimFrm -> duration + nMillis );
+                        nNextFrmGID = ( pMap -> ts_head -> firstgid +
+                                        pTmxAnimFrm -> tile_id );
                         pAnimInfo -> pNextTile = pMap -> tiles[nNextFrmGID];
+                        pAnimInfo -> nMillis   = ( pTmxAnimFrm -> duration +
+                                                   nMillis );
                         pTile = pAnimInfo -> pNextTile;
 
                         if( !pTile )
