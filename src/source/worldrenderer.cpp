@@ -41,13 +41,13 @@ using namespace std :: chrono;
 
 /**
  * TxmLib texture loader callback implementation.
- * @param szPath Texture file path;
+ * @param szFileName Texture file name;
  */
-void* WorldRenderer :: TextureLoaderCallback( const char *szPath )  {
+void* WorldRenderer :: TextureLoaderCallback( const char *szFileName )  {
 
     Texture2D *pTexture = new Texture2D;
 
-    *pTexture = LoadTexture( szPath );
+    *pTexture = ::LoadTexture( szFileName );
 
     return pTexture;
 }
@@ -60,7 +60,7 @@ void WorldRenderer :: TextureFreeCallback( void *pTexture )  {
 
     Texture2D    *pTexture2D = ( Texture2D * ) pTexture;
 
-    UnloadTexture( *pTexture2D );
+    ::UnloadTexture( *pTexture2D );
 
     delete pTexture2D;
 }
@@ -71,7 +71,7 @@ void WorldRenderer :: TextureFreeCallback( void *pTexture )  {
  */
 tmx_layer* WorldRenderer :: GetLayer( int nLayerId )  {
 
-    return tmx_find_layer_by_id( m_pTmxMap, nLayerId );
+    return ::tmx_find_layer_by_id( m_pTmxMap, nLayerId );
 }
 
 /**
@@ -81,7 +81,7 @@ tmx_layer* WorldRenderer :: GetLayer( int nLayerId )  {
  */
 tmx_layer* WorldRenderer :: GetLayer( const char *szLayerName )  {
 
-    return tmx_find_layer_by_name( m_pTmxMap, szLayerName );
+    return ::tmx_find_layer_by_name( m_pTmxMap, szLayerName );
 }
 
 /**
@@ -89,7 +89,7 @@ tmx_layer* WorldRenderer :: GetLayer( const char *szLayerName )  {
  */
 Color WorldRenderer :: IntToColor( int color ) {
 
-    tmx_col_bytes res = tmx_col_to_bytes( color );
+    tmx_col_bytes res = ::tmx_col_to_bytes( color );
 
     return *( ( Color * ) &res );
 }
@@ -180,7 +180,7 @@ bool WorldRenderer :: GetClippedArea( int32_t nSourceW,
  */
 void WorldRenderer :: SetPixel( int nCoordX, int nCoordY, Color color )  {
 
-    DrawPixel( nCoordX, nCoordY, color );
+    ::DrawPixel( nCoordX, nCoordY, color );
 }
 
 /**
@@ -749,7 +749,7 @@ void WorldRenderer :: RenderMap( void ) {
 bool WorldRenderer :: UnloadMap( void )  {
 
     if( m_pTmxMap )  {
-        tmx_map_free( m_pTmxMap );
+        ::tmx_map_free( m_pTmxMap );
 
         /*
          * Release all allocated animations data structure.
@@ -1369,16 +1369,16 @@ bool WorldRenderer :: Start( void )  {
                 m_strTitle.c_str() );
 
     if( !IsWindowReady() ) {
-        tmx_perror( "Cannot create a window" );
+        ::tmx_perror( "Cannot create a window" );
         return false;
     }
 
     SetExitKey( __DEFAULT_EXIT_KEY );
     SetTargetFPS( m_nTargetFps != -1 ? m_nTargetFps : __DEFAULT_FPS );
-    m_pTmxMap = tmx_load( m_strTxMapFile.c_str() );
+    m_pTmxMap = ::tmx_load( m_strTxMapFile.c_str() );
 
     if( !m_pTmxMap ) {
-        tmx_perror( "Cannot load map" );
+        ::tmx_perror( "Cannot load map" );
         return false;
     }
 

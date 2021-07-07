@@ -101,7 +101,7 @@ class WorldRenderer : public IWorld  {
     static bool                m_bInitialized;
 
     // TmxLib overrides
-    static void* TextureLoaderCallback( const char *szPath );
+    static void* TextureLoaderCallback( const char *szFileName );
     static void TextureFreeCallback( void *pTexture );
 
     // TmxLib miscellaneous
