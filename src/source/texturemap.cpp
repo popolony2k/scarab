@@ -20,8 +20,8 @@ TextureMap :: TextureMap( void )  {
  */
 TextureMap :: ~TextureMap( void )  {
 
-    for( Texture2D texture : m_TextureList )  {
-        ::UnloadTexture( texture );
+    for( stTexture texture : m_TextureList )  {
+        ::UnloadTexture( texture.texture );
     }
 }
 
@@ -31,9 +31,12 @@ TextureMap :: ~TextureMap( void )  {
  */
 bool TextureMap :: AddTexture( const char *szFileName )  {
 
-    Texture2D   texture = ::LoadTexture( szFileName );
+    stTexture   texture;
 
-    if( texture.id > 0 )  {
+    texture.texture = ::LoadTexture( szFileName );
+
+    if( texture.texture.id > 0 )  {
+        texture.strTextureFile = szFileName;
         m_TextureList.push_back( texture );
         return true;
     }
@@ -47,7 +50,7 @@ bool TextureMap :: AddTexture( const char *szFileName )  {
  * @param nIndex Index of texture that will be retrieved;
  * @param texture Reference to the texture that will be retrieved;
  */
-bool TextureMap :: GetTexture( int nIndex, Texture2D& texture )  {
+bool TextureMap :: GetTexture( int nIndex, stTexture& texture )  {
 
     if( nIndex < m_TextureList.size() )  {
         texture = m_TextureList[nIndex];

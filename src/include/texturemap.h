@@ -10,11 +10,21 @@
 
 #include <raylib.h>
 #include <vector>
+#include <string>
+
+
+/**
+ * Texture struct definition.
+ */
+struct stTexture  {
+    std :: string   strTextureFile;
+    Texture2D       texture;
+};
 
 
 class TextureMap {
 
-    typedef std :: vector<Texture2D> TextureList;
+    typedef std :: vector<stTexture> TextureList;
 
     TextureList     m_TextureList;
 
@@ -24,7 +34,7 @@ class TextureMap {
     virtual ~TextureMap( void );
 
     bool AddTexture( const char *szFileName );
-    bool GetTexture( int nIndex, Texture2D& texture );
+    bool GetTexture( int nIndex, stTexture& texture );
     int GetTexturesCount( void );
 };
 
