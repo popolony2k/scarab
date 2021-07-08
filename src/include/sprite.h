@@ -11,19 +11,26 @@
 #include "collider.h"
 #include "drawentity.h"
 #include "texturemap.h"
+#include <map>
 
 
 class Sprite : public DrawEntity  {
 
-    Collider       m_Collider;
-    TextureMap     m_Textures;
+    typedef std :: map<int, TextureMap>  TextureSequenceList;
+
+    Collider                        m_Collider;
+    TextureSequenceList             m_Sequences;
+    TextureSequenceList :: iterator m_itSequence;
 
     public:
 
     Sprite( void );
     virtual ~Sprite( void );
 
-    bool AddTexture( const char *szFileName );
+    bool AddSpriteSequence( int nSequence, stTexture texture );
+    bool SetActiveSequence( int nSequence );
+
+    void Move( stCoordinate2D& step );
 
     void Update( void );
 };

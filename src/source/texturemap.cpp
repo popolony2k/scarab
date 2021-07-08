@@ -29,14 +29,11 @@ TextureMap :: ~TextureMap( void )  {
  * Loads and add a texture to the internal texture map.
  * @param szFileName Texture file name to load;
  */
-bool TextureMap :: AddTexture( const char *szFileName )  {
+bool TextureMap :: AddTexture( stTexture texture )  {
 
-    stTexture   texture;
-
-    texture.texture = ::LoadTexture( szFileName );
+    texture.texture = ::LoadTexture( texture.strTextureFile.c_str() );
 
     if( texture.texture.id > 0 )  {
-        texture.strTextureFile = szFileName;
         m_TextureList.push_back( texture );
         return true;
     }
@@ -45,15 +42,26 @@ bool TextureMap :: AddTexture( const char *szFileName )  {
 }
 
 /**
- * Get a texture object based on specified index passed as
- * parameter;
- * @param nIndex Index of texture that will be retrieved;
- * @param texture Reference to the texture that will be retrieved;
+ * Get the first texture on list.
  */
-bool TextureMap :: GetTexture( int nIndex, stTexture& texture )  {
+bool TextureMap :: First( void )  {
 
-    if( nIndex < m_TextureList.size() )  {
-        texture = m_TextureList[nIndex];
+    m_itTexture = m_TextureList.begin();
+
+    return ( m_TextureList.size() > 0 );
+}
+
+/**
+ * Get the next texture on list.
+ */
+bool TextureMap :: Next( void )  {
+
+    if( m_TextureList.size() > 0 )  {
+        m_itTexture++;
+
+        if( m_itTexture == m_TextureList.end() )
+            m_itTexture = m_TextureList.begin();
+
         return true;
     }
 
@@ -61,10 +69,9 @@ bool TextureMap :: GetTexture( int nIndex, stTexture& texture )  {
 }
 
 /**
- * The the number of textures inside internal texture list
- * object;
+ * Get the current texture on list.
  */
-int TextureMap :: GetTexturesCount( void )  {
+stTexture& TextureMap :: GetTexture( void )  {
 
-    return m_TextureList.size();
+    return *m_itTexture;
 }

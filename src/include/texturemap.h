@@ -9,33 +9,37 @@
 #define __TEXTUREMAP_H__
 
 #include <raylib.h>
-#include <vector>
+#include <queue>
 #include <string>
 
 
 /**
- * Texture struct definition.
+ * Texture structure definition.
  */
 struct stTexture  {
     std :: string   strTextureFile;
     Texture2D       texture;
+    int             nDelayMilli;
 };
 
 
 class TextureMap {
 
-    typedef std :: vector<stTexture> TextureList;
+    typedef std :: deque<stTexture> TextureList;
 
-    TextureList     m_TextureList;
+    TextureList               m_TextureList;
+    TextureList :: iterator   m_itTexture;
 
     public:
 
     TextureMap( void );
     virtual ~TextureMap( void );
 
-    bool AddTexture( const char *szFileName );
-    bool GetTexture( int nIndex, stTexture& texture );
-    int GetTexturesCount( void );
+    bool AddTexture( stTexture texture );
+
+    bool First( void );
+    bool Next( void );
+    stTexture& GetTexture( void );
 };
 
 #endif /* __TEXTUREMAP_H__ */
