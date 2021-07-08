@@ -8,22 +8,20 @@
 #ifndef __TEXTUREMAP_H__
 #define __TEXTUREMAP_H__
 
-#include <raylib.h>
 #include <queue>
 #include <string>
-
-
-/**
- * Texture structure definition.
- */
-struct stTexture  {
-    std :: string   strTextureFile;
-    Texture2D       texture;
-    int             nDelayMilli;
-};
+#include "texturecanvas.h"
 
 
 class TextureMap {
+
+    /**
+     * Texture structure definition.
+     */
+    struct stTexture  {
+        int             nDelayMilli;
+        TextureCanvas   texture;
+    };
 
     typedef std :: deque<stTexture> TextureList;
 
@@ -35,11 +33,12 @@ class TextureMap {
     TextureMap( void );
     virtual ~TextureMap( void );
 
-    bool AddTexture( stTexture texture );
+    bool AddTexture( std :: string   strTextureFile,
+                     int nDelayMilli = -1 );
 
     bool First( void );
     bool Next( void );
-    stTexture& GetTexture( void );
+    TextureCanvas& GetTexture( void );
 };
 
 #endif /* __TEXTUREMAP_H__ */

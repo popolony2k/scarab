@@ -6,7 +6,7 @@
  */
 
 #include "drawentity.h"
-
+#include <cstring>
 
 /**
  * Constructor. Initialize all class data.
@@ -14,6 +14,7 @@
 DrawEntity :: DrawEntity( void )  {
 
     m_bVisible = false;
+    std :: memset( &m_dimension, 0, sizeof( m_dimension ) );
 }
 
 /**

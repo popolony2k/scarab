@@ -13,7 +13,8 @@
  */
 Sprite :: Sprite( void ) : m_Collider( &m_dimension ) {
 
-    m_itSequence = m_Sequences.begin();
+    m_itSequence       = m_Sequences.begin();
+    m_bIsValidSequence = ( m_itSequence != m_Sequences.end() );
 }
 
 /**
@@ -26,22 +27,26 @@ Sprite :: ~Sprite( void )  {
 
 /**
  * Loads and add a texture to the internal texture map object.
- * @param szFileName Texture file name to load;
+ * @param strTextureFile Texture file name to load;
+ * @param nDetalyMilli Time in millisecond to be used in texture
+ * animation sequence;
  */
-bool Sprite :: AddSpriteSequence( int nSequence, stTexture texture ) {
+bool Sprite :: AddSpriteSequence( int nSequence,
+                                  std :: string   strTextureFile,
+                                  int nDelayMilli ) {
 
     TextureSequenceList :: iterator itItem = m_Sequences.find( nSequence );
 
     if( itItem == m_Sequences.end() )  {
         TextureMap   textureMap;
 
-        if( textureMap.AddTexture( texture ) )  {
+        if( textureMap.AddTexture( strTextureFile, nDelayMilli ) )  {
             m_Sequences.insert( std :: make_pair( nSequence, textureMap ) );
             return true;
         }
     }
     else  {
-        if( itItem -> second.AddTexture( texture ) )  {
+        if( itItem -> second.AddTexture( strTextureFile, nDelayMilli ) )  {
             return true;
         }
     }
@@ -55,9 +60,10 @@ bool Sprite :: AddSpriteSequence( int nSequence, stTexture texture ) {
  */
 bool Sprite :: SetActiveSequence( int nSequence )  {
 
-    m_itSequence = m_Sequences.find( nSequence );
+    m_itSequence       = m_Sequences.find( nSequence );
+    m_bIsValidSequence = ( m_itSequence != m_Sequences.end() );
 
-    return ( m_itSequence != m_Sequences.end() );
+    return m_bIsValidSequence;
 }
 
 /**
@@ -77,4 +83,8 @@ void Sprite :: Move( stCoordinate2D& step )  {
  */
 void Sprite :: Update( void )  {
 
+    if( m_bVisible && m_bIsValidSequence )  {
+        // TODO: Sequence animation here !
+        m_itSequence -> second.GetTexture().Update();
+    }
 }

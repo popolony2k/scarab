@@ -21,19 +21,24 @@ TextureMap :: TextureMap( void )  {
 TextureMap :: ~TextureMap( void )  {
 
     for( stTexture texture : m_TextureList )  {
-        ::UnloadTexture( texture.texture );
+        texture.texture.Unload();
     }
 }
 
 /**
  * Loads and add a texture to the internal texture map.
- * @param szFileName Texture file name to load;
+ * @param strTextureFile Texture file name to load;
+ * @param nDetalyMilli Time in millisecond to be used in texture
+ * animation sequence;
  */
-bool TextureMap :: AddTexture( stTexture texture )  {
+bool TextureMap :: AddTexture( std :: string   strTextureFile,
+                               int nDelayMilli )  {
 
-    texture.texture = ::LoadTexture( texture.strTextureFile.c_str() );
+    stTexture   texture;
 
-    if( texture.texture.id > 0 )  {
+    texture.nDelayMilli = nDelayMilli;
+
+    if( texture.texture.Load( strTextureFile ) )  {
         m_TextureList.push_back( texture );
         return true;
     }
@@ -71,7 +76,7 @@ bool TextureMap :: Next( void )  {
 /**
  * Get the current texture on list.
  */
-stTexture& TextureMap :: GetTexture( void )  {
+TextureCanvas& TextureMap :: GetTexture( void )  {
 
-    return *m_itTexture;
+    return m_itTexture -> texture;
 }

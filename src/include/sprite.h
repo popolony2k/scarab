@@ -21,13 +21,16 @@ class Sprite : public DrawEntity  {
     Collider                        m_Collider;
     TextureSequenceList             m_Sequences;
     TextureSequenceList :: iterator m_itSequence;
+    bool                            m_bIsValidSequence;
 
     public:
 
     Sprite( void );
     virtual ~Sprite( void );
 
-    bool AddSpriteSequence( int nSequence, stTexture texture );
+    bool AddSpriteSequence( int nSequence,
+                            std :: string   strTextureFile,
+                            int nDelayMilli = -1 );
     bool SetActiveSequence( int nSequence );
 
     void Move( stCoordinate2D& step );
