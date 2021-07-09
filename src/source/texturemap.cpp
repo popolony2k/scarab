@@ -5,7 +5,10 @@
  *      Author: popolony2k
  */
 
+#include <chrono>
 #include "texturemap.h"
+
+using namespace std :: chrono;
 
 
 /**
@@ -20,7 +23,7 @@ TextureMap :: TextureMap( void )  {
  */
 TextureMap :: ~TextureMap( void )  {
 
-    for( stTexture texture : m_TextureList )  {
+    for( stTextureData texture : m_TextureList )  {
         texture.texture.Unload();
     }
 }
@@ -28,18 +31,28 @@ TextureMap :: ~TextureMap( void )  {
 /**
  * Loads and add a texture to the internal texture map.
  * @param strTextureFile Texture file name to load;
+ * @param dimension texture dimension;
  * @param nDetalyMilli Time in millisecond to be used in texture
  * animation sequence;
  */
-bool TextureMap :: AddTexture( std :: string   strTextureFile,
-                               int nDelayMilli )  {
+bool TextureMap :: AddTexture( std :: string strTextureFile,
+                               stDimension2D dimension,
+                               int64_t nDelayMilli )  {
 
-    stTexture   texture;
+    stTextureData              texture;
+    steady_clock :: time_point now = steady_clock :: now();
 
     texture.nDelayMilli = nDelayMilli;
+    texture.nNextTime   = duration_cast<milliseconds>( now.time_since_epoch() ).count();
+    texture.nNextTime+=nDelayMilli;
 
     if( texture.texture.Load( strTextureFile ) )  {
+        texture.texture.SetDimension2D( dimension );
         m_TextureList.push_back( texture );
+
+        if( m_TextureList.size() == 1 )
+            m_itTexture = m_TextureList.begin();
+
         return true;
     }
 
@@ -58,10 +71,23 @@ bool TextureMap :: First( void )  {
 
 /**
  * Get the next texture on list.
+ * This function check if current texture is inside it's
+ * animation update window before going to the next texture frame.
  */
 bool TextureMap :: Next( void )  {
 
     if( m_TextureList.size() > 0 )  {
+        if(m_itTexture -> nDelayMilli != -1 )  {
+            steady_clock :: time_point now = steady_clock :: now();
+            uint64_t nTimeMilli = duration_cast<milliseconds>( now.time_since_epoch() ).count();
+
+            if( nTimeMilli < m_itTexture -> nNextTime )  {
+                return false;
+            }
+
+            m_itTexture -> nNextTime = ( nTimeMilli + m_itTexture -> nDelayMilli );
+        }
+
         m_itTexture++;
 
         if( m_itTexture == m_TextureList.end() )
@@ -76,7 +102,7 @@ bool TextureMap :: Next( void )  {
 /**
  * Get the current texture on list.
  */
-TextureCanvas& TextureMap :: GetTexture( void )  {
+TextureMap :: stTextureData& TextureMap :: GetTextureData( void )  {
 
-    return m_itTexture -> texture;
+    return *m_itTexture;
 }

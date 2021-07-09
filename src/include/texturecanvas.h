@@ -13,7 +13,7 @@
 #include "drawentity.h"
 
 
-class TextureCanvas : DrawEntity  {
+class TextureCanvas : public DrawEntity  {
 
     Texture2D       texture;
 

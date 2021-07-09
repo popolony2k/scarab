@@ -29,8 +29,9 @@ class Sprite : public DrawEntity  {
     virtual ~Sprite( void );
 
     bool AddSpriteSequence( int nSequence,
-                            std :: string   strTextureFile,
-                            int nDelayMilli = -1 );
+                            std :: string strTextureFile,
+                            stDimension2D dimension,
+                            int64_t nDelayMilli = -1 );
     bool SetActiveSequence( int nSequence );
 
     void Move( stCoordinate2D& step );

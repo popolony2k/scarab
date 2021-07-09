@@ -28,25 +28,29 @@ Sprite :: ~Sprite( void )  {
 /**
  * Loads and add a texture to the internal texture map object.
  * @param strTextureFile Texture file name to load;
+ * @param dimension Sprite dimension;
  * @param nDetalyMilli Time in millisecond to be used in texture
  * animation sequence;
  */
 bool Sprite :: AddSpriteSequence( int nSequence,
                                   std :: string   strTextureFile,
-                                  int nDelayMilli ) {
+                                  stDimension2D dimension,
+                                  int64_t nDelayMilli ) {
 
     TextureSequenceList :: iterator itItem = m_Sequences.find( nSequence );
 
     if( itItem == m_Sequences.end() )  {
         TextureMap   textureMap;
 
-        if( textureMap.AddTexture( strTextureFile, nDelayMilli ) )  {
+        if( textureMap.AddTexture( strTextureFile, dimension, nDelayMilli ) ) {
             m_Sequences.insert( std :: make_pair( nSequence, textureMap ) );
             return true;
         }
     }
     else  {
-        if( itItem -> second.AddTexture( strTextureFile, nDelayMilli ) )  {
+        if( itItem -> second.AddTexture( strTextureFile,
+                                         dimension,
+                                         nDelayMilli ) )  {
             return true;
         }
     }
@@ -84,7 +88,9 @@ void Sprite :: Move( stCoordinate2D& step )  {
 void Sprite :: Update( void )  {
 
     if( m_bVisible && m_bIsValidSequence )  {
-        // TODO: Sequence animation here !
-        m_itSequence -> second.GetTexture().Update();
+        m_itSequence -> second.Next();
+        m_itSequence -> second.GetTextureData().texture.Update();
+
+        //TODO: Check collisions and throw collision listener (add collision listener)
     }
 }

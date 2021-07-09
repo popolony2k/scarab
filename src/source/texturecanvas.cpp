@@ -59,7 +59,8 @@ void TextureCanvas :: Update( void )  {
 
     if( m_bVisible )  {
         ::DrawTextureRec( texture,
-                          ( Rectangle ) { 0.0, 0.0,
+                          ( Rectangle ) { 0.0,
+                                          0.0,
                                           ( float ) m_dimension.size.nWidth,
                                           ( float ) m_dimension.size.nHeight },
                           ( Vector2 )   { ( float ) m_dimension.pos.x,

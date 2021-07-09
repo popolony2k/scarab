@@ -15,30 +15,34 @@
 
 class TextureMap {
 
+    public:
+
     /**
      * Texture structure definition.
      */
-    struct stTexture  {
-        int             nDelayMilli;
+    struct stTextureData  {
+        int64_t         nDelayMilli;
+        int64_t         nNextTime;
         TextureCanvas   texture;
     };
-
-    typedef std :: deque<stTexture> TextureList;
-
-    TextureList               m_TextureList;
-    TextureList :: iterator   m_itTexture;
-
-    public:
 
     TextureMap( void );
     virtual ~TextureMap( void );
 
-    bool AddTexture( std :: string   strTextureFile,
-                     int nDelayMilli = -1 );
+    bool AddTexture( std :: string strTextureFile,
+                     stDimension2D dimension,
+                     int64_t nDelayMilli = -1 );
 
     bool First( void );
     bool Next( void );
-    TextureCanvas& GetTexture( void );
+    TextureMap :: stTextureData& GetTextureData( void );
+
+    private:
+
+    typedef std :: deque<stTextureData> TextureList;
+
+    TextureList               m_TextureList;
+    TextureList :: iterator   m_itTexture;
 };
 
 #endif /* __TEXTUREMAP_H__ */
