@@ -8,7 +8,7 @@
 #ifndef __COLLIDER_H__
 #define __COLLIDER_H__
 
-#include "worldbasedefs.h"
+#include "drawentity.h"
 
 
 class Collider {
@@ -31,6 +31,7 @@ class Collider {
     virtual ~Collider( void );
 
     bool Hit( stTile &tile );
+    bool Hit( DrawEntity &entity );
 };
 
 #endif /* __COLLIDER_H__ */

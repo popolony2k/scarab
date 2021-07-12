@@ -872,11 +872,15 @@ void WorldRenderer :: CopyTmxToLayer( stLayer& layer, tmx_layer *pTmxLayer )  {
  * @param fHeight Screen renderer height;
  * @param szTitle Screen renderer title;
  * @param nTargetFps Renderer desired FPS;
+ * @param bUseDefaultKEyHandler Inform if the default keyboard and
+ * camera handler will be used (at the end this parameter will be remove
+ * when user interaction be a little bit more clear.
  */
 WorldRenderer :: WorldRenderer( float fWidth,
                                 float fHeight,
                                 const char *szTitle,
-                                int nTargetFps )  {
+                                int nTargetFps,
+                                bool bUseDefaultKEyHandler)  {
 
     m_nMapWidth         = 0;
     m_nMapHeight        = 0;
@@ -900,8 +904,14 @@ WorldRenderer :: WorldRenderer( float fWidth,
     m_WorldListenerList.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
     InitializeZoomEngine();
-    InitializeControllerHandlers();
     ResetZoom();
+
+    if( bUseDefaultKEyHandler )  {
+        InitializeControllerHandlers();
+    }
+    else  {
+        memset( &m_UserEventHandlers, 0, sizeof( m_UserEventHandlers ) );
+    }
 
     /*
      * Set the raylib callback texture handlers (this call is protected

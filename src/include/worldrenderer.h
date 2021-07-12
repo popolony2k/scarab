@@ -188,7 +188,8 @@ class WorldRenderer : public IWorld  {
     WorldRenderer( float fWidth,
                    float fHeight,
                    const char* szTitle,
-                   int nTargetFps = -1 );
+                   int nTargetFps = -1,
+                   bool bUseDefaultKeyHandler = true );
     virtual ~WorldRenderer( void );
 
     // World user listener interaction

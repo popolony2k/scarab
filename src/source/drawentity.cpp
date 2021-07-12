@@ -13,8 +13,9 @@
  */
 DrawEntity :: DrawEntity( void )  {
 
-    m_bVisible = false;
-    std :: memset( &m_dimension, 0, sizeof( m_dimension ) );
+    m_bVisible   = false;
+    m_pDimension = &m_dimension;
+    std :: memset( m_pDimension, 0, sizeof( stDimension2D ) );
 }
 
 /**
@@ -42,12 +43,23 @@ bool DrawEntity :: GetVisible( void )  {
 }
 
 /**
+ * Change the internal dimension object to another pointed
+ * by pointer passed as parameter;
+ * @param pDimension Pointer to the new @link stDimension2D object
+ * that will be used by this entity;
+ */
+void DrawEntity :: SetDimensionPtr( stDimension2D* pDimension )  {
+
+    m_pDimension = pDimension;
+}
+
+/**
  * Set the dimension od this draw entity.
  * @param dimension The new dimension of this entity;
  */
 void DrawEntity :: SetDimension2D( stDimension2D dimension )  {
 
-    m_dimension = dimension;
+    std :: memcpy( m_pDimension, &dimension, sizeof( dimension ) );
 }
 
 /**
@@ -55,5 +67,5 @@ void DrawEntity :: SetDimension2D( stDimension2D dimension )  {
  */
 stDimension2D& DrawEntity :: GetDimension2D( void )  {
 
-    return m_dimension;
+    return *m_pDimension;
 }

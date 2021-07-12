@@ -56,8 +56,7 @@ Collider :: ~Collider( void )  {
 }
 
 /**
- * Chech if collider object area has been hit by tile passed as
- * parameter.
+ * Check if collider object area has been hit by tile passed as parameter.
  * @param tile Reference to the tile struct containing all tile information;
  */
 bool Collider :: Hit( stTile &tile )  {
@@ -96,4 +95,23 @@ bool Collider :: Hit( stTile &tile )  {
     }
 
     return bHit;
+}
+
+/**
+ * Check if collider object area has been hit by a draw entity passed as
+ * parameter.
+ * @param tile Reference to the entity to be checked;
+ */
+bool Collider :: Hit( DrawEntity &entity )  {
+
+    stDimension2D&   entityPos = entity.GetDimension2D();
+
+    return RectRect( m_pObjectArea -> pos.x,
+                     m_pObjectArea -> pos.y,
+                     m_pObjectArea -> size.nWidth,
+                     m_pObjectArea -> size.nHeight,
+                     entityPos.pos.x,
+                     entityPos.pos.y,
+                     entityPos.size.nWidth,
+                     entityPos.size.nHeight );
 }

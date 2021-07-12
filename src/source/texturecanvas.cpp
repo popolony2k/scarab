@@ -35,7 +35,17 @@ bool TextureCanvas :: Load( std :: string strTextureFile )  {
 
     texture = ::LoadTexture( strTextureFile.c_str() );
 
-    return ( texture.id > 0 );
+    if( texture.id > 0 )  {
+        if( ( m_pDimension -> size.nHeight == 0 ) &&
+            ( m_pDimension -> size.nHeight == 0 )  ) {
+            m_pDimension -> size.nHeight = texture.height;
+            m_pDimension -> size.nWidth  = texture.width;
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -61,10 +71,10 @@ void TextureCanvas :: Update( void )  {
         ::DrawTextureRec( texture,
                           ( Rectangle ) { 0.0,
                                           0.0,
-                                          ( float ) m_dimension.size.nWidth,
-                                          ( float ) m_dimension.size.nHeight },
-                          ( Vector2 )   { ( float ) m_dimension.pos.x,
-                                          ( float ) m_dimension.pos.y },
-                          ( Color )       { 0, 0, 0, 0 } );
+                                          ( float ) m_pDimension -> size.nWidth,
+                                          ( float ) m_pDimension -> size.nHeight },
+                          ( Vector2 )   { ( float ) m_pDimension -> pos.x,
+                                          ( float ) m_pDimension -> pos.y },
+                          ( Color )       { 254, 254, 254, 254 } );
     }
 }

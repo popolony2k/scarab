@@ -9,7 +9,6 @@
 #define __SPRITE_H__
 
 #include "collider.h"
-#include "drawentity.h"
 #include "texturemap.h"
 #include <map>
 
@@ -28,11 +27,11 @@ class Sprite : public DrawEntity  {
     Sprite( void );
     virtual ~Sprite( void );
 
-    bool AddSpriteSequence( int nSequence,
-                            std :: string strTextureFile,
-                            stDimension2D dimension,
+    void AddSpriteSequence( int nSequence,
+                            TextureCanvas texture,
                             int64_t nDelayMilli = -1 );
     bool SetActiveSequence( int nSequence );
+    void SetVisible( bool bVisible );
 
     void Move( stCoordinate2D& step );
 

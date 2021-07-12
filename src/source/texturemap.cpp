@@ -30,33 +30,22 @@ TextureMap :: ~TextureMap( void )  {
 
 /**
  * Loads and add a texture to the internal texture map.
- * @param strTextureFile Texture file name to load;
- * @param dimension texture dimension;
+ * @param texture Texture to add;
  * @param nDetalyMilli Time in millisecond to be used in texture
  * animation sequence;
  */
-bool TextureMap :: AddTexture( std :: string strTextureFile,
-                               stDimension2D dimension,
+void TextureMap :: AddTexture( TextureCanvas texture,
                                int64_t nDelayMilli )  {
 
-    stTextureData              texture;
+    stTextureData              data;
     steady_clock :: time_point now = steady_clock :: now();
 
-    texture.nDelayMilli = nDelayMilli;
-    texture.nNextTime   = duration_cast<milliseconds>( now.time_since_epoch() ).count();
-    texture.nNextTime+=nDelayMilli;
+    data.texture     = texture;
+    data.nDelayMilli = nDelayMilli;
+    data.nNextTime   = duration_cast<milliseconds>( now.time_since_epoch() ).count();
+    data.nNextTime+=nDelayMilli;
 
-    if( texture.texture.Load( strTextureFile ) )  {
-        texture.texture.SetDimension2D( dimension );
-        m_TextureList.push_back( texture );
-
-        if( m_TextureList.size() == 1 )
-            m_itTexture = m_TextureList.begin();
-
-        return true;
-    }
-
-    return false;
+    m_TextureList.push_back( data );
 }
 
 /**
@@ -90,8 +79,10 @@ bool TextureMap :: Next( void )  {
 
         m_itTexture++;
 
-        if( m_itTexture == m_TextureList.end() )
+        if( m_itTexture == m_TextureList.end() )  {
             m_itTexture = m_TextureList.begin();
+            return false;
+        }
 
         return true;
     }

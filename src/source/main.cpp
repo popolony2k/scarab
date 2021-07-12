@@ -1,5 +1,5 @@
 #include "worldrenderer.h"
-#include "collider.h"
+#include "sprite.h"
 
 #define DISPLAY_H         600
 #define DISPLAY_W         800
@@ -10,10 +10,13 @@ class MyListener : public IWorldListener  {
 
     stDimension2D     pos;
     Collider          collider;
+    Sprite             *m_pSprite;
 
     public:
 
-    MyListener( void ) : collider( &pos )  {
+    MyListener( Sprite *pSprite ) : collider( &pos )  {
+
+        m_pSprite = pSprite;
         pos.pos.x = 10;
         pos.pos.y = 10;
         pos.size.nWidth  = 16;
@@ -35,20 +38,27 @@ class MyListener : public IWorldListener  {
                 }
             }
         }
+
+        m_pSprite -> Update();
     }
 };
 
 int main(int argc, char **argv) {
 
-    MyListener      my;
     WorldRenderer   renderer( DISPLAY_W,
                               DISPLAY_H,
                               "Sunlight Engine",
-                              FRAMES_PER_SECOND );
-    std :: string strTmxMapFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
-    std :: string strTmxMapFile1 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
-    std :: string strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
-    stLayer       layer;
+                              FRAMES_PER_SECOND,
+                              false );
+    std :: string  strTmxMapFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
+    std :: string  strTmxMapFile1 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
+    std :: string  strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
+    std :: string  strSpriteFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30.png";
+    stLayer        layer;
+    TextureCanvas spriteTexture;
+    Sprite         sprite;
+    MyListener      my( &sprite );
+
 
     renderer.AddWorldListener( &my );
 
@@ -60,6 +70,15 @@ int main(int argc, char **argv) {
     renderer.GetLayer( 1, layer );
     layer.nOpacity = 254;
     renderer.SetLayer( 1, layer );
+
+    if( spriteTexture.Load( strSpriteFile ) )  {
+        sprite.AddSpriteSequence( 1, spriteTexture );
+        sprite.SetVisible( true );
+        sprite.SetActiveSequence( 1 );
+        sprite.GetDimension2D().pos.x = 100;
+        sprite.GetDimension2D().pos.y = 100;
+    }
+
     renderer.Run();
     renderer.Stop();
 

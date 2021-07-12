@@ -29,9 +29,7 @@ class TextureMap {
     TextureMap( void );
     virtual ~TextureMap( void );
 
-    bool AddTexture( std :: string strTextureFile,
-                     stDimension2D dimension,
-                     int64_t nDelayMilli = -1 );
+    void AddTexture( TextureCanvas texture, int64_t nDelayMilli = -1 );
 
     bool First( void );
     bool Next( void );

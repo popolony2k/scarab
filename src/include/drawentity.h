@@ -13,20 +13,25 @@
 
 class DrawEntity  {
 
+    private:
+
+    stDimension2D   m_dimension;
+
     protected:
 
-    stDimension2D  m_dimension;
-    bool           m_bVisible;
+    stDimension2D   *m_pDimension;
+    bool            m_bVisible;
 
     public:
 
     DrawEntity( void );
     virtual ~DrawEntity( void );
 
-    void SetVisible( bool bVisible );
+    virtual void SetVisible( bool bVisible );
     bool GetVisible( void );
 
-    void SetDimension2D( stDimension2D dimension );
+    virtual void SetDimension2D( stDimension2D dimension );
+    void SetDimensionPtr( stDimension2D* pDimension );
     stDimension2D& GetDimension2D( void );
 
     /**
