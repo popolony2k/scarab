@@ -16,8 +16,8 @@
 TextureCanvas :: TextureCanvas( void )  {
 
     std :: memset( &m_texture, 0, sizeof( m_texture ) );
-    m_nFrameSplitSize = 0;
-    m_color = WHITE_COLOR;
+    m_nTileSize = 0;
+    m_color     = WHITE_COLOR;
     Reset();
 }
 
@@ -69,7 +69,7 @@ bool TextureCanvas :: Unload( void )  {
  */
 void TextureCanvas :: Reset( void )  {
 
-    m_nCurrentFrame = 0;
+    m_nCurrentTile = 0;
 }
 
 /**
@@ -77,18 +77,18 @@ void TextureCanvas :: Reset( void )  {
  * in conjunction with sprites. In this case user can specify the tile split size
  * in X axis.
  * Each update will increase the step specified by this method.
- * @param nFrameSplitSize The framesplit size to be used by this texture.
+ * @param nTileSize The tile size to be used to split this texture.
  */
-void TextureCanvas :: SetFrameSplitSize( unsigned int nFrameSplitSize )  {
+void TextureCanvas :: SetTileSize( unsigned int nTileSize )  {
 
-    m_nFrameSplitSize = nFrameSplitSize;
+    m_nTileSize = nTileSize;
 }
 /**
  * Get texture frame split size.
  */
-unsigned int TextureCanvas :: GetFrameSplitSize( void ) {
+unsigned int TextureCanvas :: GetTileSize( void ) {
 
-    return m_nFrameSplitSize;
+    return m_nTileSize;
 }
 
 /**
@@ -98,11 +98,11 @@ unsigned int TextureCanvas :: GetFrameSplitSize( void ) {
 void TextureCanvas :: Update( void )  {
 
     if( m_bVisible )  {
-        m_nCurrentFrame = ( m_nCurrentFrame >= m_texture.width ? 0 :
-                            m_nCurrentFrame + m_nFrameSplitSize );
+        m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
+                           m_nCurrentTile + m_nTileSize );
 
         ::DrawTextureRec( m_texture,
-                          ( Rectangle ) { ( float ) m_nCurrentFrame,
+                          ( Rectangle ) { ( float ) m_nCurrentTile,
                                           0.0,
                                           ( float ) m_pDimension -> size.nWidth,
                                           ( float ) m_pDimension -> size.nHeight },

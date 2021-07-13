@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
     LoadSprite( sprite, spriteTexture5, strSpriteFile5, 150 );
     spriteTexture5.GetDimension2D().size.nHeight = 80;
     spriteTexture5.GetDimension2D().size.nWidth  = 80;
-    spriteTexture5.SetFrameSplitSize( 80 );
+    spriteTexture5.SetTileSize( 80 );
 
     renderer.Run();
     renderer.Stop();

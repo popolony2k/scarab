@@ -16,8 +16,8 @@
 class TextureCanvas : public DrawEntity  {
 
     Texture2D       m_texture;
-    unsigned int    m_nCurrentFrame;
-    unsigned int    m_nFrameSplitSize;
+    unsigned int    m_nCurrentTile;
+    unsigned int    m_nTileSize;
 
 
     public:
@@ -30,8 +30,8 @@ class TextureCanvas : public DrawEntity  {
 
     void Reset( void );
 
-    void SetFrameSplitSize( unsigned int nFrameSplitSize );
-    unsigned int GetFrameSplitSize( void );
+    void SetTileSize( unsigned int nTileSize );
+    unsigned int GetTileSize( void );
 
     void Update( void );
 };

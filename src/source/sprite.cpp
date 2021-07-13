@@ -113,17 +113,17 @@ void Sprite :: Update( void )  {
     if( m_bVisible && m_bIsValidSequence )  {
         bool          bDisableFrameUpdate = !m_itActiveSequence -> second -> Next();
         TextureCanvas *pTextureCanvas     = m_itActiveSequence -> second -> GetTextureData().pTexture;
-        unsigned int  nFrameSplitSize;
+        unsigned int  nTileSize;
 
         if( bDisableFrameUpdate )  {
-            nFrameSplitSize = pTextureCanvas -> GetFrameSplitSize();
-            pTextureCanvas -> SetFrameSplitSize( 0 );
+            nTileSize = pTextureCanvas -> GetTileSize();
+            pTextureCanvas -> SetTileSize( 0 );
         }
 
         pTextureCanvas -> Update();
 
         if( bDisableFrameUpdate )
-            pTextureCanvas -> SetFrameSplitSize( nFrameSplitSize );
+            pTextureCanvas -> SetTileSize( nTileSize );
 
         /*TODO: Check collisions and throw collision listener
           (add collision listener or collision manager) */
