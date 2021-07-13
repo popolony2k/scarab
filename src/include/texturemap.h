@@ -23,13 +23,13 @@ class TextureMap {
     struct stTextureData  {
         int64_t         nDelayMilli;
         int64_t         nNextTime;
-        TextureCanvas   texture;
+        TextureCanvas*  pTexture;
     };
 
     TextureMap( void );
     virtual ~TextureMap( void );
 
-    void AddTexture( TextureCanvas texture, int64_t nDelayMilli = -1 );
+    void AddTexture( TextureCanvas *pTexture, int64_t nDelayMilli = -1 );
 
     bool First( void );
     bool Next( void );
@@ -37,7 +37,7 @@ class TextureMap {
 
     private:
 
-    typedef std :: deque<stTextureData> TextureList;
+    typedef std :: deque<stTextureData*> TextureList;
 
     TextureList               m_TextureList;
     TextureList :: iterator   m_itTexture;

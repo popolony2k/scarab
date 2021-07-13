@@ -15,7 +15,9 @@
 
 class TextureCanvas : public DrawEntity  {
 
-    Texture2D       texture;
+    Texture2D       m_texture;
+    unsigned int    m_nCurrentFrame;
+    unsigned int    m_nFrameSplitSize;
 
 
     public:
@@ -25,6 +27,11 @@ class TextureCanvas : public DrawEntity  {
 
     bool Load( std :: string strTextureFile );
     bool Unload( void );
+
+    void Reset( void );
+
+    void SetFrameSplitSize( unsigned int nFrameSplitSize );
+    unsigned int GetFrameSplitSize( void );
 
     void Update( void );
 };

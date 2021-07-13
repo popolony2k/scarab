@@ -23,8 +23,8 @@ TextureMap :: TextureMap( void )  {
  */
 TextureMap :: ~TextureMap( void )  {
 
-    for( stTextureData texture : m_TextureList )  {
-        texture.texture.Unload();
+    for( stTextureData *pTexture : m_TextureList )  {
+        delete pTexture;
     }
 }
 
@@ -34,18 +34,21 @@ TextureMap :: ~TextureMap( void )  {
  * @param nDetalyMilli Time in millisecond to be used in texture
  * animation sequence;
  */
-void TextureMap :: AddTexture( TextureCanvas texture,
+void TextureMap :: AddTexture( TextureCanvas *pTexture,
                                int64_t nDelayMilli )  {
 
-    stTextureData              data;
-    steady_clock :: time_point now = steady_clock :: now();
+    stTextureData              *pData = new stTextureData;
+    steady_clock :: time_point now    = steady_clock :: now();
 
-    data.texture     = texture;
-    data.nDelayMilli = nDelayMilli;
-    data.nNextTime   = duration_cast<milliseconds>( now.time_since_epoch() ).count();
-    data.nNextTime+=nDelayMilli;
+    pData -> pTexture    = pTexture;
+    pData -> nDelayMilli = nDelayMilli;
+    pData -> nNextTime   = duration_cast<milliseconds>( now.time_since_epoch() ).count();
+    pData -> nNextTime+=nDelayMilli;
 
-    m_TextureList.push_back( data );
+    m_TextureList.push_back( pData );
+
+    if( m_TextureList.size() == 1 )
+        First();
 }
 
 /**
@@ -66,22 +69,31 @@ bool TextureMap :: First( void )  {
 bool TextureMap :: Next( void )  {
 
     if( m_TextureList.size() > 0 )  {
-        if(m_itTexture -> nDelayMilli != -1 )  {
+        if( ( * m_itTexture ) -> nDelayMilli != -1 )  {
             steady_clock :: time_point now = steady_clock :: now();
             uint64_t nTimeMilli = duration_cast<milliseconds>( now.time_since_epoch() ).count();
 
-            if( nTimeMilli < m_itTexture -> nNextTime )  {
+            if( nTimeMilli < ( * m_itTexture ) -> nNextTime )  {
                 return false;
             }
 
-            m_itTexture -> nNextTime = ( nTimeMilli + m_itTexture -> nDelayMilli );
+            m_itTexture++;
+
+            if( m_itTexture == m_TextureList.end() )  {
+                m_itTexture = m_TextureList.begin();
+            }
+
+            ( * m_itTexture ) -> nNextTime = ( nTimeMilli +
+                                              ( * m_itTexture ) -> nDelayMilli );
+            return true;
         }
+        else  {
+            m_itTexture++;
 
-        m_itTexture++;
-
-        if( m_itTexture == m_TextureList.end() )  {
-            m_itTexture = m_TextureList.begin();
-            return false;
+            if( m_itTexture == m_TextureList.end() )  {
+                m_itTexture = m_TextureList.begin();
+                return false;
+            }
         }
 
         return true;
@@ -95,5 +107,5 @@ bool TextureMap :: Next( void )  {
  */
 TextureMap :: stTextureData& TextureMap :: GetTextureData( void )  {
 
-    return *m_itTexture;
+    return **m_itTexture;
 }

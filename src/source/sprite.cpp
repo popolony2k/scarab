@@ -13,8 +13,8 @@
  */
 Sprite :: Sprite( void ) : m_Collider( m_pDimension ) {
 
-    m_itSequence       = m_Sequences.begin();
-    m_bIsValidSequence = ( m_itSequence != m_Sequences.end() );
+    m_itActiveSequence = m_Sequences.begin();
+    m_bIsValidSequence = ( m_itActiveSequence != m_Sequences.end() );
 }
 
 /**
@@ -27,12 +27,12 @@ Sprite :: ~Sprite( void )  {
 
 /**
  * Loads and add a texture to the internal texture map object.
- * @param texture Texture to add;
+ * @param pTexture Pointer to a @link TextureCanvas to add;
  * @param nDetalyMilli Time in millisecond to be used in texture
  * animation sequence;
  */
 void Sprite :: AddSpriteSequence( int nSequence,
-                                  TextureCanvas texture,
+                                  TextureCanvas *pTexture,
                                   int64_t nDelayMilli ) {
 
     TextureSequenceList :: iterator itItem = m_Sequences.find( nSequence );
@@ -41,23 +41,23 @@ void Sprite :: AddSpriteSequence( int nSequence,
 
     if( ( spritePos.size.nWidth == 0 ) &&
         ( spritePos.size.nHeight == 0 ) )  {
-        stDimension2D   texturePos = texture.GetDimension2D();
+        stDimension2D   texturePos = pTexture -> GetDimension2D();
 
         m_pDimension -> size.nWidth  = texturePos.size.nWidth;
         m_pDimension -> size.nHeight = texturePos.size.nHeight;
     }
 
-    texture.SetVisible( GetVisible() );
-    texture.SetDimensionPtr( m_pDimension );
+    pTexture -> SetVisible( GetVisible() );
+    pTexture -> SetDimensionPtr( m_pDimension );
 
     if( itItem == m_Sequences.end() )  {
-        TextureMap   textureMap;
+        TextureMap   *pTextureMap = new TextureMap();
 
-        textureMap.AddTexture( texture, nDelayMilli );
-        m_Sequences.insert( std :: make_pair( nSequence, textureMap ) );
+        pTextureMap -> AddTexture( pTexture, nDelayMilli );
+        m_Sequences.insert( std :: make_pair( nSequence, pTextureMap ) );
     }
     else  {
-        itItem -> second.AddTexture( texture, nDelayMilli );
+        itItem -> second -> AddTexture( pTexture, nDelayMilli );
     }
 }
 
@@ -67,8 +67,8 @@ void Sprite :: AddSpriteSequence( int nSequence,
  */
 bool Sprite :: SetActiveSequence( int nSequence )  {
 
-    m_itSequence       = m_Sequences.find( nSequence );
-    m_bIsValidSequence = ( m_itSequence != m_Sequences.end() );
+    m_itActiveSequence = m_Sequences.find( nSequence );
+    m_bIsValidSequence = ( m_itActiveSequence != m_Sequences.end() );
 
     return m_bIsValidSequence;
 }
@@ -96,10 +96,10 @@ void Sprite :: SetVisible( bool bVisible )  {
     DrawEntity :: SetVisible( bVisible );
 
     for( itItem = m_Sequences.begin(); itItem != m_Sequences.end(); itItem++ )  {
-        if( itItem -> second.First() )  {
+        if( itItem -> second -> First() )  {
             do  {
-                itItem -> second.GetTextureData().texture.SetVisible( bVisible );
-            } while( itItem -> second.Next() );
+                itItem -> second -> GetTextureData().pTexture -> SetVisible( bVisible );
+            } while( itItem -> second -> Next() );
         }
     }
 }
@@ -111,8 +111,19 @@ void Sprite :: SetVisible( bool bVisible )  {
 void Sprite :: Update( void )  {
 
     if( m_bVisible && m_bIsValidSequence )  {
-        m_itSequence -> second.Next();
-        m_itSequence -> second.GetTextureData().texture.Update();
+        bool          bDisableFrameUpdate = !m_itActiveSequence -> second -> Next();
+        TextureCanvas *pTextureCanvas     = m_itActiveSequence -> second -> GetTextureData().pTexture;
+        unsigned int  nFrameSplitSize;
+
+        if( bDisableFrameUpdate )  {
+            nFrameSplitSize = pTextureCanvas -> GetFrameSplitSize();
+            pTextureCanvas -> SetFrameSplitSize( 0 );
+        }
+
+        pTextureCanvas -> Update();
+
+        if( bDisableFrameUpdate )
+            pTextureCanvas -> SetFrameSplitSize( nFrameSplitSize );
 
         /*TODO: Check collisions and throw collision listener
           (add collision listener or collision manager) */

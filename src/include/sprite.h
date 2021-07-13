@@ -15,11 +15,11 @@
 
 class Sprite : public DrawEntity  {
 
-    typedef std :: map<int, TextureMap>  TextureSequenceList;
+    typedef std :: map<int, TextureMap*>  TextureSequenceList;
 
     Collider                        m_Collider;
     TextureSequenceList             m_Sequences;
-    TextureSequenceList :: iterator m_itSequence;
+    TextureSequenceList :: iterator m_itActiveSequence;
     bool                            m_bIsValidSequence;
 
     public:
@@ -28,7 +28,7 @@ class Sprite : public DrawEntity  {
     virtual ~Sprite( void );
 
     void AddSpriteSequence( int nSequence,
-                            TextureCanvas texture,
+                            TextureCanvas* pTexture,
                             int64_t nDelayMilli = -1 );
     bool SetActiveSequence( int nSequence );
     void SetVisible( bool bVisible );

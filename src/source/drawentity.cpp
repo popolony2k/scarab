@@ -69,3 +69,20 @@ stDimension2D& DrawEntity :: GetDimension2D( void )  {
 
     return *m_pDimension;
 }
+
+/**
+ * Set the entity color.
+ * @param color The RGB color to set;
+ */
+void DrawEntity :: SetColor( stColor color )  {
+
+    std :: memcpy( &m_color, &color, sizeof( color ) );
+}
+
+/**
+ * Return the reference to the internal color struct.
+ */
+stColor& DrawEntity :: GetColor( void )  {
+
+    return m_color;
+}

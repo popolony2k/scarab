@@ -10,7 +10,7 @@ class MyListener : public IWorldListener  {
 
     stDimension2D     pos;
     Collider          collider;
-    Sprite             *m_pSprite;
+    Sprite            *m_pSprite;
 
     public:
 
@@ -43,6 +43,19 @@ class MyListener : public IWorldListener  {
     }
 };
 
+void LoadSprite( Sprite& sprite,
+                 TextureCanvas& spriteTexture,
+                 std :: string strSpriteFile, int interval )  {
+
+    if( spriteTexture.Load( strSpriteFile ) )  {
+        sprite.AddSpriteSequence( 1, &spriteTexture, interval );
+        sprite.SetVisible( true );
+        sprite.SetActiveSequence( 1 );
+        sprite.GetDimension2D().pos.x = 100;
+        sprite.GetDimension2D().pos.y = 100;
+    }
+}
+
 int main(int argc, char **argv) {
 
     WorldRenderer   renderer( DISPLAY_W,
@@ -54,8 +67,19 @@ int main(int argc, char **argv) {
     std :: string  strTmxMapFile1 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
     std :: string  strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
     std :: string  strSpriteFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30.png";
+    std :: string  strSpriteFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30_2.png";
+    std :: string  strSpriteFile3 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30_3.png";
+    std :: string  strSpriteFile4 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30_4.png";
+    std :: string  strSpriteFile5 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/sonicwalk.png";
+
+
     stLayer        layer;
     TextureCanvas spriteTexture;
+    TextureCanvas spriteTexture2;
+    TextureCanvas spriteTexture3;
+    TextureCanvas spriteTexture4;
+    TextureCanvas spriteTexture5;
+
     Sprite         sprite;
     MyListener      my( &sprite );
 
@@ -71,13 +95,15 @@ int main(int argc, char **argv) {
     layer.nOpacity = 254;
     renderer.SetLayer( 1, layer );
 
-    if( spriteTexture.Load( strSpriteFile ) )  {
-        sprite.AddSpriteSequence( 1, spriteTexture );
-        sprite.SetVisible( true );
-        sprite.SetActiveSequence( 1 );
-        sprite.GetDimension2D().pos.x = 100;
-        sprite.GetDimension2D().pos.y = 100;
-    }
+    //LoadSprite( sprite, spriteTexture, strSpriteFile, 1000 );
+    //LoadSprite( sprite, spriteTexture2, strSpriteFile2, 1000 );
+    //LoadSprite( sprite, spriteTexture3, strSpriteFile3, 1000 );
+    //LoadSprite( sprite, spriteTexture4, strSpriteFile4, 1000 );
+
+    LoadSprite( sprite, spriteTexture5, strSpriteFile5, 150 );
+    spriteTexture5.GetDimension2D().size.nHeight = 80;
+    spriteTexture5.GetDimension2D().size.nWidth  = 80;
+    spriteTexture5.SetFrameSplitSize( 80 );
 
     renderer.Run();
     renderer.Stop();

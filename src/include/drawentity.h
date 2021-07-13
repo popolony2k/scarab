@@ -8,6 +8,7 @@
 #ifndef __DRAWENTITY_H__
 #define __DRAWENTITY_H__
 
+#include "color.h"
 #include "worldbasedefs.h"
 
 
@@ -20,6 +21,7 @@ class DrawEntity  {
     protected:
 
     stDimension2D   *m_pDimension;
+    stColor         m_color;
     bool            m_bVisible;
 
     public:
@@ -33,6 +35,9 @@ class DrawEntity  {
     virtual void SetDimension2D( stDimension2D dimension );
     void SetDimensionPtr( stDimension2D* pDimension );
     stDimension2D& GetDimension2D( void );
+
+    void SetColor( stColor color );
+    stColor& GetColor( void );
 
     /**
      * Must be implemented by children objects to provide
