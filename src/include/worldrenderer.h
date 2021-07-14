@@ -64,8 +64,6 @@ class WorldRenderer : public IWorld  {
         tmx_tile     *pNextTile;
     };
     typedef std :: deque<__stTileAnimInfo*> __AnimInfoList;
-    typedef std :: vector<float> ZoomFactorList;
-    typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
     typedef std :: deque<IWorldListener*> WorldListenerList;
 
 
@@ -83,11 +81,6 @@ class WorldRenderer : public IWorld  {
     float                      m_fWindowWidth;
     float                      m_fWindowHeight;
     int                        m_nTargetFps;
-    float                      m_fZoomFactor;
-    ZoomFactorList             m_vZoomFactorList;
-    unsigned                   m_nCurrentZoomPos;
-    unsigned                   m_nPreferredZoomPos;
-    ZoomBorderLimits           m_ZoomBorderLimits;
     __AnimInfoList             m_AnimInfoList;
     stViewport                 m_Viewport;
     std :: string              m_strTitle;
@@ -95,7 +88,6 @@ class WorldRenderer : public IWorld  {
     tmx_map                    *m_pTmxMap;
     bool                       m_bClearBackground;
     bool                       m_bIsStarted;
-    bool                       m_bEnabledUserZoom;
     bool                       m_bWindowResizeable;
     bool                       m_bDrawFPS;
     static bool                m_bInitialized;
@@ -171,7 +163,6 @@ class WorldRenderer : public IWorld  {
     bool UnloadMap( void );
 
     // General engine handlers
-    void InitializeZoomEngine( void );
     void InitializeControllerHandlers( void );
 
     // User interaction handlers
@@ -211,14 +202,6 @@ class WorldRenderer : public IWorld  {
      int GetKeyPressed( void );
 
     // Camera management
-    void SetEnableUserZoom( bool bEnabled );
-    void SetMinZoom( unsigned nMinPos );
-    void SetMaxZoom( unsigned nMaxPos );
-    void SetPreferredZoom( unsigned nZoomPos );
-    void SetZoom( unsigned nZoomPos );
-    void ResetZoom( void );
-    void ZoomIn( void );
-    void ZoomOut( void );
     void ResetCamera( void );
     void MoveCameraUp( void );
     void MoveCameraDown( void );

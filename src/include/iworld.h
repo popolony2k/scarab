@@ -9,12 +9,13 @@
 #define __IWORLD_H__
 
 #include "worldbasedefs.h"
+#include "zoomengine.h"
 
 
 /**
  * World interface with basic operations inside the game world.
  */
-class IWorld  {
+class IWorld : public ZoomEngine  {
 
     public:
 
@@ -24,27 +25,6 @@ class IWorld  {
      * Get last key from user input selected control.
      */
     virtual int GetKeyPressed( void ) = 0;
-
-    /**
-     * Set zoom programatically.
-     * @param nZoomPos The zoom to be applied;
-     */
-    virtual void SetZoom( unsigned nZoomPos ) = 0;
-
-    /**
-     * Reset zoom to it's default state.
-     */
-    virtual void ResetZoom( void ) = 0;
-
-    /**
-     * Performs Zoom In effect.
-     */
-    virtual void ZoomIn( void ) = 0;
-
-    /**
-     * Performs Zoom Out effect.
-     */
-    virtual void ZoomOut( void ) = 0;
 
     /**
      * Reset the camera position.

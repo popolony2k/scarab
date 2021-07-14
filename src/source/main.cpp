@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
                               DISPLAY_H,
                               "Sunlight Engine",
                               FRAMES_PER_SECOND,
-                              false );
+                              true );
     std :: string  strTmxMapFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
     std :: string  strTmxMapFile1 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
     std :: string  strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";

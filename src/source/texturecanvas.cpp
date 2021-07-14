@@ -101,16 +101,21 @@ void TextureCanvas :: Update( void )  {
         m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
                            m_nCurrentTile + m_nTileSize );
 
-        ::DrawTextureRec( m_texture,
-                          ( Rectangle ) { ( float ) m_nCurrentTile,
-                                          0.0,
-                                          ( float ) m_pDimension -> size.nWidth,
-                                          ( float ) m_pDimension -> size.nHeight },
-                          ( Vector2 )   { ( float ) m_pDimension -> pos.x,
-                                          ( float ) m_pDimension -> pos.y },
-                          ( Color )       { m_color.nRed,
-                                            m_color.nGreen,
-                                            m_color.nBlue,
-                                            m_color.nAlpha } );
+        ::DrawTextureTiled( m_texture,
+                            ( Rectangle ) { ( float ) m_nCurrentTile,
+                                            0.0,
+                                            ( float ) m_texture.width,
+                                            ( float ) m_texture.height },
+                            ( Rectangle ) { ( float ) m_pDimension -> pos.x,
+                                            ( float ) m_pDimension -> pos.y,
+                                            ( float ) m_pDimension -> size.nWidth,
+                                            ( float ) m_pDimension -> size.nHeight },
+                            ( Vector2 )   { 0.0, 0.0 },
+                            0.0, // TODO: Rotation
+                            m_pProps -> fZoomFactor,
+                            ( Color )       { m_color.nRed,
+                                              m_color.nGreen,
+                                              m_color.nBlue,
+                                              m_color.nAlpha } );
     }
 }

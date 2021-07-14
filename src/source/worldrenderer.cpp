@@ -16,22 +16,18 @@
  * Engine defaults.
  */
 #define __DEFAULT_FPS                   30
-#define __DEFAULT_MAP_ZOOM_SCALE_STEP   0.0625f
 #define __DEFAULT_SCROLL_STEP_WIDTH     -1
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
 #define __DEFAULT_SCROLL_STEP           -1
 #define __DEFAULT_CLEAR_BACKGROUND      true
-#define __DEFAULT_USER_ZOOM_STATUS      true
 #define __DEFAULT_RESIZEABLE_STATUS     false
 #define __DEFAULT_DRAW_FPS_STATUS       false
-#define __DEFAULT_PREFERRED_ZOOM_POS    ( ( unsigned )( ( 1 / __DEFAULT_MAP_ZOOM_SCALE_STEP ) - 1 ) )
 #define __DEFAULT_VIEW_CONTROL_MODE     VIEW_CONTROL_MODE_ACTIVE
 #define __DEFAULT_EXIT_KEY              KEY_ESCAPE
 
 /*
  * Engine limits.
  */
-#define __MAX_ZOOM_DEPTH               256
 #define __MAX_OPACITY_LEVEL            0xFF
 
 bool WorldRenderer :: m_bInitialized = false;
@@ -144,10 +140,10 @@ bool WorldRenderer :: GetClippedArea( int32_t nSourceW,
         nDestY = ( nDestY < 0.0 ? 0.0 : nDestY );
     }
 
-    fViewX      = ( ( nDestX * m_fZoomFactor ) + m_Viewport.x );
-    fViewY      = ( ( nDestY * m_fZoomFactor ) + m_Viewport.y );
-    fViewWidth  = ( nSourceW * m_fZoomFactor );
-    fViewHeight = ( nSourceH * m_fZoomFactor );
+    fViewX      = ( ( nDestX * m_pProps -> fZoomFactor ) + m_Viewport.x );
+    fViewY      = ( ( nDestY * m_pProps -> fZoomFactor ) + m_Viewport.y );
+    fViewWidth  = ( nSourceW * m_pProps -> fZoomFactor );
+    fViewHeight = ( nSourceH * m_pProps -> fZoomFactor );
     fClippingX  = ( fViewX + fViewWidth );
     fClippingY  = ( fViewY + fViewHeight );
 
@@ -364,15 +360,19 @@ void WorldRenderer :: DrawPolyline( double fOffset_x,
                                     Color color ) {
 
     fOffset_x = ( ( fOffset_x +
-                  m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+                  m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
     fOffset_y = ( ( fOffset_y +
-                  m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
+                  m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
 
     for( int i=1; i < nPointsCount; i++ ) {
-        LineBresenham( ( fOffset_x + ( fPoints[i-1][0] * m_fZoomFactor ) ),
-                       ( fOffset_y + ( fPoints[i-1][1] * m_fZoomFactor ) ) ,
-                       ( fOffset_x + ( fPoints[i][0] * m_fZoomFactor ) ) ,
-                       ( fOffset_y + ( fPoints[i][1] * m_fZoomFactor ) ),
+        LineBresenham( ( fOffset_x + ( fPoints[i-1][0] *
+                                       m_pProps -> fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[i-1][1] *
+                                       m_pProps -> fZoomFactor ) ) ,
+                       ( fOffset_x + ( fPoints[i][0] *
+                                       m_pProps -> fZoomFactor ) ) ,
+                       ( fOffset_y + ( fPoints[i][1] *
+                                       m_pProps -> fZoomFactor ) ),
                        color );
     }
 }
@@ -398,14 +398,18 @@ void WorldRenderer :: DrawPolygon( double fOffset_x,
 
     if( nPointsCount > 2 ) {
         fOffset_x = ( ( fOffset_x +
-                      m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+                      m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
         fOffset_y = ( ( fOffset_y +
-                      m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
+                      m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
 
-        LineBresenham( ( fOffset_x + ( fPoints[0][0] * m_fZoomFactor ) ),
-                       ( fOffset_y + ( fPoints[0][1] * m_fZoomFactor ) ),
-                       ( fOffset_x + ( fPoints[nPointsCount-1][0] * m_fZoomFactor ) ),
-                       ( fOffset_y + ( fPoints[nPointsCount-1][1] * m_fZoomFactor ) ),
+        LineBresenham( ( fOffset_x + ( fPoints[0][0] *
+                                       m_pProps -> fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[0][1] *
+                                       m_pProps -> fZoomFactor ) ),
+                       ( fOffset_x + ( fPoints[nPointsCount-1][0] *
+                                       m_pProps -> fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[nPointsCount-1][1] *
+                                       m_pProps -> fZoomFactor ) ),
                        color );
     }
 }
@@ -430,15 +434,15 @@ void WorldRenderer :: DrawRectangle( double fOffset_x,
     float          fViewEndY;
 
     fViewStartX = ( ( fOffset_x +
-                      m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+                      m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
     fViewStartY = ( ( fOffset_y +
-                      m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
+                      m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
     fViewEndX   = ( ( fOffset_x +
                       fWidth +
-                      m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+                      m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
     fViewEndY   = ( ( fOffset_y +
                       fHeight +
-                      m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
+                      m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
 
     // Top line
     LineBresenham( fViewStartX,
@@ -491,15 +495,15 @@ void WorldRenderer :: DrawEllipse( double fOffset_x,
     fHeight-=( fHeight / 2.0 );
     fOffset_x = ( ( fOffset_x +
                     fWidth +
-                    m_CameraPos.x ) * m_fZoomFactor ) + m_Viewport.x;
+                    m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
     fOffset_y = ( ( fOffset_y +
                     fHeight +
-                    m_CameraPos.y ) * m_fZoomFactor ) + m_Viewport.y;
+                    m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
 
     MidPointEllipse( fOffset_x,
                      fOffset_y,
-                     ( fWidth * m_fZoomFactor ),
-                     ( fHeight * m_fZoomFactor ),
+                     ( fWidth * m_pProps -> fZoomFactor ),
+                     ( fHeight * m_pProps -> fZoomFactor ),
                      color );
 }
 
@@ -545,7 +549,7 @@ void WorldRenderer :: DrawTile( void *pImage,
                                           fClippedHeight },
                           ( Vector2 ) { 0, 0 },
                           0.0f,
-                          m_fZoomFactor,
+                          m_pProps -> fZoomFactor,
                           ( Color ) { op, op, op, op } );
     }
 }
@@ -772,28 +776,6 @@ bool WorldRenderer :: UnloadMap( void )  {
 }
 
 /**
- * Initialize the zoom engine.
- */
-void WorldRenderer :: InitializeZoomEngine( void )  {
-
-    float   fZoomStep = 0.0;
-
-    /*
-     * Fill all zoom factor list.
-     */
-    for( int nCount = 0; nCount < __MAX_ZOOM_DEPTH; nCount++ )  {
-        m_vZoomFactorList.push_back(fZoomStep+=__DEFAULT_MAP_ZOOM_SCALE_STEP );
-    }
-
-    SetPreferredZoom( __DEFAULT_PREFERRED_ZOOM_POS );
-
-    m_ZoomBorderLimits.first  = 0;
-    m_ZoomBorderLimits.second = __MAX_ZOOM_DEPTH;
-    m_bEnabledUserZoom        = __DEFAULT_USER_ZOOM_STATUS;
-    m_fZoomFactor             = m_vZoomFactorList[m_nPreferredZoomPos];
-}
-
-/**
  * Initialize controller event handlers.
  */
 void WorldRenderer :: InitializeControllerHandlers( void )  {
@@ -903,7 +885,6 @@ WorldRenderer :: WorldRenderer( float fWidth,
     m_strTxMapFile.clear();
     m_WorldListenerList.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
-    InitializeZoomEngine();
     ResetZoom();
 
     if( bUseDefaultKEyHandler )  {
@@ -1074,107 +1055,6 @@ int WorldRenderer :: GetKeyPressed( void )  {
 }
 
 /**
- * Enable or disable the user zoom mode (false disables user zoom by
- * mouse, keyboard, joystick, touch, ...);
- * @param bEnabled The new user zoom mode;
- */
-void WorldRenderer :: SetEnableUserZoom( bool bEnabled )  {
-
-    m_bEnabledUserZoom = bEnabled;
-}
-
-/**
- * Set the minimum zoom border limit;
- * @param nMinPos The new minimum zoom limit;
- */
-void WorldRenderer :: SetMinZoom( unsigned nMinPos )  {
-
-    std::numeric_limits<unsigned>  limits;
-
-    if( ( nMinPos >= limits.min() ) &&  ( nMinPos <= limits.max() ) )
-        m_ZoomBorderLimits.first = nMinPos;
-}
-
-/**
- * Set the maximum zoom border limit;
- * @param nMaxPos The new maximum zoom limit;
- */
-void WorldRenderer :: SetMaxZoom( unsigned nMaxPos )  {
-
-    std::numeric_limits<unsigned>  limits;
-
-    if( ( nMaxPos >= limits.min() ) &&  ( nMaxPos <= limits.max() ) )
-        m_ZoomBorderLimits.second = nMaxPos;
-}
-
-/**
- * Set the preferred zoom to be used when engine apply
- * reset operations.
- * @param nZoomPos The new preferred zoom;
- */
-void WorldRenderer :: SetPreferredZoom( unsigned nZoomPos )  {
-
-    std::numeric_limits<unsigned>  limits;
-
-    if( ( nZoomPos >= limits.min() ) &&  ( nZoomPos <= limits.max() ) )
-        m_nPreferredZoomPos = nZoomPos;
-}
-
-/**
- * Set zoom programatically.
- * @param nZoomPos The zoom to be applied;
- */
-void WorldRenderer :: SetZoom( unsigned nZoomPos )  {
-
-    bool  bEnabledUserZoom = m_bEnabledUserZoom;
-
-    m_bEnabledUserZoom = false;
-
-    if( nZoomPos > m_nCurrentZoomPos )
-       ZoomIn();
-    else
-        if( nZoomPos < m_nCurrentZoomPos )
-            ZoomOut();
-
-    m_bEnabledUserZoom = bEnabledUserZoom;
-}
-
-/**
- * Reset zoom to it's default state.
- */
-void WorldRenderer :: ResetZoom( void )  {
-
-    m_nCurrentZoomPos = m_nPreferredZoomPos;
-    m_fZoomFactor     = m_vZoomFactorList[m_nCurrentZoomPos];
-}
-
-/**
- * Performs Zoom In effect.
- */
-void WorldRenderer :: ZoomIn( void )  {
-
-    if( ( m_nCurrentZoomPos < m_ZoomBorderLimits.second ) && m_bEnabledUserZoom )  {
-        m_nCurrentZoomPos++;
-
-        if( m_nCurrentZoomPos == m_ZoomBorderLimits.second )
-            m_nCurrentZoomPos--;
-
-        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
-    }
-}
-
-/**
- * Performs Zoom Out effect.
- */
-void WorldRenderer :: ZoomOut( void )  {
-
-    if( ( m_nCurrentZoomPos > m_ZoomBorderLimits.first ) && m_bEnabledUserZoom )  {
-        m_nCurrentZoomPos--;
-        m_fZoomFactor = m_vZoomFactorList[m_nCurrentZoomPos];
-    }
-}
-
-/**
  * Reset the camera position.
  */
 void WorldRenderer :: ResetCamera( void )  {
@@ -1321,8 +1201,8 @@ bool WorldRenderer :: WorldToTileMatrix( const stCoordinate2D& coord,
                                          stMatrixPosition& pos )  {
 
     if( m_pTmxMap )  {
-        int     nCoordX = ( coord.x / m_fZoomFactor );
-        int     nCoordY = ( coord.y / m_fZoomFactor );
+        int     nCoordX = ( coord.x / m_pProps -> fZoomFactor );
+        int     nCoordY = ( coord.y / m_pProps -> fZoomFactor );
 
         if( ( ( nCoordX >= 0 ) && ( nCoordX < m_nMapWidth ) ) &&
             ( ( nCoordY >= 0 ) && ( nCoordY < m_nMapHeight ) ) ) {

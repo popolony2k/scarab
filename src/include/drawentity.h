@@ -10,9 +10,10 @@
 
 #include "color.h"
 #include "worldbasedefs.h"
+#include "zoomengine.h"
 
 
-class DrawEntity  {
+class DrawEntity : public ZoomEngine  {
 
     private:
 

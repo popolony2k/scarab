@@ -43,8 +43,7 @@ bool DrawEntity :: GetVisible( void )  {
 }
 
 /**
- * Change the internal dimension object to another pointed
- * by pointer passed as parameter;
+ * Add a pointer to a new parent dimension object passed as parameter;
  * @param pDimension Pointer to the new @link stDimension2D object
  * that will be used by this entity;
  */
