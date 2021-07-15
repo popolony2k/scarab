@@ -50,6 +50,7 @@ void Sprite :: AddSpriteSequence( int nSequence,
     pTexture -> SetVisible( GetVisible() );
     pTexture -> SetDimensionPtr( m_pDimension );
     pTexture -> SetZoomPropertiesPtr( m_pProps );
+    pTexture -> SetViewport( m_Viewport );
 
     if( itItem == m_Sequences.end() )  {
         TextureMap   *pTextureMap = new TextureMap();

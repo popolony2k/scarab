@@ -98,24 +98,49 @@ unsigned int TextureCanvas :: GetTileSize( void ) {
 void TextureCanvas :: Update( void )  {
 
     if( m_bVisible )  {
-        m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
-                           m_nCurrentTile + m_nTileSize );
+        float          fViewX;
+        float          fViewY;
+        float          fClippedWidth;
+        float          fClippedHeight;
+        int            nPosX = ( m_pDimension -> pos.x + m_Viewport.pos.x );
+        int            nPosY = ( m_pDimension -> pos.y + m_Viewport.pos.y );
 
-        ::DrawTextureTiled( m_texture,
-                            ( Rectangle ) { ( float ) m_nCurrentTile,
-                                            0.0,
-                                            ( float ) m_texture.width,
-                                            ( float ) m_texture.height },
-                            ( Rectangle ) { ( float ) m_pDimension -> pos.x,
-                                            ( float ) m_pDimension -> pos.y,
-                                            ( float ) m_pDimension -> size.nWidth,
-                                            ( float ) m_pDimension -> size.nHeight },
-                            ( Vector2 )   { 0.0, 0.0 },
-                            0.0, // TODO: Rotation
-                            m_pProps -> fZoomFactor,
-                            ( Color )       { m_color.nRed,
-                                              m_color.nGreen,
-                                              m_color.nBlue,
-                                              m_color.nAlpha } );
+        if( GetClippedArea( m_pDimension -> size.nWidth,
+                            m_pDimension -> size.nHeight,
+                            nPosX,
+                            nPosY,
+                            fViewX,
+                            fViewY,
+                            fClippedWidth,
+                            fClippedHeight ) ) {
+
+            int nCutSrcWidth  = ( fViewX == m_Viewport.pos.x ?
+                                  std :: abs( fClippedWidth -
+                                              m_pDimension -> size.nWidth ) : 0 );
+            int nCutSrcHeight = ( fViewY == m_Viewport.pos.y ?
+                                  std :: abs( fClippedHeight -
+                                              m_pDimension -> size.nHeight ) : 0 );
+
+            m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
+                               m_nCurrentTile + m_nTileSize );
+
+            ::DrawTextureTiled( m_texture,
+                                ( Rectangle ) { ( float ) m_nCurrentTile +
+                                                          nCutSrcWidth,
+                                                ( float ) nCutSrcHeight,
+                                                ( float ) m_texture.width,
+                                                ( float ) m_texture.height },
+                                ( Rectangle ) { fViewX,
+                                                fViewY,
+                                                fClippedWidth,
+                                                fClippedHeight },
+                                ( Vector2 )   { 0.0, 0.0 },
+                                0.0, // TODO: Rotation
+                                m_pProps -> fZoomFactor,
+                                ( Color )       { m_color.nRed,
+                                                  m_color.nGreen,
+                                                  m_color.nBlue,
+                                                  m_color.nAlpha } );
+        }
     }
 }

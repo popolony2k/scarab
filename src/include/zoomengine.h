@@ -51,6 +51,15 @@ class ZoomEngine : public Viewport  {
 
     void SetZoomPropertiesPtr( stZoomProperties *pProps );
 
+    virtual bool GetClippedArea( int32_t nSourceW,
+                                 int32_t nSourceH,
+                                 int32_t nDestX,
+                                 int32_t nDestY,
+                                 float& fViewX,
+                                 float& fViewY,
+                                 float& fViewWidth,
+                                 float& fViewHeight );
+
     protected:
 
     ZoomBorderLimits           m_ZoomBorderLimits;

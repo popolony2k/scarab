@@ -169,3 +169,78 @@ void ZoomEngine :: SetZoomPropertiesPtr( stZoomProperties *pProps )  {
 
     m_pProps = pProps;
 }
+
+/**
+ * Calculates the clipped rectangle area based on
+ * position and viewport boundaries;
+ * @param nSourceX Source object X coordinate;
+ * @param nSourceY Source object Y coordinate;
+ * @param nDestX destination X coordinate on texture;
+ * @param nDestY destination Y coordinate on texture;
+ * @param fViewX Calculated object x coordinate based on
+ * viewport boundaries;
+ * @param fViewY Calculated object y coordinate based on
+ * viewport boundaries;
+ * @param fViewWidth Calculated object width based on
+ * viewport boundaries;
+ * @param fViewHeight Calculated object height based on
+ * viewport boundaries;
+ */
+bool ZoomEngine :: GetClippedArea( int32_t nSourceW,
+                                   int32_t nSourceH,
+                                   int32_t nDestX,
+                                   int32_t nDestY,
+                                   float& fViewX,
+                                   float& fViewY,
+                                   float& fViewWidth,
+                                   float& fViewHeight )  {
+
+    float       fClippingX;
+    float       fClippingY;
+    int32_t     nTemp;
+
+    if( ( nDestX > ( m_Viewport.pos.x + m_Viewport.size.nWidth ) ) ||
+        ( nDestY > ( m_Viewport.pos.y + m_Viewport.size.nHeight ) )||
+        ( nDestX < 0.0 ) || ( nDestY < 0.0 ) )  {
+
+        if( nDestX < m_Viewport.pos.x )  {
+            nTemp = std :: abs( nDestX );
+            nSourceW-=( nTemp < nSourceW ? nTemp : nSourceW );
+        }
+
+        if( nDestY < m_Viewport.pos.y )  {
+            nTemp = std :: abs( nDestY );
+            nSourceH-=( nTemp < nSourceH ? nTemp : nSourceH );
+        }
+
+        nDestX = ( nDestX < 0.0 ? 0.0 : nDestX );
+        nDestY = ( nDestY < 0.0 ? 0.0 : nDestY );
+    }
+
+    fViewX      = ( ( nDestX * m_pProps -> fZoomFactor ) + m_Viewport.pos.x );
+    fViewY      = ( ( nDestY * m_pProps -> fZoomFactor ) + m_Viewport.pos.y );
+    fViewWidth  = ( nSourceW * m_pProps -> fZoomFactor );
+    fViewHeight = ( nSourceH * m_pProps -> fZoomFactor );
+    fClippingX  = ( fViewX + fViewWidth );
+    fClippingY  = ( fViewY + fViewHeight );
+
+    if( fClippingX > m_Viewport.size.nWidth )  {
+        fClippingX = ( fClippingX - m_Viewport.size.nWidth );
+
+        if( fClippingX > fViewWidth )
+            return false;
+
+        fViewWidth = fViewWidth - fClippingX;
+    }
+
+    if( fClippingY > m_Viewport.size.nHeight )  {
+        fClippingY = ( fClippingY - m_Viewport.size.nHeight );
+
+        if( fClippingY > fViewHeight )
+            return false;
+
+        fViewHeight = fViewHeight - fClippingY;
+    }
+
+    return true;
+}

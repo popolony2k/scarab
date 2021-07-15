@@ -39,6 +39,7 @@ class MyListener : public IWorldListener  {
             }
         }
 
+        m_pSprite -> GetDimension2D().pos.x++;
         m_pSprite -> Update();
     }
 };
@@ -51,7 +52,7 @@ void LoadSprite( Sprite& sprite,
         sprite.AddSpriteSequence( 1, &spriteTexture, interval );
         sprite.SetVisible( true );
         sprite.SetActiveSequence( 1 );
-        sprite.GetDimension2D().pos.x = 100;
+        sprite.GetDimension2D().pos.x = 200;
         sprite.GetDimension2D().pos.y = 100;
     }
 }
@@ -106,6 +107,7 @@ int main(int argc, char **argv) {
     //LoadSprite( sprite, spriteTexture3, strSpriteFile3, 1000 );
     //LoadSprite( sprite, spriteTexture4, strSpriteFile4, 1000 );
 
+    sprite.SetViewport( viewport );
     LoadSprite( sprite, spriteTexture5, strSpriteFile5, 150 );
     spriteTexture5.GetDimension2D().size.nHeight = 80;
     spriteTexture5.GetDimension2D().size.nWidth  = 80;

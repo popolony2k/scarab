@@ -102,14 +102,6 @@ class WorldRenderer : public IWorld  {
     Color IntToColor( int color );
 
     // Graphics primitives miscellaneous
-    bool GetClippedArea( int32_t nSourceW,
-                         int32_t nSourceH,
-                         int32_t nDestX,
-                         int32_t nDestY,
-                         float& fViewportX,
-                         float& fViewportY,
-                         float& fWidth,
-                         float& fHeight );
     void SetPixel( int nCoordX, int nCoordY, Color color );
     void MidPointEllipse( double fCoordX,
                           double fCoordY,
