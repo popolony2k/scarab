@@ -32,7 +32,7 @@ void ZoomEngine ::InitializeZoomEngine( void )  {
         m_vZoomFactorList.push_back(fZoomStep+=__DEFAULT_MAP_ZOOM_SCALE_STEP );
     }
 
-    m_pProps = &m_props;
+    m_pProps = &m_Props;
 
     SetPreferredZoom( __DEFAULT_PREFERRED_ZOOM_POS );
 

@@ -9,6 +9,7 @@
 #define __ZOOMENGINE_H__
 
 #include <vector>
+#include "viewport.h"
 
 /**
  * Internal zoom properties.
@@ -24,12 +25,12 @@ struct stZoomProperties {
  * Abstract class used to manage zoom engine for all
  * interface graphic components.
  */
-class ZoomEngine  {
+class ZoomEngine : public Viewport  {
 
     typedef std :: vector<float> ZoomFactorList;
     typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
 
-    stZoomProperties     m_props;
+    stZoomProperties     m_Props;
 
 
     void InitializeZoomEngine( void );

@@ -73,7 +73,8 @@ int main(int argc, char **argv) {
     std :: string  strSpriteFile5 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/sonicwalk.png";
 
 
-    stLayer        layer;
+    stViewport    viewport;
+    stLayer       layer;
     TextureCanvas spriteTexture;
     TextureCanvas spriteTexture2;
     TextureCanvas spriteTexture3;
@@ -84,11 +85,16 @@ int main(int argc, char **argv) {
     MyListener      my( &sprite );
 
 
+    viewport.pos.x = 10;
+    viewport.pos.y = 10;
+    viewport.size.nWidth  = 510;
+    viewport.size.nHeight = 590;
+
     renderer.AddWorldListener( &my );
 
     //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
     renderer.SetMapFile( strTmxMapFile.c_str() );
-    renderer.SetViewport( ( stViewport ) { 10.0, 10.0, 510.0, 590.0 } );
+    renderer.SetViewport( viewport );
     renderer.SetDrawFPS( true );
     renderer.Start();
     renderer.GetLayer( 1, layer );

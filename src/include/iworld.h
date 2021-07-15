@@ -8,7 +8,6 @@
 #ifndef __IWORLD_H__
 #define __IWORLD_H__
 
-#include "worldbasedefs.h"
 #include "zoomengine.h"
 
 

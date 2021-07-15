@@ -36,6 +36,11 @@ struct stDimension2D  {
 };
 
 /**
+ * Viewport definition;
+ */
+typedef stDimension2D stViewport;
+
+/**
  * Matrix position struct.
  */
 struct stMatrixPosition  {

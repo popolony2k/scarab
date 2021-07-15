@@ -122,16 +122,16 @@ bool WorldRenderer :: GetClippedArea( int32_t nSourceW,
     nDestX+=m_CameraPos.x;
     nDestY+=m_CameraPos.y;
 
-    if( ( nDestX > ( m_Viewport.x + m_Viewport.width ) ) ||
-        ( nDestY > ( m_Viewport.y + m_Viewport.height ) )||
+    if( ( nDestX > ( m_Viewport.pos.x + m_Viewport.size.nWidth ) ) ||
+        ( nDestY > ( m_Viewport.pos.y + m_Viewport.size.nHeight ) )||
         ( nDestX < 0.0 ) || ( nDestY < 0.0 ) )  {
 
-        if( nDestX < m_Viewport.x )  {
+        if( nDestX < m_Viewport.pos.x )  {
             nTemp = std :: abs( nDestX );
             nSourceW-=( nTemp < nSourceW ? nTemp : nSourceW );
         }
 
-        if( nDestY < m_Viewport.y )  {
+        if( nDestY < m_Viewport.pos.y )  {
             nTemp = std :: abs( nDestY );
             nSourceH-=( nTemp < nSourceH ? nTemp : nSourceH );
         }
@@ -140,15 +140,15 @@ bool WorldRenderer :: GetClippedArea( int32_t nSourceW,
         nDestY = ( nDestY < 0.0 ? 0.0 : nDestY );
     }
 
-    fViewX      = ( ( nDestX * m_pProps -> fZoomFactor ) + m_Viewport.x );
-    fViewY      = ( ( nDestY * m_pProps -> fZoomFactor ) + m_Viewport.y );
+    fViewX      = ( ( nDestX * m_pProps -> fZoomFactor ) + m_Viewport.pos.x );
+    fViewY      = ( ( nDestY * m_pProps -> fZoomFactor ) + m_Viewport.pos.y );
     fViewWidth  = ( nSourceW * m_pProps -> fZoomFactor );
     fViewHeight = ( nSourceH * m_pProps -> fZoomFactor );
     fClippingX  = ( fViewX + fViewWidth );
     fClippingY  = ( fViewY + fViewHeight );
 
-    if( fClippingX > m_Viewport.width )  {
-        fClippingX = ( fClippingX - m_Viewport.width );
+    if( fClippingX > m_Viewport.size.nWidth )  {
+        fClippingX = ( fClippingX - m_Viewport.size.nWidth );
 
         if( fClippingX > fViewWidth )
             return false;
@@ -156,8 +156,8 @@ bool WorldRenderer :: GetClippedArea( int32_t nSourceW,
         fViewWidth = fViewWidth - fClippingX;
     }
 
-    if( fClippingY > m_Viewport.height )  {
-        fClippingY = ( fClippingY - m_Viewport.height );
+    if( fClippingY > m_Viewport.size.nHeight )  {
+        fClippingY = ( fClippingY - m_Viewport.size.nHeight );
 
         if( fClippingY > fViewHeight )
             return false;
@@ -212,23 +212,31 @@ void WorldRenderer :: MidPointEllipse( double fCoordX,
         int nYNeg = ( -y + fCoordY );
 
         // Print points based on 4-way symmetry
-        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
-            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+        if( ( nXPos > m_Viewport.pos.x ) &&
+            ( nXPos < m_Viewport.size.nWidth ) &&
+            ( nYPos > m_Viewport.pos.y ) &&
+            ( nYPos < m_Viewport.size.nHeight ) )  {
             SetPixel( nXPos, nYPos, color );
         }
 
-        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
-            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+        if( ( nXNeg > m_Viewport.pos.x ) &&
+            ( nXNeg < m_Viewport.size.nWidth ) &&
+            ( nYPos > m_Viewport.pos.y ) &&
+            ( nYPos < m_Viewport.size.nHeight ) )  {
             SetPixel( nXNeg, nYPos, color );
         }
 
-        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
-            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+        if( ( nXPos > m_Viewport.pos.x ) &&
+            ( nXPos < m_Viewport.size.nWidth ) &&
+            ( nYNeg > m_Viewport.pos.y ) &&
+            ( nYNeg < m_Viewport.size.nHeight ) )  {
             SetPixel( nXPos, nYNeg, color );
         }
 
-        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
-            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+        if( ( nXNeg > m_Viewport.pos.x ) &&
+            ( nXNeg < m_Viewport.size.nWidth ) &&
+            ( nYNeg > m_Viewport.pos.y ) &&
+            ( nYNeg < m_Viewport.size.nHeight ) )  {
             SetPixel( nXNeg, nYNeg, color );
         }
 
@@ -262,23 +270,31 @@ void WorldRenderer :: MidPointEllipse( double fCoordX,
         int nYNeg = ( -y + fCoordY );
 
         // Print points based on 4-way symmetry
-        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
-            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+        if( ( nXPos > m_Viewport.pos.x ) &&
+            ( nXPos < m_Viewport.size.nWidth ) &&
+            ( nYPos > m_Viewport.pos.y ) &&
+            ( nYPos < m_Viewport.size.nHeight ) )  {
             SetPixel( nXPos, nYPos, color );
         }
 
-        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
-            ( nYPos > m_Viewport.y ) && ( nYPos < m_Viewport.height ) )  {
+        if( ( nXNeg > m_Viewport.pos.x ) &&
+            ( nXNeg < m_Viewport.size.nWidth ) &&
+            ( nYPos > m_Viewport.pos.y ) &&
+            ( nYPos < m_Viewport.size.nHeight ) )  {
             SetPixel( nXNeg, nYPos, color );
         }
 
-        if( ( nXPos > m_Viewport.x ) && ( nXPos < m_Viewport.width ) &&
-            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+        if( ( nXPos > m_Viewport.pos.x ) &&
+            ( nXPos < m_Viewport.size.nWidth ) &&
+            ( nYNeg > m_Viewport.pos.y ) &&
+            ( nYNeg < m_Viewport.size.nHeight ) )  {
             SetPixel( nXPos, nYNeg, color );
         }
 
-        if( ( nXNeg > m_Viewport.x ) && ( nXNeg < m_Viewport.width ) &&
-            ( nYNeg > m_Viewport.y ) && ( nYNeg < m_Viewport.height ) )  {
+        if( ( nXNeg > m_Viewport.pos.x ) &&
+            ( nXNeg < m_Viewport.size.nWidth ) &&
+            ( nYNeg > m_Viewport.pos.y ) &&
+            ( nYNeg < m_Viewport.size.nHeight ) )  {
             SetPixel( nXNeg, nYNeg, color );
         }
 
@@ -324,8 +340,10 @@ void WorldRenderer :: LineBresenham( int nX0,
   while( true )  {
 
     // Print points based on 4-way symmetry
-    if( ( nX0 > m_Viewport.x ) && ( nX0 < m_Viewport.width ) &&
-        ( nY0 > m_Viewport.y ) && ( nY0 < m_Viewport.height ) )  {
+    if( ( nX0 > m_Viewport.pos.x ) &&
+        ( nX0 < m_Viewport.size.nWidth ) &&
+        ( nY0 > m_Viewport.pos.y ) &&
+        ( nY0 < m_Viewport.size.nHeight ) )  {
         SetPixel( nX0, nY0, color );
     }
 
@@ -359,10 +377,10 @@ void WorldRenderer :: DrawPolyline( double fOffset_x,
                                     int nPointsCount,
                                     Color color ) {
 
-    fOffset_x = ( ( fOffset_x +
-                  m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
-    fOffset_y = ( ( fOffset_y +
-                  m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
+    fOffset_x = ( ( fOffset_x + m_CameraPos.x ) *
+                  m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+    fOffset_y = ( ( fOffset_y + m_CameraPos.y ) *
+                  m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
 
     for( int i=1; i < nPointsCount; i++ ) {
         LineBresenham( ( fOffset_x + ( fPoints[i-1][0] *
@@ -397,10 +415,10 @@ void WorldRenderer :: DrawPolygon( double fOffset_x,
                   color );
 
     if( nPointsCount > 2 ) {
-        fOffset_x = ( ( fOffset_x +
-                      m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
-        fOffset_y = ( ( fOffset_y +
-                      m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
+        fOffset_x = ( ( fOffset_x + m_CameraPos.x ) *
+                      m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+        fOffset_y = ( ( fOffset_y + m_CameraPos.y ) *
+                      m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
 
         LineBresenham( ( fOffset_x + ( fPoints[0][0] *
                                        m_pProps -> fZoomFactor ) ),
@@ -433,16 +451,14 @@ void WorldRenderer :: DrawRectangle( double fOffset_x,
     float          fViewEndX;
     float          fViewEndY;
 
-    fViewStartX = ( ( fOffset_x +
-                      m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
-    fViewStartY = ( ( fOffset_y +
-                      m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
-    fViewEndX   = ( ( fOffset_x +
-                      fWidth +
-                      m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
-    fViewEndY   = ( ( fOffset_y +
-                      fHeight +
-                      m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
+    fViewStartX = ( ( fOffset_x + m_CameraPos.x ) *
+                    m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+    fViewStartY = ( ( fOffset_y + m_CameraPos.y ) *
+                    m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
+    fViewEndX   = ( ( fOffset_x + fWidth + m_CameraPos.x ) *
+                    m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+    fViewEndY   = ( ( fOffset_y + fHeight + m_CameraPos.y ) *
+                    m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
 
     // Top line
     LineBresenham( fViewStartX,
@@ -493,12 +509,10 @@ void WorldRenderer :: DrawEllipse( double fOffset_x,
 
     fWidth-=( fWidth / 2.0 );
     fHeight-=( fHeight / 2.0 );
-    fOffset_x = ( ( fOffset_x +
-                    fWidth +
-                    m_CameraPos.x ) * m_pProps -> fZoomFactor ) + m_Viewport.x;
-    fOffset_y = ( ( fOffset_y +
-                    fHeight +
-                    m_CameraPos.y ) * m_pProps -> fZoomFactor ) + m_Viewport.y;
+    fOffset_x = ( ( fOffset_x + fWidth + m_CameraPos.x ) *
+                  m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+    fOffset_y = ( ( fOffset_y + fHeight + m_CameraPos.y ) *
+                  m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
 
     MidPointEllipse( fOffset_x,
                      fOffset_y,
@@ -864,24 +878,24 @@ WorldRenderer :: WorldRenderer( float fWidth,
                                 int nTargetFps,
                                 bool bUseDefaultKEyHandler)  {
 
-    m_nMapWidth         = 0;
-    m_nMapHeight        = 0;
-    m_Viewport.x        = 0;
-    m_Viewport.y        = 0;
-    m_Viewport.width    = fWidth;
-    m_Viewport.height   = fHeight;
-    m_fWindowWidth      = fWidth;
-    m_fWindowHeight     = fHeight;
-    m_nTargetFps        = nTargetFps;
-    m_strTitle          = szTitle;
-    m_pTmxMap           = NULL;
-    m_bIsStarted        = false;
-    m_bWindowResizeable = __DEFAULT_RESIZEABLE_STATUS;
-    m_bClearBackground  = __DEFAULT_CLEAR_BACKGROUND;
-    m_bDrawFPS          = __DEFAULT_DRAW_FPS_STATUS;
-    m_nScrollStepWidth  = __DEFAULT_SCROLL_STEP_WIDTH;
-    m_nScrollStepHeight = __DEFAULT_SCROLL_STEP_HEIGHT;
-    m_ViewControlMode   = __DEFAULT_VIEW_CONTROL_MODE;
+    m_nMapWidth             = 0;
+    m_nMapHeight            = 0;
+    m_Viewport.pos.x        = 0;
+    m_Viewport.pos.y        = 0;
+    m_Viewport.size.nWidth  = fWidth;
+    m_Viewport.size.nHeight = fHeight;
+    m_fWindowWidth          = fWidth;
+    m_fWindowHeight         = fHeight;
+    m_nTargetFps            = nTargetFps;
+    m_strTitle              = szTitle;
+    m_pTmxMap               = NULL;
+    m_bIsStarted            = false;
+    m_bWindowResizeable     = __DEFAULT_RESIZEABLE_STATUS;
+    m_bClearBackground      = __DEFAULT_CLEAR_BACKGROUND;
+    m_bDrawFPS              = __DEFAULT_DRAW_FPS_STATUS;
+    m_nScrollStepWidth      = __DEFAULT_SCROLL_STEP_WIDTH;
+    m_nScrollStepHeight     = __DEFAULT_SCROLL_STEP_HEIGHT;
+    m_ViewControlMode       = __DEFAULT_VIEW_CONTROL_MODE;
     m_strTxMapFile.clear();
     m_WorldListenerList.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
@@ -992,15 +1006,6 @@ void WorldRenderer :: SetDrawFPS( bool bDrawFPS )  {
 void WorldRenderer :: SetViewControlMode( ViewControlMode mode )  {
 
     m_ViewControlMode = mode;
-}
-
-/**
- * Set the new renderer viewport;
- * @param viewport The new viewport rectangle;
- */
-void WorldRenderer :: SetViewport( stViewport viewport )  {
-
-    m_Viewport = viewport;
 }
 
 /**

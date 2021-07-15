@@ -40,7 +40,6 @@
 /**
  * Primitive structures definition.
  */
-typedef Rectangle  stViewport;
 typedef Vector2    stVector;
 
 /**
@@ -82,7 +81,6 @@ class WorldRenderer : public IWorld  {
     float                      m_fWindowHeight;
     int                        m_nTargetFps;
     __AnimInfoList             m_AnimInfoList;
-    stViewport                 m_Viewport;
     std :: string              m_strTitle;
     std :: string              m_strTxMapFile;
     tmx_map                    *m_pTmxMap;
@@ -195,7 +193,6 @@ class WorldRenderer : public IWorld  {
 
     // View port control
     void SetViewControlMode( ViewControlMode mode );
-    void SetViewport( stViewport viewport );
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
 
     // User input handling
