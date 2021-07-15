@@ -1,7 +1,7 @@
 /*
- * iviewport.h
+ * viewport.h
  *
- *  Created on: Jul 14, 2021
+ *  Created on: Jul 13, 2021
  *      Author: popolony2k
  */
 
@@ -9,14 +9,31 @@
 #define __VIEWPORT_H__
 
 #include "worldbasedefs.h"
+#include <vector>
 
+/**
+ * Internal zoom properties.
+ */
+struct stZoomProperties {
+    unsigned       nCurrentZoomPos;
+    unsigned       nPreferredZoomPos;
+    float          fZoomFactor;
+    bool           bEnabledUserZoom;
+};
 
+/**
+ * Abstract class used to manage zoom engine for all
+ * interface graphic components.
+ */
 class Viewport  {
 
-    protected:
+    typedef std :: vector<float> ZoomFactorList;
+    typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
 
-    stViewport          m_Viewport;
+    stZoomProperties     m_Props;
 
+
+    void InitializeZoomEngine( void );
 
     public:
 
@@ -26,22 +43,17 @@ class Viewport  {
     void SetViewport( stViewport viewport );
     stViewport GetViewport( void );
 
-    /**
-     * Must be implemented to calculate the clipped rectangle
-     * area based on camera position and viewport boundaries;
-     * @param nSourceX Source object X coordinate;
-     * @param nSourceY Source object Y coordinate;
-     * @param nDestX destination X coordinate on texture;
-     * @param nDestY destination Y coordinate on texture;
-     * @param fViewX Calculated object x coordinate based on
-     * viewport boundaries;
-     * @param fViewY Calculated object y coordinate based on
-     * viewport boundaries;
-     * @param fViewWidth Calculated object width based on
-     * viewport boundaries;
-     * @param fViewHeight Calculated object height based on
-     * viewport boundaries;
-     */
+    virtual void SetEnableUserZoom( bool bEnabled );
+    virtual void SetPreferredZoom( unsigned nZoomPos );
+    virtual void SetMinZoom( unsigned nMinPos );
+    virtual void SetMaxZoom( unsigned nMaxPos );
+    virtual void SetZoom( unsigned nZoomPos );
+    virtual void ResetZoom( void );
+    virtual void ZoomIn( void );
+    virtual void ZoomOut( void );
+
+    void SetZoomPropertiesPtr( stZoomProperties *pProps );
+
     virtual bool GetClippedArea( int32_t nSourceW,
                                  int32_t nSourceH,
                                  int32_t nDestX,
@@ -49,7 +61,14 @@ class Viewport  {
                                  float& fViewX,
                                  float& fViewY,
                                  float& fViewWidth,
-                                 float& fViewHeight ) = 0;
+                                 float& fViewHeight );
+
+    protected:
+
+    stViewport                 m_Viewport;
+    ZoomBorderLimits           m_ZoomBorderLimits;
+    ZoomFactorList             m_vZoomFactorList;
+    stZoomProperties           *m_pProps;
 };
 
 #endif /* __VIEWPORT_H__ */

@@ -9,11 +9,11 @@
 #define __DRAWENTITY_H__
 
 #include "color.h"
+#include "viewport.h"
 #include "worldbasedefs.h"
-#include "zoomengine.h"
 
 
-class DrawEntity : public ZoomEngine  {
+class DrawEntity : public Viewport  {
 
     private:
 

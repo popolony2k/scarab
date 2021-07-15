@@ -8,13 +8,13 @@
 #ifndef __IWORLD_H__
 #define __IWORLD_H__
 
-#include "zoomengine.h"
+#include "viewport.h"
 
 
 /**
  * World interface with basic operations inside the game world.
  */
-class IWorld : public ZoomEngine  {
+class IWorld : public Viewport  {
 
     public:
 
