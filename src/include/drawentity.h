@@ -10,19 +10,20 @@
 
 #include "color.h"
 #include "viewport.h"
-#include "worldbasedefs.h"
+#include "collider.h"
 
 
 class DrawEntity : public Viewport  {
 
     private:
 
-    stDimension2D   m_dimension;
+    stDimension2D   m_Dimension;
 
     protected:
 
     stDimension2D   *m_pDimension;
-    stColor         m_color;
+    Collider        m_Collider;
+    stColor         m_Color;
     bool            m_bVisible;
 
     public:
@@ -40,12 +41,13 @@ class DrawEntity : public Viewport  {
     void SetColor( stColor color );
     stColor& GetColor( void );
 
+    Collider& GetCollider( void );
+
     /**
      * Must be implemented by children objects to provide
      * it's own draw behavior.
      */
     virtual void Update( void )  {};
 };
-
 
 #endif /* __DRAWENTITY_H__ */

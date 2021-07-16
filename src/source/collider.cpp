@@ -5,6 +5,7 @@
  *      Author: popolony2k
  */
 #include "collider.h"
+#include <cstring>
 
 
 /**
@@ -38,14 +39,13 @@ bool Collider :: RectRect( float fRect1X,
     return false;
 }
 
-
 /**
  * Constructor. Initialize all class data.
- * @param Pointer to the dimension of object that owns this collider;
  */
-Collider :: Collider( stDimension2D *pObjectArea )  {
+Collider :: Collider( void )  {
 
-    m_pObjectArea = pObjectArea;
+    std :: memset( &m_Dimension, 0, sizeof( m_Dimension ) );
+    m_pDimension = &m_Dimension;
 }
 
 /**
@@ -53,6 +53,24 @@ Collider :: Collider( stDimension2D *pObjectArea )  {
  */
 Collider :: ~Collider( void )  {
 
+}
+
+/*
+ * Add a pointer to a new parent dimension object passed as parameter;
+ * @param pDimension Pointer to the new @link stDimension2D object
+ * that will be used by this entity;
+ */
+void Collider :: SetDimensionPtr( stDimension2D *pDimension )  {
+
+    m_pDimension = pDimension;
+}
+
+/**
+ * Return the reference to the collider dimension data struct.
+ */
+stDimension2D& Collider :: GetDimension( void )  {
+
+    return *m_pDimension;
 }
 
 /**
@@ -68,10 +86,10 @@ bool Collider :: Hit( stTile &tile )  {
 
         switch( pCollision -> obj_type )  {
             case OT_SQUARE :
-                bHit = RectRect( m_pObjectArea -> pos.x,
-                                 m_pObjectArea -> pos.y,
-                                 m_pObjectArea -> size.nWidth,
-                                 m_pObjectArea -> size.nHeight,
+                bHit = RectRect( m_pDimension -> pos.x,
+                                 m_pDimension -> pos.y,
+                                 m_pDimension -> size.nWidth,
+                                 m_pDimension -> size.nHeight,
                                  pCollision -> x,
                                  pCollision -> y,
                                  pCollision -> width,
@@ -100,18 +118,16 @@ bool Collider :: Hit( stTile &tile )  {
 /**
  * Check if collider object area has been hit by a draw entity passed as
  * parameter.
- * @param tile Reference to the entity to be checked;
+ * @param dimension Reference to a struct containing the area to be checked;
  */
-bool Collider :: Hit( DrawEntity &entity )  {
+bool Collider :: Hit( stDimension2D &dimension )  {
 
-    stDimension2D&   entityPos = entity.GetDimension2D();
-
-    return RectRect( m_pObjectArea -> pos.x,
-                     m_pObjectArea -> pos.y,
-                     m_pObjectArea -> size.nWidth,
-                     m_pObjectArea -> size.nHeight,
-                     entityPos.pos.x,
-                     entityPos.pos.y,
-                     entityPos.size.nWidth,
-                     entityPos.size.nHeight );
+    return RectRect( m_pDimension -> pos.x,
+                     m_pDimension -> pos.y,
+                     m_pDimension -> size.nWidth,
+                     m_pDimension -> size.nHeight,
+                     dimension.pos.x,
+                     dimension.pos.y,
+                     dimension.size.nWidth,
+                     dimension.size.nHeight );
 }

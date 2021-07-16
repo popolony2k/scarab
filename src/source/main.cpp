@@ -14,8 +14,9 @@ class MyListener : public IWorldListener  {
 
     public:
 
-    MyListener( Sprite *pSprite ) : collider( &pos )  {
+    MyListener( Sprite *pSprite ) {
 
+        collider.SetDimensionPtr( &pos );
         m_pSprite = pSprite;
         pos.pos.x = 10;
         pos.pos.y = 10;
@@ -114,6 +115,7 @@ int main(int argc, char **argv) {
     spriteTexture5.SetTileSize( 80 );
 
     renderer.Run();
+    sprite.Unload();
     renderer.Stop();
 
 	return 0;

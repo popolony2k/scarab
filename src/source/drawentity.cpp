@@ -11,11 +11,12 @@
 /**
  * Constructor. Initialize all class data.
  */
-DrawEntity :: DrawEntity( void )  {
+DrawEntity :: DrawEntity( void ) {
 
     m_bVisible   = false;
-    m_pDimension = &m_dimension;
-    std :: memset( m_pDimension, 0, sizeof( stDimension2D ) );
+    m_pDimension = &m_Dimension;
+    std :: memset( &m_Dimension, 0, sizeof( m_Dimension ) );
+    m_Collider.SetDimensionPtr( m_pDimension );
 }
 
 /**
@@ -50,10 +51,11 @@ bool DrawEntity :: GetVisible( void )  {
 void DrawEntity :: SetDimensionPtr( stDimension2D* pDimension )  {
 
     m_pDimension = pDimension;
+    m_Collider.SetDimensionPtr( m_pDimension );
 }
 
 /**
- * Set the dimension od this draw entity.
+ * Set the dimension of this draw entity.
  * @param dimension The new dimension of this entity;
  */
 void DrawEntity :: SetDimension2D( stDimension2D dimension )  {
@@ -75,7 +77,7 @@ stDimension2D& DrawEntity :: GetDimension2D( void )  {
  */
 void DrawEntity :: SetColor( stColor color )  {
 
-    std :: memcpy( &m_color, &color, sizeof( color ) );
+    std :: memcpy( &m_Color, &color, sizeof( color ) );
 }
 
 /**
@@ -83,5 +85,13 @@ void DrawEntity :: SetColor( stColor color )  {
  */
 stColor& DrawEntity :: GetColor( void )  {
 
-    return m_color;
+    return m_Color;
+}
+
+/**
+ * Return the reference to the internal collider object.
+ */
+Collider& DrawEntity :: GetCollider( void )  {
+
+    return m_Collider;
 }

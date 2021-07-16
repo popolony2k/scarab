@@ -8,12 +8,13 @@
 #ifndef __COLLIDER_H__
 #define __COLLIDER_H__
 
-#include "drawentity.h"
+#include "worldbasedefs.h"
 
 
 class Collider {
 
-    stDimension2D       *m_pObjectArea;
+    stDimension2D       m_Dimension;
+    stDimension2D       *m_pDimension;
 
 
     bool RectRect( float fRect1X,
@@ -27,11 +28,14 @@ class Collider {
 
     public:
 
-    Collider( stDimension2D *pObjectArea );
+    Collider( void );
     virtual ~Collider( void );
 
+    void SetDimensionPtr( stDimension2D *pDimension );
+    stDimension2D& GetDimension( void );
+
     bool Hit( stTile &tile );
-    bool Hit( DrawEntity &entity );
+    bool Hit( stDimension2D &dimension );
 };
 
 #endif /* __COLLIDER_H__ */

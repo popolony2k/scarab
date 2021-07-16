@@ -17,7 +17,6 @@ class Sprite : public DrawEntity  {
 
     typedef std :: map<int, TextureMap*>  TextureSequenceList;
 
-    Collider                        m_Collider;
     TextureSequenceList             m_Sequences;
     TextureSequenceList :: iterator m_itActiveSequence;
     bool                            m_bIsValidSequence;
@@ -36,6 +35,7 @@ class Sprite : public DrawEntity  {
     void Move( stCoordinate2D& step );
 
     void Update( void );
+    void Unload( void );
 };
 
 #endif /* __SPRITE_H__ */

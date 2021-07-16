@@ -63,43 +63,53 @@ bool TextureMap :: First( void )  {
 
 /**
  * Get the next texture on list.
+ * @param bCircularMode Navigate on list using circular mode;
+ * WARNING: Be careful because this is a circular list.
+ * Avoid to iterate until the end of list when using in circular mode
+ * because in this case there's no end of list.
  * This function check if current texture is inside it's
  * animation update window before going to the next texture frame.
  */
-bool TextureMap :: Next( void )  {
+bool TextureMap :: Next( bool bCircularMode )  {
 
-    if( m_TextureList.size() > 0 )  {
-        if( ( * m_itTexture ) -> nDelayMilli != -1 )  {
-            steady_clock :: time_point now = steady_clock :: now();
-            uint64_t nTimeMilli = duration_cast<milliseconds>( now.time_since_epoch() ).count();
+    if( bCircularMode )  {
+        if( m_TextureList.size() > 0 )  {
+            if( ( * m_itTexture ) -> nDelayMilli != -1 )  {
+                steady_clock :: time_point now = steady_clock :: now();
+                uint64_t nTimeMilli = duration_cast<milliseconds>( now.time_since_epoch() ).count();
 
-            if( nTimeMilli < ( * m_itTexture ) -> nNextTime )  {
-                return false;
+                if( nTimeMilli < ( * m_itTexture ) -> nNextTime )  {
+                    return false;
+                }
+
+                m_itTexture++;
+
+                if( m_itTexture == m_TextureList.end() )  {
+                    m_itTexture = m_TextureList.begin();
+                }
+
+                ( * m_itTexture ) -> nNextTime = ( nTimeMilli +
+                                                  ( * m_itTexture ) -> nDelayMilli );
+                return true;
+            }
+            else  {
+                m_itTexture++;
+
+                if( m_itTexture == m_TextureList.end() )  {
+                    m_itTexture = m_TextureList.begin();
+                    return false;
+                }
             }
 
-            m_itTexture++;
-
-            if( m_itTexture == m_TextureList.end() )  {
-                m_itTexture = m_TextureList.begin();
-            }
-
-            ( * m_itTexture ) -> nNextTime = ( nTimeMilli +
-                                              ( * m_itTexture ) -> nDelayMilli );
             return true;
         }
-        else  {
-            m_itTexture++;
 
-            if( m_itTexture == m_TextureList.end() )  {
-                m_itTexture = m_TextureList.begin();
-                return false;
-            }
-        }
-
-        return true;
+        return false;
     }
-
-    return false;
+    else  {
+        m_itTexture++;
+        return ( m_itTexture != m_TextureList.end() );
+    }
 }
 
 /**

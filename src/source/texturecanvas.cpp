@@ -17,7 +17,7 @@ TextureCanvas :: TextureCanvas( void )  {
 
     std :: memset( &m_texture, 0, sizeof( m_texture ) );
     m_nTileSize = 0;
-    m_color     = WHITE_COLOR;
+    m_Color     = WHITE_COLOR;
     Reset();
 }
 
@@ -137,10 +137,10 @@ void TextureCanvas :: Update( void )  {
                                 ( Vector2 )   { 0.0, 0.0 },
                                 0.0, // TODO: Rotation
                                 m_pProps -> fZoomFactor,
-                                ( Color )       { m_color.nRed,
-                                                  m_color.nGreen,
-                                                  m_color.nBlue,
-                                                  m_color.nAlpha } );
+                                ( Color )       { m_Color.nRed,
+                                                  m_Color.nGreen,
+                                                  m_Color.nBlue,
+                                                  m_Color.nAlpha } );
         }
     }
 }

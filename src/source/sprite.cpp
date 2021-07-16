@@ -11,7 +11,7 @@
 /**
  * Constructor. Initialize all class data.
  */
-Sprite :: Sprite( void ) : m_Collider( m_pDimension ) {
+Sprite :: Sprite( void ) {
 
     m_itActiveSequence = m_Sequences.begin();
     m_bIsValidSequence = ( m_itActiveSequence != m_Sequences.end() );
@@ -22,7 +22,7 @@ Sprite :: Sprite( void ) : m_Collider( m_pDimension ) {
  */
 Sprite :: ~Sprite( void )  {
 
-    m_Sequences.clear();
+    Unload();
 }
 
 /**
@@ -126,8 +126,23 @@ void Sprite :: Update( void )  {
 
         if( bDisableFrameUpdate )
             pTextureCanvas -> SetTileSize( nTileSize );
+    }
+}
 
-        /*TODO: Check collisions and throw collision listener
-          (add collision listener or collision manager) */
+/**
+ * Unload all sprites.
+ */
+void Sprite :: Unload( void )  {
+
+    if( m_Sequences.size() > 0 )  {
+        for( std :: pair<int, TextureMap*> pair : m_Sequences )  {
+            if( pair.second -> First() )  {
+                do  {
+                    pair.second -> GetTextureData().pTexture -> Unload();
+                } while( pair.second -> Next( false ) );
+            }
+        }
+
+        m_Sequences.clear();
     }
 }

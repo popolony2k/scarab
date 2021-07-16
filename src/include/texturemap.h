@@ -32,7 +32,7 @@ class TextureMap {
     void AddTexture( TextureCanvas *pTexture, int64_t nDelayMilli = -1 );
 
     bool First( void );
-    bool Next( void );
+    bool Next( bool bCircularMode = true );
     TextureMap :: stTextureData& GetTextureData( void );
 
     private:
