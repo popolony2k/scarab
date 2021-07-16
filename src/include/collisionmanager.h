@@ -10,14 +10,23 @@
 
 
 #include "collider.h"
+#include "iworld.h"
+#include <queue>
 
 
 class CollisionManager  {
 
+    typedef std :: deque<Collider*>  ColliderList;
+
+    ColliderList      m_ColliderList;
+    IWorld             *m_pParentWorld;
+
     public:
 
-    CollisionManager( void );
+    CollisionManager( IWorld *pParentWorld );
     virtual ~CollisionManager( void );
+
+    void Clear( void );
 
     void Update( void );
 };

@@ -809,7 +809,8 @@ WorldRenderer :: WorldRenderer( float fWidth,
                                 float fHeight,
                                 const char *szTitle,
                                 int nTargetFps,
-                                bool bUseDefaultKEyHandler)  {
+                                bool bUseDefaultKEyHandler) :
+                                m_CollisionManager( this )  {
 
     m_nMapWidth             = 0;
     m_nMapHeight            = 0;

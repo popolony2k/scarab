@@ -40,7 +40,8 @@ class MyListener : public IWorldListener  {
             }
         }
 
-        m_pSprite -> GetDimension2D().pos.x++;
+        m_pSprite -> GetDimension2D().pos.x--;
+        //m_pSprite -> GetDimension2D().pos.y++;
         m_pSprite -> Update();
     }
 };
