@@ -72,6 +72,14 @@ bool Sprite :: SetActiveSequence( int nSequence )  {
     m_itActiveSequence = m_Sequences.find( nSequence );
     m_bIsValidSequence = ( m_itActiveSequence != m_Sequences.end() );
 
+    /*
+     * Reset current animation sequence on selected
+     * texture.
+     */
+    if( m_bIsValidSequence )  {
+        m_itActiveSequence -> second -> GetTextureData().pTexture -> Reset();
+    }
+
     return m_bIsValidSequence;
 }
 
@@ -101,7 +109,9 @@ void Sprite :: SetVisible( bool bVisible )  {
         if( itItem -> second -> First() )  {
             do  {
                 itItem -> second -> GetTextureData().pTexture -> SetVisible( bVisible );
-            } while( itItem -> second -> Next() );
+            } while( itItem -> second -> Next( false ) );
+
+            itItem -> second -> First();
         }
     }
 }
@@ -130,7 +140,7 @@ void Sprite :: Update( void )  {
 }
 
 /**
- * Unload all sprites.
+ * Unload all loaded sprites on this object.
  */
 void Sprite :: Unload( void )  {
 

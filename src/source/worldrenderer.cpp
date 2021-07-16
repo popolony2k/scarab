@@ -760,6 +760,14 @@ void WorldRenderer :: HandleUserUpdate( void )  {
 }
 
 /**
+ * Handle user collisions;
+ */
+void WorldRenderer :: HandleUserCollisions( void )  {
+
+    m_CollisionManager.Update();
+}
+
+/**
  * Copy user layer to tmx layer.
  * @param pTmxLayer Pointer to Tmx that data will be copied to;
  * @param layer User struct whose layer data will be copied from;
@@ -1238,9 +1246,10 @@ bool WorldRenderer :: Run( void )  {
     if( m_bIsStarted )  {
         while ( !WindowShouldClose() ) {
             BeginDrawing();
-            RenderMap();
-            HandleUserInput();
-            HandleUserUpdate();
+                RenderMap();
+                HandleUserInput();
+                HandleUserUpdate();
+                HandleUserCollisions();
             EndDrawing();
         }
 

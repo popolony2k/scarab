@@ -14,6 +14,7 @@
 #include <vector>
 #include <array>
 #include "iworldlistener.h"
+#include "collisionmanager.h"
 
 
 /*
@@ -71,6 +72,7 @@ class WorldRenderer : public IWorld  {
 
     WorldListenerList          m_WorldListenerList;
     KeyBindingEventHandler     m_UserEventHandlers;
+    CollisionManager           m_CollisionManager;
     stVector                   m_CameraPos;
     ViewControlMode            m_ViewControlMode;
     uint16_t                   m_nMapWidth;
@@ -158,6 +160,7 @@ class WorldRenderer : public IWorld  {
     // User interaction handlers
     void HandleUserInput( void );
     void HandleUserUpdate( void );
+    void HandleUserCollisions( void );
 
     // Internal layer handlers
     void CopyLayerToTmx( tmx_layer *pTmxLayer, stLayer& layer );

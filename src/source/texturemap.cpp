@@ -65,8 +65,8 @@ bool TextureMap :: First( void )  {
  * Get the next texture on list.
  * @param bCircularMode Navigate on list using circular mode;
  * WARNING: Be careful because this is a circular list.
- * Avoid to iterate until the end of list when using in circular mode
- * because in this case there's no end of list.
+ * Avoid to iterate checking the end of list when using in circular
+ * mode because in this case there's no end of list.
  * This function check if current texture is inside it's
  * animation update window before going to the next texture frame.
  */
