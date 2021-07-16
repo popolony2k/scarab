@@ -30,6 +30,7 @@ class MyListener : public IWorldListener  {
         stMatrixPosition  tilePos = { 0, 0 };
         stTile            tile;
         stLayer           layer;
+        stDimension2D&    spritePos = m_pSprite -> GetDimension2D();
 
         if( world.GetLayer( 6, layer ) )  {
             if( world.WorldToTileMatrix( pos.pos, tilePos ) ) {
@@ -40,7 +41,19 @@ class MyListener : public IWorldListener  {
             }
         }
 
-        m_pSprite -> GetDimension2D().pos.x--;
+        if( spritePos.pos.y == 100 )
+            spritePos.pos.x--;
+
+        if( spritePos.pos.x == 10 )
+            spritePos.pos.y++;
+
+        if( spritePos.pos.y == 300 )
+            spritePos.pos.x++;
+
+        if( spritePos.pos.x == 300 )
+            spritePos.pos.y--;
+
+        //m_pSprite -> GetDimension2D().pos.x--;
         //m_pSprite -> GetDimension2D().pos.y++;
         m_pSprite -> Update();
     }
@@ -54,7 +67,7 @@ void LoadSprite( Sprite& sprite,
         sprite.AddSpriteSequence( 1, &spriteTexture, interval );
         sprite.SetVisible( true );
         sprite.SetActiveSequence( 1 );
-        sprite.GetDimension2D().pos.x = 200;
+        sprite.GetDimension2D().pos.x = 300;
         sprite.GetDimension2D().pos.y = 100;
     }
 }
