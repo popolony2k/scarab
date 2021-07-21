@@ -14,22 +14,20 @@
 #include <queue>
 #include <array>
 
-/**
- *
- */
-enum ColliderType  {
-    COLLIDER_MAIN_SPRITE = 0,
-    COOLIDER_SECONDARY_SPRITE
-};
+#define MAX_COLLIDER_LIST   255
+
 
 class CollisionManager  {
 
     typedef std :: deque<Collider*>  ColliderList;
-    typedef std :: array<ColliderList*, 2> ColliderTypeArray;
+    typedef std :: array<ColliderList*, MAX_COLLIDER_LIST> ColliderLayerList;
     typedef std :: deque<ICollisionListener*> CollisionListenerList;
+    typedef std :: pair<ColliderList*, ColliderList*> ColliderPair;
+    typedef std :: deque<ColliderPair*> ColliderLayerRuleList;
 
     IWorld                   *m_pParentWorld;
-    ColliderTypeArray        m_ColliderTypeArray;
+    ColliderLayerList        m_ColliderLayerList;
+    ColliderLayerRuleList    m_ColliderLayerRuleList;
     CollisionListenerList    m_Listeners;
 
 
@@ -40,10 +38,12 @@ class CollisionManager  {
     CollisionManager( IWorld *pParentWorld );
     virtual ~CollisionManager( void );
 
-    void Add( Collider* pCollider, ColliderType type );
-    void Remove( Collider *pCollider, ColliderType type );
+    bool Add( Collider* pCollider, int nColliderLayerId );
+    bool Remove( Collider *pCollider, int nColliderLayerId );
     void Clear( void );
 
+    bool AddColliderLayerRule( int nFirstColliderLayerId,
+                               int nSecondColliderLayerId );
     void AddCollisionListener( ICollisionListener *pListener );
 
     void Update( void );

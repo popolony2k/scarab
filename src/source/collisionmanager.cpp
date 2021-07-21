@@ -29,8 +29,10 @@ void CollisionManager :: FireOnCollision( Collider *pFirst, Collider *pSecond ) 
 CollisionManager :: CollisionManager( IWorld *pParentWorld )  {
 
     m_pParentWorld = pParentWorld;
-    m_ColliderTypeArray[COLLIDER_MAIN_SPRITE]      = new ColliderList();
-    m_ColliderTypeArray[COOLIDER_SECONDARY_SPRITE] = new ColliderList();
+
+    for( int nCount = 0; nCount < m_ColliderLayerList.size(); nCount++)  {
+        m_ColliderLayerList[nCount] = new ColliderList();
+    }
 }
 
 /**
@@ -40,36 +42,44 @@ CollisionManager :: ~CollisionManager( void )  {
 
     Clear();
     m_Listeners.clear();
-    delete m_ColliderTypeArray[COLLIDER_MAIN_SPRITE];
-    delete m_ColliderTypeArray[COOLIDER_SECONDARY_SPRITE];
 }
 
 /**
  * Add a collider to manager;
  * @param pCollider Pointer to collider to add;
- * @param type Type of collider to add to the corresponding internal queue;
+ * @param nColliderLayerId collider layer id to add the collider;
  */
-void CollisionManager :: Add( Collider* pCollider, ColliderType type )  {
+bool CollisionManager :: Add( Collider* pCollider, int nColliderLayerId )  {
 
-    ColliderList   *pColliderList = m_ColliderTypeArray[type];
+    if( nColliderLayerId < m_ColliderLayerList.size() )  {
+        m_ColliderLayerList[nColliderLayerId] -> push_back( pCollider );
 
-    pColliderList -> push_back( pCollider );
+        return true;
+    }
+
+    return false;
 }
 
 /**
  * Add a collider from manager;
  * @param pCollider Pointer to collider to remove;
- * @param type Type of collider to add to the corresponding internal queue;
+ * @param nColliderLayerId collider layer id to remove the collider;
  */
-void CollisionManager :: Remove( Collider *pCollider, ColliderType type )  {
+bool CollisionManager :: Remove( Collider *pCollider, int nColliderLayerId )  {
 
-    ColliderList   *pColliderList = m_ColliderTypeArray[type];
-    ColliderList :: iterator itItem = find( pColliderList -> begin(),
-                                            pColliderList -> end(),
-                                            pCollider );
+    if( nColliderLayerId < m_ColliderLayerList.size() )  {
+        ColliderList   *pColliderList = m_ColliderLayerList[nColliderLayerId];
+        ColliderList :: iterator itItem = find( pColliderList -> begin(),
+                                                pColliderList -> end(),
+                                                pCollider );
 
-    if( itItem != pColliderList -> end() )
-        pColliderList -> erase( itItem );
+        if( itItem != pColliderList -> end() )
+            pColliderList -> erase( itItem );
+
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -77,8 +87,38 @@ void CollisionManager :: Remove( Collider *pCollider, ColliderType type )  {
  */
 void CollisionManager :: Clear( void )  {
 
-    m_ColliderTypeArray[COLLIDER_MAIN_SPRITE] -> clear();
-    m_ColliderTypeArray[COOLIDER_SECONDARY_SPRITE] -> clear();
+    for( int nCount = 0; nCount < m_ColliderLayerList.size(); nCount++)  {
+        delete m_ColliderLayerList[nCount];
+    }
+
+    for( ColliderPair *pPair : m_ColliderLayerRuleList )  {
+        delete pPair;
+    }
+}
+
+/**
+ * Add collider checking rule. This method pair two layer that will be checked
+ * in collision update checking.
+ * @param nFirstColliderLayerId First layer to be checked;
+ * @param nSecondColliderLayerId second layer to be checked;
+ */
+bool CollisionManager :: AddColliderLayerRule( int nFirstColliderLayerId,
+                                               int nSecondColliderLayerId )  {
+
+    if( ( nFirstColliderLayerId < m_ColliderLayerList.size() ) &&
+        ( nFirstColliderLayerId < m_ColliderLayerList.size() ) )  {
+
+        ColliderPair  *pPair = new ColliderPair();
+
+        pPair -> first  = m_ColliderLayerList[nFirstColliderLayerId];
+        pPair -> second = m_ColliderLayerList[nSecondColliderLayerId];
+
+        m_ColliderLayerRuleList.push_back( pPair );
+
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -98,10 +138,12 @@ void CollisionManager :: AddCollisionListener( ICollisionListener *pListener )  
  */
 void CollisionManager :: Update( void )  {
 
-    for( Collider *pFirst : *m_ColliderTypeArray[COLLIDER_MAIN_SPRITE] )  {
-        for( Collider *pSecond : *m_ColliderTypeArray[COOLIDER_SECONDARY_SPRITE] )  {
-            if( pFirst -> Hit( pSecond -> GetDimension() ) )  {
-                FireOnCollision( pFirst, pSecond );
+    for( ColliderPair *pPair : m_ColliderLayerRuleList )  {
+        for( Collider *pFirst : *pPair -> first )  {
+            for( Collider *pSecond : *pPair -> second )  {
+                if( pFirst -> Hit( pSecond -> GetDimension() ) )  {
+                    FireOnCollision( pFirst, pSecond );
+                }
             }
         }
     }
