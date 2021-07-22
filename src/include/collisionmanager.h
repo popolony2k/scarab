@@ -14,13 +14,13 @@
 #include <queue>
 #include <array>
 
-#define MAX_COLLIDER_LIST   255
+#define MAX_COLLIDER_LAYERS   255
 
 
 class CollisionManager  {
 
     typedef std :: deque<Collider*>  ColliderList;
-    typedef std :: array<ColliderList*, MAX_COLLIDER_LIST> ColliderLayerList;
+    typedef std :: array<ColliderList*, MAX_COLLIDER_LAYERS> ColliderLayerList;
     typedef std :: deque<ICollisionListener*> CollisionListenerList;
     typedef std :: pair<ColliderList*, ColliderList*> ColliderPair;
     typedef std :: deque<ColliderPair*> ColliderLayerRuleList;
@@ -38,8 +38,11 @@ class CollisionManager  {
     CollisionManager( IWorld *pParentWorld );
     virtual ~CollisionManager( void );
 
-    bool Add( Collider* pCollider, int nColliderLayerId );
-    bool Remove( Collider *pCollider, int nColliderLayerId );
+    bool AddCollider( Collider* pCollider,
+                      int nColliderLayerId );
+    bool RemoveCollider( Collider *pCollider,
+                         int nColliderLayerId );
+    bool RemoveAll( int nColliderLayerId = -1 );
     void Clear( void );
 
     bool AddColliderLayerRule( int nFirstColliderLayerId,

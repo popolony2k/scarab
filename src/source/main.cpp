@@ -6,22 +6,37 @@
 #define FRAMES_PER_SECOND  60
 
 
+class MyCollListener : public ICollisionListener  {
+
+    void OnCollision( Collider *pFirst, Collider *pSecond )  {
+
+        printf( "HIT !!!!\n" );
+    }
+
+};
+
 class MyListener : public IWorldListener  {
 
     stDimension2D     pos;
     Collider          collider;
     Sprite            *m_pSprite;
+    Sprite            *m_pSprite2;
+    CollisionManager  *m_pCollisionManager;
 
     public:
 
-    MyListener( Sprite *pSprite ) {
+    MyListener( Sprite *pSprite,
+                Sprite *pSprite2,
+                CollisionManager *pCollisionManager) {
 
         collider.SetDimensionPtr( &pos );
-        m_pSprite = pSprite;
-        pos.pos.x = 10;
-        pos.pos.y = 10;
-        pos.size.nWidth  = 16;
-        pos.size.nHeight = 16;
+        m_pSprite  = pSprite;
+        m_pSprite2 = pSprite2;
+        pos.pos.x  = 10;
+        pos.pos.y  = 10;
+        pos.size.nWidth     = 16;
+        pos.size.nHeight    = 16;
+        m_pCollisionManager = pCollisionManager;
     }
 
     virtual ~MyListener()  {}
@@ -56,6 +71,8 @@ class MyListener : public IWorldListener  {
         //m_pSprite -> GetDimension2D().pos.x--;
         //m_pSprite -> GetDimension2D().pos.y++;
         m_pSprite -> Update();
+        m_pSprite2 -> Update();
+        m_pCollisionManager -> Update();
     }
 };
 
@@ -74,31 +91,36 @@ void LoadSprite( Sprite& sprite,
 
 int main(int argc, char **argv) {
 
-    WorldRenderer   renderer( DISPLAY_W,
-                              DISPLAY_H,
-                              "Sunlight Engine",
-                              FRAMES_PER_SECOND,
-                              true );
-    std :: string  strTmxMapFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
-    std :: string  strTmxMapFile1 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
-    std :: string  strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
-    std :: string  strSpriteFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30.png";
-    std :: string  strSpriteFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30_2.png";
-    std :: string  strSpriteFile3 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30_3.png";
-    std :: string  strSpriteFile4 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/test_hexagonal_tile_60x60x30_4.png";
-    std :: string  strSpriteFile5 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/sonicwalk.png";
+    WorldRenderer    renderer( DISPLAY_W,
+                               DISPLAY_H,
+                               "Sunlight Engine",
+                               FRAMES_PER_SECOND,
+                               true );
+    std :: string    strTmxMapFile  = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/island.tmx";
+    std :: string    strTmxMapFile1 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/desert.tmx";
+    std :: string    strTmxMapFile2 = "/home/popolony2k/Projects/C_CPP/tiled-my/examples/rpg/untitled.tmx";
+    std :: string    strSpriteFile  = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/test_hexagonal_tile_60x60x30.png";
+    std :: string    strSpriteFile2 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/test_hexagonal_tile_60x60x30_2.png";
+    std :: string    strSpriteFile3 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/test_hexagonal_tile_60x60x30_3.png";
+    std :: string    strSpriteFile4 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/test_hexagonal_tile_60x60x30_4.png";
+    std :: string    strSpriteFile5 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/sonicwalk.png";
 
 
-    stViewport    viewport;
-    stLayer       layer;
-    TextureCanvas spriteTexture;
-    TextureCanvas spriteTexture2;
-    TextureCanvas spriteTexture3;
-    TextureCanvas spriteTexture4;
-    TextureCanvas spriteTexture5;
+    stViewport       viewport;
+    stLayer          layer;
+    TextureCanvas    spriteTexture;
+    TextureCanvas    spriteTexture2;
+    TextureCanvas    spriteTexture3;
+    TextureCanvas    spriteTexture4;
+    TextureCanvas    spriteTexture5;
 
-    Sprite         sprite;
-    MyListener      my( &sprite );
+    Sprite           sprite;
+    Sprite           sprite2;
+    CollisionManager collisionManager( &renderer );
+    MyCollListener   myCollision;
+    MyListener       my( &sprite,
+                         &sprite2,
+                         &collisionManager );
 
 
     viewport.pos.x = 10;
@@ -117,19 +139,26 @@ int main(int argc, char **argv) {
     layer.nOpacity = 254;
     renderer.SetLayer( 1, layer );
 
-    //LoadSprite( sprite, spriteTexture, strSpriteFile, 1000 );
-    //LoadSprite( sprite, spriteTexture2, strSpriteFile2, 1000 );
-    //LoadSprite( sprite, spriteTexture3, strSpriteFile3, 1000 );
-    //LoadSprite( sprite, spriteTexture4, strSpriteFile4, 1000 );
-
     sprite.SetViewport( viewport );
     LoadSprite( sprite, spriteTexture5, strSpriteFile5, 150 );
     spriteTexture5.GetDimension2D().size.nHeight = 80;
     spriteTexture5.GetDimension2D().size.nWidth  = 80;
     spriteTexture5.SetTileSize( 80 );
 
+    sprite2.SetViewport( viewport );
+    LoadSprite( sprite2, spriteTexture, strSpriteFile, 1000 );
+    LoadSprite( sprite2, spriteTexture2, strSpriteFile2, 1000 );
+    LoadSprite( sprite2, spriteTexture3, strSpriteFile3, 1000 );
+    LoadSprite( sprite2, spriteTexture4, strSpriteFile4, 1000 );
+
+    collisionManager.AddCollider( &sprite.GetCollider(), 0 );
+    collisionManager.AddCollider( &sprite2.GetCollider(), 1 );
+    collisionManager.AddColliderLayerRule( 0, 1 );
+    collisionManager.AddCollisionListener( &myCollision );
+
     renderer.Run();
     sprite.Unload();
+    sprite2.Unload();
     renderer.Stop();
 
 	return 0;

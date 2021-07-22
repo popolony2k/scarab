@@ -49,7 +49,8 @@ CollisionManager :: ~CollisionManager( void )  {
  * @param pCollider Pointer to collider to add;
  * @param nColliderLayerId collider layer id to add the collider;
  */
-bool CollisionManager :: Add( Collider* pCollider, int nColliderLayerId )  {
+bool CollisionManager :: AddCollider( Collider* pCollider,
+                                      int nColliderLayerId )  {
 
     if( nColliderLayerId < m_ColliderLayerList.size() )  {
         m_ColliderLayerList[nColliderLayerId] -> push_back( pCollider );
@@ -65,7 +66,8 @@ bool CollisionManager :: Add( Collider* pCollider, int nColliderLayerId )  {
  * @param pCollider Pointer to collider to remove;
  * @param nColliderLayerId collider layer id to remove the collider;
  */
-bool CollisionManager :: Remove( Collider *pCollider, int nColliderLayerId )  {
+bool CollisionManager :: RemoveCollider( Collider *pCollider,
+                                         int nColliderLayerId )  {
 
     if( nColliderLayerId < m_ColliderLayerList.size() )  {
         ColliderList   *pColliderList = m_ColliderLayerList[nColliderLayerId];
@@ -75,6 +77,29 @@ bool CollisionManager :: Remove( Collider *pCollider, int nColliderLayerId )  {
 
         if( itItem != pColliderList -> end() )
             pColliderList -> erase( itItem );
+
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Remove all colliders from layer.
+ * @param nColliderLayerId collider layer id to remove the all colliders.
+ * If this parameter is -1 (default), remove all collider from all layers;
+ */
+bool CollisionManager :: RemoveAll( int nColliderLayerId )  {
+
+    if( nColliderLayerId < m_ColliderLayerList.size() )  {
+        if( nColliderLayerId < 0 )  {
+            for( ColliderList *pColliderList : m_ColliderLayerList )  {
+                pColliderList -> clear();
+            }
+        }
+        else  {
+            m_ColliderLayerList[nColliderLayerId] -> clear();
+        }
 
         return true;
     }

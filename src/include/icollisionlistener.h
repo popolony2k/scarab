@@ -23,7 +23,7 @@ class ICollisionListener  {
      * @param pFirst The first collider involved in the collision;
      * @param pSecond The second collider involved in the collision;
      */
-    virtual void OnCollision( Collider *pFirst, Collider *pSecond) = 0;
+    virtual void OnCollision( Collider *pFirst, Collider *pSecond ) = 0;
 };
 
 #endif /* __ICOLLISIONLISTENER_H__ */
