@@ -21,13 +21,11 @@ class MyListener : public IWorldListener  {
     Collider          collider;
     Sprite            *m_pSprite;
     Sprite            *m_pSprite2;
-    CollisionManager  *m_pCollisionManager;
 
     public:
 
     MyListener( Sprite *pSprite,
-                Sprite *pSprite2,
-                CollisionManager *pCollisionManager) {
+                Sprite *pSprite2 ) {
 
         collider.SetDimensionPtr( &pos );
         m_pSprite  = pSprite;
@@ -36,7 +34,6 @@ class MyListener : public IWorldListener  {
         pos.pos.y  = 10;
         pos.size.nWidth     = 16;
         pos.size.nHeight    = 16;
-        m_pCollisionManager = pCollisionManager;
     }
 
     virtual ~MyListener()  {}
@@ -72,7 +69,6 @@ class MyListener : public IWorldListener  {
         //m_pSprite -> GetDimension2D().pos.y++;
         m_pSprite -> Update();
         m_pSprite2 -> Update();
-        m_pCollisionManager -> Update();
     }
 };
 
@@ -119,8 +115,7 @@ int main(int argc, char **argv) {
     CollisionManager collisionManager( &renderer );
     MyCollListener   myCollision;
     MyListener       my( &sprite,
-                         &sprite2,
-                         &collisionManager );
+                         &sprite2 );
 
 
     viewport.pos.x = 10;
@@ -151,10 +146,10 @@ int main(int argc, char **argv) {
     LoadSprite( sprite2, spriteTexture3, strSpriteFile3, 1000 );
     LoadSprite( sprite2, spriteTexture4, strSpriteFile4, 1000 );
 
-    collisionManager.AddCollider( &sprite.GetCollider(), 0 );
-    collisionManager.AddCollider( &sprite2.GetCollider(), 1 );
-    collisionManager.AddColliderLayerRule( 0, 1 );
-    collisionManager.AddCollisionListener( &myCollision );
+    renderer.GetCollisionManager().AddCollider( &sprite.GetCollider(), 0 );
+    renderer.GetCollisionManager().AddCollider( &sprite2.GetCollider(), 1 );
+    renderer.GetCollisionManager().AddColliderLayerRule( 0, 1 );
+    renderer.GetCollisionManager().AddCollisionListener( &myCollision );
 
     renderer.Run();
     sprite.Unload();

@@ -1186,6 +1186,14 @@ bool WorldRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
 }
 
 /**
+ * Return the reference to internal renderer collision manager.
+ */
+CollisionManager& WorldRenderer :: GetCollisionManager( void )  {
+
+    return m_CollisionManager;
+}
+
+/**
  * Start engine renderer.
  */
 bool WorldRenderer :: Start( void )  {

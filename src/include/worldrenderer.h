@@ -219,6 +219,9 @@ class WorldRenderer : public IWorld  {
     void SetMapFile( const char *szTxMapFile );
     bool GetMapInfo( stMapInfo& mapInfo );
 
+    // Collision management
+    CollisionManager& GetCollisionManager( void );
+
     // Renderer flow control.
     bool Start( void );
     void Stop( void );
