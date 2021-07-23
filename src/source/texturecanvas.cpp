@@ -102,13 +102,11 @@ void TextureCanvas :: Update( void )  {
         float          fViewY;
         float          fClippedWidth;
         float          fClippedHeight;
-        int            nPosX = ( m_pDimension -> pos.x + m_Viewport.pos.x );
-        int            nPosY = ( m_pDimension -> pos.y + m_Viewport.pos.y );
 
         if( GetClippedArea( m_pDimension -> size.nWidth,
                             m_pDimension -> size.nHeight,
-                            nPosX,
-                            nPosY,
+                            m_pDimension -> pos.x,
+                            m_pDimension -> pos.y,
                             fViewX,
                             fViewY,
                             fClippedWidth,

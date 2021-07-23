@@ -1145,8 +1145,14 @@ bool WorldRenderer :: WorldToTileMatrix( const stCoordinate2D& coord,
 
         if( ( ( nCoordX >= 0 ) && ( nCoordX < m_nMapWidth ) ) &&
             ( ( nCoordY >= 0 ) && ( nCoordY < m_nMapHeight ) ) ) {
-            pos.nTileCol = ( coord.x / m_pTmxMap -> tile_width );
-            pos.nTileRow = ( coord.y / m_pTmxMap -> tile_height );
+            pos.nTileCol = std :: round( ( float ) m_Viewport.pos.x /
+                                         m_pTmxMap -> tile_width ) +
+                           ( ( coord.x - m_CameraPos.x ) /
+                             m_pTmxMap -> tile_width );
+            pos.nTileRow = std :: round( ( float ) m_Viewport.pos.y /
+                                         m_pTmxMap -> tile_height ) +
+                           ( ( coord.y - m_CameraPos.y ) /
+                             m_pTmxMap -> tile_height );
             return true;
         }
     }

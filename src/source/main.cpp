@@ -10,30 +10,27 @@ class MyCollListener : public ICollisionListener  {
 
     void OnCollision( Collider *pFirst, Collider *pSecond )  {
 
-        printf( "HIT !!!!\n" );
+        printf( "HIT SPRITE TO SPRITE !!!!\n" );
     }
 
 };
 
 class MyListener : public IWorldListener  {
 
-    stDimension2D     pos;
-    Collider          collider;
     Sprite            *m_pSprite;
     Sprite            *m_pSprite2;
+    Sprite            *m_pSprite3;
+
 
     public:
 
     MyListener( Sprite *pSprite,
-                Sprite *pSprite2 ) {
+                Sprite *pSprite2,
+                Sprite *pSprite3) {
 
-        collider.SetDimensionPtr( &pos );
         m_pSprite  = pSprite;
         m_pSprite2 = pSprite2;
-        pos.pos.x  = 10;
-        pos.pos.y  = 10;
-        pos.size.nWidth     = 16;
-        pos.size.nHeight    = 16;
+        m_pSprite3 = pSprite3;
     }
 
     virtual ~MyListener()  {}
@@ -44,11 +41,14 @@ class MyListener : public IWorldListener  {
         stLayer           layer;
         stDimension2D&    spritePos = m_pSprite -> GetDimension2D();
 
-        if( world.GetLayer( 6, layer ) )  {
-            if( world.WorldToTileMatrix( pos.pos, tilePos ) ) {
+        if( world.GetLayer( 10, layer ) )  {
+            if( world.WorldToTileMatrix( spritePos.pos, tilePos ) ) {
+
+                //printf( "LIN [%d], COL [%d]\n", tilePos.nTileRow, tilePos.nTileCol );
+
                 if( world.GetTile(tilePos, layer, tile) &&
-                    collider.Hit( tile ) ) {
-                    //printf( "HIT\n" );
+                        m_pSprite -> GetCollider().Hit( tile ) ) {
+                    printf( "HIT SPRITE TO TILE !!!\n" );
                 }
             }
         }
@@ -56,7 +56,7 @@ class MyListener : public IWorldListener  {
         if( spritePos.pos.y == 100 )
             spritePos.pos.x--;
 
-        if( spritePos.pos.x == 10 )
+        if( spritePos.pos.x == 0 )
             spritePos.pos.y++;
 
         if( spritePos.pos.y == 300 )
@@ -69,19 +69,23 @@ class MyListener : public IWorldListener  {
         //m_pSprite -> GetDimension2D().pos.y++;
         m_pSprite -> Update();
         m_pSprite2 -> Update();
+        m_pSprite3 -> Update();
     }
 };
 
 void LoadSprite( Sprite& sprite,
                  TextureCanvas& spriteTexture,
-                 std :: string strSpriteFile, int interval )  {
+                 std :: string strSpriteFile,
+                 int interval,
+                 int nX = -1,
+                 int nY = -1 )  {
 
     if( spriteTexture.Load( strSpriteFile ) )  {
         sprite.AddSpriteSequence( 1, &spriteTexture, interval );
         sprite.SetVisible( true );
         sprite.SetActiveSequence( 1 );
-        sprite.GetDimension2D().pos.x = 300;
-        sprite.GetDimension2D().pos.y = 100;
+        sprite.GetDimension2D().pos.x = ( nX == -1 ? 300 : nX );
+        sprite.GetDimension2D().pos.y = ( nY == -1 ? 100 : nY );
     }
 }
 
@@ -99,7 +103,8 @@ int main(int argc, char **argv) {
     std :: string    strSpriteFile2 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/test_hexagonal_tile_60x60x30_2.png";
     std :: string    strSpriteFile3 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/test_hexagonal_tile_60x60x30_3.png";
     std :: string    strSpriteFile4 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/test_hexagonal_tile_60x60x30_4.png";
-    std :: string    strSpriteFile5 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/sonicwalk.png";
+    std :: string    strSpriteFile5 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/chibi-layered.png";
+    std :: string    strSpriteFile6 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/sonicwalk.png";
 
 
     stViewport       viewport;
@@ -109,13 +114,17 @@ int main(int argc, char **argv) {
     TextureCanvas    spriteTexture3;
     TextureCanvas    spriteTexture4;
     TextureCanvas    spriteTexture5;
+    TextureCanvas    spriteTexture6;
+
 
     Sprite           sprite;
     Sprite           sprite2;
+    Sprite           sprite3;
     CollisionManager collisionManager( &renderer );
     MyCollListener   myCollision;
     MyListener       my( &sprite,
-                         &sprite2 );
+                         &sprite2,
+                         &sprite3 );
 
 
     viewport.pos.x = 10;
@@ -136,9 +145,9 @@ int main(int argc, char **argv) {
 
     sprite.SetViewport( viewport );
     LoadSprite( sprite, spriteTexture5, strSpriteFile5, 150 );
-    spriteTexture5.GetDimension2D().size.nHeight = 80;
-    spriteTexture5.GetDimension2D().size.nWidth  = 80;
-    spriteTexture5.SetTileSize( 80 );
+    spriteTexture5.GetDimension2D().size.nHeight = 16;
+    spriteTexture5.GetDimension2D().size.nWidth  = 16;
+    spriteTexture5.SetTileSize( 16 );
 
     sprite2.SetViewport( viewport );
     LoadSprite( sprite2, spriteTexture, strSpriteFile, 1000 );
@@ -146,14 +155,24 @@ int main(int argc, char **argv) {
     LoadSprite( sprite2, spriteTexture3, strSpriteFile3, 1000 );
     LoadSprite( sprite2, spriteTexture4, strSpriteFile4, 1000 );
 
+    sprite3.SetViewport( viewport );
+    LoadSprite( sprite3, spriteTexture6, strSpriteFile6, 150, 150, 400 );
+    spriteTexture6.GetDimension2D().size.nHeight = 80;
+    spriteTexture6.GetDimension2D().size.nWidth  = 80;
+    spriteTexture6.SetTileSize( 80 );
+
     renderer.GetCollisionManager().AddCollider( &sprite.GetCollider(), 0 );
     renderer.GetCollisionManager().AddCollider( &sprite2.GetCollider(), 1 );
     renderer.GetCollisionManager().AddColliderLayerRule( 0, 1 );
     renderer.GetCollisionManager().AddCollisionListener( &myCollision );
 
+    renderer.SetScrollStepSize( 16, 16 );
+    renderer.SetViewControlMode( ViewControlMode::VIEW_CONTROL_MODE_REACTIVE );
+
     renderer.Run();
     sprite.Unload();
     sprite2.Unload();
+    sprite3.Unload();
     renderer.Stop();
 
 	return 0;

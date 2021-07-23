@@ -86,14 +86,17 @@ bool Collider :: Hit( stTile &tile )  {
 
         switch( pCollision -> obj_type )  {
             case OT_SQUARE :
-                bHit = RectRect( m_pDimension -> pos.x,
-                                 m_pDimension -> pos.y,
-                                 m_pDimension -> size.nWidth,
-                                 m_pDimension -> size.nHeight,
-                                 pCollision -> x,
-                                 pCollision -> y,
-                                 pCollision -> width,
-                                 pCollision -> height );
+                bHit = true;
+// FIXME: considering whole tile as square, because it's x, y coordinates are not
+// relative to map
+//                bHit = RectRect( m_pDimension -> pos.x,
+//                                 m_pDimension -> pos.y,
+//                                 m_pDimension -> size.nWidth,
+//                                 m_pDimension -> size.nHeight,
+//                                 pCollision -> x,
+//                                 pCollision -> y,
+//                                 pCollision -> width,
+//                                 pCollision -> height );
                 break;
             case OT_POLYGON :
                 /* Still not supported */
