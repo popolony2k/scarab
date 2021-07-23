@@ -44,6 +44,7 @@ void Viewport :: InitializeZoomEngine( void )  {
     m_Viewport.pos.y             = 0;
     m_Viewport.size.nWidth       = 0;
     m_Viewport.size.nHeight      = 0;
+    m_pViewport                  = &m_Viewport;
 
 }
 
@@ -68,13 +69,23 @@ Viewport :: ~Viewport( void )  {
  */
 void Viewport :: SetViewport( stViewport viewport )  {
 
-    m_Viewport = viewport;
+    *m_pViewport = viewport;
+}
+
+/**
+ * Set pointer to a new parent dimension object passed as parameter;
+ * @param pViewport Pointer to the new @link stViewport object
+ * that will be used by this entity;
+ */
+void Viewport :: SetViewportPtr( stViewport *pViewport )  {
+
+    m_pViewport = pViewport;
 }
 
 /**
  * Return the object viewport information structure.
  */
-stViewport Viewport :: GetViewport( void )  {
+stViewport& Viewport :: GetViewport( void )  {
 
     return m_Viewport;
 }

@@ -8,10 +8,10 @@
 #ifndef __COLLIDER_H__
 #define __COLLIDER_H__
 
-#include "worldbasedefs.h"
+#include "viewport.h"
 
 
-class Collider {
+class Collider : public Viewport {
 
     stDimension2D       m_Dimension;
     stDimension2D       *m_pDimension;

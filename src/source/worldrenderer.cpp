@@ -134,31 +134,31 @@ void WorldRenderer :: MidPointEllipse( double fCoordX,
         int nYNeg = ( -y + fCoordY );
 
         // Print points based on 4-way symmetry
-        if( ( nXPos > m_Viewport.pos.x ) &&
-            ( nXPos < m_Viewport.size.nWidth ) &&
-            ( nYPos > m_Viewport.pos.y ) &&
-            ( nYPos < m_Viewport.size.nHeight ) )  {
+        if( ( nXPos > m_pViewport -> pos.x ) &&
+            ( nXPos < m_pViewport -> size.nWidth ) &&
+            ( nYPos > m_pViewport -> pos.y ) &&
+            ( nYPos < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXPos, nYPos, color );
         }
 
-        if( ( nXNeg > m_Viewport.pos.x ) &&
-            ( nXNeg < m_Viewport.size.nWidth ) &&
-            ( nYPos > m_Viewport.pos.y ) &&
-            ( nYPos < m_Viewport.size.nHeight ) )  {
+        if( ( nXNeg > m_pViewport -> pos.x ) &&
+            ( nXNeg < m_pViewport -> size.nWidth ) &&
+            ( nYPos > m_pViewport -> pos.y ) &&
+            ( nYPos < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXNeg, nYPos, color );
         }
 
-        if( ( nXPos > m_Viewport.pos.x ) &&
-            ( nXPos < m_Viewport.size.nWidth ) &&
-            ( nYNeg > m_Viewport.pos.y ) &&
-            ( nYNeg < m_Viewport.size.nHeight ) )  {
+        if( ( nXPos > m_pViewport -> pos.x ) &&
+            ( nXPos < m_pViewport -> size.nWidth ) &&
+            ( nYNeg > m_pViewport -> pos.y ) &&
+            ( nYNeg < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXPos, nYNeg, color );
         }
 
-        if( ( nXNeg > m_Viewport.pos.x ) &&
-            ( nXNeg < m_Viewport.size.nWidth ) &&
-            ( nYNeg > m_Viewport.pos.y ) &&
-            ( nYNeg < m_Viewport.size.nHeight ) )  {
+        if( ( nXNeg > m_pViewport -> pos.x ) &&
+            ( nXNeg < m_pViewport -> size.nWidth ) &&
+            ( nYNeg > m_pViewport -> pos.y ) &&
+            ( nYNeg < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXNeg, nYNeg, color );
         }
 
@@ -192,31 +192,31 @@ void WorldRenderer :: MidPointEllipse( double fCoordX,
         int nYNeg = ( -y + fCoordY );
 
         // Print points based on 4-way symmetry
-        if( ( nXPos > m_Viewport.pos.x ) &&
-            ( nXPos < m_Viewport.size.nWidth ) &&
-            ( nYPos > m_Viewport.pos.y ) &&
-            ( nYPos < m_Viewport.size.nHeight ) )  {
+        if( ( nXPos > m_pViewport -> pos.x ) &&
+            ( nXPos < m_pViewport -> size.nWidth ) &&
+            ( nYPos > m_pViewport -> pos.y ) &&
+            ( nYPos < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXPos, nYPos, color );
         }
 
-        if( ( nXNeg > m_Viewport.pos.x ) &&
-            ( nXNeg < m_Viewport.size.nWidth ) &&
-            ( nYPos > m_Viewport.pos.y ) &&
-            ( nYPos < m_Viewport.size.nHeight ) )  {
+        if( ( nXNeg > m_pViewport -> pos.x ) &&
+            ( nXNeg < m_pViewport -> size.nWidth ) &&
+            ( nYPos > m_pViewport -> pos.y ) &&
+            ( nYPos < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXNeg, nYPos, color );
         }
 
-        if( ( nXPos > m_Viewport.pos.x ) &&
-            ( nXPos < m_Viewport.size.nWidth ) &&
-            ( nYNeg > m_Viewport.pos.y ) &&
-            ( nYNeg < m_Viewport.size.nHeight ) )  {
+        if( ( nXPos > m_pViewport -> pos.x ) &&
+            ( nXPos < m_pViewport -> size.nWidth ) &&
+            ( nYNeg > m_pViewport -> pos.y ) &&
+            ( nYNeg < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXPos, nYNeg, color );
         }
 
-        if( ( nXNeg > m_Viewport.pos.x ) &&
-            ( nXNeg < m_Viewport.size.nWidth ) &&
-            ( nYNeg > m_Viewport.pos.y ) &&
-            ( nYNeg < m_Viewport.size.nHeight ) )  {
+        if( ( nXNeg > m_pViewport -> pos.x ) &&
+            ( nXNeg < m_pViewport -> size.nWidth ) &&
+            ( nYNeg > m_pViewport -> pos.y ) &&
+            ( nYNeg < m_pViewport -> size.nHeight ) )  {
             SetPixel( nXNeg, nYNeg, color );
         }
 
@@ -262,10 +262,10 @@ void WorldRenderer :: LineBresenham( int nX0,
   while( true )  {
 
     // Print points based on 4-way symmetry
-    if( ( nX0 > m_Viewport.pos.x ) &&
-        ( nX0 < m_Viewport.size.nWidth ) &&
-        ( nY0 > m_Viewport.pos.y ) &&
-        ( nY0 < m_Viewport.size.nHeight ) )  {
+    if( ( nX0 > m_pViewport -> pos.x ) &&
+        ( nX0 < m_pViewport -> size.nWidth ) &&
+        ( nY0 > m_pViewport -> pos.y ) &&
+        ( nY0 < m_pViewport -> size.nHeight ) )  {
         SetPixel( nX0, nY0, color );
     }
 
@@ -300,9 +300,9 @@ void WorldRenderer :: DrawPolyline( double fOffset_x,
                                     Color color ) {
 
     fOffset_x = ( ( fOffset_x + m_CameraPos.x ) *
-                  m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+                  m_pProps -> fZoomFactor ) + m_pViewport -> pos.x;
     fOffset_y = ( ( fOffset_y + m_CameraPos.y ) *
-                  m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
+                  m_pProps -> fZoomFactor ) + m_pViewport -> pos.y;
 
     for( int i=1; i < nPointsCount; i++ ) {
         LineBresenham( ( fOffset_x + ( fPoints[i-1][0] *
@@ -338,9 +338,9 @@ void WorldRenderer :: DrawPolygon( double fOffset_x,
 
     if( nPointsCount > 2 ) {
         fOffset_x = ( ( fOffset_x + m_CameraPos.x ) *
-                      m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+                      m_pProps -> fZoomFactor ) + m_pViewport -> pos.x;
         fOffset_y = ( ( fOffset_y + m_CameraPos.y ) *
-                      m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
+                      m_pProps -> fZoomFactor ) + m_pViewport -> pos.y;
 
         LineBresenham( ( fOffset_x + ( fPoints[0][0] *
                                        m_pProps -> fZoomFactor ) ),
@@ -374,13 +374,13 @@ void WorldRenderer :: DrawRectangle( double fOffset_x,
     float          fViewEndY;
 
     fViewStartX = ( ( fOffset_x + m_CameraPos.x ) *
-                    m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+                    m_pProps -> fZoomFactor ) + m_pViewport -> pos.x;
     fViewStartY = ( ( fOffset_y + m_CameraPos.y ) *
-                    m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
+                    m_pProps -> fZoomFactor ) + m_pViewport -> pos.y;
     fViewEndX   = ( ( fOffset_x + fWidth + m_CameraPos.x ) *
-                    m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+                    m_pProps -> fZoomFactor ) + m_pViewport -> pos.x;
     fViewEndY   = ( ( fOffset_y + fHeight + m_CameraPos.y ) *
-                    m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
+                    m_pProps -> fZoomFactor ) + m_pViewport -> pos.y;
 
     // Top line
     LineBresenham( fViewStartX,
@@ -432,9 +432,9 @@ void WorldRenderer :: DrawEllipse( double fOffset_x,
     fWidth-=( fWidth / 2.0 );
     fHeight-=( fHeight / 2.0 );
     fOffset_x = ( ( fOffset_x + fWidth + m_CameraPos.x ) *
-                  m_pProps -> fZoomFactor ) + m_Viewport.pos.x;
+                  m_pProps -> fZoomFactor ) + m_pViewport -> pos.x;
     fOffset_y = ( ( fOffset_y + fHeight + m_CameraPos.y ) *
-                  m_pProps -> fZoomFactor ) + m_Viewport.pos.y;
+                  m_pProps -> fZoomFactor ) + m_pViewport -> pos.y;
 
     MidPointEllipse( fOffset_x,
                      fOffset_y,
@@ -812,24 +812,24 @@ WorldRenderer :: WorldRenderer( float fWidth,
                                 bool bUseDefaultKEyHandler) :
                                 m_CollisionManager( this )  {
 
-    m_nMapWidth             = 0;
-    m_nMapHeight            = 0;
-    m_Viewport.pos.x        = 0;
-    m_Viewport.pos.y        = 0;
-    m_Viewport.size.nWidth  = fWidth;
-    m_Viewport.size.nHeight = fHeight;
-    m_fWindowWidth          = fWidth;
-    m_fWindowHeight         = fHeight;
-    m_nTargetFps            = nTargetFps;
-    m_strTitle              = szTitle;
-    m_pTmxMap               = NULL;
-    m_bIsStarted            = false;
-    m_bWindowResizeable     = __DEFAULT_RESIZEABLE_STATUS;
-    m_bClearBackground      = __DEFAULT_CLEAR_BACKGROUND;
-    m_bDrawFPS              = __DEFAULT_DRAW_FPS_STATUS;
-    m_nScrollStepWidth      = __DEFAULT_SCROLL_STEP_WIDTH;
-    m_nScrollStepHeight     = __DEFAULT_SCROLL_STEP_HEIGHT;
-    m_ViewControlMode       = __DEFAULT_VIEW_CONTROL_MODE;
+    m_nMapWidth                 = 0;
+    m_nMapHeight                = 0;
+    m_pViewport -> pos.x        = 0;
+    m_pViewport -> pos.y        = 0;
+    m_pViewport -> size.nWidth  = fWidth;
+    m_pViewport -> size.nHeight = fHeight;
+    m_fWindowWidth              = fWidth;
+    m_fWindowHeight             = fHeight;
+    m_nTargetFps                = nTargetFps;
+    m_strTitle                  = szTitle;
+    m_pTmxMap                   = NULL;
+    m_bIsStarted                = false;
+    m_bWindowResizeable         = __DEFAULT_RESIZEABLE_STATUS;
+    m_bClearBackground          = __DEFAULT_CLEAR_BACKGROUND;
+    m_bDrawFPS                  = __DEFAULT_DRAW_FPS_STATUS;
+    m_nScrollStepWidth          = __DEFAULT_SCROLL_STEP_WIDTH;
+    m_nScrollStepHeight         = __DEFAULT_SCROLL_STEP_HEIGHT;
+    m_ViewControlMode           = __DEFAULT_VIEW_CONTROL_MODE;
     m_strTxMapFile.clear();
     m_WorldListenerList.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
@@ -1127,6 +1127,13 @@ bool WorldRenderer :: GetTile( const stMatrixPosition& pos,
         return false;
     }
 
+    tile.dimension.pos.x        = ( ( pos.nTileCol * m_pTmxMap -> tile_width ) +
+                                    m_pViewport -> pos.x ) + m_CameraPos.x;
+    tile.dimension.pos.y        = ( ( pos.nTileRow * m_pTmxMap -> tile_height ) +
+                                    m_pViewport -> pos.y ) + m_CameraPos.y;
+    tile.dimension.size.nWidth  = ( m_pTmxMap -> tile_width );
+    tile.dimension.size.nHeight = ( m_pTmxMap -> tile_height );
+
     return true;
 }
 
@@ -1145,14 +1152,10 @@ bool WorldRenderer :: WorldToTileMatrix( const stCoordinate2D& coord,
 
         if( ( ( nCoordX >= 0 ) && ( nCoordX < m_nMapWidth ) ) &&
             ( ( nCoordY >= 0 ) && ( nCoordY < m_nMapHeight ) ) ) {
-            pos.nTileCol = std :: round( ( float ) m_Viewport.pos.x /
-                                         m_pTmxMap -> tile_width ) +
-                           ( ( coord.x - m_CameraPos.x ) /
-                             m_pTmxMap -> tile_width );
-            pos.nTileRow = std :: round( ( float ) m_Viewport.pos.y /
-                                         m_pTmxMap -> tile_height ) +
-                           ( ( coord.y - m_CameraPos.y ) /
-                             m_pTmxMap -> tile_height );
+            pos.nTileCol = ( ( ( coord.x + m_pViewport -> pos.x ) -
+                               m_CameraPos.x ) / m_pTmxMap -> tile_width );
+            pos.nTileRow = ( ( ( coord.y + m_pViewport -> pos.x ) -
+                               m_CameraPos.y ) / m_pTmxMap -> tile_height );
 
             return ( ( pos.nTileCol >= 0 ) && ( pos.nTileRow >=0 ) );
         }

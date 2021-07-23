@@ -35,8 +35,10 @@ class DrawEntity : public Viewport  {
     bool GetVisible( void );
 
     virtual void SetDimension2D( stDimension2D dimension );
-    void SetDimensionPtr( stDimension2D* pDimension );
+    void SetDimension2DPtr( stDimension2D* pDimension );
     stDimension2D& GetDimension2D( void );
+
+    void SetViewportPtr( stViewport *pViewport );
 
     void SetColor( stColor color );
     stColor& GetColor( void );

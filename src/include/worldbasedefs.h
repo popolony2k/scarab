@@ -66,6 +66,7 @@ struct stTile  {
                               * a tile at map scope.
                               * https://libtmx.readthedocs.io/en/latest/glossary.html#term-gid
                               */
+    stDimension2D  dimension; // Position and size based on layer
     tmx_tile       *pTile;
 };
 

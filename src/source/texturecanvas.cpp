@@ -112,10 +112,10 @@ void TextureCanvas :: Update( void )  {
                             fClippedWidth,
                             fClippedHeight ) ) {
 
-            int nCutSrcWidth  = ( fViewX == m_Viewport.pos.x ?
+            int nCutSrcWidth  = ( fViewX == m_pViewport -> pos.x ?
                                   std :: abs( fClippedWidth -
                                               m_pDimension -> size.nWidth ) : 0 );
-            int nCutSrcHeight = ( fViewY == m_Viewport.pos.y ?
+            int nCutSrcHeight = ( fViewY == m_pViewport -> pos.y ?
                                   std :: abs( fClippedHeight -
                                               m_pDimension -> size.nHeight ) : 0 );
 

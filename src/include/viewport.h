@@ -30,7 +30,9 @@ class Viewport  {
     typedef std :: vector<float> ZoomFactorList;
     typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
 
-    stZoomProperties     m_Props;
+    stZoomProperties           m_Props;
+    stViewport                 m_Viewport;
+
 
 
     void InitializeZoomEngine( void );
@@ -41,7 +43,8 @@ class Viewport  {
     virtual ~Viewport( void );
 
     void SetViewport( stViewport viewport );
-    stViewport GetViewport( void );
+    virtual void SetViewportPtr( stViewport *pViewport );
+    stViewport& GetViewport( void );
 
     virtual void SetEnableUserZoom( bool bEnabled );
     virtual void SetPreferredZoom( unsigned nZoomPos );
@@ -65,7 +68,7 @@ class Viewport  {
 
     protected:
 
-    stViewport                 m_Viewport;
+    stViewport                 *m_pViewport;
     ZoomBorderLimits           m_ZoomBorderLimits;
     ZoomFactorList             m_vZoomFactorList;
     stZoomProperties           *m_pProps;

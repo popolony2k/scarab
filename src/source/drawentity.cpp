@@ -17,6 +17,7 @@ DrawEntity :: DrawEntity( void ) {
     m_pDimension = &m_Dimension;
     std :: memset( &m_Dimension, 0, sizeof( m_Dimension ) );
     m_Collider.SetDimensionPtr( m_pDimension );
+    m_Collider.SetViewportPtr( m_pViewport );
 }
 
 /**
@@ -44,11 +45,11 @@ bool DrawEntity :: GetVisible( void )  {
 }
 
 /**
- * Add a pointer to a new parent dimension object passed as parameter;
+ * Set pointer to a new parent dimension object passed as parameter;
  * @param pDimension Pointer to the new @link stDimension2D object
  * that will be used by this entity;
  */
-void DrawEntity :: SetDimensionPtr( stDimension2D* pDimension )  {
+void DrawEntity :: SetDimension2DPtr( stDimension2D* pDimension )  {
 
     m_pDimension = pDimension;
     m_Collider.SetDimensionPtr( m_pDimension );
@@ -69,6 +70,19 @@ void DrawEntity :: SetDimension2D( stDimension2D dimension )  {
 stDimension2D& DrawEntity :: GetDimension2D( void )  {
 
     return *m_pDimension;
+}
+
+/**
+ * Set pointer to a new parent dimension object passed as parameter;
+ * This is a override of parent method to provide passing new viewport to
+ * internal dependencies.
+ * @param pViewport Pointer to the new @link stViewport object
+ * that will be used by this entity;
+ */
+void DrawEntity :: SetViewportPtr( stViewport *pViewport )  {
+
+    Viewport :: SetViewportPtr( pViewport );
+    m_Collider.SetViewportPtr( pViewport );
 }
 
 /**
