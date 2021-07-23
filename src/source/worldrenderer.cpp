@@ -1153,7 +1153,8 @@ bool WorldRenderer :: WorldToTileMatrix( const stCoordinate2D& coord,
                                          m_pTmxMap -> tile_height ) +
                            ( ( coord.y - m_CameraPos.y ) /
                              m_pTmxMap -> tile_height );
-            return true;
+
+            return ( ( pos.nTileCol >= 0 ) && ( pos.nTileRow >=0 ) );
         }
     }
 
