@@ -44,9 +44,6 @@ class MyListener : public IWorldListener  {
         if( world.GetLayer( 10, layer ) )  {
             if( world.WorldToTileMatrix( spritePos.pos, tilePos ) ) {
 
-                if( tilePos.nTileRow == 27 && tilePos.nTileCol == 42 )
-                printf( "LIN [%d], COL [%d]\n", tilePos.nTileRow, tilePos.nTileCol );
-                else
                 printf( "LIN [%d], COL [%d]\n", tilePos.nTileRow, tilePos.nTileCol );
 
                 if( world.GetTile(tilePos, layer, tile) &&
