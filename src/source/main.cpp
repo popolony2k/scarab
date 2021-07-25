@@ -44,7 +44,7 @@ class MyListener : public IWorldListener  {
         if( world.GetLayer( 10, layer ) )  {
             if( world.WorldToTileMatrix( spritePos.pos, tilePos ) ) {
 
-                printf( "LIN [%d], COL [%d]\n", tilePos.nTileRow, tilePos.nTileCol );
+                //printf( "LIN [%d], COL [%d]\n", tilePos.nTileRow, tilePos.nTileCol );
 
                 if( world.GetTile(tilePos, layer, tile) &&
                         m_pSprite -> GetCollider().Hit( tile ) ) {
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
     std :: string    strSpriteFile6 = "/home/popolony2k/Projects/C_CPP/game-engine/resources/animations/sonicwalk.png";
 
 
-    stViewport       viewport;
+    stDimension2D    viewport;
     stLayer          layer;
     TextureCanvas    spriteTexture;
     TextureCanvas    spriteTexture2;
@@ -136,26 +136,29 @@ int main(int argc, char **argv) {
 
     //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
     renderer.SetMapFile( strTmxMapFile.c_str() );
-    renderer.SetViewport( viewport );
+    renderer.SetDimension2D( viewport );
     renderer.SetDrawFPS( true );
     renderer.Start();
     renderer.GetLayer( 1, layer );
     layer.nOpacity = 254;
     renderer.SetLayer( 1, layer );
 
-    sprite.SetViewport( viewport );
+    sprite.GetViewport().SetDimension2DPtr( &renderer.GetDimension2D() );
+
     LoadSprite( sprite, spriteTexture5, strSpriteFile5, 150 );
     spriteTexture5.GetDimension2D().size.nHeight = 16;
     spriteTexture5.GetDimension2D().size.nWidth  = 16;
     spriteTexture5.SetTileSize( 16 );
 
-    sprite2.SetViewport( viewport );
+    sprite2.GetViewport().SetDimension2DPtr( &renderer.GetDimension2D() );
+
     LoadSprite( sprite2, spriteTexture, strSpriteFile, 1000 );
     LoadSprite( sprite2, spriteTexture2, strSpriteFile2, 1000 );
     LoadSprite( sprite2, spriteTexture3, strSpriteFile3, 1000 );
     LoadSprite( sprite2, spriteTexture4, strSpriteFile4, 1000 );
 
-    sprite3.SetViewport( viewport );
+    sprite3.GetViewport().SetDimension2DPtr( &renderer.GetDimension2D() );
+
     LoadSprite( sprite3, spriteTexture6, strSpriteFile6, 150, 150, 400 );
     spriteTexture6.GetDimension2D().size.nHeight = 80;
     spriteTexture6.GetDimension2D().size.nWidth  = 80;

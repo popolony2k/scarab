@@ -8,14 +8,10 @@
 #ifndef __COLLIDER_H__
 #define __COLLIDER_H__
 
-#include "viewport.h"
+#include "basecanvas.h"
 
 
-class Collider : public Viewport {
-
-    stDimension2D       m_Dimension;
-    stDimension2D       *m_pDimension;
-
+class Collider : public BaseCanvas {
 
     bool RectRect( float fRect1X,
                    float fRect1Y,
@@ -30,9 +26,6 @@ class Collider : public Viewport {
 
     Collider( void );
     virtual ~Collider( void );
-
-    void SetDimensionPtr( stDimension2D *pDimension );
-    stDimension2D& GetDimension( void );
 
     bool Hit( stTile &tile );
     bool Hit( stDimension2D &dimension );

@@ -17,7 +17,7 @@ TextureCanvas :: TextureCanvas( void )  {
 
     std :: memset( &m_texture, 0, sizeof( m_texture ) );
     m_nTileSize = 0;
-    m_Color     = WHITE_COLOR;
+    SetColor( WHITE_COLOR );
     Reset();
 }
 
@@ -35,13 +35,15 @@ TextureCanvas :: ~TextureCanvas( void )  {
  */
 bool TextureCanvas :: Load( std :: string strTextureFile )  {
 
+    stDimension2D& dimension = GetDimension2D();
+
     m_texture = ::LoadTexture( strTextureFile.c_str() );
 
     if( m_texture.id > 0 )  {
-        if( ( m_pDimension -> size.nHeight == 0 ) &&
-            ( m_pDimension -> size.nHeight == 0 )  ) {
-            m_pDimension -> size.nHeight = m_texture.height;
-            m_pDimension -> size.nWidth  = m_texture.width;
+        if( ( dimension.size.nHeight == 0 ) &&
+            ( dimension.size.nHeight == 0 )  ) {
+            dimension.size.nHeight = m_texture.height;
+            dimension.size.nWidth  = m_texture.width;
         }
 
         return true;
@@ -97,27 +99,32 @@ unsigned int TextureCanvas :: GetTileSize( void ) {
  */
 void TextureCanvas :: Update( void )  {
 
-    if( m_bVisible )  {
+    if( GetVisible() )  {
         float          fViewX;
         float          fViewY;
         float          fClippedWidth;
         float          fClippedHeight;
+        Viewport&      vp        = GetViewport();
+        stDimension2D& vpArea    = vp.GetDimension2D();
+        stDimension2D& dimension = GetDimension2D();
 
-        if( GetClippedArea( m_pDimension -> size.nWidth,
-                            m_pDimension -> size.nHeight,
-                            m_pDimension -> pos.x,
-                            m_pDimension -> pos.y,
-                            fViewX,
-                            fViewY,
-                            fClippedWidth,
-                            fClippedHeight ) ) {
 
-            int nCutSrcWidth  = ( fViewX == m_pViewport -> pos.x ?
+        if( vp.GetClippedArea( dimension.size.nWidth,
+                               dimension.size.nHeight,
+                               dimension.pos.x,
+                               dimension.pos.y,
+                               fViewX,
+                               fViewY,
+                               fClippedWidth,
+                               fClippedHeight ) ) {
+
+            int nCutSrcWidth  = ( fViewX == vpArea.pos.x ?
                                   std :: abs( fClippedWidth -
-                                              m_pDimension -> size.nWidth ) : 0 );
-            int nCutSrcHeight = ( fViewY == m_pViewport -> pos.y ?
+                                              dimension.size.nWidth ) : 0 );
+            int nCutSrcHeight = ( fViewY == vpArea.pos.y ?
                                   std :: abs( fClippedHeight -
-                                              m_pDimension -> size.nHeight ) : 0 );
+                                              dimension.size.nHeight ) : 0 );
+            stColor&  color   = GetColor();
 
             m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
                                m_nCurrentTile + m_nTileSize );
@@ -134,11 +141,11 @@ void TextureCanvas :: Update( void )  {
                                                 fClippedHeight },
                                 ( Vector2 )   { 0.0, 0.0 },
                                 0.0, // TODO: Rotation
-                                m_pProps -> fZoomFactor,
-                                ( Color )       { m_Color.nRed,
-                                                  m_Color.nGreen,
-                                                  m_Color.nBlue,
-                                                  m_Color.nAlpha } );
+                                vp.GetZoomProperties().fZoomFactor,
+                                ( Color )       { color.nRed,
+                                                  color.nGreen,
+                                                  color.nBlue,
+                                                  color.nAlpha } );
         }
     }
 }

@@ -40,12 +40,6 @@ void Viewport :: InitializeZoomEngine( void )  {
     m_ZoomBorderLimits.second    = __MAX_ZOOM_DEPTH;
     m_pProps -> bEnabledUserZoom = __DEFAULT_USER_ZOOM_STATUS;
     m_pProps -> fZoomFactor      = m_vZoomFactorList[m_pProps -> nPreferredZoomPos];
-    m_Viewport.pos.x             = 0;
-    m_Viewport.pos.y             = 0;
-    m_Viewport.size.nWidth       = 0;
-    m_Viewport.size.nHeight      = 0;
-    m_pViewport                  = &m_Viewport;
-
 }
 
 /**
@@ -61,33 +55,6 @@ Viewport :: Viewport( void )  {
  */
 Viewport :: ~Viewport( void )  {
 
-}
-
-/**
- * Set the new object viewport;
- * @param viewport The new viewport rectangle;
- */
-void Viewport :: SetViewport( stViewport viewport )  {
-
-    *m_pViewport = viewport;
-}
-
-/**
- * Set pointer to a new parent dimension object passed as parameter;
- * @param pViewport Pointer to the new @link stViewport object
- * that will be used by this entity;
- */
-void Viewport :: SetViewportPtr( stViewport *pViewport )  {
-
-    m_pViewport = pViewport;
-}
-
-/**
- * Return the object viewport information structure.
- */
-stViewport& Viewport :: GetViewport( void )  {
-
-    return m_Viewport;
 }
 
 /**
@@ -204,6 +171,14 @@ void Viewport :: SetZoomPropertiesPtr( stZoomProperties *pProps )  {
 }
 
 /**
+ * Return the reference to internal @link stZoomProperties struct;
+ */
+stZoomProperties& Viewport :: GetZoomProperties( void )  {
+
+    return *m_pProps;
+}
+
+/**
  * Calculates the clipped rectangle area based on
  * position and viewport boundaries;
  * @param nSourceX Source object X coordinate;
@@ -228,20 +203,21 @@ bool Viewport :: GetClippedArea( int32_t nSourceW,
                                  float& fViewWidth,
                                  float& fViewHeight )  {
 
-    float       fClippingX;
-    float       fClippingY;
-    int32_t     nTemp;
+    float           fClippingX;
+    float           fClippingY;
+    int32_t         nTemp;
+    stDimension2D&  vp = GetDimension2D();
 
-    if( ( nDestX > ( m_Viewport.pos.x + m_Viewport.size.nWidth ) ) ||
-        ( nDestY > ( m_Viewport.pos.y + m_Viewport.size.nHeight ) )||
+    if( ( nDestX > ( vp.pos.x + vp.size.nWidth ) ) ||
+        ( nDestY > ( vp.pos.y + vp.size.nHeight ) )||
         ( nDestX < 0.0 ) || ( nDestY < 0.0 ) )  {
 
-        if( nDestX < m_Viewport.pos.x )  {
+        if( nDestX < vp.pos.x )  {
             nTemp = std :: abs( nDestX );
             nSourceW-=( nTemp < nSourceW ? nTemp : nSourceW );
         }
 
-        if( nDestY < m_Viewport.pos.y )  {
+        if( nDestY < vp.pos.y )  {
             nTemp = std :: abs( nDestY );
             nSourceH-=( nTemp < nSourceH ? nTemp : nSourceH );
         }
@@ -250,15 +226,15 @@ bool Viewport :: GetClippedArea( int32_t nSourceW,
         nDestY = ( nDestY < 0.0 ? 0.0 : nDestY );
     }
 
-    fViewX      = ( ( nDestX * m_pProps -> fZoomFactor ) + m_Viewport.pos.x );
-    fViewY      = ( ( nDestY * m_pProps -> fZoomFactor ) + m_Viewport.pos.y );
+    fViewX      = ( ( nDestX * m_pProps -> fZoomFactor ) + vp.pos.x );
+    fViewY      = ( ( nDestY * m_pProps -> fZoomFactor ) + vp.pos.y );
     fViewWidth  = ( nSourceW * m_pProps -> fZoomFactor );
     fViewHeight = ( nSourceH * m_pProps -> fZoomFactor );
     fClippingX  = ( fViewX + fViewWidth );
     fClippingY  = ( fViewY + fViewHeight );
 
-    if( fClippingX > m_Viewport.size.nWidth )  {
-        fClippingX = ( fClippingX - m_Viewport.size.nWidth );
+    if( fClippingX > vp.size.nWidth )  {
+        fClippingX = ( fClippingX - vp.size.nWidth );
 
         if( fClippingX > fViewWidth )
             return false;
@@ -266,8 +242,8 @@ bool Viewport :: GetClippedArea( int32_t nSourceW,
         fViewWidth = fViewWidth - fClippingX;
     }
 
-    if( fClippingY > m_Viewport.size.nHeight )  {
-        fClippingY = ( fClippingY - m_Viewport.size.nHeight );
+    if( fClippingY > vp.size.nHeight )  {
+        fClippingY = ( fClippingY - vp.size.nHeight );
 
         if( fClippingY > fViewHeight )
             return false;

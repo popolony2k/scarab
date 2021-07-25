@@ -166,7 +166,7 @@ void CollisionManager :: Update( void )  {
     for( ColliderPair *pPair : m_ColliderLayerRuleList )  {
         for( Collider *pFirst : *pPair -> first )  {
             for( Collider *pSecond : *pPair -> second )  {
-                if( pFirst -> Hit( pSecond -> GetDimension() ) )  {
+                if( pFirst -> Hit( pSecond -> GetDimension2D() ) )  {
                     FireOnCollision( pFirst, pSecond );
                 }
             }

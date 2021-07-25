@@ -44,8 +44,6 @@ bool Collider :: RectRect( float fRect1X,
  */
 Collider :: Collider( void )  {
 
-    std :: memset( &m_Dimension, 0, sizeof( m_Dimension ) );
-    m_pDimension = &m_Dimension;
 }
 
 /**
@@ -55,41 +53,25 @@ Collider :: ~Collider( void )  {
 
 }
 
-/*
- * Add a pointer to a new parent dimension object passed as parameter;
- * @param pDimension Pointer to the new @link stDimension2D object
- * that will be used by this entity;
- */
-void Collider :: SetDimensionPtr( stDimension2D *pDimension )  {
-
-    m_pDimension = pDimension;
-}
-
-/**
- * Return the reference to the collider dimension data struct.
- */
-stDimension2D& Collider :: GetDimension( void )  {
-
-    return *m_pDimension;
-}
-
 /**
  * Check if collider object area has been hit by tile passed as parameter.
  * @param tile Reference to the tile struct containing all tile information;
  */
 bool Collider :: Hit( stTile &tile )  {
 
-    tmx_object  *pCollision = tile.pTile -> collision;
-    bool        bHit = false;
+    stDimension2D&  viewport    = GetViewport().GetDimension2D();
+    stDimension2D&  dimension   = GetDimension2D();
+    tmx_object      *pCollision = tile.pTile -> collision;
+    bool            bHit        = false;
 
     while( pCollision )  {
 
         switch( pCollision -> obj_type )  {
             case OT_SQUARE :
-                bHit = RectRect( ( m_pDimension -> pos.x + m_pViewport -> pos.x ),
-                                 ( m_pDimension -> pos.y + m_pViewport -> pos.y ),
-                                 m_pDimension -> size.nWidth,
-                                 m_pDimension -> size.nHeight,
+                bHit = RectRect( ( dimension.pos.x + viewport.pos.x ),
+                                 ( dimension.pos.y + viewport.pos.y ),
+                                 dimension.size.nWidth,
+                                 dimension.size.nHeight,
                                  ( tile.dimension.pos.x + pCollision -> x ),
                                  ( tile.dimension.pos.y + pCollision -> y ),
                                  pCollision -> width,
@@ -122,10 +104,12 @@ bool Collider :: Hit( stTile &tile )  {
  */
 bool Collider :: Hit( stDimension2D &dimension )  {
 
-    return RectRect( m_pDimension -> pos.x,
-                     m_pDimension -> pos.y,
-                     m_pDimension -> size.nWidth,
-                     m_pDimension -> size.nHeight,
+    stDimension2D&  self = GetDimension2D();
+
+    return RectRect( self.pos.x,
+                     self.pos.y,
+                     self.size.nWidth,
+                     self.size.nHeight,
                      dimension.pos.x,
                      dimension.pos.y,
                      dimension.size.nWidth,

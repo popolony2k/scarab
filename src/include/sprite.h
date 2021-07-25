@@ -13,7 +13,7 @@
 #include <map>
 
 
-class Sprite : public DrawEntity  {
+class Sprite : public DrawCanvas  {
 
     typedef std :: map<int, TextureMap*>  TextureSequenceList;
 

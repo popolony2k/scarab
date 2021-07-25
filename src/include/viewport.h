@@ -8,7 +8,7 @@
 #ifndef __VIEWPORT_H__
 #define __VIEWPORT_H__
 
-#include "worldbasedefs.h"
+#include "baseentity.h"
 #include <vector>
 
 /**
@@ -25,14 +25,12 @@ struct stZoomProperties {
  * Abstract class used to manage zoom engine for all
  * interface graphic components.
  */
-class Viewport  {
+class Viewport : public BaseEntity {
 
     typedef std :: vector<float> ZoomFactorList;
     typedef std :: pair<unsigned, unsigned> ZoomBorderLimits;
 
     stZoomProperties           m_Props;
-    stViewport                 m_Viewport;
-
 
 
     void InitializeZoomEngine( void );
@@ -41,10 +39,6 @@ class Viewport  {
 
     Viewport( void );
     virtual ~Viewport( void );
-
-    void SetViewport( stViewport viewport );
-    virtual void SetViewportPtr( stViewport *pViewport );
-    stViewport& GetViewport( void );
 
     virtual void SetEnableUserZoom( bool bEnabled );
     virtual void SetPreferredZoom( unsigned nZoomPos );
@@ -56,6 +50,7 @@ class Viewport  {
     virtual void ZoomOut( void );
 
     void SetZoomPropertiesPtr( stZoomProperties *pProps );
+    stZoomProperties& GetZoomProperties( void );
 
     virtual bool GetClippedArea( int32_t nSourceW,
                                  int32_t nSourceH,
@@ -68,7 +63,6 @@ class Viewport  {
 
     protected:
 
-    stViewport                 *m_pViewport;
     ZoomBorderLimits           m_ZoomBorderLimits;
     ZoomFactorList             m_vZoomFactorList;
     stZoomProperties           *m_pProps;

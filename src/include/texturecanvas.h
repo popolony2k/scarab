@@ -10,10 +10,10 @@
 
 #include <raylib.h>
 #include <string>
-#include "drawentity.h"
+#include "drawcanvas.h"
 
 
-class TextureCanvas : public DrawEntity  {
+class TextureCanvas : public DrawCanvas  {
 
     Texture2D       m_texture;
     unsigned int    m_nCurrentTile;

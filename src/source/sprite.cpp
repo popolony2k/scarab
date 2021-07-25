@@ -36,21 +36,22 @@ void Sprite :: AddSpriteSequence( int nSequence,
                                   int64_t nDelayMilli ) {
 
     TextureSequenceList :: iterator itItem = m_Sequences.find( nSequence );
-    stDimension2D    spritePos = GetDimension2D();
+    stDimension2D&   spritePos = GetDimension2D();
 
 
     if( ( spritePos.size.nWidth == 0 ) &&
         ( spritePos.size.nHeight == 0 ) )  {
         stDimension2D   texturePos = pTexture -> GetDimension2D();
 
-        m_pDimension -> size.nWidth  = texturePos.size.nWidth;
-        m_pDimension -> size.nHeight = texturePos.size.nHeight;
+        spritePos.size.nWidth  = texturePos.size.nWidth;
+        spritePos.size.nHeight = texturePos.size.nHeight;
     }
 
     pTexture -> SetVisible( GetVisible() );
-    pTexture -> SetDimension2DPtr( m_pDimension );
-    pTexture -> SetZoomPropertiesPtr( m_pProps );
-    pTexture -> SetViewport( *m_pViewport );
+    pTexture -> SetParent( this );
+    pTexture -> SetDimension2DPtr( &spritePos );
+    pTexture -> GetViewport().SetZoomPropertiesPtr( &GetViewport().GetZoomProperties() );
+    pTexture -> SetViewport( &GetViewport() );
 
     if( itItem == m_Sequences.end() )  {
         TextureMap   *pTextureMap = new TextureMap();
@@ -90,9 +91,10 @@ bool Sprite :: SetActiveSequence( int nSequence )  {
  */
 void Sprite :: Move( stCoordinate2D& step )  {
 
+    stDimension2D& dimension = GetDimension2D();
 
-    m_pDimension -> pos.x+=step.x;
-    m_pDimension -> pos.y+=step.y;
+    dimension.pos.x+=step.x;
+    dimension.pos.y+=step.y;
 }
 
 /**
@@ -103,7 +105,7 @@ void Sprite :: SetVisible( bool bVisible )  {
 
     TextureSequenceList :: iterator itItem;
 
-    DrawEntity :: SetVisible( bVisible );
+    DrawCanvas :: SetVisible( bVisible );
 
     for( itItem = m_Sequences.begin(); itItem != m_Sequences.end(); itItem++ )  {
         if( itItem -> second -> First() )  {
@@ -122,7 +124,7 @@ void Sprite :: SetVisible( bool bVisible )  {
  */
 void Sprite :: Update( void )  {
 
-    if( m_bVisible && m_bIsValidSequence )  {
+    if( GetVisible() && m_bIsValidSequence )  {
         bool          bDisableFrameUpdate = !m_itActiveSequence -> second -> Next();
         TextureCanvas *pTextureCanvas     = m_itActiveSequence -> second -> GetTextureData().pTexture;
         unsigned int  nTileSize;
