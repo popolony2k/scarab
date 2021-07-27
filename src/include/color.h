@@ -22,7 +22,7 @@ struct stColor  {
 /**
  * Pre-defined colors.
  */
-#define WHITE_COLOR  ( stColor ) { 255, 255, 255, 255 }
-#define BLACK_COLOR  ( stColor ) { 0, 0, 0, 255 }
+#define WHITE_COLOR   stColor  { 255, 255, 255, 255 }
+#define BLACK_COLOR   stColor  { 0, 0, 0, 255 }
 
 #endif /* __COLOR_H__ */

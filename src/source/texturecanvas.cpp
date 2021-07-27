@@ -130,22 +130,22 @@ void TextureCanvas :: Update( void )  {
                                m_nCurrentTile + m_nTileSize );
 
             ::DrawTextureTiled( m_texture,
-                                ( Rectangle ) { ( float ) m_nCurrentTile +
-                                                          nCutSrcWidth,
-                                                ( float ) nCutSrcHeight,
-                                                ( float ) m_texture.width,
-                                                ( float ) m_texture.height },
-                                ( Rectangle ) { fViewX,
-                                                fViewY,
-                                                fClippedWidth,
-                                                fClippedHeight },
-                                ( Vector2 )   { 0.0, 0.0 },
+                                 Rectangle { ( float ) m_nCurrentTile +
+                                                       nCutSrcWidth,
+                                             ( float ) nCutSrcHeight,
+                                             ( float ) m_texture.width,
+                                             ( float ) m_texture.height },
+                                 Rectangle { fViewX,
+                                             fViewY,
+                                             fClippedWidth,
+                                             fClippedHeight },
+                                 Vector2    { 0.0, 0.0 },
                                 0.0, // TODO: Rotation
                                 vp.GetZoomProperties().fZoomFactor,
-                                ( Color )       { color.nRed,
-                                                  color.nGreen,
-                                                  color.nBlue,
-                                                  color.nAlpha } );
+                                Color       { color.nRed,
+                                              color.nGreen,
+                                              color.nBlue,
+                                              color.nAlpha } );
         }
     }
 }

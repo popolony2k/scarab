@@ -494,18 +494,18 @@ void WorldRenderer :: DrawTile( void *pImage,
                         fViewX, fViewY,
                         fClippedWidth, fClippedHeight ) ) {
         ::DrawTextureTiled( *pTexture,
-                          ( Rectangle ) { ( float ) nSourceX,
-                                          ( float ) nSourceY,
-                                          ( float ) nSourceW,
-                                          ( float ) nSourceH },
-                          ( Rectangle ) { fViewX,
-                                          fViewY,
-                                          fClippedWidth,
-                                          fClippedHeight },
-                          ( Vector2 ) { 0, 0 },
+                          Rectangle  { ( float ) nSourceX,
+                                       ( float ) nSourceY,
+                                       ( float ) nSourceW,
+                                       ( float ) nSourceH },
+                          Rectangle  { fViewX,
+                                       fViewY,
+                                       fClippedWidth,
+                                       fClippedHeight },
+                          Vector2  { 0, 0 },
                           0.0f,
                           m_pProps -> fZoomFactor,
-                          ( Color ) { op, op, op, op } );
+                          Color  { op, op, op, op } );
     }
 }
 
