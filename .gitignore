@@ -18,6 +18,9 @@
 *.settings
 *.maintenance
 *.cmake
+*.vcxproj
+*.filters
+*.sln
 GameEngine
 Makefile
 CMakeCache.txt
