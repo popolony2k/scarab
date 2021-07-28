@@ -69,7 +69,9 @@ class WorldRenderer : public IWorld  {
 
     typedef void ( WorldRenderer :: *KEY_EVENT_HANDLER )( void );
     typedef std :: array<KEY_EVENT_HANDLER, MAX_KEYS> KeyBindingEventHandler;
+    typedef std :: deque<Sprite*> SpriteList;
 
+    SpriteList                 m_SpriteList;
     WorldListenerList          m_WorldListenerList;
     KeyBindingEventHandler     m_UserEventHandlers;
     CollisionManager           m_CollisionManager;
@@ -221,6 +223,10 @@ class WorldRenderer : public IWorld  {
 
     // Collision management
     CollisionManager& GetCollisionManager( void );
+
+    // Sprite management
+    bool AddSprite( int nLayerId, Sprite& sprite );
+    bool RemoveSprite( Sprite& sprite );
 
     // Renderer flow control.
     bool Start( void );

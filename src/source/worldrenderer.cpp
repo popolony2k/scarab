@@ -708,6 +708,11 @@ void WorldRenderer :: RenderMap( void ) {
 bool WorldRenderer :: UnloadMap( void )  {
 
     if( m_pTmxMap )  {
+
+        for( Sprite* pSprite : m_SpriteList )  {
+            pSprite -> Unload();
+        }
+
         ::tmx_map_free( m_pTmxMap );
 
         /*
@@ -846,6 +851,7 @@ WorldRenderer :: WorldRenderer( float fWidth,
     m_ViewControlMode             = __DEFAULT_VIEW_CONTROL_MODE;
     m_strTxMapFile.clear();
     m_WorldListenerList.clear();
+    m_SpriteList.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
     ResetZoom();
 
@@ -1219,6 +1225,51 @@ bool WorldRenderer :: GetMapInfo( stMapInfo& mapInfo )  {
 CollisionManager& WorldRenderer :: GetCollisionManager( void )  {
 
     return m_CollisionManager;
+}
+
+/**
+ * Add a sprite to world.
+ * @param nLayerId Id of Layer to add sprite;
+ * @param sprite Reference to the sprite that will be added;
+ */
+bool WorldRenderer :: AddSprite( int nLayerId, Sprite& sprite )  {
+
+    if( m_bIsStarted )  {
+        SpriteList :: iterator itItem = std :: find( m_SpriteList.begin(),
+                                                     m_SpriteList.end(),
+                                                     &sprite );
+
+        if( itItem == m_SpriteList.end() )  {
+            sprite.GetViewport().SetDimension2DPtr( &GetDimension2D() );
+            m_CollisionManager.AddCollider( &sprite.GetCollider(), nLayerId );
+            m_SpriteList.push_back( &sprite );
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Remove a sprite from world.
+ * @param sprite Reference to the sprite that will be removed;
+ */
+bool WorldRenderer :: RemoveSprite( Sprite& sprite )  {
+
+    if( m_bIsStarted )  {
+        SpriteList :: iterator itItem = std :: find( m_SpriteList.begin(),
+                                                     m_SpriteList.end(),
+                                                     &sprite );
+
+        if( itItem == m_SpriteList.end() )  {
+            m_SpriteList.erase( itItem );
+            sprite.Unload();
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**

@@ -8,7 +8,7 @@
 #ifndef __IWORLD_H__
 #define __IWORLD_H__
 
-#include "viewport.h"
+#include "sprite.h"
 
 
 /**
@@ -105,6 +105,19 @@ class IWorld : public Viewport  {
      * receive the map information.
      */
     virtual bool GetMapInfo( stMapInfo& mapInfo ) = 0;
+
+    /**
+     * Add a sprite to world.
+     * @param nLayerId Id of Layer to add sprite;
+     * @param sprite Reference to the sprite that will be added;
+     */
+    virtual bool AddSprite( int nLayerId, Sprite& sprite ) = 0;
+
+    /**
+     * Remove a sprite from world.
+     * @param sprite Reference to the sprite that will be removed;
+     */
+    virtual bool RemoveSprite( Sprite& sprite ) = 0;
 };
 
 #endif /* __IWORLD_H__ */

@@ -143,29 +143,25 @@ int main(int argc, char **argv) {
     layer.nOpacity = 254;
     renderer.SetLayer( 1, layer );
 
-    sprite.GetViewport().SetDimension2DPtr( &renderer.GetDimension2D() );
-
     LoadSprite( sprite, spriteTexture5, strSpriteFile5, 150 );
     spriteTexture5.GetDimension2D().size.nHeight = 16;
     spriteTexture5.GetDimension2D().size.nWidth  = 16;
     spriteTexture5.SetTileSize( 16 );
-
-    sprite2.GetViewport().SetDimension2DPtr( &renderer.GetDimension2D() );
 
     LoadSprite( sprite2, spriteTexture, strSpriteFile, 1000 );
     LoadSprite( sprite2, spriteTexture2, strSpriteFile2, 1000 );
     LoadSprite( sprite2, spriteTexture3, strSpriteFile3, 1000 );
     LoadSprite( sprite2, spriteTexture4, strSpriteFile4, 1000 );
 
-    sprite3.GetViewport().SetDimension2DPtr( &renderer.GetDimension2D() );
-
-    LoadSprite( sprite3, spriteTexture6, strSpriteFile6, 150, 150, 400 );
+    LoadSprite( sprite3, spriteTexture6, strSpriteFile6, 150, 100, 250 );
     spriteTexture6.GetDimension2D().size.nHeight = 80;
     spriteTexture6.GetDimension2D().size.nWidth  = 80;
     spriteTexture6.SetTileSize( 80 );
 
-    renderer.GetCollisionManager().AddCollider( &sprite.GetCollider(), 0 );
-    renderer.GetCollisionManager().AddCollider( &sprite2.GetCollider(), 1 );
+    renderer.AddSprite( 0, sprite );
+    renderer.AddSprite( 1, sprite2 );
+    renderer.AddSprite( 3, sprite3 );
+
     renderer.GetCollisionManager().AddColliderLayerRule( 0, 1 );
     renderer.GetCollisionManager().AddCollisionListener( &myCollision );
 
@@ -173,8 +169,6 @@ int main(int argc, char **argv) {
     renderer.SetViewControlMode( ViewControlMode::VIEW_CONTROL_MODE_REACTIVE );
 
     renderer.Run();
-    sprite.Unload();
-    sprite2.Unload();
     sprite3.Unload();
     renderer.Stop();
 

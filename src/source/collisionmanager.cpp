@@ -71,9 +71,9 @@ bool CollisionManager :: RemoveCollider( Collider *pCollider,
 
     if( nColliderLayerId < m_ColliderLayerList.size() )  {
         ColliderList   *pColliderList = m_ColliderLayerList[nColliderLayerId];
-        ColliderList :: iterator itItem = find( pColliderList -> begin(),
-                                                pColliderList -> end(),
-                                                pCollider );
+        ColliderList :: iterator itItem = std :: find( pColliderList -> begin(),
+                                                       pColliderList -> end(),
+                                                       pCollider );
 
         if( itItem != pColliderList -> end() )
             pColliderList -> erase( itItem );
