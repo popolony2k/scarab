@@ -116,9 +116,9 @@ void TextureCanvas :: Update( void )  {
 
             stColor&  color   = GetColor();
             float fZoomFactor = vp.GetZoomProperties().fZoomFactor;
-            int nCutSrcWidth  = ( fViewX == vpDm.pos.x ? std :: abs( fClipW -
+            int   nCutSrcW    = ( fViewX == vpDm.pos.x ? std :: abs( fClipW -
                                   ( dm.size.nWidth * fZoomFactor ) ) : 0 );
-            int nCutSrcHeight = ( fViewY == vpDm.pos.y ? std :: abs( fClipH -
+            int   nCutSrcH    = ( fViewY == vpDm.pos.y ? std :: abs( fClipH -
                                   ( dm.size.nHeight * fZoomFactor ) ) : 0 );
 
             m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
@@ -126,8 +126,8 @@ void TextureCanvas :: Update( void )  {
 
             ::DrawTextureTiled( m_texture,
                                  Rectangle { ( float ) m_nCurrentTile +
-                                                       nCutSrcWidth,
-                                             ( float ) nCutSrcHeight,
+                                                       nCutSrcW,
+                                             ( float ) nCutSrcH,
                                              ( float ) m_texture.width,
                                              ( float ) m_texture.height },
                                  Rectangle { fViewX, fViewY,
