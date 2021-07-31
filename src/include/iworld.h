@@ -14,7 +14,7 @@
 /**
  * World interface with basic operations inside the game world.
  */
-class IWorld : public Viewport  {
+class IWorld : public BaseCanvas {
 
     public:
 
@@ -115,9 +115,10 @@ class IWorld : public Viewport  {
 
     /**
      * Remove a sprite from world.
+     * @param nLayerId Id of Layer to remove sprite;
      * @param sprite Reference to the sprite that will be removed;
      */
-    virtual bool RemoveSprite( Sprite& sprite ) = 0;
+    virtual bool RemoveSprite( int nLayerId, Sprite& sprite ) = 0;
 };
 
 #endif /* __IWORLD_H__ */

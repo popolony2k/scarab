@@ -37,7 +37,10 @@ void Sprite :: AddSpriteSequence( int nSequence,
 
     TextureSequenceList :: iterator itItem = m_Sequences.find( nSequence );
     stDimension2D&   spritePos = GetDimension2D();
+    BaseCanvas       *pParent  = GetParent();
 
+    if( !pParent )
+        pParent = this;
 
     if( ( spritePos.size.nWidth == 0 ) &&
         ( spritePos.size.nHeight == 0 ) )  {
@@ -48,10 +51,8 @@ void Sprite :: AddSpriteSequence( int nSequence,
     }
 
     pTexture -> SetVisible( GetVisible() );
-    pTexture -> SetParent( this );
+    pTexture -> SetParent( pParent );
     pTexture -> SetDimension2DPtr( &spritePos );
-    pTexture -> GetViewport().SetZoomPropertiesPtr( &GetViewport().GetZoomProperties() );
-    pTexture -> SetViewport( &GetViewport() );
 
     if( itItem == m_Sequences.end() )  {
         TextureMap   *pTextureMap = new TextureMap();

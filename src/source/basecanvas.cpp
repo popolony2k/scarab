@@ -56,7 +56,10 @@ void BaseCanvas :: SetVisible( bool bVisible )  {
  */
 bool BaseCanvas :: GetVisible( void )  {
 
-    return ( m_pParent ? m_pParent -> GetVisible() : BaseEntity :: GetVisible() );
+    if( m_pParent )
+        return ( m_pParent -> GetVisible() ? BaseEntity :: GetVisible() : false );
+
+    return BaseEntity :: GetVisible();
 }
 
 /**

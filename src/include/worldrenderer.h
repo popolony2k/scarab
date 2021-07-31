@@ -193,7 +193,12 @@ class WorldRenderer : public IWorld  {
     void SetScrollStepSize( int nStepWidth, int nStepHeight );
 
     // User input handling
-     int GetKeyPressed( void );
+    int GetKeyPressed( void );
+
+    // Zoom wrappers
+    void ResetZoom( void );
+    void ZoomIn( void );
+    void ZoomOut( void );
 
     // Camera management
     void ResetCamera( void );
@@ -226,7 +231,7 @@ class WorldRenderer : public IWorld  {
 
     // Sprite management
     bool AddSprite( int nLayerId, Sprite& sprite );
-    bool RemoveSprite( Sprite& sprite );
+    bool RemoveSprite( int nLayerId, Sprite& sprite );
 
     // Renderer flow control.
     bool Start( void );

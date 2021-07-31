@@ -19,6 +19,7 @@
 #define __DEFAULT_SCROLL_STEP_WIDTH     -1
 #define __DEFAULT_SCROLL_STEP_HEIGHT    -1
 #define __DEFAULT_SCROLL_STEP           -1
+#define __DEFAULT_VISIBLE_STATUS        true
 #define __DEFAULT_CLEAR_BACKGROUND      true
 #define __DEFAULT_RESIZEABLE_STATUS     false
 #define __DEFAULT_DRAW_FPS_STATUS       false
@@ -119,7 +120,7 @@ void WorldRenderer :: MidPointEllipse( double fCoordX,
     double          dx, dy;
     double          d1, d2;
     double          x, y;
-    stDimension2D&  vp = GetDimension2D();
+    stDimension2D&  vp = GetViewport().GetDimension2D();
 
 
     x = 0;
@@ -264,7 +265,7 @@ void WorldRenderer :: LineBresenham( int nX0,
   int             nDy  = -std :: abs( nY1 - nY0 );
   int             nSy  = ( nY0 < nY1 ? 1 : -1 );
   int             nErr = nDx + nDy;
-  stDimension2D&  vp   = GetDimension2D();
+  stDimension2D&  vp   = GetViewport().GetDimension2D();
 
 
   while( true )  {
@@ -307,22 +308,17 @@ void WorldRenderer :: DrawPolyline( double fOffset_x,
                                     int nPointsCount,
                                     Color color ) {
 
-    stDimension2D&  vp = GetDimension2D();
+    stZoomProperties& zp = GetViewport().GetZoomProperties();
+    stDimension2D&    vp = GetViewport().GetDimension2D();
 
-    fOffset_x = ( ( fOffset_x + m_CameraPos.x ) *
-                  m_pProps -> fZoomFactor ) + vp.pos.x;
-    fOffset_y = ( ( fOffset_y + m_CameraPos.y ) *
-                  m_pProps -> fZoomFactor ) + vp.pos.y;
+    fOffset_x = ( ( fOffset_x + m_CameraPos.x ) * zp.fZoomFactor ) + vp.pos.x;
+    fOffset_y = ( ( fOffset_y + m_CameraPos.y ) * zp.fZoomFactor ) + vp.pos.y;
 
     for( int i=1; i < nPointsCount; i++ ) {
-        LineBresenham( ( fOffset_x + ( fPoints[i-1][0] *
-                                       m_pProps -> fZoomFactor ) ),
-                       ( fOffset_y + ( fPoints[i-1][1] *
-                                       m_pProps -> fZoomFactor ) ) ,
-                       ( fOffset_x + ( fPoints[i][0] *
-                                       m_pProps -> fZoomFactor ) ) ,
-                       ( fOffset_y + ( fPoints[i][1] *
-                                       m_pProps -> fZoomFactor ) ),
+        LineBresenham( ( fOffset_x + ( fPoints[i-1][0] * zp.fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[i-1][1] * zp.fZoomFactor ) ),
+                       ( fOffset_x + ( fPoints[i][0] * zp.fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[i][1] * zp.fZoomFactor ) ),
                        color );
     }
 }
@@ -340,7 +336,7 @@ void WorldRenderer :: DrawPolygon( double fOffset_x,
                                    int nPointsCount,
                                    Color color ) {
 
-    stDimension2D&  vp = GetDimension2D();
+    stDimension2D&  vp = GetViewport().GetDimension2D();
 
     DrawPolyline( fOffset_x,
                   fOffset_y,
@@ -349,19 +345,19 @@ void WorldRenderer :: DrawPolygon( double fOffset_x,
                   color );
 
     if( nPointsCount > 2 ) {
-        fOffset_x = ( ( fOffset_x + m_CameraPos.x ) *
-                      m_pProps -> fZoomFactor ) + vp.pos.x;
-        fOffset_y = ( ( fOffset_y + m_CameraPos.y ) *
-                      m_pProps -> fZoomFactor ) + vp.pos.y;
+        stZoomProperties& zp = GetViewport().GetZoomProperties();
 
-        LineBresenham( ( fOffset_x + ( fPoints[0][0] *
-                                       m_pProps -> fZoomFactor ) ),
-                       ( fOffset_y + ( fPoints[0][1] *
-                                       m_pProps -> fZoomFactor ) ),
+        fOffset_x = ( ( fOffset_x + m_CameraPos.x ) *
+                      zp.fZoomFactor ) + vp.pos.x;
+        fOffset_y = ( ( fOffset_y + m_CameraPos.y ) *
+                      zp.fZoomFactor ) + vp.pos.y;
+
+        LineBresenham( ( fOffset_x + ( fPoints[0][0] * zp.fZoomFactor ) ),
+                       ( fOffset_y + ( fPoints[0][1] * zp.fZoomFactor ) ),
                        ( fOffset_x + ( fPoints[nPointsCount-1][0] *
-                                       m_pProps -> fZoomFactor ) ),
+                                       zp.fZoomFactor ) ),
                        ( fOffset_y + ( fPoints[nPointsCount-1][1] *
-                                       m_pProps -> fZoomFactor ) ),
+                                       zp.fZoomFactor ) ),
                        color );
     }
 }
@@ -380,21 +376,22 @@ void WorldRenderer :: DrawRectangle( double fOffset_x,
                                      double fHeight,
                                      Color color )  {
 
+    stDimension2D&    vp = GetViewport().GetDimension2D();
+    stZoomProperties& zp = GetViewport().GetZoomProperties();
     float           fViewStartX;
     float           fViewStartY;
     float           fViewEndX;
     float           fViewEndY;
-    stDimension2D&  vp = GetDimension2D();
 
 
     fViewStartX = ( ( fOffset_x + m_CameraPos.x ) *
-                    m_pProps -> fZoomFactor ) + vp.pos.x;
+                    zp.fZoomFactor ) + vp.pos.x;
     fViewStartY = ( ( fOffset_y + m_CameraPos.y ) *
-                    m_pProps -> fZoomFactor ) + vp.pos.y;
+                    zp.fZoomFactor ) + vp.pos.y;
     fViewEndX   = ( ( fOffset_x + fWidth + m_CameraPos.x ) *
-                    m_pProps -> fZoomFactor ) + vp.pos.x;
+                    zp.fZoomFactor ) + vp.pos.x;
     fViewEndY   = ( ( fOffset_y + fHeight + m_CameraPos.y ) *
-                    m_pProps -> fZoomFactor ) + vp.pos.y;
+                    zp.fZoomFactor ) + vp.pos.y;
 
     // Top line
     LineBresenham( fViewStartX,
@@ -438,24 +435,24 @@ void WorldRenderer :: DrawEllipse( double fOffset_x,
                                    double fHeight,
                                    Color color )  {
 
+    stDimension2D&    vp = GetViewport().GetDimension2D();
+    stZoomProperties& zp = GetViewport().GetZoomProperties();
     float           fViewStartX;
     float           fViewStartY;
     float           fClippedWidth;
     float           fClippedHeight;
-    stDimension2D&  vp = GetDimension2D();
-
 
     fWidth-=( fWidth / 2.0 );
     fHeight-=( fHeight / 2.0 );
     fOffset_x = ( ( fOffset_x + fWidth + m_CameraPos.x ) *
-                  m_pProps -> fZoomFactor ) + vp.pos.x;
+                  zp.fZoomFactor ) + vp.pos.x;
     fOffset_y = ( ( fOffset_y + fHeight + m_CameraPos.y ) *
-                  m_pProps -> fZoomFactor ) + vp.pos.y;
+                  zp.fZoomFactor ) + vp.pos.y;
 
     MidPointEllipse( fOffset_x,
                      fOffset_y,
-                     ( fWidth * m_pProps -> fZoomFactor ),
-                     ( fHeight * m_pProps -> fZoomFactor ),
+                     ( fWidth * zp.fZoomFactor ),
+                     ( fHeight * zp.fZoomFactor ),
                      color );
 }
 
@@ -479,8 +476,10 @@ void WorldRenderer :: DrawTile( void *pImage,
                                 int32_t nDestY,
                                 float fOpacity ) {
 
-    Texture2D      *pTexture   = ( Texture2D * ) pImage;
-    unsigned char  op          = ( 0xFF * fOpacity );
+    Viewport&         vp     = GetViewport();
+    stZoomProperties& zp     = vp.GetZoomProperties();
+    Texture2D      *pTexture = ( Texture2D * ) pImage;
+    unsigned char  op        = ( 0xFF * fOpacity );
     float          fViewX;
     float          fViewY;
     float          fClippedWidth;
@@ -489,10 +488,10 @@ void WorldRenderer :: DrawTile( void *pImage,
     nDestX+=m_CameraPos.x;
     nDestY+=m_CameraPos.y;
 
-    if( GetClippedArea( nSourceW, nSourceH,
-                        nDestX, nDestY,
-                        fViewX, fViewY,
-                        fClippedWidth, fClippedHeight ) ) {
+    if( vp.GetClippedArea( nSourceW, nSourceH,
+                          nDestX, nDestY,
+                          fViewX, fViewY,
+                          fClippedWidth, fClippedHeight ) ) {
         ::DrawTextureTiled( *pTexture,
                           Rectangle  { ( float ) nSourceX,
                                        ( float ) nSourceY,
@@ -504,7 +503,7 @@ void WorldRenderer :: DrawTile( void *pImage,
                                        fClippedHeight },
                           Vector2  { 0, 0 },
                           0.0f,
-                          m_pProps -> fZoomFactor,
+                          zp.fZoomFactor,
                           Color  { op, op, op, op } );
     }
 }
@@ -777,6 +776,11 @@ void WorldRenderer :: HandleUserUpdate( void )  {
 
     for( IWorldListener* pListener : m_WorldListenerList )  {
         pListener -> OnUpdate( *this );
+
+        // Update all sprites owned by this renderer
+        for( Sprite* pSprite : m_SpriteList )  {
+            pSprite -> Update();
+        }
     }
 }
 
@@ -854,6 +858,7 @@ WorldRenderer :: WorldRenderer( float fWidth,
     m_SpriteList.clear();
     memset( &m_CameraPos, 0, sizeof( m_CameraPos ) );
     ResetZoom();
+    SetVisible( __DEFAULT_VISIBLE_STATUS );
 
     if( bUseDefaultKEyHandler )  {
         InitializeControllerHandlers();
@@ -1014,6 +1019,30 @@ int WorldRenderer :: GetKeyPressed( void )  {
 }
 
 /**
+ * Reset zoom to it's default state.
+ */
+void WorldRenderer :: ResetZoom( void ) {
+
+    GetViewport().ResetZoom();
+}
+
+/**
+ * Performs Zoom In effect.
+ */
+void WorldRenderer :: ZoomIn( void ) {
+
+    GetViewport().ZoomIn();
+}
+
+/**
+ * Performs Zoom Out effect.
+ */
+void WorldRenderer :: ZoomOut( void ) {
+
+    GetViewport().ZoomOut();
+}
+
+/**
  * Reset the camera position.
  */
 void WorldRenderer :: ResetCamera( void )  {
@@ -1169,9 +1198,10 @@ bool WorldRenderer :: WorldToTileMatrix( const stCoordinate2D& coord,
                                          stMatrixPosition& pos )  {
 
     if( m_pTmxMap )  {
-        int             nCoordX = ( coord.x / m_pProps -> fZoomFactor );
-        int             nCoordY = ( coord.y / m_pProps -> fZoomFactor );
-        stDimension2D&  vp      = GetDimension2D();
+        stDimension2D&    vp      = GetViewport().GetDimension2D();
+        stZoomProperties& zp      = GetViewport().GetZoomProperties();
+        int               nCoordX = ( coord.x / zp.fZoomFactor );
+        int               nCoordY = ( coord.y / zp.fZoomFactor );
 
 
         if( ( ( nCoordX >= 0 ) && ( nCoordX < m_nMapWidth ) ) &&
@@ -1240,7 +1270,7 @@ bool WorldRenderer :: AddSprite( int nLayerId, Sprite& sprite )  {
                                                      &sprite );
 
         if( itItem == m_SpriteList.end() )  {
-            sprite.GetViewport().SetDimension2DPtr( &GetDimension2D() );
+            sprite.SetParent( this );
             m_CollisionManager.AddCollider( &sprite.GetCollider(), nLayerId );
             m_SpriteList.push_back( &sprite );
             return true;
@@ -1252,9 +1282,10 @@ bool WorldRenderer :: AddSprite( int nLayerId, Sprite& sprite )  {
 
 /**
  * Remove a sprite from world.
+ * @param nLayerId Id of Layer to remove sprite;
  * @param sprite Reference to the sprite that will be removed;
  */
-bool WorldRenderer :: RemoveSprite( Sprite& sprite )  {
+bool WorldRenderer :: RemoveSprite( int nLayerId, Sprite& sprite )  {
 
     if( m_bIsStarted )  {
         SpriteList :: iterator itItem = std :: find( m_SpriteList.begin(),
@@ -1262,6 +1293,7 @@ bool WorldRenderer :: RemoveSprite( Sprite& sprite )  {
                                                      &sprite );
 
         if( itItem == m_SpriteList.end() )  {
+            m_CollisionManager.RemoveCollider( &sprite.GetCollider(), nLayerId );
             m_SpriteList.erase( itItem );
             sprite.Unload();
 
@@ -1334,10 +1366,12 @@ bool WorldRenderer :: Run( void )  {
     if( m_bIsStarted )  {
         while ( !WindowShouldClose() ) {
             BeginDrawing();
+            if( GetVisible() )  {
                 RenderMap();
                 HandleUserInput();
                 HandleUserUpdate();
                 HandleUserCollisions();
+            }
             EndDrawing();
         }
 

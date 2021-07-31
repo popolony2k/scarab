@@ -67,9 +67,6 @@ class MyListener : public IWorldListener  {
 
         //m_pSprite -> GetDimension2D().pos.x--;
         //m_pSprite -> GetDimension2D().pos.y++;
-        m_pSprite -> Update();
-        m_pSprite2 -> Update();
-        m_pSprite3 -> Update();
     }
 };
 
@@ -136,7 +133,7 @@ int main(int argc, char **argv) {
 
     //renderer.SetViewControlMode( VIEW_CONTROL_MODE_REACTIVE );
     renderer.SetMapFile( strTmxMapFile.c_str() );
-    renderer.SetDimension2D( viewport );
+    renderer.GetViewport().SetDimension2D( viewport );
     renderer.SetDrawFPS( true );
     renderer.Start();
     renderer.GetLayer( 1, layer );

@@ -102,29 +102,24 @@ void TextureCanvas :: Update( void )  {
     if( GetVisible() )  {
         float          fViewX;
         float          fViewY;
-        float          fClippedWidth;
-        float          fClippedHeight;
-        Viewport&      vp        = GetViewport();
-        stDimension2D& vpArea    = vp.GetDimension2D();
-        stDimension2D& dimension = GetDimension2D();
+        float          fClipW;
+        float          fClipH;
+        Viewport&      vp   = GetViewport();
+        stDimension2D& vpDm = vp.GetDimension2D();
+        stDimension2D& dm   = GetDimension2D();
 
 
-        if( vp.GetClippedArea( dimension.size.nWidth,
-                               dimension.size.nHeight,
-                               dimension.pos.x,
-                               dimension.pos.y,
-                               fViewX,
-                               fViewY,
-                               fClippedWidth,
-                               fClippedHeight ) ) {
+        if( vp.GetClippedArea( dm.size.nWidth, dm.size.nHeight,
+                               dm.pos.x, dm.pos.y,
+                               fViewX, fViewY,
+                               fClipW, fClipH ) ) {
 
-            int nCutSrcWidth  = ( fViewX == vpArea.pos.x ?
-                                  std :: abs( fClippedWidth -
-                                              dimension.size.nWidth ) : 0 );
-            int nCutSrcHeight = ( fViewY == vpArea.pos.y ?
-                                  std :: abs( fClippedHeight -
-                                              dimension.size.nHeight ) : 0 );
             stColor&  color   = GetColor();
+            float fZoomFactor = vp.GetZoomProperties().fZoomFactor;
+            int nCutSrcWidth  = ( fViewX == vpDm.pos.x ? std :: abs( fClipW -
+                                  ( dm.size.nWidth * fZoomFactor ) ) : 0 );
+            int nCutSrcHeight = ( fViewY == vpDm.pos.y ? std :: abs( fClipH -
+                                  ( dm.size.nHeight * fZoomFactor ) ) : 0 );
 
             m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
                                m_nCurrentTile + m_nTileSize );
@@ -135,13 +130,11 @@ void TextureCanvas :: Update( void )  {
                                              ( float ) nCutSrcHeight,
                                              ( float ) m_texture.width,
                                              ( float ) m_texture.height },
-                                 Rectangle { fViewX,
-                                             fViewY,
-                                             fClippedWidth,
-                                             fClippedHeight },
+                                 Rectangle { fViewX, fViewY,
+                                             fClipW, fClipH },
                                  Vector2    { 0.0, 0.0 },
                                 0.0, // TODO: Rotation
-                                vp.GetZoomProperties().fZoomFactor,
+                                fZoomFactor,
                                 Color       { color.nRed,
                                               color.nGreen,
                                               color.nBlue,
