@@ -480,27 +480,21 @@ void WorldRenderer :: DrawTile( void *pImage,
     stZoomProperties& zp     = vp.GetZoomProperties();
     Texture2D      *pTexture = ( Texture2D * ) pImage;
     unsigned char  op        = ( 0xFF * fOpacity );
-    float          fViewX;
-    float          fViewY;
-    float          fClippedWidth;
-    float          fClippedHeight;
+    stDimension2D  dm        =  { { ( int ) ( nDestX + m_CameraPos.x ),
+                                    ( int ) ( nDestY + m_CameraPos.y ) },
+                                  { nSourceW, nSourceH } };
+    stDimension2D  clip;
 
-    nDestX+=m_CameraPos.x;
-    nDestY+=m_CameraPos.y;
-
-    if( vp.GetClippedArea( nSourceW, nSourceH,
-                          nDestX, nDestY,
-                          fViewX, fViewY,
-                          fClippedWidth, fClippedHeight ) ) {
+    if( vp.GetClippedRect( dm, clip ) )  {
         ::DrawTextureTiled( *pTexture,
                           Rectangle  { ( float ) nSourceX,
                                        ( float ) nSourceY,
                                        ( float ) nSourceW,
                                        ( float ) nSourceH },
-                          Rectangle  { fViewX,
-                                       fViewY,
-                                       fClippedWidth,
-                                       fClippedHeight },
+                          Rectangle  { ( float ) clip.pos.x,
+                                       ( float ) clip.pos.y,
+                                       ( float ) clip.size.nWidth,
+                                       ( float ) clip.size.nHeight },
                           Vector2  { 0, 0 },
                           0.0f,
                           zp.fZoomFactor,

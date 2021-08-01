@@ -100,18 +100,12 @@ unsigned int TextureCanvas :: GetTileSize( void ) {
 void TextureCanvas :: Update( void )  {
 
     if( GetVisible() )  {
-        float          fViewX;
-        float          fViewY;
-        float          fClipW;
-        float          fClipH;
         Viewport&      vp   = GetViewport();
         stDimension2D& vpDm = vp.GetDimension2D();
         stDimension2D& dm   = GetDimension2D();
+        stDimension2D  clip;
 
-        if( vp.GetClippedArea( dm.size.nWidth, dm.size.nHeight,
-                               dm.pos.x, dm.pos.y,
-                               fViewX, fViewY,
-                               fClipW, fClipH ) ) {
+        if( vp.GetClippedRect( dm, clip ) ) {
 
             /*
              * All cut operations are calculated considering the
@@ -124,11 +118,13 @@ void TextureCanvas :: Update( void )  {
              */
             stColor&  color   = GetColor();
             float fZoomFactor = vp.GetZoomProperties().fZoomFactor;
-            int   nCutSrcX    = ( fViewX == vpDm.pos.x ?
-                                  std :: abs( ( fClipW / fZoomFactor ) -
+            int   nCutSrcX    = ( clip.pos.x == vpDm.pos.x ?
+                                  std :: abs( ( clip.size.nWidth /
+                                                fZoomFactor ) -
                                               dm.size.nWidth ) : 0 );
-            int   nCutSrcY    = ( fViewY == vpDm.pos.y ?
-                                  std :: abs( ( fClipH / fZoomFactor ) -
+            int   nCutSrcY    = ( clip.pos.y == vpDm.pos.y ?
+                                  std :: abs( ( clip.size.nHeight /
+                                                fZoomFactor ) -
                                               dm.size.nHeight ) : 0 );
 
             m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
@@ -142,8 +138,10 @@ void TextureCanvas :: Update( void )  {
                                                          m_nTileSize :
                                                          m_texture.width ),
                                              ( float ) m_texture.height },
-                                 Rectangle { fViewX, fViewY,
-                                             fClipW, fClipH },
+                                 Rectangle { ( float ) clip.pos.x,
+                                             ( float ) clip.pos.y,
+                                             ( float ) clip.size.nWidth,
+                                             ( float ) clip.size.nHeight },
                                  Vector2   { 0.0, 0.0 },
                                 0.0, // TODO: Rotation
                                 fZoomFactor,

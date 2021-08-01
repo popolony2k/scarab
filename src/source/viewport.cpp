@@ -181,74 +181,60 @@ stZoomProperties& Viewport :: GetZoomProperties( void )  {
 /**
  * Calculates the clipped rectangle area based on
  * position and viewport boundaries;
- * @param nSourceX Source object X coordinate;
- * @param nSourceY Source object Y coordinate;
- * @param nDestX destination X coordinate on texture;
- * @param nDestY destination Y coordinate on texture;
- * @param fViewX Calculated object x coordinate based on
- * viewport boundaries;
- * @param fViewY Calculated object y coordinate based on
- * viewport boundaries;
- * @param fViewWidth Calculated object width based on
- * viewport boundaries;
- * @param fViewHeight Calculated object height based on
- * viewport boundaries;
+ * @param src Source coordinates;
+ * @param dst Reference to destination clipped area;
  */
-bool Viewport :: GetClippedArea( int32_t nSourceW,
-                                 int32_t nSourceH,
-                                 int32_t nDestX,
-                                 int32_t nDestY,
-                                 float& fViewX,
-                                 float& fViewY,
-                                 float& fViewWidth,
-                                 float& fViewHeight )  {
+bool Viewport :: GetClippedRect( stDimension2D src,
+                                 stDimension2D& dst ) {
 
     float           fClippingX;
     float           fClippingY;
     int32_t         nTemp;
     stDimension2D&  vp = GetDimension2D();
 
-    if( ( nDestX > ( vp.pos.x + vp.size.nWidth ) ) ||
-        ( nDestY > ( vp.pos.y + vp.size.nHeight ) )||
-        ( nDestX < 0.0 ) || ( nDestY < 0.0 ) )  {
+    if( ( src.pos.x > ( vp.pos.x + vp.size.nWidth ) ) ||
+        ( src.pos.y > ( vp.pos.y + vp.size.nHeight ) )||
+        ( src.pos.x < 0.0 ) || ( src.pos.y < 0.0 ) )  {
 
-        if( nDestX < vp.pos.x )  {
-            nTemp = std :: abs( nDestX );
-            nSourceW-=( nTemp < nSourceW ? nTemp : nSourceW );
+        if( src.pos.x < vp.pos.x )  {
+            nTemp = std :: abs( src.pos.x );
+            src.size.nWidth-=( nTemp < src.size.nWidth ? nTemp :
+                               src.size.nWidth );
         }
 
-        if( nDestY < vp.pos.y )  {
-            nTemp = std :: abs( nDestY );
-            nSourceH-=( nTemp < nSourceH ? nTemp : nSourceH );
+        if( src.pos.y < vp.pos.y )  {
+            nTemp = std :: abs( src.pos.y );
+            src.size.nHeight-=( nTemp < src.size.nHeight ? nTemp :
+                                src.size.nHeight );
         }
 
-        nDestX = ( nDestX < 0.0 ? 0.0 : nDestX );
-        nDestY = ( nDestY < 0.0 ? 0.0 : nDestY );
+        src.pos.x = ( src.pos.x < 0.0 ? 0.0 : src.pos.x );
+        src.pos.y = ( src.pos.y < 0.0 ? 0.0 : src.pos.y );
     }
 
-    fViewX      = ( ( nDestX * m_pProps -> fZoomFactor ) + vp.pos.x );
-    fViewY      = ( ( nDestY * m_pProps -> fZoomFactor ) + vp.pos.y );
-    fViewWidth  = ( nSourceW * m_pProps -> fZoomFactor );
-    fViewHeight = ( nSourceH * m_pProps -> fZoomFactor );
-    fClippingX  = ( fViewX + fViewWidth );
-    fClippingY  = ( fViewY + fViewHeight );
+    dst.pos.x        = ( ( src.pos.x * m_pProps -> fZoomFactor ) + vp.pos.x );
+    dst.pos.y        = ( ( src.pos.y * m_pProps -> fZoomFactor ) + vp.pos.y );
+    dst.size.nWidth  = ( src.size.nWidth * m_pProps -> fZoomFactor );
+    dst.size.nHeight = ( src.size.nHeight * m_pProps -> fZoomFactor );
+    fClippingX  = ( dst.pos.x + dst.size.nWidth );
+    fClippingY  = ( dst.pos.y + dst.size.nHeight );
 
     if( fClippingX > vp.size.nWidth )  {
-        fClippingX = ( fClippingX - vp.size.nWidth );
+        fClippingX-=vp.size.nWidth;
 
-        if( fClippingX > fViewWidth )
+        if( fClippingX > dst.size.nWidth )
             return false;
 
-        fViewWidth = fViewWidth - fClippingX;
+        dst.size.nWidth-=fClippingX;
     }
 
     if( fClippingY > vp.size.nHeight )  {
-        fClippingY = ( fClippingY - vp.size.nHeight );
+        fClippingY-=vp.size.nHeight;
 
-        if( fClippingY > fViewHeight )
+        if( fClippingY > dst.size.nHeight )
             return false;
 
-        fViewHeight = fViewHeight - fClippingY;
+        dst.size.nHeight-=fClippingY;
     }
 
     return true;
