@@ -166,7 +166,6 @@ int main(int argc, char **argv) {
     renderer.SetViewControlMode( ViewControlMode::VIEW_CONTROL_MODE_REACTIVE );
 
     renderer.Run();
-    sprite3.Unload();
     renderer.Stop();
 
 	return 0;

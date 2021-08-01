@@ -108,37 +108,49 @@ void TextureCanvas :: Update( void )  {
         stDimension2D& vpDm = vp.GetDimension2D();
         stDimension2D& dm   = GetDimension2D();
 
-
         if( vp.GetClippedArea( dm.size.nWidth, dm.size.nHeight,
                                dm.pos.x, dm.pos.y,
                                fViewX, fViewY,
                                fClipW, fClipH ) ) {
 
+            /*
+             * All cut operations are calculated considering the
+             * base texture that is non-scaled.
+             * GetClippedArea fClipW, fClipH results used in cut operation
+             * have a zoom factor applied to its results, so "removing" this
+             * "noise" is needed by dividing it's results by zoom factor.
+             * This is needed because when texture reaches canvas boundaries
+             * the texture is cut in a wrong position.
+             */
             stColor&  color   = GetColor();
             float fZoomFactor = vp.GetZoomProperties().fZoomFactor;
-            int   nCutSrcW    = ( fViewX == vpDm.pos.x ? std :: abs( fClipW -
-                                  ( dm.size.nWidth * fZoomFactor ) ) : 0 );
-            int   nCutSrcH    = ( fViewY == vpDm.pos.y ? std :: abs( fClipH -
-                                  ( dm.size.nHeight * fZoomFactor ) ) : 0 );
+            int   nCutSrcX    = ( fViewX == vpDm.pos.x ?
+                                  std :: abs( ( fClipW / fZoomFactor ) -
+                                              dm.size.nWidth ) : 0 );
+            int   nCutSrcY    = ( fViewY == vpDm.pos.y ?
+                                  std :: abs( ( fClipH / fZoomFactor ) -
+                                              dm.size.nHeight ) : 0 );
 
             m_nCurrentTile = ( m_nCurrentTile >= m_texture.width ? 0 :
                                m_nCurrentTile + m_nTileSize );
 
             ::DrawTextureTiled( m_texture,
                                  Rectangle { ( float ) m_nCurrentTile +
-                                                       nCutSrcW,
-                                             ( float ) nCutSrcH,
-                                             ( float ) m_texture.width,
+                                                       nCutSrcX,
+                                             ( float ) nCutSrcY,
+                                             ( float ) ( m_nTileSize > 0 ?
+                                                         m_nTileSize :
+                                                         m_texture.width ),
                                              ( float ) m_texture.height },
                                  Rectangle { fViewX, fViewY,
                                              fClipW, fClipH },
-                                 Vector2    { 0.0, 0.0 },
+                                 Vector2   { 0.0, 0.0 },
                                 0.0, // TODO: Rotation
                                 fZoomFactor,
-                                Color       { color.nRed,
-                                              color.nGreen,
-                                              color.nBlue,
-                                              color.nAlpha } );
+                                Color      { color.nRed,
+                                             color.nGreen,
+                                             color.nBlue,
+                                             color.nAlpha } );
         }
     }
 }
