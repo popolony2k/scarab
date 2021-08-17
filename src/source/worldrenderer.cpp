@@ -1258,7 +1258,7 @@ CollisionManager& WorldRenderer :: GetCollisionManager( void )  {
  */
 bool WorldRenderer :: AddSprite( int nLayerId, Sprite& sprite )  {
 
-    if( m_bIsStarted )  {
+    if( m_bIsStarted && GetLayer( nLayerId ) )  {
         SpriteList :: iterator itItem = std :: find( m_SpriteList.begin(),
                                                      m_SpriteList.end(),
                                                      &sprite );

@@ -13,6 +13,10 @@ class MyCollListener : public ICollisionListener  {
         printf( "HIT SPRITE TO SPRITE !!!!\n" );
     }
 
+    void OnCollision( Collider *pFirst, stTile *pSecond )  {
+
+        printf( "HIT SPRITE TO TILE !!!!\n" );
+    }
 };
 
 class MyListener : public IWorldListener  {
@@ -46,10 +50,10 @@ class MyListener : public IWorldListener  {
 
                 //printf( "LIN [%d], COL [%d]\n", tilePos.nTileRow, tilePos.nTileCol );
 
-                if( world.GetTile(tilePos, layer, tile) &&
-                        m_pSprite -> GetCollider().Hit( tile ) ) {
-                    printf( "HIT SPRITE TO TILE !!!\n" );
-                }
+//                if( world.GetTile(tilePos, layer, tile) &&
+//                        m_pSprite -> GetCollider().Hit( tile ) ) {
+//                    printf( "HIT SPRITE TO TILE !!!\n" );
+//                }
             }
         }
 
@@ -155,11 +159,12 @@ int main(int argc, char **argv) {
     spriteTexture6.GetDimension2D().size.nWidth  = 80;
     spriteTexture6.SetTileSize( 80 );
 
-    renderer.AddSprite( 0, sprite );
-    renderer.AddSprite( 1, sprite2 );
-    renderer.AddSprite( 3, sprite3 );
+    printf( "%s\n", ( renderer.AddSprite( 10, sprite ) ? "TRUE" : "FALSE" ) );
+    printf( "%s\n", ( renderer.AddSprite( 1, sprite2 ) ? "TRUE" : "FALSE" ) );
+    printf( "%s\n", ( renderer.AddSprite( 3, sprite3 ) ? "TRUE" : "FALSE" ) );
 
-    renderer.GetCollisionManager().AddColliderLayerRule( 0, 1 );
+    renderer.GetCollisionManager().AddColliderToColliderRule( 10, 1 );
+    renderer.GetCollisionManager().AddColliderToTileRule( 10, 10 );
     renderer.GetCollisionManager().AddCollisionListener( &myCollision );
 
     renderer.SetScrollStepSize( 16, 16 );

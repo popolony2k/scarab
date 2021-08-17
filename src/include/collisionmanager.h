@@ -23,15 +23,19 @@ class CollisionManager  {
     typedef std :: array<ColliderList*, MAX_COLLIDER_LAYERS> ColliderLayerList;
     typedef std :: deque<ICollisionListener*> CollisionListenerList;
     typedef std :: pair<ColliderList*, ColliderList*> ColliderPair;
-    typedef std :: deque<ColliderPair*> ColliderLayerRuleList;
+    typedef std :: deque<ColliderPair*> ColliderToColliderRuleList;
+    typedef std :: pair<ColliderList*, int> ColliderTileLayerPair;
+    typedef std :: deque<ColliderTileLayerPair*> ColliderToTileLayerRuleList;
 
-    IWorld                   *m_pParentWorld;
-    ColliderLayerList        m_ColliderLayerList;
-    ColliderLayerRuleList    m_ColliderLayerRuleList;
-    CollisionListenerList    m_Listeners;
+    IWorld                       *m_pParentWorld;
+    ColliderLayerList            m_ColliderLayerList;
+    ColliderToColliderRuleList   m_ColliderToColliderRuleList;
+    ColliderToTileLayerRuleList  m_ColliderToTileLayerRuleList;
+    CollisionListenerList        m_Listeners;
 
 
     void FireOnCollision( Collider *pFirst, Collider *pSecond );
+    void FireOnCollision( Collider *pFirst, stTile* pSecond );
 
     public:
 
@@ -45,8 +49,10 @@ class CollisionManager  {
     bool RemoveAll( int nColliderLayerId = -1 );
     void Clear( void );
 
-    bool AddColliderLayerRule( int nFirstColliderLayerId,
-                               int nSecondColliderLayerId );
+    bool AddColliderToColliderRule( int nFirstColliderLayerId,
+                                    int nSecondColliderLayerId );
+    bool AddColliderToTileRule( int nColliderLayerId,
+                                int nTileLayerId );
     void AddCollisionListener( ICollisionListener *pListener );
 
     void Update( void );

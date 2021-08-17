@@ -24,6 +24,13 @@ class ICollisionListener  {
      * @param pSecond The second collider involved in the collision;
      */
     virtual void OnCollision( Collider *pFirst, Collider *pSecond ) = 0;
+
+    /**
+     * Event thrown when two colliders hit one to another.
+     * @param pFirst The collider involved in the collision;
+     * @param pSecond The layer tile object involved in the collision;
+     */
+    virtual void OnCollision( Collider *pFirst, stTile *pSecond ) = 0;
 };
 
 #endif /* __ICOLLISIONLISTENER_H__ */

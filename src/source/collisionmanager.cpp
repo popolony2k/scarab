@@ -22,6 +22,18 @@ void CollisionManager :: FireOnCollision( Collider *pFirst, Collider *pSecond ) 
 }
 
 /**
+ * Throw the OnCollision event through all registered listeners.
+ * @param pFirst The collider involved in the collision;
+ * @param pSecond The layer tile object involved in the collision;
+ */
+void CollisionManager :: FireOnCollision( Collider *pFirst, stTile* pSecond )  {
+
+    for( ICollisionListener *pListener : m_Listeners )  {
+        pListener -> OnCollision( pFirst, pSecond );
+    }
+}
+
+/**
  * Constructor. Initialize all class data.
  * @param pParentWorld Pointer to the world that this collision
  * manager is attached;
@@ -116,19 +128,26 @@ void CollisionManager :: Clear( void )  {
         delete m_ColliderLayerList[nCount];
     }
 
-    for( ColliderPair *pPair : m_ColliderLayerRuleList )  {
+    for( ColliderPair *pPair : m_ColliderToColliderRuleList )  {
+        delete pPair;
+    }
+
+    for( ColliderTileLayerPair *pPair : m_ColliderToTileLayerRuleList )  {
         delete pPair;
     }
 }
 
 /**
- * Add collider checking rule. This method pair two layer that will be checked
- * in collision update checking.
- * @param nFirstColliderLayerId First layer to be checked;
- * @param nSecondColliderLayerId second layer to be checked;
+ * Add collider to collider checking rule based on it's layer id.
+ * This method pair two layer that will be checked in collision update
+ * checking.
+ * @param nFirstColliderLayerId First collider layer id that will be added to
+ * checking rule;;
+ * @param nSecondColliderLayerId Second collider layer id that will be added to
+ * checking rule;
  */
-bool CollisionManager :: AddColliderLayerRule( int nFirstColliderLayerId,
-                                               int nSecondColliderLayerId )  {
+bool CollisionManager :: AddColliderToColliderRule( int nFirstColliderLayerId,
+                                                    int nSecondColliderLayerId )  {
 
     if( ( nFirstColliderLayerId < m_ColliderLayerList.size() ) &&
         ( nFirstColliderLayerId < m_ColliderLayerList.size() ) )  {
@@ -138,7 +157,36 @@ bool CollisionManager :: AddColliderLayerRule( int nFirstColliderLayerId,
         pPair -> first  = m_ColliderLayerList[nFirstColliderLayerId];
         pPair -> second = m_ColliderLayerList[nSecondColliderLayerId];
 
-        m_ColliderLayerRuleList.push_back( pPair );
+        m_ColliderToColliderRuleList.push_back( pPair );
+
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Add collider to tile checking rule based on it's layer id.
+ * This method pair two layer that will be checked in collision update
+ * checking.
+ * @param nColliderId The collider layer id that will be added to
+ * checking rule;
+ * @param nLayerId The tile layer id that will be added to checking rule;
+ */
+bool CollisionManager :: AddColliderToTileRule( int nColliderLayerId,
+                                                int nTileLayerId )  {
+
+    stLayer layer;
+
+    if( ( nColliderLayerId < m_ColliderLayerList.size() ) &&
+        m_pParentWorld -> GetLayer( nTileLayerId, layer ) )  {
+
+        ColliderTileLayerPair  *pPair = new ColliderTileLayerPair();
+
+        pPair -> first  = m_ColliderLayerList[nColliderLayerId];
+        pPair -> second = nTileLayerId;
+
+        m_ColliderToTileLayerRuleList.push_back( pPair );
 
         return true;
     }
@@ -163,11 +211,37 @@ void CollisionManager :: AddCollisionListener( ICollisionListener *pListener )  
  */
 void CollisionManager :: Update( void )  {
 
-    for( ColliderPair *pPair : m_ColliderLayerRuleList )  {
+    /*
+     * Check collisions between colliders only.
+     */
+    for( ColliderPair *pPair : m_ColliderToColliderRuleList )  {
         for( Collider *pFirst : *pPair -> first )  {
             for( Collider *pSecond : *pPair -> second )  {
                 if( pFirst -> Hit( pSecond -> GetDimension2D() ) )  {
                     FireOnCollision( pFirst, pSecond );
+                }
+            }
+        }
+    }
+
+    /*
+     * Check collisions between colliders against static
+     * layer objects defined as collision on layer map.
+     */
+    for( ColliderTileLayerPair *pPair : m_ColliderToTileLayerRuleList )  {
+        for( Collider *pFirst : *pPair -> first )  {
+            stTile      tile;
+            stLayer     layer;
+
+            if( m_pParentWorld -> GetLayer( pPair -> second, layer ) )  {
+                stDimension2D&    spritePos = pFirst -> GetDimension2D();
+                stMatrixPosition  tilePos   = { 0, 0 };
+
+                if( m_pParentWorld -> WorldToTileMatrix( spritePos.pos, tilePos ) ) {
+                    if( m_pParentWorld -> GetTile( tilePos, layer, tile ) &&
+                        pFirst -> Hit( tile ) )  {
+                        FireOnCollision(pFirst, &tile );
+                    }
                 }
             }
         }
