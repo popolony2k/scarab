@@ -21,9 +21,11 @@
 *.vcxproj
 *.filters
 *.sln
+*.a
 GameEngine
 Makefile
 CMakeCache.txt
+compile_commands.json
 Debug
 Release
 GeneratedFiles
