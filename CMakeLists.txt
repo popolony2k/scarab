@@ -11,4 +11,4 @@ include(CMakeDependentOption)
 include(GNUInstallDirs)
 
 add_subdirectory( sunlight )
-add_subdirectory( games/hypex )
+add_subdirectory( games/caravellius )
