@@ -22,6 +22,7 @@
 *.filters
 *.sln
 *.a
+*.vs
 GameEngine
 Makefile
 CMakeCache.txt
@@ -32,3 +33,4 @@ GeneratedFiles
 Build
 build
 CMakeFiles
+out
