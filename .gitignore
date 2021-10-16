@@ -27,6 +27,7 @@ GameEngine
 Makefile
 CMakeCache.txt
 compile_commands.json
+CMakeSettings.json
 Debug
 Release
 GeneratedFiles

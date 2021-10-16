@@ -3,12 +3,13 @@
 # Copyright (c) since 2021 by PopolonY2k
 #
 
-cmake_minimum_required(VERSION 2.8.2)
+cmake_minimum_required(VERSION 3.14)
 
 project(pog-games-distribution)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
+
 
 ###################################################################
 # Setup Game engine libraries and games projects
