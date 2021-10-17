@@ -1,5 +1,5 @@
 #
-# CMake file for game development engine applicattion and libraries.
+# CMake file for building sunlight game engine library and related games.
 # Copyright (c) since 2021 by PopolonY2k
 #
 
