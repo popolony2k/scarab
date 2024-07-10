@@ -15,5 +15,4 @@ include(GNUInstallDirs)
 # Setup Game engine libraries and games projects
 ###################################################################
 
-add_subdirectory( sunlight )
 add_subdirectory( games/caravellius )
