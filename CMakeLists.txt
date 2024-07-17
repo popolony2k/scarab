@@ -3,7 +3,7 @@
 # Copyright (c) since 2021 by PopolonY2k
 #
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.24)
 
 project(pog-games-distribution)
 
