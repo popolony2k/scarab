@@ -21,7 +21,7 @@ game-engine/
         ├── resources/
         │   ├── configs/               # sprite sets, moving params, sound/sprite/stage files (JSON)
         │   ├── scripts/                # Lua: main.lua, enemies/ (per-enemy modules), stages/ (stage scripts)
-        │   ├── stages/                 # Tiled (.tmx/.tsx) maps
+        │   ├── tilemap/                # Tiled (.tmx/.tsx) maps
         │   ├── sprites/, audio/        # game art and sound assets
         │   └── projects/               # source art projects (Aseprite, SAI, vector)
         └── docs/
