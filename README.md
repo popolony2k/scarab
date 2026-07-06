@@ -20,7 +20,7 @@ game-engine/
         │   └── config/                # JSON-driven config loading (nlohmann/json)
         ├── resources/
         │   ├── configs/               # sprite sets, moving params, sound/sprite/stage files (JSON)
-        │   ├── scripts/                # Lua stage scripts (main.lua, 1st_stage_corsair.lua, ...)
+        │   ├── scripts/                # Lua: main.lua, enemies/ (per-enemy modules), stages/ (stage scripts)
         │   ├── stages/                 # Tiled (.tmx/.tsx) maps
         │   ├── sprites/, audio/        # game art and sound assets
         │   └── projects/               # source art projects (Aseprite, SAI, vector)
@@ -64,3 +64,7 @@ The built `caravellius` executable resolves resource paths (stages, sprites, aud
 ## Gameplay
 
 Caravellius is a vertical shoot-'em-up: the player ship scrolls up a Tiled map while enemy ships (Satellite, Cylinder, Galileo, Nomad, Alien, Ovni, Octopus) spawn and move using data-driven patterns (sine waves, circular orbits, quadrant patrols) and fire straight-line or homing (Bresenham-seeking) bullets. Levels are orchestrated by Lua stage scripts that call into a `ScriptProcessor` command queue (`sp_move_sprites_to_screen`, `sp_wait`, `sp_play_song`, ...), while enemy stats/textures/sounds are defined in JSON config files under `resources/configs/`.
+
+## Lua migration (in progress)
+
+An ongoing refactor is moving enemy/sprite game logic out of C++ and into Lua (`resources/scripts/enemies/`), leaving C++ as a thinner, more reusable engine layer. Enemy types migrate one at a time; each keeps working via the untouched legacy C++ path until it's own Lua module claims it. Migrated so far: Satellite, Cylinder, Alien. See `CLAUDE.md` for the current architecture split.
