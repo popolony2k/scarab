@@ -14,7 +14,7 @@ game-engine/
         ├── CMakeLists.txt  # fetches sunlight, raylib, tmx, Lua, nlohmann/json
         ├── src/
         │   ├── main.cpp / main.h      # entry point, window/viewport setup
-        │   ├── world/                 # WorldEngine/WorldBase: thin engine state machine only, all game logic lives in Lua
+        │   ├── world/                 # WorldEngine: thin engine state machine only, all game logic lives in Lua
         │   ├── lua/                   # Lua scripting engine glue
         │   └── engine/                # game-agnostic sprite pool + Lua-callable primitives (camera/input/tilemap/sound/collision/JSON)
         ├── resources/
