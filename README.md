@@ -14,11 +14,9 @@ game-engine/
         ├── CMakeLists.txt  # fetches sunlight, raylib, tmx, Lua, nlohmann/json
         ├── src/
         │   ├── main.cpp / main.h      # entry point, window/viewport setup
-        │   ├── world/                 # WorldEngine/WorldBase: engine state machine (game logic now lives in Lua)
-        │   ├── sprite/                # legacy per-enemy-type movement processing (dead, all migrated to Lua)
+        │   ├── world/                 # WorldEngine/WorldBase: thin engine state machine only, all game logic lives in Lua
         │   ├── lua/                   # Lua scripting engine glue
-        │   ├── engine/                # game-agnostic sprite pool + Lua-callable primitives (camera/input/tilemap/sound/collision/JSON)
-        │   └── config/                # legacy JSON config loading (dead, superseded by Lua's own load_json reads)
+        │   └── engine/                # game-agnostic sprite pool + Lua-callable primitives (camera/input/tilemap/sound/collision/JSON)
         ├── resources/
         │   ├── configs/               # sprite sets, moving params, sound/sprite/stage files (JSON) - read directly by Lua
         │   ├── scripts/                # Lua: main.lua, bootstrap.lua, spriteconfig.lua, player.lua, enemies/ (per-enemy modules), stages/ (stage scripts)
@@ -66,6 +64,6 @@ The built `caravellius` executable resolves resource paths (stages, sprites, aud
 
 Caravellius is a vertical shoot-'em-up: the player ship scrolls up a Tiled map while enemy ships (Satellite, Cylinder, Galileo, Nomad, Alien, Ovni, Octopus) spawn and move using data-driven patterns (sine waves, circular orbits, quadrant patrols) and fire straight-line or homing (Bresenham-seeking) bullets. Levels are orchestrated by Lua stage scripts that call into a `ScriptProcessor` command queue (`sp_move_sprites_to_screen`, `sp_wait`, `sp_play_song`, ...), while enemy stats/textures/sounds are defined in JSON config files under `resources/configs/` and read directly by Lua.
 
-## Lua migration (complete through Phase 8)
+## Lua migration (complete)
 
-A refactor has moved enemy/sprite/player game logic and config/stage bootstrap out of C++ and into Lua (`resources/scripts/`), leaving C++ as a thinner, reusable, game-agnostic engine layer. Every enemy type (Satellite, Cylinder, Alien, Octopus, Ovni, Galileo, Nomad), the player ship, and config/stage loading are fully migrated - only bulk-deleting the now-dead legacy C++ remains. See `CLAUDE.md` for the current architecture split.
+A refactor moved all enemy/sprite/player game logic and config/stage bootstrap out of C++ and into Lua (`resources/scripts/`), then deleted the C++ that became dead as a result, leaving C++ as a thin, reusable, game-agnostic engine layer. Every enemy type, the player ship, and config/stage loading are fully Lua-driven, and the legacy C++ they replaced (the old JSON config loader, per-enemy-type movement state machines, and the sprite queue/collision machinery built around them) has been deleted. See `CLAUDE.md` for the current architecture split.
