@@ -1,0 +1,70 @@
+# Sound
+
+*Implemented in* `src/engine/luasoundapi.cpp` (`sound_*`) *and* `src/lua/luaengine.cpp` (`sp_*_song`/`*_song`).
+
+All sound ids are plain integers you choose (Caravellius keeps its own names for them in `resources/scripts/soundids.lua`) — the engine never interprets what a specific id means, it's just a key into `SoundManager`.
+
+## Loading and direct playback state — `sound_*`
+
+These are unconditional, immediate calls — no queue involved, and they don't distinguish "background music" from "sound effect." Use these for anything you want to control precisely and immediately.
+
+### `sound_load(id, path) -> success`
+
+Load a sound file and associate it with `id`. Must be called once before any other `sound_*`/`*_song` call for that id.
+
+```lua
+sound_load(1, BASE_PATH .. "audio/global/caravellius-shot.wav")
+```
+
+### `sound_unload(id) -> success`
+
+Free the sound previously loaded for `id`.
+
+### `sound_play(id) -> success`
+
+Start playing `id` from the beginning (or resume if already loaded and stopped).
+
+```lua
+sound_play(1)
+```
+
+### `sound_stop(id) -> success`
+
+Stop `id` if it's currently playing.
+
+### `sound_pause(id) -> success`
+
+Pause `id` without resetting its playback position.
+
+### `sound_resume(id) -> success`
+
+Resume a previously paused `id`.
+
+### `sound_is_playing(id) -> playing`
+
+```lua
+if sound_is_playing(1) then
+  print("still playing")
+end
+```
+
+## Song commands — queued vs. direct
+
+Both forms end up calling the same underlying playback, but only the **queued** (`sp_*`) forms mark a song as "the currently tracked background music" — the engine automatically re-triggers that tracked song every frame once it finishes (`WorldEngine::RunScriptMachine`'s BGM-loop check), giving free looping. The **direct** forms play once and are never auto-repeated, which is what you want for a one-off sound effect (a shot, an explosion) rather than music.
+
+| | Queued (participates in the `sp_*` command queue, becomes the looping BGM) | Direct (immediate, one-shot, no looping) |
+|---|---|---|
+| Play | `sp_play_song(id)` | `play_song(id)` |
+| Pause | `sp_pause_song(id)` | `pause_song(id)` |
+| Stop | `sp_stop_song(id)` | `stop_song(id)` |
+| Resume | `sp_resume_song(id)` | `resume_song(id)` |
+
+```lua
+-- Background music: looping, sequenced with the rest of the stage's queue
+sp_play_song(ID_FIRST_STAGE_BGM)
+
+-- A one-off sound effect: fires immediately, never looped
+play_song(ID_CARAVELLIUS_SHOOT_AUDIO)
+```
+
+None of the 8 song functions return a value — check `sound_is_playing(id)` if you need to know playback state.

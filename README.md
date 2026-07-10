@@ -8,10 +8,12 @@ A C++17 monorepo containing the **sunlight** 2D tile-map game engine and the gam
 game-engine/
 ├── CMakeLists.txt          # root build, adds games/caravellius
 ├── docs/                   # misc engineering notes (debug build flags, ...)
+│   └── lua-api/            # full Lua engine API reference - see "Lua API reference" below
 ├── ide-setup/              # shared IDE config (Eclipse formatter, ...)
 └── games/
     └── caravellius/
         ├── CMakeLists.txt  # fetches sunlight, raylib, tmx, Lua, nlohmann/json
+        ├── project.json    # entry-point descriptor read at launch - see "Running" below
         ├── src/
         │   ├── main.cpp / main.h      # entry point, window/viewport setup
         │   ├── world/                 # WorldEngine: thin engine state machine only, all game logic lives in Lua
@@ -58,7 +60,20 @@ By default Lua is built from `walterschell/Lua` (CMake-friendly fork). Pass `-DS
 
 ## Running
 
-The built `caravellius` executable resolves resource paths (stages, sprites, audio, Lua scripts, JSON configs) relative to the game's `resources/` directory, so run it from `games/caravellius/` (or copy `resources/` next to the binary).
+The built `caravellius` executable **requires** a command-line argument naming the entry point — either a `.json` project file or a `.lua` script directly — and refuses to start (printing a usage message, no window opened) without one:
+
+```shell
+cd build/games/caravellius
+./caravellius project.json
+```
+
+`project.json` (copied next to the executable at build time from `games/caravellius/project.json`) just names the first Lua file to run:
+
+```json
+{ "main_script": "resources/scripts/main.lua" }
+```
+
+`main_script` resolves relative to the project file's own directory, so the whole project (executable + `resources/` + `project.json`) stays relocatable as a unit. You can also skip the project file and point directly at a `.lua` entry script: `./caravellius resources/scripts/main.lua`.
 
 ## Gameplay
 
@@ -67,3 +82,7 @@ Caravellius is a vertical shoot-'em-up: the player ship scrolls up a Tiled map w
 ## Lua migration (complete)
 
 A refactor moved all enemy/sprite/player game logic and config/stage bootstrap out of C++ and into Lua (`resources/scripts/`), then deleted the C++ that became dead as a result, leaving C++ as a thin, reusable, game-agnostic engine layer. Every enemy type, the player ship, and config/stage loading are fully Lua-driven, and the legacy C++ they replaced (the old JSON config loader, per-enemy-type movement state machines, and the sprite queue/collision machinery built around them) has been deleted. See `CLAUDE.md` for the current architecture split.
+
+## Lua API reference
+
+Every Lua-callable primitive the engine exposes to game scripts — camera, input, tile map, sound, sprites, collision, JSON loading, script sequencing, timers, and the callbacks the engine calls back into Lua — is documented in [docs/lua-api/](docs/lua-api/README.md), one page per category with runnable examples. This is the engine's own generic API surface, not Caravellius's game-specific Lua modules (those live in `resources/scripts/` and are game content built on top of this API).
