@@ -2,7 +2,7 @@
 
 *Implemented in* `src/lua/luaengine.cpp` (`LuaEngine::RegisterCalls`) *and* `SunLight::Scripting::ScriptProcessor` *(sunlight engine).*
 
-Stage scripts don't drive gameplay by calling functions directly and waiting for them to return — they push commands onto a queue, and the engine drains that queue one command at a time, once per frame, from `WorldEngine::RunStageStateHandler`. This is what lets `sp_wait(2000)` mean "pause the *queue*, not the whole engine" — sprites keep moving, input keeps being read, only the next queued command waits.
+Stage scripts don't drive gameplay by calling functions directly and waiting for them to return — they push commands onto a queue, and the engine drains that queue one command at a time, once per frame, from `EngineHost::RunStageStateHandler`. This is what lets `sp_wait(2000)` mean "pause the *queue*, not the whole engine" — sprites keep moving, input keeps being read, only the next queued command waits.
 
 Every `sp_*` function in this file just appends to that queue; none of them block or take effect immediately.
 
@@ -24,7 +24,7 @@ sp_clear()
 
 ## `sp_wait_queue_empty()`
 
-Queue a command that blocks all *later* queued commands until the engine reports the screen is clear of active enemies (`WorldEngine::CheckSpritesQueueEmpty`, driven by the game's own `get_active_enemy_count()` — see [callbacks.md](callbacks.md)). The classic "don't spawn wave 2 until wave 1 is dead" gate.
+Queue a command that blocks all *later* queued commands until the engine reports the screen is clear of active enemies (`EngineHost::CheckSpritesQueueEmpty`, driven by the game's own `get_active_enemy_count()` — see [callbacks.md](callbacks.md)). The classic "don't spawn wave 2 until wave 1 is dead" gate.
 
 ```lua
 sp_move_sprites_to_screen(STATE_MOVE_SATELLITES_TO_SCREEN_RANDOM)

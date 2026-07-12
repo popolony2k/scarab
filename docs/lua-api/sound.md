@@ -50,7 +50,7 @@ end
 
 ## Song commands — queued vs. direct
 
-Both forms end up calling the same underlying playback, but only the **queued** (`sp_*`) forms mark a song as "the currently tracked background music" — the engine automatically re-triggers that tracked song every frame once it finishes (`WorldEngine::RunScriptMachine`'s BGM-loop check), giving free looping. The **direct** forms play once and are never auto-repeated, which is what you want for a one-off sound effect (a shot, an explosion) rather than music.
+Both forms end up calling the same underlying playback, but only the **queued** (`sp_*`) forms mark a song as "the currently tracked background music" — the engine automatically re-triggers that tracked song every frame once it finishes (`EngineHost::RunScriptMachine`'s BGM-loop check), giving free looping. The **direct** forms play once and are never auto-repeated, which is what you want for a one-off sound effect (a shot, an explosion) rather than music.
 
 | | Queued (participates in the `sp_*` command queue, becomes the looping BGM) | Direct (immediate, one-shot, no looping) |
 |---|---|---|

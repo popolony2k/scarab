@@ -18,7 +18,7 @@ game-engine/
         ├── project.json    # entry-point descriptor read at launch - see "Running" below
         ├── src/
         │   ├── main.cpp / main.h      # entry point, window/viewport setup
-        │   ├── world/                 # WorldEngine: thin engine state machine only, all game logic lives in Lua
+        │   ├── host/                  # EngineHost: thin engine state machine only, all game logic lives in Lua
         │   ├── lua/                   # Lua scripting engine glue
         │   └── engine/                # game-agnostic sprite pool + Lua-callable primitives (camera/input/tilemap/sound/collision/JSON)
         ├── resources/
