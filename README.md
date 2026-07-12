@@ -8,7 +8,9 @@ A C++17 monorepo containing the **sunlight** 2D tile-map game engine and the gam
 game-engine/
 ├── CMakeLists.txt          # root build, adds games/caravellius
 ├── docs/                   # misc engineering notes (debug build flags, ...)
-│   └── lua-api/            # full Lua engine API reference - see "Lua API reference" below
+│   ├── lua-api/            # full Lua engine API reference - see "Lua API reference" below
+│   └── vscode/.vscode/     # tracked .vscode sample - see "VSCode setup" below
+├── CMakePresets.json       # windows-vcpkg preset (only real platform-conditional CMake config)
 ├── ide-setup/              # shared IDE config (Eclipse formatter, ...)
 └── games/
     └── caravellius/
@@ -57,6 +59,12 @@ The `caravellius` target links against `sunlight`, `nlohmann_json`, and Lua, and
 ### Lua backend option
 
 By default Lua is built from `walterschell/Lua` (CMake-friendly fork). Pass `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` to instead build from the official Lua 5.4.6 FTP tarball (Unix-only, requires `make`).
+
+On Windows, `libxml2`/`tmx` link vcpkg's `iconv`/`zlib` dynamically, so configure with `cmake --preset windows-vcpkg` instead (needs `VCPKG_ROOT` set in the environment) — see the `CMakePresets.json` preset and `CLAUDE.md`'s Build section for details.
+
+### VSCode setup
+
+The repo root's `.vscode` folder is **gitignored** — it's local, per-developer state. The tracked source of truth is [docs/vscode/.vscode](docs/vscode/README.md); copy its contents into a `.vscode` folder at the repo root to get started, and copy any `.vscode` change you want to keep back into that folder rather than leaving it only in your local copy. See [docs/vscode/README.md](docs/vscode/README.md) for the per-OS `settings.<os>.json` variants and the recommended extension that auto-swaps them in.
 
 ## Running
 

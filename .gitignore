@@ -38,3 +38,8 @@ CMakeSettings.json
 **/CMakeFiles/
 **/out/
 **/_deps/
+
+# Local, per-developer VSCode config - the tracked source of truth lives in
+# docs/vscode/.vscode (see docs/vscode/README.md); copy from there instead
+# of editing here directly, so intentional changes don't get lost.
+/.vscode/
