@@ -1,0 +1,20 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "windows-vcpkg",
+            "displayName": "Windows (vcpkg toolchain)",
+            "description": "libxml2/tmx (fetched transitively via sunlight) link vcpkg's iconv/zlib dynamically on Windows - VCPKG_ROOT must be set in the environment for find_package() to locate them.",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }
+    ]
+}

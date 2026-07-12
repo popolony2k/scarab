@@ -15,6 +15,8 @@ cmake -B build -S .
 cmake --build build -j 4
 ```
 
+On Windows, `libxml2`/`tmx` (both fetched transitively via sunlight) link vcpkg's `iconv`/`zlib` dynamically, so `CMAKE_TOOLCHAIN_FILE` must point at vcpkg's toolchain — this is expressed as a real CMake config, not an IDE setting: `CMakePresets.json`'s `windows-vcpkg` preset (`condition`-gated on `hostSystemName == Windows`, so it's inert/invisible everywhere else) sets it from the `VCPKG_ROOT` environment variable. Configure with `cmake --preset windows-vcpkg` instead of the plain invocation above (works identically from a bare terminal, Visual Studio, CLion, or VSCode — `.vscode/settings.windows.json`'s `cmake.configurePreset` just points VSCode's CMake Tools at the same preset name, it doesn't duplicate the toolchain path). A per-OS `.vscode/settings.<os>.json` split exists (swapped into `settings.json` by the recommended `franmastromarino.vs-code-settings-os` extension) purely as VSCode-integration convenience — it must never carry `cmake.configureSettings`/cache-variable values of its own, since that was the actual bug once (a Windows session's own hand-added `CMAKE_TOOLCHAIN_FILE` in the *shared, git-tracked* `.vscode/settings.json` broke Mac/Linux configure outright, since VSCode settings have no OS conditioning — `${env:VCPKG_ROOT}` resolved to a literal, nonexistent path there). CMake itself must remain the single source of truth for anything platform-conditional.
+
 Debug symbols: `cmake -B build -S . -DCMAKE_C_FLAGS="-g2" -DCMAKE_CXX_FLAGS="-g2"`.
 
 Lua backend defaults to `walterschell/Lua` (CMake-friendly). `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` switches to the official Lua 5.4.6 FTP tarball build (Unix-only).
