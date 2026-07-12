@@ -1,6 +1,6 @@
 # Camera
 
-*Implemented in* `src/engine/luacameraapi.cpp`.
+*Implemented in* `src/lua/luacameraapi.cpp`.
 
 All camera functions act on the currently loaded map's viewport (`tilemap_load_map` — see [tilemap.md](tilemap.md)) — there's no separate "camera object" to create or select.
 

@@ -1,6 +1,6 @@
 # Collision
 
-*Implemented in* `src/engine/luacollisionapi.cpp` and `src/engine/luacollisionlistener.cpp`.
+*Implemented in* `src/lua/luacollisionapi.cpp` and `src/lua/luacollisionlistener.cpp`.
 
 Collision detection in this engine is entirely **layer-based**: you declare which pairs of Tiled layers should be checked against each other (`collision_add_rule`), and register one global handler function that's called whenever any two colliding sprites belong to a ruled-together pair. There's no per-sprite "on hit" registration — dispatch to the right game logic based on the two handles is entirely up to your handler.
 

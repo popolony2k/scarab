@@ -19,8 +19,8 @@ game-engine/
         ├── src/
         │   ├── main.cpp / main.h      # entry point, window/viewport setup
         │   ├── host/                  # EngineHost: thin engine state machine only, all game logic lives in Lua
-        │   ├── lua/                   # Lua scripting engine glue
-        │   └── engine/                # game-agnostic sprite pool + Lua-callable primitives (camera/input/tilemap/sound/collision/JSON)
+        │   ├── lua/                   # Lua scripting engine glue - LuaEngine + every Lua-callable primitive (camera/input/tilemap/sound/sprite/collision/JSON)
+        │   └── engine/                # game-agnostic sprite pool (SpritePool/SpriteHandle) - the one piece with no Lua dependency
         ├── resources/
         │   ├── configs/               # sprite sets, moving params, sound/sprite/stage files (JSON) - read directly by Lua
         │   ├── scripts/                # Lua: main.lua, bootstrap.lua, spriteconfig.lua, player.lua, enemies/ (per-enemy modules), stages/ (stage scripts)

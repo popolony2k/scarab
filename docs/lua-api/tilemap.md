@@ -1,6 +1,6 @@
 # Tile map
 
-*Implemented in* `src/engine/luatilemapapi.cpp`, wrapping sunlight's `ITileMap` (Tiled `.tmx` maps via libtmx).
+*Implemented in* `src/lua/luatilemapapi.cpp`, wrapping sunlight's `ITileMap` (Tiled `.tmx` maps via libtmx).
 
 ## `tilemap_load_map(path, alignment) -> success`
 

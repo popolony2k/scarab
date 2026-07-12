@@ -1,6 +1,6 @@
 # JSON
 
-*Implemented in* `src/engine/luajsonapi.cpp`, wrapping `nlohmann::json`.
+*Implemented in* `src/lua/luajsonapi.cpp`, wrapping `nlohmann::json`.
 
 ## `load_json(path) -> table`
 

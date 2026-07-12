@@ -1,6 +1,6 @@
 # Lua Engine API Reference
 
-This is the reference for every Lua-callable primitive the engine (Caravellius's C++ layer) exposes to game scripts. It documents the **engine surface only** — generic, game-agnostic functions registered from C++ (`src/engine/Lua*Api.cpp`, `src/lua/luaengine.cpp`). It does **not** document Caravellius's own game-side Lua modules (`resources/scripts/enemies/*.lua`, `player.lua`, etc.) — those are game content built on top of this API, not part of the engine itself.
+This is the reference for every Lua-callable primitive the engine (Caravellius's C++ layer) exposes to game scripts. It documents the **engine surface only** — generic, game-agnostic functions registered from C++ (`src/lua/Lua*Api.cpp`, `src/lua/luaengine.cpp`). It does **not** document Caravellius's own game-side Lua modules (`resources/scripts/enemies/*.lua`, `player.lua`, etc.) — those are game content built on top of this API, not part of the engine itself.
 
 Every function listed here is available in any Lua script the engine runs, from the moment `LuaEngine::Init` finishes (before `main.lua`'s first line executes) — there is no separate "require" step.
 
