@@ -1,6 +1,6 @@
 # Timers
 
-*Implemented in* `src/lua/luaengine.cpp` (`LuaEngine::SetTimer`/`ResetTimer`), backed by `SunLight::Concurrent::Timer`.
+*Implemented in* `src/lua/luatimerapi.cpp`, backed by `SunLight::Concurrent::Timer`.
 
 Unlike `sp_wait` (which only pauses the `ScriptProcessor` queue), a timer fires its callback repeatedly on its own schedule, independent of the queue, from a **background thread** — see the important thread-safety note below.
 

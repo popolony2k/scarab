@@ -1,6 +1,6 @@
 # Scripting — the `ScriptProcessor` command queue
 
-*Implemented in* `src/lua/luaengine.cpp` (`LuaEngine::RegisterCalls`) *and* `SunLight::Scripting::ScriptProcessor` *(sunlight engine).*
+*Implemented in* `src/lua/luascriptingapi.cpp` *and* `SunLight::Scripting::ScriptProcessor` *(sunlight engine).*
 
 Stage scripts don't drive gameplay by calling functions directly and waiting for them to return — they push commands onto a queue, and the engine drains that queue one command at a time, once per frame, from `EngineHost::RunStageStateHandler`. This is what lets `sp_wait(2000)` mean "pause the *queue*, not the whole engine" — sprites keep moving, input keeps being read, only the next queued command waits.
 

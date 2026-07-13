@@ -1,6 +1,6 @@
 # Sound
 
-*Implemented in* `src/lua/luasoundapi.cpp` (`sound_*`) *and* `src/lua/luaengine.cpp` (`sp_*_song`/`*_song`).
+*Implemented in* `src/lua/luasoundapi.cpp` — both `sound_*` and the `sp_*_song`/`*_song` forms live in this one file now.
 
 All sound ids are plain integers you choose (Caravellius keeps its own names for them in `resources/scripts/soundids.lua`) — the engine never interprets what a specific id means, it's just a key into `SoundManager`.
 
