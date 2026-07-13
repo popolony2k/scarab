@@ -54,7 +54,7 @@ For a debug build with symbols:
 cmake -B build -S . -DCMAKE_C_FLAGS="-g2" -DCMAKE_CXX_FLAGS="-g2"
 ```
 
-The `caravellius` target links against `sunlight`, `nlohmann_json`, and Lua, and a post-build step (`caravellius_copy_binaries`) copies the raylib/tmx/libxml2/sunlight shared libraries next to the executable, since they're required at runtime.
+The `scarab` target — the executable is engine-branded, not game-branded, since it's built entirely from Scarab's own C++ (the game it runs is determined at launch by the entry-point argument, not compiled in) — links against `sunlight`, `nlohmann_json`, and Lua, and a post-build step (`scarab_copy_binaries`) copies the raylib/tmx/libxml2/sunlight shared libraries next to the executable, since they're required at runtime.
 
 ### Lua backend option
 
@@ -68,11 +68,11 @@ The repo root's `.vscode` folder is **gitignored** — it's local, per-developer
 
 ## Running
 
-The built `caravellius` executable **requires** a command-line argument naming the entry point — either a `.json` project file or a `.lua` script directly — and refuses to start (printing a usage message, no window opened) without one:
+The built `scarab` executable **requires** a command-line argument naming the entry point — either a `.json` project file or a `.lua` script directly — and refuses to start (printing a usage message, no window opened) without one:
 
 ```shell
 cd build/games/caravellius
-./caravellius project.json
+./scarab project.json
 ```
 
 `project.json` (copied next to the executable at build time from `games/caravellius/project.json`) just names the first Lua file to run:
@@ -81,7 +81,7 @@ cd build/games/caravellius
 { "main_script": "resources/scripts/main.lua" }
 ```
 
-`main_script` resolves relative to the project file's own directory, so the whole project (executable + `resources/` + `project.json`) stays relocatable as a unit. You can also skip the project file and point directly at a `.lua` entry script: `./caravellius resources/scripts/main.lua`.
+`main_script` resolves relative to the project file's own directory, so the whole project (executable + `resources/` + `project.json`) stays relocatable as a unit. You can also skip the project file and point directly at a `.lua` entry script: `./scarab resources/scripts/main.lua`.
 
 ## Gameplay
 
