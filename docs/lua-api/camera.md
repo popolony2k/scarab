@@ -60,3 +60,14 @@ Read the current zoom multiplier (`1.0` = no zoom).
 ```lua
 local zoom = viewport_get_zoom_factor()
 ```
+
+## Application window
+
+## `app_set_name(name)`
+
+Set the application window's title. Scarab (the engine) has no opinion on what a game calls itself — the window opens with a generic default title (`"Scarab"`, `main.h`'s `APP_NAME`) before any Lua exists to override it, since the window has to exist before `main.lua`'s first line runs. Call this once, early, with the game's real name:
+
+```lua
+-- main.lua
+app_set_name( "Caravellius" )
+```
