@@ -1,6 +1,6 @@
 # Sprites
 
-*Implemented in* `src/lua/luaspriteapi.cpp`, backed by `Engine::SpritePool` — a fixed-capacity pool of sprite slots, not a dynamically-growing list. Every sprite in the game (enemies, bullets, the player ship) is acquired from this same pool.
+*Implemented in* `src/lua/luaspriteapi.cpp`, backed by `Scarab::Engine::SpritePool` — a fixed-capacity pool of sprite slots, not a dynamically-growing list. Every sprite in the game (enemies, bullets, the player ship) is acquired from this same pool.
 
 ## Handles
 
