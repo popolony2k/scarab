@@ -3,6 +3,17 @@
     "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
     "configurePresets": [
         {
+            "name": "default",
+            "displayName": "Default",
+            "description": "Plain configure, no toolchain overrides - Mac/Linux, where libxml2/tmx link iconv/zlib from the system instead of vcpkg.",
+            "binaryDir": "${sourceDir}/build",
+            "condition": {
+                "type": "notEquals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
             "name": "windows-vcpkg",
             "displayName": "Windows (vcpkg toolchain)",
             "description": "libxml2/tmx (fetched transitively via sunlight) link vcpkg's iconv/zlib dynamically on Windows - VCPKG_ROOT must be set in the environment for find_package() to locate them.",

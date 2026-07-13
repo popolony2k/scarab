@@ -10,7 +10,7 @@ game-engine/
 ├── docs/                   # misc engineering notes (debug build flags, ...)
 │   ├── lua-api/            # full Lua engine API reference - see "Lua API reference" below
 │   └── vscode/.vscode/     # tracked .vscode sample - see "VSCode setup" below
-├── CMakePresets.json       # windows-vcpkg preset (only real platform-conditional CMake config)
+├── CMakePresets.json       # default/windows-vcpkg presets (only real platform-conditional CMake config)
 ├── ide-setup/              # shared IDE config (Eclipse formatter, ...)
 └── games/
     └── caravellius/
