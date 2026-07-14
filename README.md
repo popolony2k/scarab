@@ -6,21 +6,20 @@ A C++17 monorepo containing the **sunlight** 2D tile-map game engine and the gam
 
 ```
 game-engine/
-├── CMakeLists.txt          # root build, adds games/caravellius
+├── CMakeLists.txt          # Scarab's own build: fetches sunlight/raylib/tmx/Lua/nlohmann_json, builds the scarab executable from src/
+├── src/                    # Scarab (the engine) - lives at the repo root deliberately, see below
+│   ├── main.cpp / main.h      # entry point, window/viewport setup
+│   ├── host/                  # EngineHost: thin engine state machine only, all game logic lives in Lua
+│   ├── lua/                   # Lua scripting engine glue - LuaEngine + every Lua-callable primitive (camera/input/tilemap/sound/sprite/collision/JSON)
+│   └── engine/                # game-agnostic sprite pool (SpritePool/SpriteHandle) - the one piece with no Lua dependency
 ├── docs/                   # misc engineering notes (debug build flags, ...)
 │   ├── lua-api/            # full Lua engine API reference - see "Lua API reference" below
 │   └── vscode/.vscode/     # tracked .vscode sample - see "VSCode setup" below
 ├── CMakePresets.json       # default/windows-vcpkg presets (only real platform-conditional CMake config)
-├── ide-setup/              # shared IDE config (Eclipse formatter, ...)
 └── games/
     └── caravellius/
-        ├── CMakeLists.txt  # fetches sunlight, raylib, tmx, Lua, nlohmann/json
+        ├── CMakeLists.txt  # only bundles Caravellius's own assets next to the already-built scarab executable
         ├── project.json    # entry-point descriptor read at launch - see "Running" below
-        ├── src/
-        │   ├── main.cpp / main.h      # entry point, window/viewport setup
-        │   ├── host/                  # EngineHost: thin engine state machine only, all game logic lives in Lua
-        │   ├── lua/                   # Lua scripting engine glue - LuaEngine + every Lua-callable primitive (camera/input/tilemap/sound/sprite/collision/JSON)
-        │   └── engine/                # game-agnostic sprite pool (SpritePool/SpriteHandle) - the one piece with no Lua dependency
         ├── resources/
         │   ├── configs/               # sprite sets, moving params, sound/sprite/stage files (JSON) - read directly by Lua
         │   ├── scripts/                # Lua: main.lua, bootstrap.lua, spriteconfig.lua, player.lua, enemies/ (per-enemy modules), stages/ (stage scripts)
@@ -30,7 +29,9 @@ game-engine/
         └── docs/
 ```
 
-The **sunlight** engine itself is not vendored here — it's pulled in via CMake `FetchContent` from `github.com/popolony2k/sunlight` (see [games/caravellius/CMakeLists.txt](games/caravellius/CMakeLists.txt)). It wraps [raylib](https://www.raylib.com/) (rendering/input/audio) and [libtmx](https://github.com/baylej/tmx.git) (Tiled map loading) behind its own `SunLight::*` namespaces (renderer, canvas/sprite, collision, input, sound, scripting).
+`src/` lives at the repo root, not under `games/caravellius/`, because it's Scarab's own code, not Caravellius's - see [CLAUDE.md](CLAUDE.md) for the full Scarab/Caravellius naming split. This also means when Caravellius eventually moves to its own repo (the stated long-term plan), only `games/caravellius/` needs to go - `src/`/the root `CMakeLists.txt` stay behind as Scarab, already in the right place.
+
+The **sunlight** engine itself is not vendored here — it's pulled in via CMake `FetchContent` from `github.com/popolony2k/sunlight` (see the root [CMakeLists.txt](CMakeLists.txt)). It wraps [raylib](https://www.raylib.com/) (rendering/input/audio) and [libtmx](https://github.com/baylej/tmx.git) (Tiled map loading) behind its own `SunLight::*` namespaces (renderer, canvas/sprite, collision, input, sound, scripting).
 
 ## Prerequisites
 
@@ -71,7 +72,7 @@ The repo root's `.vscode` folder is **gitignored** — it's local, per-developer
 The built `scarab` executable **requires** a command-line argument naming the entry point — either a `.json` project file or a `.lua` script directly — and refuses to start (printing a usage message, no window opened) without one:
 
 ```shell
-cd build/games/caravellius
+cd build
 ./scarab project.json
 ```
 
