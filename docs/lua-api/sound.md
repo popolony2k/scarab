@@ -48,6 +48,14 @@ if sound_is_playing(1) then
 end
 ```
 
+### `sound_set_volume(id, volume) -> success`
+
+Set `id`'s playback volume, independently of every other loaded sound — `0.0` (silent) to `1.0` (max). Intended for crossfading between two songs (e.g. fading a stage's BGM out while a boss's BGM fades in): ramp each song's volume in opposite directions over several frames from `on_update`.
+
+```lua
+sound_set_volume(ID_FIRST_STAGE_BGM, 0.5)
+```
+
 ## Song commands — queued vs. direct
 
 Both forms end up calling the same underlying playback, but only the **queued** (`sp_*`) forms mark a song as "the currently tracked background music" — the engine automatically re-triggers that tracked song every frame once it finishes (`EngineHost::RunScriptMachine`'s BGM-loop check), giving free looping. The **direct** forms play once and are never auto-repeated, which is what you want for a one-off sound effect (a shot, an explosion) rather than music.

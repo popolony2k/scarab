@@ -85,6 +85,17 @@ namespace Scarab  {
                 return 1;
             }
 
+            int LuaSoundApi :: SetVolume( lua_State *pLuaState )  {
+
+                int    nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
+                float  fVolume  = ( float ) lua_tonumber( pLuaState, 2 );
+                bool   bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> SetVolume( nSoundId, fVolume );
+
+                lua_pushboolean( pLuaState, bResult );
+
+                return 1;
+            }
+
             /**
              * @brief Call a player routine using direct mode;
              *
@@ -221,6 +232,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "sound_pause", LuaSoundApi :: Pause );
                 lua_register( pLuaState, "sound_resume", LuaSoundApi :: Resume );
                 lua_register( pLuaState, "sound_is_playing", LuaSoundApi :: IsPlaying );
+                lua_register( pLuaState, "sound_set_volume", LuaSoundApi :: SetVolume );
                 lua_register( pLuaState, "play_song", LuaSoundApi :: PlaySong );
                 lua_register( pLuaState, "pause_song", LuaSoundApi :: PauseSong );
                 lua_register( pLuaState, "stop_song", LuaSoundApi :: StopSong );

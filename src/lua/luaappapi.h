@@ -25,6 +25,7 @@ namespace Scarab  {
             class LuaAppApi  {
 
                 static int SetAppName( lua_State *pLuaState );
+                static int ScreenFade( lua_State *pLuaState );
 
                 public:
 

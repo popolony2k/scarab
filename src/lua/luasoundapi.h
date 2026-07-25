@@ -35,6 +35,7 @@ namespace Scarab  {
                 static int Pause( lua_State *pLuaState );
                 static int Resume( lua_State *pLuaState );
                 static int IsPlaying( lua_State *pLuaState );
+                static int SetVolume( lua_State *pLuaState );
 
                 // Direct (non-queued) song commands - reach EngineHost::OnCommand synchronously
                 static void CallPlayCommandDirect( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd );

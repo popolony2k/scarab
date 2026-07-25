@@ -30,11 +30,26 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Set a whole-screen fade overlay, drawn on top of every
+             * other rendered element - used for stage-start/stage-end (and
+             * game-over) transitions, not any single sprite/texture effect.
+             */
+            int LuaAppApi :: ScreenFade( lua_State *pLuaState )  {
+
+                float  fAlpha = ( float ) lua_tonumber( pLuaState, 1 );
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetScreenFade( fAlpha );
+
+                return 0;
+            }
+
+            /**
              * @brief Register the application-level Lua-callable functions.
              */
             void LuaAppApi :: Register( lua_State *pLuaState )  {
 
                 lua_register( pLuaState, "app_set_name", LuaAppApi :: SetAppName );
+                lua_register( pLuaState, "screen_fade", LuaAppApi :: ScreenFade );
             }
         }
     }
