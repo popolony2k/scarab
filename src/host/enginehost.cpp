@@ -411,8 +411,23 @@ namespace Scarab  {
                 break;
 
                 case  SunLight :: Scripting :: Commands :: STOP_SONG_CMD :
-                    m_CurrentSong = __SOUND_ID_NO_AUDIO;
                 case  SunLight :: Scripting :: Commands :: STOP_SONG_DIRECT_CMD :
+
+                    /*
+                     * Either form (queued or direct) untracks the BGM once
+                     * it's the song actually being stopped - not just the
+                     * queued STOP_SONG_CMD as before. Without this, a direct
+                     * stop_song() on the currently tracked BGM would go
+                     * silent for exactly one frame before RunScriptMachine's
+                     * PlaySound(m_CurrentSong) auto-reloop check restarted
+                     * it right back - direct calls are the only reliable way
+                     * to affect playback once a stage script's own perpetual
+                     * sp_goto_label wave loop is running (see gameover.lua's
+                     * header comment for why queued sp_* commands enqueued
+                     * from live Lua code can go permanently unreached).
+                     */
+                    if( nEventId == m_CurrentSong )
+                        m_CurrentSong = __SOUND_ID_NO_AUDIO;
 
                     if( !StopSound( nEventId ) ) {
                         char szMsg[50];
