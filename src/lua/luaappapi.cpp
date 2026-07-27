@@ -44,12 +44,43 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Enter or leave fullscreen. Caravellius always renders
+             * at it's own fixed internal resolution regardless - the
+             * engine handles scaling/letterboxing to whatever the actual
+             * window size ends up being, so this is purely a presentation
+             * toggle, not something Lua needs to account for elsewhere.
+             */
+            int LuaAppApi :: SetFullscreen( lua_State *pLuaState )  {
+
+                bool  bFullscreen = lua_toboolean( pLuaState, 1 );
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetFullscreen( bFullscreen );
+
+                return 0;
+            }
+
+            /**
+             * @brief Query whether the window is currently fullscreen (see
+             * @link SetFullscreen).
+             */
+            int LuaAppApi :: GetFullscreen( lua_State *pLuaState )  {
+
+                bool  bFullscreen = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetFullscreen();
+
+                lua_pushboolean( pLuaState, bFullscreen );
+
+                return 1;
+            }
+
+            /**
              * @brief Register the application-level Lua-callable functions.
              */
             void LuaAppApi :: Register( lua_State *pLuaState )  {
 
                 lua_register( pLuaState, "app_set_name", LuaAppApi :: SetAppName );
                 lua_register( pLuaState, "screen_fade", LuaAppApi :: ScreenFade );
+                lua_register( pLuaState, "app_set_fullscreen", LuaAppApi :: SetFullscreen );
+                lua_register( pLuaState, "app_get_fullscreen", LuaAppApi :: GetFullscreen );
             }
         }
     }

@@ -40,6 +40,7 @@ int main( int argc, char **argv ) {
     renderer.GetViewport().SetZoom( DEFAULT_ZOOM_SCALE_POS );
     renderer.GetViewport().SetDimension2D( viewport );
     renderer.SetDrawFPS( true );
+    renderer.SetWindowResizeable( true );
     renderer.Start();
     renderer.Run();
     renderer.Stop();

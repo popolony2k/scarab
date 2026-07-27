@@ -26,6 +26,8 @@ namespace Scarab  {
 
                 static int SetAppName( lua_State *pLuaState );
                 static int ScreenFade( lua_State *pLuaState );
+                static int SetFullscreen( lua_State *pLuaState );
+                static int GetFullscreen( lua_State *pLuaState );
 
                 public:
 

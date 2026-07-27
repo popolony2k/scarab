@@ -29,3 +29,14 @@ function on_update( dt )
     end
 end
 ```
+
+## `app_set_fullscreen(fullscreen)` / `app_get_fullscreen()`
+
+Enter/leave fullscreen, or query the current state. The game always renders at it's own fixed internal resolution regardless of the actual window/monitor size — the engine handles scaling and letterboxing (black bars, preserving aspect ratio) to fit whatever the real window size ends up being, whether that's from this toggle or the player manually resizing the window. Nothing else needs to account for it.
+
+```lua
+-- toggle fullscreen on a key press (edge-triggered, not held)
+if input_is_key_released( KEY_F5 ) then
+    app_set_fullscreen( not app_get_fullscreen() )
+end
+```
