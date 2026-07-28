@@ -438,8 +438,20 @@ namespace Scarab  {
                 break;
 
                 case  SunLight :: Scripting :: Commands :: PAUSE_SONG_CMD :
-                    m_CurrentSong = __SOUND_ID_NO_AUDIO;
                 case  SunLight :: Scripting :: Commands :: PAUSE_SONG_DIRECT_CMD :
+
+                    /*
+                     * Untrack only if this id is actually the currently
+                     * tracked BGM (same guard STOP_SONG_CMD/STOP_SONG_DIRECT_CMD
+                     * already use above) - without this, RunScriptMachine's
+                     * own per-frame PlaySound(m_CurrentSong) auto-reloop
+                     * check would see !IsPlaying(m_CurrentSong) (true once
+                     * paused - raylib's IsSoundPlaying is false while
+                     * paused) and immediately restart it from the beginning
+                     * the very next frame, making a paused BGM impossible.
+                     */
+                    if( nEventId == m_CurrentSong )
+                        m_CurrentSong = __SOUND_ID_NO_AUDIO;
 
                     if( !PauseSound( nEventId ) ) {
                         char szMsg[50];
@@ -450,8 +462,15 @@ namespace Scarab  {
                 break;
 
                 case  SunLight :: Scripting :: Commands :: RESUME_SONG_CMD :
-                    m_CurrentSong = nEventId;
                 case  SunLight :: Scripting :: Commands :: RESUME_SONG_DIRECT_CMD :
+
+                    /*
+                     * Only re-track if nothing else is currently tracked -
+                     * mirrors the untrack above without clobbering some
+                     * other song that might legitimately be tracked already.
+                     */
+                    if( m_CurrentSong == __SOUND_ID_NO_AUDIO )
+                        m_CurrentSong = nEventId;
 
                     if( !ResumeSound( nEventId ) ) {
                         char szMsg[50];
