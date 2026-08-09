@@ -282,6 +282,35 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Shrink the sprite's own collision area relative to it's
+             * full render size - e.g. a non-rectangular sprite (a ship hull
+             * tapered at bow/stern, a round enemy) whose actual art doesn't
+             * fill it's whole bounding box. Every percentage is a fraction
+             * (0.0-1.0) of the sprite's own current width/height, recomputed
+             * every collision check rather than baked in - it stays correct
+             * even if the sprite's active sequence later changes size. Only
+             * affects this sprite's own side of a collision test (see
+             * Collider::SetInset's own doc comment in sunlight) - the
+             * sprite's drawn size/position and how other sprites see it are
+             * untouched.
+             */
+            int LuaSpriteApi :: SetCollisionInset( lua_State *pLuaState )  {
+
+                SpriteHandle  handle    = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                float         fLeftPct  = ( float ) lua_tonumber( pLuaState, 2 );
+                float         fTopPct   = ( float ) lua_tonumber( pLuaState, 3 );
+                float         fRightPct = ( float ) lua_tonumber( pLuaState, 4 );
+                float         fBottomPct = ( float ) lua_tonumber( pLuaState, 5 );
+                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+
+                if( pSprite != nullptr )  {
+                    pSprite -> GetCollider().SetInset( fLeftPct, fTopPct, fRightPct, fBottomPct );
+                }
+
+                return 0;
+            }
+
+            /**
              * @brief Add the sprite to a Tiled layer, restoring it's collider
              * parent and stashing the opaque handle on the collider so a future
              * collision callback can decode which sprite collided without
@@ -359,6 +388,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "sprite_get_pos", LuaSpriteApi :: GetPos );
                 lua_register( pLuaState, "sprite_set_pos", LuaSpriteApi :: SetPos );
                 lua_register( pLuaState, "sprite_get_size", LuaSpriteApi :: GetSize );
+                lua_register( pLuaState, "sprite_set_collision_inset", LuaSpriteApi :: SetCollisionInset );
                 lua_register( pLuaState, "sprite_add_to_layer", LuaSpriteApi :: AddToLayer );
                 lua_register( pLuaState, "sprite_remove_from_layer", LuaSpriteApi :: RemoveFromLayer );
 

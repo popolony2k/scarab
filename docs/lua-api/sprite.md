@@ -97,6 +97,14 @@ sprite_get_size(handle) -> width, height
 
 Position is **top-left anchored**, not center-anchored — `x, y` is the sprite's top-left corner, matching both the render clip rect and the AABB collision math. `pos - height/2` means "above the sprite's own top edge," not "above center."
 
+## Collision inset
+
+```lua
+sprite_set_collision_inset(handle, leftPct, topPct, rightPct, bottomPct)
+```
+
+Shrinks the rectangle used for this sprite's own side of a collision test, relative to it's full render size — useful for a non-rectangular sprite (a ship hull tapered at bow/stern, a round enemy) whose actual art doesn't fill it's whole bounding box, so the default full-size hitbox reads as unfair ("that clearly missed"). Every argument is a fraction (`0.0`-`1.0`) of the sprite's own current width/height, e.g. `sprite_set_collision_inset(handle, 0.15, 0.10, 0.15, 0.10)` shrinks 15% off each side and 10% off top/bottom. Recomputed from the sprite's current size on every collision check rather than cached as pixels, so it stays correct even if the active sequence later changes size. Defaults to `0` on every side (today's full-size behavior) until called — only affects this sprite's own side of the test, not how other sprites collide against each other. Only shrinks the collision rectangle, never the drawn sprite or it's tracked position.
+
 ## Visibility
 
 ```lua

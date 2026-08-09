@@ -34,6 +34,7 @@ namespace Scarab  {
                 static int GetPos( lua_State *pLuaState );
                 static int SetPos( lua_State *pLuaState );
                 static int GetSize( lua_State *pLuaState );
+                static int SetCollisionInset( lua_State *pLuaState );
                 static int AddToLayer( lua_State *pLuaState );
                 static int RemoveFromLayer( lua_State *pLuaState );
 
