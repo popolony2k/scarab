@@ -52,7 +52,7 @@ C++ is a thin, game-agnostic engine layer; all game logic (every enemy type, the
 4. `EngineHost::OnCommand`'s `MOVE_SPRITES_TO_SCREEN_CMD` case calls `LuaEngine::TryDispatchMoveSpritesToScreen`, which calls the optional Lua global `on_move_sprites_to_screen(stateId)` — every valid wave-spawn state id is claimed by some enemy module's `register_wave_handler`.
 5. Enemy/texture/sound parameters (velocity, hit count, textures, explosion/shoot overrides) come from `resources/configs/spriteset.json` and `spritefile.json`, read directly by Lua's `spriteconfig.lua`.
 
-**Adding a new enemy type** (or changing an existing one): everything is Lua. Add/change a `resources/scripts/enemies/<type>.lua` module (following the shape of the existing ones — `common.lua`'s `Enemies` registry for update/collision/wave-spawn dispatch, `spriteconfig.lua` for velocity/hit-count/texture/sound config, `movement.lua`/`shooting.lua`/`linebullets.lua`/`seekerbullets.lua` for shared math/bullet pools), plus config entries in `resources/configs/spriteset.json`/`spritefile.json`/`sprite-moving-parms.json` and a new `STATE_MOVE_*` name in `resources/scripts/wavestates.lua` for each new wave-spawn state. No C++ changes needed.
+**Adding a new enemy type** (or changing an existing one): everything is Lua. Add/change a `resources/scripts/enemies/<type>.lua` module (following the shape of the existing ones — `common.lua`'s `Enemies` registry for update/collision/wave-spawn dispatch, `spriteconfig.lua` for velocity/hit-count/texture/sound config, `movement.lua`/`shooting.lua` for shared math, `resources/scripts/bullets/*.lua` for shared bullet pools), plus config entries in `resources/configs/spriteset.json`/`spritefile.json`/`sprite-moving-parms.json` and a new `STATE_MOVE_*` name in `resources/scripts/wavestates.lua` for each new wave-spawn state. No C++ changes needed.
 
 ### Lua migration (complete, all 9 phases — `feat/lua-refactor` branch)
 
@@ -67,8 +67,8 @@ Enemy migrations were self-contained vertical slices — the old C++ path for a 
   - `common.lua` — the shared `Enemies` registry (`register_update`, `claim`/`release` for collision dispatch, `register_wave_handler`, `register_count`) so each module can hook the single global `on_update`/`collision_set_handler`/`on_move_sprites_to_screen` slots without clobbering each other. Also `get_active_enemy_count` (feeds `EngineHost::CheckSpritesQueueEmpty`) and the `collision_set_handler` callback that mirrors the old mutual-immunity check (see gotchas below).
   - `movement.lua` — shared sine/straight-line/vertical-sine movement math and viewport-bounds computation.
   - `shooting.lua` — shared shoot-height threshold + periodic (not per-bullet) reload sweep.
-  - `linebullets.lua` / `seekerbullets.lua` — the shared straight-line and Bresenham-seeker bullet pools.
   - `satellite.lua`, `cylinder.lua`, `alien.lua`, `octopus.lua`, `ufo.lua`, `galileo.lua`, `nomad.lua` — the per-type modules themselves.
+- `resources/scripts/bullets/` — shared bullet-pool modules, not tied to any one enemy type (each is reused across whichever modules need that projectile shape): `linebullets.lua` (straight-line) / `seekerbullets.lua` (Bresenham seeker) pools. Kept out of `resources/scripts/enemies/` specifically because they're generic projectile primitives, not enemy behavior — mirrors how `resources/scripts/core/` already holds shared systems that aren't per-enemy either.
 - Full plan, phase-by-phase status, and gotchas found along the way are tracked outside this repo (Claude's own project memory) since this was a Claude-assisted refactor done on a local-only branch.
 
 ## Code style (existing convention — match it, don't "fix" it)
