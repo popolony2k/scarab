@@ -48,6 +48,28 @@ namespace Scarab  {
                 return 0;
             }
 
+            int LuaCameraApi :: SetCameraPosition( lua_State *pLuaState )  {
+
+                int  nX = ( int ) lua_tointeger( pLuaState, 1 );
+                int  nY = ( int ) lua_tointeger( pLuaState, 2 );
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetCameraPosition( nX, nY );
+
+                return 0;
+            }
+
+            int LuaCameraApi :: GetCameraPosition( lua_State *pLuaState )  {
+
+                int  nX, nY;
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> GetCameraPosition( nX, nY );
+
+                lua_pushinteger( pLuaState, nX );
+                lua_pushinteger( pLuaState, nY );
+
+                return 2;
+            }
+
             int LuaCameraApi :: ZoomIn( lua_State *pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ZoomIn();
@@ -100,6 +122,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "camera_move_left", LuaCameraApi :: MoveCameraLeft );
                 lua_register( pLuaState, "camera_move_right", LuaCameraApi :: MoveCameraRight );
                 lua_register( pLuaState, "camera_reset", LuaCameraApi :: ResetCamera );
+                lua_register( pLuaState, "camera_set_position", LuaCameraApi :: SetCameraPosition );
+                lua_register( pLuaState, "camera_get_position", LuaCameraApi :: GetCameraPosition );
                 lua_register( pLuaState, "zoom_in", LuaCameraApi :: ZoomIn );
                 lua_register( pLuaState, "zoom_out", LuaCameraApi :: ZoomOut );
                 lua_register( pLuaState, "zoom_reset", LuaCameraApi :: ResetZoom );

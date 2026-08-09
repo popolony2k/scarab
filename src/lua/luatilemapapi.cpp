@@ -203,6 +203,25 @@ namespace Scarab  {
                 return 2;
             }
 
+            int LuaTilemapApi :: GetObjectByName( lua_State *pLuaState )  {
+
+                const char  *szObjectName = lua_tostring( pLuaState, 1 );
+                stObject    object;
+
+                if( !LuaEngineUtil :: GetTileMap( pLuaState ) -> GetObjectByName( szObjectName, object ) )  {
+                    lua_pushnil( pLuaState );
+
+                    return 1;
+                }
+
+                lua_pushinteger( pLuaState, object.dimension.pos.x );
+                lua_pushinteger( pLuaState, object.dimension.pos.y );
+                lua_pushinteger( pLuaState, object.dimension.size.nWidth );
+                lua_pushinteger( pLuaState, object.dimension.size.nHeight );
+
+                return 4;
+            }
+
             void LuaTilemapApi :: RegisterEnums( lua_State *pLuaState )  {
 
                 static const stNamedConstant  s_aMapAlignments[] = {
@@ -234,6 +253,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "tilemap_set_layer_by_name", LuaTilemapApi :: SetLayerByName );
                 lua_register( pLuaState, "tilemap_get_tile", LuaTilemapApi :: GetTile );
                 lua_register( pLuaState, "tilemap_to_tile_matrix", LuaTilemapApi :: ToTileMatrix );
+                lua_register( pLuaState, "tilemap_get_object_by_name", LuaTilemapApi :: GetObjectByName );
 
                 RegisterEnums( pLuaState );
             }

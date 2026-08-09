@@ -58,3 +58,15 @@ Convert a world/screen pixel coordinate to a tile row/column — the inverse of 
 ```lua
 local row, col = tilemap_to_tile_matrix(100, 250)
 ```
+
+## `tilemap_get_object_by_name(name) -> x, y, width, height`
+
+Look up a level-design-authored object — a Tiled `<object>` placed inside any `<objectgroup>` layer, e.g. a trigger/marker — by name, as set in the map editor. Searches every object-group layer in the loaded map. Returns `nil` if no object with that name exists.
+
+```lua
+local x, y, w, h = tilemap_get_object_by_name("SubBossIntervalStart")
+
+if x ~= nil then
+  camera_set_position(x, y)
+end
+```

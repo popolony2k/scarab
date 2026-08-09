@@ -36,6 +36,23 @@ end
 
 Reset the camera to the map's default position.
 
+## `camera_set_position(x, y)`
+
+Jump the camera so the given world-space coordinate (pixels) is shown at the top-left of the viewport — an absolute move, unlike `camera_move_*`'s incremental one-step nudges, and unlike `camera_reset()` (which only returns to the map's original load-time position). Does **not** clamp to map boundaries — the caller is responsible for passing a valid target, e.g. a position read via `tilemap_get_object_by_name` (see [tilemap.md](tilemap.md)).
+
+```lua
+local x, y, w, h = tilemap_get_object_by_name("SubBossIntervalStart")
+camera_set_position(x, y)
+```
+
+## `camera_get_position() -> x, y`
+
+Read the world-space coordinate currently shown at the top-left of the viewport — the exact inverse of `camera_set_position`, and the only reliable way to know the camera's current scroll position (there's no way to derive it purely from map/viewport size — the load-time alignment math isn't part of the public contract).
+
+```lua
+local x, y = camera_get_position()
+```
+
 ## Zoom
 
 ```lua

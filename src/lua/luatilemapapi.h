@@ -31,6 +31,7 @@ namespace Scarab  {
                 static int SetLayerByName( lua_State *pLuaState );
                 static int GetTile( lua_State *pLuaState );
                 static int ToTileMatrix( lua_State *pLuaState );
+                static int GetObjectByName( lua_State *pLuaState );
 
                 static void RegisterEnums( lua_State *pLuaState );
 

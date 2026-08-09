@@ -27,6 +27,8 @@ namespace Scarab  {
                 static int MoveCameraLeft( lua_State *pLuaState );
                 static int MoveCameraRight( lua_State *pLuaState );
                 static int ResetCamera( lua_State *pLuaState );
+                static int SetCameraPosition( lua_State *pLuaState );
+                static int GetCameraPosition( lua_State *pLuaState );
                 static int ZoomIn( lua_State *pLuaState );
                 static int ZoomOut( lua_State *pLuaState );
                 static int ResetZoom( lua_State *pLuaState );
