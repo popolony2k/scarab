@@ -30,6 +30,12 @@ compile_commands.json
 CMakeSettings.json
 **/Debug/
 **/debug/
+# Exception: this is game content (debug-only launch stages/scripts), not
+# a CMake Debug/Release build-output directory - the **/debug/ rule above
+# is aimed at the latter and would otherwise also catch this real,
+# tracked source folder.
+!games/caravellius/resources/scripts/debug/
+!games/caravellius/resources/scripts/debug/**
 **/Release/
 **/release/
 **/GeneratedFiles/
