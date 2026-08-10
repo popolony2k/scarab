@@ -53,7 +53,7 @@ end
 Set `id`'s playback volume, independently of every other loaded sound — `0.0` (silent) to `1.0` (max). Intended for crossfading between two songs (e.g. fading a stage's BGM out while a boss's BGM fades in): ramp each song's volume in opposite directions over several frames from `on_update`.
 
 ```lua
-sound_set_volume(ID_FIRST_STAGE_BGM, 0.5)
+sound_set_volume(ID_DESTRUCTION_ALIENS_ATTACK_BGM, 0.5)
 ```
 
 ## Song commands — queued vs. direct
@@ -69,7 +69,7 @@ Both forms end up calling the same underlying playback, but only the **queued** 
 
 ```lua
 -- Background music: looping, sequenced with the rest of the stage's queue
-sp_play_song(ID_FIRST_STAGE_BGM)
+sp_play_song(ID_DESTRUCTION_ALIENS_ATTACK_BGM)
 
 -- A one-off sound effect: fires immediately, never looped
 play_song(ID_CARAVELLIUS_SHOOT_AUDIO)
