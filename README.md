@@ -107,3 +107,7 @@ A refactor moved all enemy/sprite/player game logic and config/stage bootstrap o
 ## Lua API reference
 
 Every Lua-callable primitive the engine exposes to game scripts — camera, input, tile map, sound, sprites, collision, JSON loading, script sequencing, timers, and the callbacks the engine calls back into Lua — is documented in [docs/lua-api/](docs/lua-api/README.md), one page per category with runnable examples. This is the engine's own generic API surface, not Caravellius's game-specific Lua modules (those live in `resources/scripts/` and are game content built on top of this API).
+
+## Credits
+
+Third-party assets (music, art, ...) and the people who made them are credited in [CREDITS.md](CREDITS.md).
