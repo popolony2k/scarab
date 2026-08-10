@@ -22,9 +22,10 @@ game-engine/
         ├── project.json    # entry-point descriptor read at launch - see "Running" below
         ├── resources/
         │   ├── configs/               # sprite sets, moving params, sound/sprite/stage files (JSON) - read directly by Lua
-        │   ├── scripts/                # Lua: main.lua, bootstrap.lua, spriteconfig.lua, player.lua, enemies/ (per-enemy modules), stages/ (stage scripts)
+        │   ├── scripts/                # Lua: main.lua + core/ (bootstrap, player, camera, stage director, ...), enemies/ (per-enemy modules), bullets/ (shared projectile pools), ids/ (wave/stage/sound/layer id definitions), stages/ (stage scripts), debug/ (standing debug-only launch sessions - see "Running" below)
         │   ├── tilemap/                # Tiled (.tmx/.tsx) maps
-        │   ├── sprites/, audio/        # game art and sound assets
+        │   ├── sprites/                # game art, split into enemies/, bullets/, explosions/
+        │   ├── audio/                  # sound assets
         │   └── projects/               # source art projects (Aseprite, SAI, vector)
         └── docs/
 ```
@@ -84,9 +85,20 @@ cd build
 
 `main_script` resolves relative to the project file's own directory, so the whole project (executable + `resources/` + `project.json`) stays relocatable as a unit. You can also skip the project file and point directly at a `.lua` entry script: `./scarab resources/scripts/main.lua`.
 
+### Debug launch sessions
+
+`resources/scripts/debug/` holds standing debug-only entry points for testing an enemy/boss/sub-boss in isolation, without playing through the rest of the stage first — each runs the exact same bootstrap as a normal launch, just landing on a stripped-down stage instead of the real one:
+
+```shell
+./scarab resources/scripts/debug/enemy_main.lua    # any regular wave-spawn enemy - edit DEBUG_ENEMY_STATE_NAME to pick which one
+./scarab resources/scripts/debug/subboss_main.lua  # the mid-stage Venusian sub-boss
+```
+
+Both loop automatically once the encounter resolves, so repeated testing doesn't need relaunching the executable.
+
 ## Gameplay
 
-Caravellius is a vertical shoot-'em-up: the player ship scrolls up a Tiled map while enemy ships (Satellite, Cylinder, Galileo, Nomad, Alien, Ufo, Octopus) spawn and move using data-driven patterns (sine waves, circular orbits, quadrant patrols) and fire straight-line or homing (Bresenham-seeking) bullets. Levels are orchestrated by Lua stage scripts that call into a `ScriptProcessor` command queue (`sp_move_sprites_to_screen`, `sp_wait`, `sp_play_song`, ...), while enemy stats/textures/sounds are defined in JSON config files under `resources/configs/` and read directly by Lua.
+Caravellius is a vertical shoot-'em-up: the player ship scrolls up a Tiled map while enemy ships (Satellite, Cylinder, Galileo, Nomad, Alien, Ufo, Octopus) spawn and move using data-driven patterns (sine waves, circular orbits, quadrant patrols) and fire straight-line or homing (Bresenham-seeking) bullets, building toward a mid-stage sub-boss (the Venusian ship) with its own camera scroll-loop arena and an escalating bullet-hell attack pattern partway through the stage. Wave pacing is driven by a condition-based `StageDirector` (a fixed authored sequence, then an endless random-pick filler loop once it completes) rather than a purely linear script; the underlying `ScriptProcessor` command queue (`sp_move_sprites_to_screen`, `sp_wait`, `sp_play_song`, ...) still exists as generic engine plumbing for genuinely sequential things like BGM start and screen fades. Enemy stats/textures/sounds are defined in JSON config files under `resources/configs/` and read directly by Lua.
 
 ## Lua migration (complete)
 
