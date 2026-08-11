@@ -130,6 +130,37 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Like PlaySong, but also marks this song as the tracked
+             * BGM for EngineHost::RunScriptMachine's own per-frame auto-
+             * reloop check (raylib's Sound has no native looping - see
+             * bgm.lua's own header comment). PLAY_SONG_DIRECT_CMD never
+             * sets EngineHost::m_CurrentSong (only the QUEUED PLAY_SONG_CMD
+             * does, as a side effect of it's own switch-case falling
+             * through into PLAY_SONG_DIRECT_CMD's shared body) - reusing
+             * PLAY_SONG_CMD here gets that same tracking/auto-reloop
+             * behavior while still dispatching immediately via
+             * CallPlayCommandDirect (OnCommand called synchronously, NOT
+             * enqueued through ScriptProcessor - a stage script's own
+             * perpetual sp_goto_label wave loop can otherwise starve a
+             * genuinely queued sp_play_song, same reasoning bgm.lua's own
+             * header comment already gives for why STOP_SONG_CMD/etc. use
+             * their direct forms). Needed once Cephalon's boss BGM (started
+             * via play_song, not sp_play_song, for that same immediacy
+             * reason) was found live to go permanently silent after it's
+             * own ~173s natural length instead of looping, since plain
+             * play_song was never tracked for auto-reloop at all.
+             *
+             * @param pLuaState Lua state to be used by engine call.
+             * @return int number os return data (if any - required by lua engine)
+             */
+            int LuaSoundApi :: PlaySongLooping( lua_State *pLuaState )  {
+
+                CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_CMD );
+
+                return 0;
+            }
+
+            /**
              * @brief Implement the direct Pause song routine wrapper;
              *
              * @param pLuaState Lua state to be used by engine call.
@@ -234,6 +265,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "sound_is_playing", LuaSoundApi :: IsPlaying );
                 lua_register( pLuaState, "sound_set_volume", LuaSoundApi :: SetVolume );
                 lua_register( pLuaState, "play_song", LuaSoundApi :: PlaySong );
+                lua_register( pLuaState, "play_song_looping", LuaSoundApi :: PlaySongLooping );
                 lua_register( pLuaState, "pause_song", LuaSoundApi :: PauseSong );
                 lua_register( pLuaState, "stop_song", LuaSoundApi :: StopSong );
                 lua_register( pLuaState, "resume_song", LuaSoundApi :: ResumeSong );

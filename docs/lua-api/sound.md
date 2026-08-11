@@ -58,21 +58,28 @@ sound_set_volume(ID_DESTRUCTION_ALIENS_ATTACK_BGM, 0.5)
 
 ## Song commands — queued vs. direct
 
-Both forms end up calling the same underlying playback, but only the **queued** (`sp_*`) forms mark a song as "the currently tracked background music" — the engine automatically re-triggers that tracked song every frame once it finishes (`EngineHost::RunScriptMachine`'s BGM-loop check), giving free looping. The **direct** forms play once and are never auto-repeated, which is what you want for a one-off sound effect (a shot, an explosion) rather than music.
+Both forms end up calling the same underlying playback, but only the **queued** (`sp_*`) forms — and `play_song_looping` — mark a song as "the currently tracked background music": the engine automatically re-triggers that tracked song every frame once it finishes (`EngineHost::RunScriptMachine`'s BGM-loop check), giving free looping. Plain `play_song` plays once and is never auto-repeated, which is what you want for a one-off sound effect (a shot, an explosion) rather than music.
 
-| | Queued (participates in the `sp_*` command queue, becomes the looping BGM) | Direct (immediate, one-shot, no looping) |
-|---|---|---|
-| Play | `sp_play_song(id)` | `play_song(id)` |
-| Pause | `sp_pause_song(id)` | `pause_song(id)` |
-| Stop | `sp_stop_song(id)` | `stop_song(id)` |
-| Resume | `sp_resume_song(id)` | `resume_song(id)` |
+| | Queued (participates in the `sp_*` command queue, becomes the looping BGM) | Direct, looping (immediate, still becomes the looping BGM) | Direct, one-shot (immediate, never looped) |
+| --- | --- | --- | --- |
+| Play | `sp_play_song(id)` | `play_song_looping(id)` | `play_song(id)` |
+| Pause | `sp_pause_song(id)` | — | `pause_song(id)` |
+| Stop | `sp_stop_song(id)` | — | `stop_song(id)` |
+| Resume | `sp_resume_song(id)` | — | `resume_song(id)` |
 
 ```lua
 -- Background music: looping, sequenced with the rest of the stage's queue
 sp_play_song(ID_DESTRUCTION_ALIENS_ATTACK_BGM)
 
+-- Background music: looping, but needs to start immediately rather than
+-- wait for a possibly-stuck sp_* queue (eg. a stage script's own
+-- perpetual wave-spawn loop) - a boss BGM crossfade, for example
+play_song_looping(ID_BOSS_TIME_BGM)
+
 -- A one-off sound effect: fires immediately, never looped
 play_song(ID_CARAVELLIUS_SHOOT_AUDIO)
 ```
 
-None of the 8 song functions return a value — check `sound_is_playing(id)` if you need to know playback state.
+`play_song_looping` only exists for the Play case — pausing/stopping/resuming a tracked BGM works the same way (and un-tracks it, if applicable) whether it was started via `sp_play_song` or `play_song_looping`, so `pause_song`/`stop_song`/`resume_song` cover both.
+
+None of the 9 song functions return a value — check `sound_is_playing(id)` if you need to know playback state.
