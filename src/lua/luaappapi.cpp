@@ -73,6 +73,60 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Show or hide the on-screen FPS counter.
+             */
+            int LuaAppApi :: SetDrawFps( lua_State *pLuaState )  {
+
+                bool  bDrawFPS = lua_toboolean( pLuaState, 1 );
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetDrawFPS( bDrawFPS );
+
+                return 0;
+            }
+
+            /**
+             * @brief Query whether the FPS counter is currently being drawn
+             * (see @link SetDrawFps).
+             */
+            int LuaAppApi :: GetDrawFps( lua_State *pLuaState )  {
+
+                bool  bDrawFPS = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetDrawFPS();
+
+                lua_pushboolean( pLuaState, bDrawFPS );
+
+                return 1;
+            }
+
+            /**
+             * @brief Allow or disallow the user resizing the window by
+             * dragging it's edges/corners. Safe to call at any time - both
+             * before the window is created and, unlike the old pre-Start()
+             * -only mechanism, while it's already running too (a genuine
+             * live toggle, in either direction).
+             */
+            int LuaAppApi :: SetWindowResizeable( lua_State *pLuaState )  {
+
+                bool  bResizeable = lua_toboolean( pLuaState, 1 );
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetWindowResizeable( bResizeable );
+
+                return 0;
+            }
+
+            /**
+             * @brief Query whether the window is currently resizeable (see
+             * @link SetWindowResizeable).
+             */
+            int LuaAppApi :: GetWindowResizeable( lua_State *pLuaState )  {
+
+                bool  bResizeable = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetWindowResizeable();
+
+                lua_pushboolean( pLuaState, bResizeable );
+
+                return 1;
+            }
+
+            /**
              * @brief Register the application-level Lua-callable functions.
              */
             void LuaAppApi :: Register( lua_State *pLuaState )  {
@@ -81,6 +135,10 @@ namespace Scarab  {
                 lua_register( pLuaState, "screen_fade", LuaAppApi :: ScreenFade );
                 lua_register( pLuaState, "app_set_fullscreen", LuaAppApi :: SetFullscreen );
                 lua_register( pLuaState, "app_get_fullscreen", LuaAppApi :: GetFullscreen );
+                lua_register( pLuaState, "app_set_draw_fps", LuaAppApi :: SetDrawFps );
+                lua_register( pLuaState, "app_get_draw_fps", LuaAppApi :: GetDrawFps );
+                lua_register( pLuaState, "app_set_window_resizeable", LuaAppApi :: SetWindowResizeable );
+                lua_register( pLuaState, "app_get_window_resizeable", LuaAppApi :: GetWindowResizeable );
             }
         }
     }
