@@ -11,7 +11,8 @@ Every function listed here is available in any Lua script the engine runs, from 
 | [scripting.md](scripting.md) | The `ScriptProcessor` command queue — `sp_wait`, `sp_clear`, `sp_wait_queue_empty`, `sp_move_sprites_to_screen`, `sp_add_label`/`sp_goto_label`, `sp_load_stage` |
 | [sound.md](sound.md) | Loading and playing sounds — `sound_*` (direct playback state) and the queued/direct song commands (`sp_play_song`/`play_song` and friends) |
 | [timers.md](timers.md) | `set_timer`/`reset_timer` — background-thread periodic/delayed callbacks |
-| [app.md](app.md) | Application-level primitives — `app_set_name` (the application window's title) |
+| [app.md](app.md) | Application-level primitives — `app_set_name` (window title), `app_set_fullscreen`/`app_get_fullscreen`, `app_set_draw_fps`/`app_get_draw_fps`, `app_set_window_resizeable`/`app_get_window_resizeable` |
+| [text.md](text.md) | Font loading and screen-space text rendering — `set_font`, `draw_text`, `measure_text`, `screen_get_width`/`screen_get_height` |
 | [camera.md](camera.md) | Camera panning and zoom — `camera_*`, `zoom_*`, `viewport_get_*` |
 | [input.md](input.md) | Keyboard and gamepad polling — `input_*`, plus the `KEY_*`/`GAMEPAD_BUTTON_*`/`GAMEPAD_AXIS_*`/`CONTROLLER_*` constants |
 | [tilemap.md](tilemap.md) | Loading maps and reading/writing layers and tiles — `tilemap_*`, plus `MAP_ALIGNMENT_*` |

@@ -40,3 +40,21 @@ if input_is_key_released( KEY_F5 ) then
     app_set_fullscreen( not app_get_fullscreen() )
 end
 ```
+
+## `app_set_draw_fps(draw_fps)` / `app_get_draw_fps()`
+
+Show or hide the on-screen FPS counter (raylib's own, drawn at the top-left corner of the window every frame), or query the current state. Scarab's own default (`main.cpp`) is `false` — a generic engine-level choice, not a game one. Caravellius overrides it to `true`, early in `main.lua`:
+
+```lua
+-- main.lua
+app_set_draw_fps( true )
+```
+
+## `app_set_window_resizeable(resizeable)` / `app_get_window_resizeable()`
+
+Allow or disallow the user resizing the window by dragging its edges/corners, or query the current state. A genuine **live** toggle — safe to call both before the window exists and at any point after, in either direction (unlike raylib's own pre-`InitWindow`-only `FLAG_WINDOW_RESIZABLE` config flag). Scarab's own default (`main.cpp`) is `true`; Caravellius overrides it to `false` (the game renders at a fixed internal resolution with letterboxing, so a resizeable window offers no benefit):
+
+```lua
+-- main.lua
+app_set_window_resizeable( false )
+```
