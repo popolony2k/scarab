@@ -94,21 +94,25 @@ namespace Scarab  {
          * list. Bumps the slot's generation so stale handles referencing this
          * slot become unresolvable.
          *
-         * Also clears nativeTextureWidth/nativeTextureHeight (see
-         * GetOrCacheNativeWidth/GetOrCacheNativeHeight's own comments) - those
-         * caches are keyed per-sequence-id on this slot, not per-handle, so
-         * without clearing them here a slot recycled for a texture of a
-         * genuinely different size than whatever it held before would keep
-         * reporting the OLD size forever, even though the new texture's own
-         * pixel data loads and renders correctly. Confirmed live: games/
-         * caravellius/resources/scripts/core/weapon.lua originally shared
-         * one pool across two differently-sized bullet textures and hit
-         * this exactly, intermittently reporting one texture's size while
-         * displaying the other (worked around there by giving each texture
-         * it's own pool, independent of this fix). GetOrCacheNativeWidth/
-         * Height's own "trust the first value forever" contract remains
-         * correct *within* one slot's current occupancy - it's just never
-         * supposed to survive the occupancy ending, which this was missing.
+         * Does NOT clear nativeTextureWidth/nativeTextureHeight here - a fix
+         * that did (commit 938f3c7, landed and reverted the same day,
+         * 2026-08-17) was live A/B tested by the user against a real, reproducible
+         * player-ship-explosion sprite corruption bug and confirmed to be
+         * the cause: fix in -> corruption; fix reverted -> clean. The
+         * mechanism was never confirmed - the player ship's own handle is
+         * never released for the whole process lifetime (grepped every
+         * caller, confirmed), so Release() never even runs for it's slot,
+         * and no other consumer of these two caches was found that should
+         * be affected either. Left reverted rather than re-landed once
+         * "explained" is found later - the original bug that fix targeted
+         * (see GetOrCacheNativeWidth/Height's own comments) is already
+         * fully solved independently, by games/caravellius/resources/
+         * scripts/core/weapon.lua giving LASER/SPREAD/HOMING their own
+         * dedicated pools rather than sharing one across differently-sized
+         * textures - that workaround doesn't depend on this function at
+         * all, so nothing live actually needs this fix reinstated. Worth
+         * real investigation before ever re-attempting it, not just
+         * reasoning from first principles again.
          *
          * @param handle The handle to release;
          */
@@ -127,8 +131,6 @@ namespace Scarab  {
             slot.bInUse = false;
             slot.sprite.SetVisible( false );
             slot.nGeneration++;
-            slot.nativeTextureWidth.clear();
-            slot.nativeTextureHeight.clear();
 
             m_FreeListsByType[slot.strTypeTag].push_back( ( uint32_t ) nIndex );
 
