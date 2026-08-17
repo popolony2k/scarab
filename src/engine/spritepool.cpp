@@ -94,6 +94,22 @@ namespace Scarab  {
          * list. Bumps the slot's generation so stale handles referencing this
          * slot become unresolvable.
          *
+         * Also clears nativeTextureWidth/nativeTextureHeight (see
+         * GetOrCacheNativeWidth/GetOrCacheNativeHeight's own comments) - those
+         * caches are keyed per-sequence-id on this slot, not per-handle, so
+         * without clearing them here a slot recycled for a texture of a
+         * genuinely different size than whatever it held before would keep
+         * reporting the OLD size forever, even though the new texture's own
+         * pixel data loads and renders correctly. Confirmed live: games/
+         * caravellius/resources/scripts/core/weapon.lua originally shared
+         * one pool across two differently-sized bullet textures and hit
+         * this exactly, intermittently reporting one texture's size while
+         * displaying the other (worked around there by giving each texture
+         * it's own pool, independent of this fix). GetOrCacheNativeWidth/
+         * Height's own "trust the first value forever" contract remains
+         * correct *within* one slot's current occupancy - it's just never
+         * supposed to survive the occupancy ending, which this was missing.
+         *
          * @param handle The handle to release;
          */
         bool SpritePool :: Release( SpriteHandle handle )  {
@@ -111,6 +127,8 @@ namespace Scarab  {
             slot.bInUse = false;
             slot.sprite.SetVisible( false );
             slot.nGeneration++;
+            slot.nativeTextureWidth.clear();
+            slot.nativeTextureHeight.clear();
 
             m_FreeListsByType[slot.strTypeTag].push_back( ( uint32_t ) nIndex );
 
