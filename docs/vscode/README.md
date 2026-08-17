@@ -18,6 +18,8 @@ cp docs/vscode/.vscode/* .vscode/
 
 The root `.vscode` folder is gitignored — it's per-developer/per-machine local state, not tracked. This sample folder is the tracked source of truth; **any future `.vscode` change you want to keep should be copied back here**, not just left in your local, untracked copy.
 
+Every debug configuration in `launch.json` has a `preLaunchTask` (`tasks.json`'s `cmake build (scarab)`) that runs `cmake --build build` before launching. This matters beyond just recompiling: this project's build also copies Lua scripts/configs/sprites/audio into `build/resources/` as part of that same build step (see `CLAUDE.md`'s Build section) — without the `preLaunchTask`, hitting Run/Debug just launches whatever binary is already sitting at `build/scarab` (or `build/debug/scarab.exe` on Windows) as-is, which can silently run against **stale copied resources** if you've edited any Lua/config/asset file since the last real build. Added 2026-08-17 after confirming this gap existed (no config in this folder ran a build before launching) while investigating an unrelated, still-unconfirmed live-bug report — the gap itself is real and worth closing regardless of whether it turns out to explain that specific report.
+
 ## Using a specific settings.json for your operating system
 
 `settings.json` itself is kept OS-neutral. Three ready-made per-OS variants exist alongside it:

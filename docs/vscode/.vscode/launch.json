@@ -13,7 +13,8 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/debug",
             "environment": [],
-            "console": "externalTerminal"
+            "console": "externalTerminal",
+            "preLaunchTask": "cmake build (scarab)"
         },
         {
             "name": "(gdb) Launch",
@@ -26,6 +27,7 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
+            "preLaunchTask": "cmake build (scarab)",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
@@ -49,7 +51,8 @@
             "cwd": "${workspaceFolder}/build",
             "environment": [],
             "externalConsole": false,
-            "MIMode": "lldb"
+            "MIMode": "lldb",
+            "preLaunchTask": "cmake build (scarab)"
         }
     ]
 }

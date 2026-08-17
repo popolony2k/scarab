@@ -23,6 +23,26 @@
 				"isDefault": true
 			},
 			"detail": "compiler: /usr/bin/g++"
+		},
+		{
+			"type": "shell",
+			"label": "cmake build (scarab)",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/build"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"detail": "Builds scarab and copies it's runtime resources (games/caravellius Lua scripts/configs/sprites/audio) into build/ - wired as every debug launch config's preLaunchTask, so Run/Debug can never launch against stale copied resources the way a plain 'run the existing binary' launch could."
 		}
 	]
 }
