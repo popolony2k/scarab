@@ -94,25 +94,69 @@ namespace Scarab  {
          * list. Bumps the slot's generation so stale handles referencing this
          * slot become unresolvable.
          *
-         * Does NOT clear nativeTextureWidth/nativeTextureHeight here - a fix
-         * that did (commit 938f3c7, landed and reverted the same day,
-         * 2026-08-17) was live A/B tested by the user against a real, reproducible
-         * player-ship-explosion sprite corruption bug and confirmed to be
-         * the cause: fix in -> corruption; fix reverted -> clean. The
-         * mechanism was never confirmed - the player ship's own handle is
-         * never released for the whole process lifetime (grepped every
-         * caller, confirmed), so Release() never even runs for it's slot,
-         * and no other consumer of these two caches was found that should
-         * be affected either. Left reverted rather than re-landed once
-         * "explained" is found later - the original bug that fix targeted
-         * (see GetOrCacheNativeWidth/Height's own comments) is already
-         * fully solved independently, by games/caravellius/resources/
-         * scripts/core/weapon.lua giving LASER/SPREAD/HOMING their own
-         * dedicated pools rather than sharing one across differently-sized
-         * textures - that workaround doesn't depend on this function at
-         * all, so nothing live actually needs this fix reinstated. Worth
-         * real investigation before ever re-attempting it, not just
-         * reasoning from first principles again.
+         * Deliberately does NOT clear nativeTextureWidth/nativeTextureHeight
+         * here - this used to look like an oversight (a fix that did, commit
+         * 938f3c7, was landed 2026-08-17), but is actually load-bearing, and
+         * the fix was reverted the same day (039741c) once live A/B testing
+         * showed it caused real, reproducible sprite corruption (first
+         * reported as "Cylinder enemies with cropped sprites", later also
+         * seen on the player ship's own explosion sequence). The mechanism
+         * is now fully understood, confirmed via live diagnostic logging
+         * plus reading sunlight's own source directly (not guessed):
+         *
+         * 1. `Scarab::Lua::LuaSpriteApi::ConfigureTexture` (src/lua/
+         *    luaspriteapi.cpp) reads `TextureCanvas::GetDimension2D()`
+         *    right after `Load()` to learn the texture's true native pixel
+         *    size (GetOrCacheNativeWidth/Height below exist specifically to
+         *    cache that value reliably - see their own comments).
+         * 2. `TextureCanvas::Load()` (sunlight's canvas/texturecanvas.cpp)
+         *    only writes the freshly-loaded image's real width/height into
+         *    that dimension struct if it's currently (0,0) - a guard that's
+         *    true the FIRST time a given TextureCanvas C++ object is ever
+         *    loaded, and never again afterward.
+         * 3. `Sprite::AddTextureSequence` (sunlight's sprite/sprite.cpp),
+         *    called once per ConfigureTexture at the end of every
+         *    configure, permanently repoints that same canvas's dimension
+         *    pointer (`GraphicObject::SetDimension2DPtr`) at the owning
+         *    Sprite's OWN shared dimension struct - not the canvas's
+         *    private one anymore. That shared struct then gets overwritten
+         *    to the sprite's current *tile* size (native width / frame
+         *    count) by `SetTileSize`, every configure.
+         *
+         * SpritePool reuses the same TextureCanvas C++ objects across every
+         * Release()/Acquire() cycle (they live in stSlot::textures, never
+         * destroyed - only Unload()ed and re-Load()ed). So on a slot's
+         * SECOND and every later configure, step 2's guard is false (the
+         * dimension struct is already aliased to the sprite's shared one,
+         * left at the PREVIOUS life's tile size, not (0,0)) - Load() skips
+         * writing the real size, and GetDimension2D() silently returns the
+         * stale tile size instead. Confirmed live via diagnostic logging
+         * across every enemy type (not just Cylinder): a slot's second
+         * configure always reports its own FIRST configure's tile size as
+         * the "native" width - e.g. Cylinder's real 128px native width
+         * comes back as 32 (=128/4 frames) on every recycle, Satellite's
+         * 96 comes back as 32 (=96/3), Galileo's 192 comes back as 24
+         * (=192/8) - then that wrong value gets divided by frame count
+         * AGAIN in ConfigureTexture, producing a badly undersized (cropped)
+         * sprite.
+         *
+         * GetOrCacheNativeWidth/Height's job is exactly to prevent this -
+         * cache the FIRST (genuinely reliable) native size forever and
+         * ignore whatever a later reconfigure's now-aliased GetDimension2D()
+         * reports. Clearing that cache in Release() (938f3c7) throws this
+         * protection away on every single recycle, not just the narrower
+         * cross-texture-size sharing case (LASER/SPREAD/BASE briefly
+         * sharing one pool, see GetOrCacheNativeWidth's own comment) it was
+         * actually written for - reproducing the exact "stale/aliased
+         * width" symptom the cache exists to prevent, just far more often.
+         * This is a genuine sunlight behavior (TextureCanvas::Load()'s
+         * write-once guard plus Sprite::AddTextureSequence's dimension
+         * aliasing), not a sunlight bug to fix - a Sprite's sequences
+         * sharing one on-screen dimension is reasonable by design. This
+         * cache is the correct, permanent place to work around it. Do not
+         * reinstate clearing here without giving every recycled slot's
+         * TextureCanvas its own always-private dimension storage instead
+         * (a real sunlight-side change, not a one-line SpritePool fix).
          *
          * @param handle The handle to release;
          */
@@ -218,7 +262,8 @@ namespace Scarab  {
          * reported width on every call - it's only actually used (and cached)
          * the first time; every later call returns the cached value regardless
          * of what's passed, since a reconfigured (recycled) texture's own
-         * reported dimension can no longer be trusted (@see stSlot::nativeTextureWidth).
+         * reported dimension can no longer be trusted (@see stSlot::nativeTextureWidth,
+         * and Release()'s own comment above for the fully-confirmed mechanism).
          *
          * @param handle The sprite handle;
          * @param nSequenceId The texture sequence id;
