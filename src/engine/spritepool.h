@@ -10,6 +10,7 @@
 
 #include <deque>
 #include <map>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include "engine/spritehandle.h"
@@ -31,6 +32,22 @@ namespace Scarab  {
         class SpritePool  {
 
             /**
+             * @brief A sequence's cached native (un-frame-divided) pixel size -
+             * width and height are always looked up/cached together (one entry
+             * per sequence id, @see stSlot::nativeTextureSizes), so they're kept
+             * as a single struct rather than two parallel maps. Each axis is
+             * it's own std::optional (not a plain int) so "not cached yet" stays
+             * distinguishable from "cached as 0" without a separate presence
+             * flag - GetOrCacheNativeWidth/Height each populate only their own
+             * axis, independently, so one axis can legitimately be cached before
+             * the other.
+             */
+            struct stNativeTextureSize  {
+                std :: optional<int>  nWidth;
+                std :: optional<int>  nHeight;
+            };
+
+            /**
              * @brief One pool slot: a renderable sprite plus the texture canvases
              * backing each of it's texture sequences (kept in a std::map so
              * their addresses stay stable across insertions - Sprite::
@@ -46,13 +63,12 @@ namespace Scarab  {
                  * - fine for a fresh sprite, but means a reconfigured (recycled)
                  * texture's GetDimension2D() no longer reflects it's own natural
                  * pixel size, it reflects whatever the sprite's size happened to
-                 * be left at. Cache each sequence's true natural width the first
+                 * be left at. Cache each sequence's true natural size the first
                  * time it's seen (while still reliable) so later reconfigures on
                  * a recycled slot don't compute a frame width from stale/aliased
                  * data.
                  */
-                std :: map<int, int>                                  nativeTextureWidth;
-                std :: map<int, int>                                  nativeTextureHeight;
+                std :: map<int, stNativeTextureSize>                  nativeTextureSizes;
                 std :: string                                         strTypeTag;
                 uint16_t                                              nGeneration;
                 bool                                                   bInUse;

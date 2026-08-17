@@ -262,7 +262,7 @@ namespace Scarab  {
          * reported width on every call - it's only actually used (and cached)
          * the first time; every later call returns the cached value regardless
          * of what's passed, since a reconfigured (recycled) texture's own
-         * reported dimension can no longer be trusted (@see stSlot::nativeTextureWidth,
+         * reported dimension can no longer be trusted (@see stSlot::nativeTextureSizes,
          * and Release()'s own comment above for the fully-confirmed mechanism).
          *
          * @param handle The sprite handle;
@@ -282,12 +282,12 @@ namespace Scarab  {
             if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
                 return nCurrentWidth;
 
-            auto  itWidth = slot.nativeTextureWidth.find( nSequenceId );
+            stNativeTextureSize&  size = slot.nativeTextureSizes[nSequenceId];
 
-            if( itWidth != slot.nativeTextureWidth.end() )
-                return itWidth -> second;
+            if( size.nWidth.has_value() )
+                return size.nWidth.value();
 
-            slot.nativeTextureWidth.insert( std :: make_pair( nSequenceId, nCurrentWidth ) );
+            size.nWidth = nCurrentWidth;
 
             return nCurrentWidth;
         }
@@ -310,12 +310,12 @@ namespace Scarab  {
             if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
                 return nCurrentHeight;
 
-            auto  itHeight = slot.nativeTextureHeight.find( nSequenceId );
+            stNativeTextureSize&  size = slot.nativeTextureSizes[nSequenceId];
 
-            if( itHeight != slot.nativeTextureHeight.end() )
-                return itHeight -> second;
+            if( size.nHeight.has_value() )
+                return size.nHeight.value();
 
-            slot.nativeTextureHeight.insert( std :: make_pair( nSequenceId, nCurrentHeight ) );
+            size.nHeight = nCurrentHeight;
 
             return nCurrentHeight;
         }
