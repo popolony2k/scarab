@@ -77,6 +77,17 @@ Switch which configured sequence is currently displayed/collided against (also s
 sprite_set_active_sequence(handle, 1)  -- switch to the explosion sequence
 ```
 
+**Gotcha: this unconditionally resets the target sequence's own animation state**, even if it's already the active sequence — confirmed via sunlight's own source (`Sprite::SetActiveTextureSequence`, `src/sprite/sprite.cpp`) unconditionally calling `Reset()` on the newly-selected sequence's `TextureCanvas`, which snaps it back to it's own starting tile every time. Calling this every frame regardless of whether the sequence actually changed (found live building Options/satellites' pose-sync, 2026-08-19 — see `games/caravellius/resources/scripts/core/options.lua`'s own header comment) silently freezes any `AUTOMATIC_CIRCULAR`/`AUTOMATIC_RIGHT_LEFT` animation on that sequence at it's first frame forever, since the reset undoes each frame's own advance before it's ever drawn. Always track the last sequence you actually set and only call this again when it genuinely changes:
+
+```lua
+if sat.lastLeanIndex ~= leanIndex then
+  sprite_set_active_sequence(sat.handle, leanIndex)
+  sat.lastLeanIndex = leanIndex
+end
+```
+
+**Pattern: pose-following without a new engine primitive.** Nothing exposes a sequence's own *currently animating tile* back to Lua (`sprite_get_active_sequence` returns which *sequence* is active, not the current *tile* within it) — so a sprite that needs to track another sprite's real-time animated pose (e.g. Options' satellites echoing the player ship's own left/center/right lean) can't just read that pose back from C++. The working pattern, built for exactly this case: give the follower one texture sequence per pose the leader can be in (`sprite_configure_texture` called once per pose, sequence id == pose index), then have Lua *independently recompute* which pose the leader is currently in (mirroring whatever discrete input/state drives the leader's own animation, ticked at the leader's own real `animation_delay`) and drive the follower's `sprite_set_active_sequence` from that — see `player.lua`'s `update_lean_index`/`Player.get_lean_index()` and `options.lua`'s pose-sync loop for a full worked example. Cheaper and simpler than adding a C++ read-back primitive for a purely cosmetic need.
+
 ## `sprite_get_active_sequence(handle) -> sequenceId`
 
 ## `sprite_set_animation_mode(handle, sequenceId, mode) -> success`
