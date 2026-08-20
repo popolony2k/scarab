@@ -127,6 +127,34 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Choose how the fixed-internal-resolution render
+             * target is blitted onto the real window/screen when their
+             * sizes differ - see ITileMap::SetStretchToFill's own doc
+             * comment for the full behavior (letterbox vs. stretch-fill).
+             */
+            int LuaAppApi :: SetStretchToFill( lua_State *pLuaState )  {
+
+                bool  bStretchToFill = lua_toboolean( pLuaState, 1 );
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetStretchToFill( bStretchToFill );
+
+                return 0;
+            }
+
+            /**
+             * @brief Query whether the render target is currently being
+             * stretched to fill (see @link SetStretchToFill).
+             */
+            int LuaAppApi :: GetStretchToFill( lua_State *pLuaState )  {
+
+                bool  bStretchToFill = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetStretchToFill();
+
+                lua_pushboolean( pLuaState, bStretchToFill );
+
+                return 1;
+            }
+
+            /**
              * @brief Register the application-level Lua-callable functions.
              */
             void LuaAppApi :: Register( lua_State *pLuaState )  {
@@ -139,6 +167,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "app_get_draw_fps", LuaAppApi :: GetDrawFps );
                 lua_register( pLuaState, "app_set_window_resizeable", LuaAppApi :: SetWindowResizeable );
                 lua_register( pLuaState, "app_get_window_resizeable", LuaAppApi :: GetWindowResizeable );
+                lua_register( pLuaState, "app_set_stretch_to_fill", LuaAppApi :: SetStretchToFill );
+                lua_register( pLuaState, "app_get_stretch_to_fill", LuaAppApi :: GetStretchToFill );
             }
         }
     }

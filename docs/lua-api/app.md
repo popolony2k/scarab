@@ -58,3 +58,14 @@ Allow or disallow the user resizing the window by dragging its edges/corners, or
 -- main.lua
 app_set_window_resizeable( false )
 ```
+
+## `app_set_stretch_to_fill(stretchToFill)` / `app_get_stretch_to_fill()`
+
+Choose how the engine's fixed internal render resolution (`DISPLAY_W`x`DISPLAY_H`, `1260x920` today — what `screen_get_width`/`screen_get_height` report, unrelated to the real window size) gets blitted onto the real window/screen whenever the two sizes differ (fullscreen, or a live-resized window). Recomputed every frame, so it applies immediately regardless of when it's called.
+
+- `false` (the engine's own default, both Scarab's and Caravellius's) — **letterbox**: preserves the render target's own aspect ratio via one uniform scale factor, filling whichever axis doesn't fit exactly with black bars.
+- `true` — **stretch-to-fill**: fills the entire window/screen with no black bars at all, using independent X/Y scale factors — the image visibly warps (stretches/squishes) whenever the window's own aspect ratio doesn't match the render target's `1260:920`.
+
+```lua
+app_set_stretch_to_fill( true )   -- fill the window completely, no letterboxing
+```

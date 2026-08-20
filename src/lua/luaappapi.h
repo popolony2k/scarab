@@ -32,6 +32,8 @@ namespace Scarab  {
                 static int GetDrawFps( lua_State *pLuaState );
                 static int SetWindowResizeable( lua_State *pLuaState );
                 static int GetWindowResizeable( lua_State *pLuaState );
+                static int SetStretchToFill( lua_State *pLuaState );
+                static int GetStretchToFill( lua_State *pLuaState );
 
                 public:
 
