@@ -10,6 +10,8 @@ The engine layer built on top of `sunlight` (see the Architecture section below)
 
 `sunlight` itself is **not** in this repo — it's fetched via CMake `FetchContent` from `github.com/popolony2k/sunlight`, pinned to a tagged release (`GIT_TAG v0.10.0`; previously `v0.9.1`, `v0.9.0`, `v0.8.0`, `v0.7.0`, `v0.6.0`, `v0.5.0`, `v0.4.0`, `v0.3.0`, `v0.2.2`, `v0.2.1`, `v0.2.0`, and `v0.1.0` before that — bump the tag deliberately when sunlight cuts a new release, rather than floating on `main`). If you need to read or modify engine internals rather than game code, that's a separate repo; a cached checkout may exist locally under `build/_deps/sunlight-src` after a configure, and it ships its own `CLAUDE.md`.
 
+**`SCARAB_TODO.md`** (repo root) tracks engine-level work items for Scarab (and possibly sunlight) earmarked to start once Scarab and Caravellius actually split into separate repos (see the "Scarab/Caravellius split" note below) — Scarab gets it's own independent phase planning at that point, and this file is the seed of it. Not to be acted on before the split happens.
+
 ## Build
 
 ```shell
