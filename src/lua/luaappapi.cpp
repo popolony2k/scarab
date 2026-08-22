@@ -155,6 +155,32 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Draw a filled, solid-color rectangle in screen space
+             * (see ITileMap::DrawFilledRectangle's own doc comment) -
+             * meant for simple HUD elements (a progress/health bar) that
+             * don't warrant a whole sprite/texture asset. Same screen-
+             * space coordinate system as draw_text/screen_get_width -
+             * independent of the live window size/fullscreen/stretch-to-
+             * fill state, same as every other screen-space draw call.
+             */
+            int LuaAppApi :: DrawFilledRectangle( lua_State *pLuaState )  {
+
+                int            nPosX  = ( int ) lua_tointeger( pLuaState, 1 );
+                int            nPosY  = ( int ) lua_tointeger( pLuaState, 2 );
+                int            nWidth  = ( int ) lua_tointeger( pLuaState, 3 );
+                int            nHeight = ( int ) lua_tointeger( pLuaState, 4 );
+                unsigned char  nRed    = ( unsigned char ) lua_tointeger( pLuaState, 5 );
+                unsigned char  nGreen  = ( unsigned char ) lua_tointeger( pLuaState, 6 );
+                unsigned char  nBlue   = ( unsigned char ) lua_tointeger( pLuaState, 7 );
+                unsigned char  nAlpha  = ( unsigned char ) lua_tointeger( pLuaState, 8 );
+
+                LuaEngineUtil :: GetTileMap( pLuaState ) -> DrawFilledRectangle( nPosX, nPosY, nWidth, nHeight,
+                                                                                  nRed, nGreen, nBlue, nAlpha );
+
+                return 0;
+            }
+
+            /**
              * @brief Register the application-level Lua-callable functions.
              */
             void LuaAppApi :: Register( lua_State *pLuaState )  {
@@ -169,6 +195,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "app_get_window_resizeable", LuaAppApi :: GetWindowResizeable );
                 lua_register( pLuaState, "app_set_stretch_to_fill", LuaAppApi :: SetStretchToFill );
                 lua_register( pLuaState, "app_get_stretch_to_fill", LuaAppApi :: GetStretchToFill );
+                lua_register( pLuaState, "draw_filled_rectangle", LuaAppApi :: DrawFilledRectangle );
             }
         }
     }

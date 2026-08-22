@@ -34,6 +34,7 @@ namespace Scarab  {
                 static int GetWindowResizeable( lua_State *pLuaState );
                 static int SetStretchToFill( lua_State *pLuaState );
                 static int GetStretchToFill( lua_State *pLuaState );
+                static int DrawFilledRectangle( lua_State *pLuaState );
 
                 public:
 

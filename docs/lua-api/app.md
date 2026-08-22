@@ -69,3 +69,14 @@ Choose how the engine's fixed internal render resolution (`DISPLAY_W`x`DISPLAY_H
 ```lua
 app_set_stretch_to_fill( true )   -- fill the window completely, no letterboxing
 ```
+
+## `draw_filled_rectangle(x, y, width, height, r, g, b, a)`
+
+Draw a filled, solid-color rectangle in screen space — same coordinate system as `draw_text`/`screen_get_width` (the fixed `1260x920` design resolution, independent of the live window size, fullscreen state, or `app_set_stretch_to_fill`), not a world-space/camera-relative one. Meant for simple HUD elements — a progress/health bar, a meter — that don't warrant a whole sprite/texture asset. A thin pass-through to `ITileMap::DrawFilledRectangle`, itself a thin pass-through to `IEngine::DrawFilledRectangle` — the same underlying call the whole-screen `screen_fade` overlay already uses internally, just exposed here as it's own arbitrary-position/size/color primitive rather than that fixed, full-window, single-alpha-value overlay.
+
+```lua
+-- a simple health bar: a dark background plate, then a colored fill
+-- proportional to some fraction (0.0-1.0)
+draw_filled_rectangle( x, y, width, height, 40, 40, 40, 255 )
+draw_filled_rectangle( x, y, math.floor( width * fraction ), height, 220, 40, 40, 255 )
+```
