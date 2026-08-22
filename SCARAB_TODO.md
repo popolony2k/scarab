@@ -11,6 +11,13 @@ seed of that plan, not something to act on before then.
 Nothing in this document should be started before the split actually
 happens, unless the user explicitly says otherwise.
 
+**Item 1 (mapless rendering) is the one explicit exception so far** -
+the user knowingly overrode the "wait for the split" sequencing for it
+on 2026-08-22, reasoning that real projects refactor opportunistically
+rather than always waiting for a "clean" planning window, and that
+building it now (while the design is fresh) beats letting it sit as an
+unwritten plan. See it's own section below for what actually shipped.
+
 ---
 
 ## 1. Mapless rendering support (fonts/images/sprites without a loaded Tiled map)
@@ -169,18 +176,67 @@ both now well-understood rather than mysterious:
    draws every acquired sprite regardless of map state, which is exactly
    the mapless behavior this document originally wanted for sprites.
 
+### Correction (2026-08-22): step 2 below was wrong, verified against the real source
+
+The original version of this section claimed `EngineHost`'s own state
+machine required a stage/map to load before entering it's
+`STATE_STAGE_RUNNING`-equivalent per-frame loop — presented as a second,
+Scarab-side blocker alongside `AddSprite`/`GetLayer`. **That was an
+unverified, plausible-sounding assumption, not a claim actually checked
+against `enginehost.cpp` — and it was false.** Re-read directly: `Init
+EngineStateHandler` transitions to `STATE_STAGE_RUNNING` the moment
+`main.lua`'s own script execution succeeds (`RunLuaScriptMainEntryPoint`),
+which happens synchronously, before the queued `sp_load_stage` command
+(if any) has even been dispatched — the transition is gated on "did the
+script run without error," never on "did a map actually load."
+`RunStageStateHandler` then calls `CheckSpritesQueueEmpty`/
+`RunScriptMachine`/`m_SpritePool.UpdateAll()`/`m_LuaEngine.CallOnUpdate`
+unconditionally, every frame, with no map-state check anywhere in that
+path either. **So Scarab's own bootstrap was never actually the blocker
+— the entire gap is (and always was) `AddSprite`'s own `GetLayer`
+lookup.** One narrower, real caveat this correction surfaced:
+`ScriptProcessor::Compile()` returns `false` on an empty command queue,
+and `LoadLuaScript` treats that as a hard failure — so a hypothetical
+entry script that never queues a single `sp_*` command at all (not even
+`sp_load_stage`) would fail to boot, though this doesn't affect
+Caravellius's own real entry script (`main.lua` always ends by loading
+`STAGE_COVER` via `Presentation.start()`), and is a convention a genuinely
+map-free script can trivially satisfy (e.g. one harmless `sp_wait(0)`)
+rather than something requiring an engine change.
+
 ### Recommended first steps, whenever this is picked up
 
 1. Extend `AddSprite`/`GetLayer` (and whatever `LuaSpriteApi` surface sits
    on top) to accept operating with no map loaded — layer ids become pure
    grouping keys for collision, with no tmx layer required to back them.
-2. Extend Scarab's own `EngineHost` state machine so a
-   `STATE_STAGE_RUNNING`-equivalent per-frame update loop (which already
-   calls `SpritePool::UpdateAll()` unconditionally) doesn't require a
-   stage/map to have ever been loaded at all — text/font rendering is
-   already architecturally ready for this on the sunlight side (see
-   above); the remaining gap is Scarab's own bootstrap sequencing.
+   **DONE, 2026-08-22** (see the reference_sunlight_cross_repo_workflow
+   memory's own entry) - `AddSprite`'s `GetLayer(nLayerId)` check is
+   skipped entirely when `m_pTmxMap == nullptr`, unchanged (still real-
+   layer-validated) whenever a map IS loaded. Shipped as sunlight
+   `v0.13.0` (bundled with the user's own unrelated raylib-backend-
+   folder-consolidation refactor) - includes one further fix from the
+   sunlight-side review beyond what was prototyped here: `AddSprite` now
+   actually checks `AddCollider`'s own return value (previously silently
+   discarded), so an out-of-range `nLayerId` (>= `MAX_COLLIDER_LAYERS`,
+   255) correctly fails `AddSprite` instead of "succeeding" with a sprite
+   whose collider never registered - confirmed safe against every one of
+   Caravellius's real layer ids (1-6). `GIT_TAG` bumped, full rebuild +
+   live smoke test both clean.
+2. ~~Extend Scarab's own `EngineHost` state machine...~~ **Not needed -
+   see the correction above.** `EngineHost` already runs it's per-frame
+   loop with no map ever loaded; nothing here needs to change.
 3. Caravellius's own `cover.tmx` workaround does not need to be ripped
    out as a prerequisite — once a real mapless primitive exists, it can
    be swapped over as a routine follow-up whenever convenient, not as a
-   blocking step of this work itself.
+   blocking step of this work itself. **Still not done - the primitive
+   now exists, but Caravellius hasn't been asked to switch over to it.**
+
+### Status: engine-side primitive DONE (2026-08-22); Caravellius adoption not started
+
+The actual capability this item wanted - a sprite existing and drawing
+with zero tile map ever loaded - now exists at the engine level, verified
+safe, and shipped in a real sunlight release. What's NOT done: nothing in
+Caravellius has been changed to actually use it yet (`cover.tmx` still
+backs the cover screen, unchanged, per step 3 above - intentionally, not
+an oversight). Swapping the cover screen (or building a fresh mapless-
+native demo) over to this is a separate, not-yet-requested follow-up.
