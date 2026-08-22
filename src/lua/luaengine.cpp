@@ -207,10 +207,15 @@ namespace Scarab  {
      * Lua exists to make that decision (see GetApplicationDirectory below).
      *
      * @param pTileMap Pointer to the engine's tile map instance;
+     * @param pDrawSurface Pointer to the engine's screen-space drawing
+     * surface instance (sunlight v0.12.0's IDrawSurface split - text/
+     * rectangle drawing and window-state primitives that don't depend
+     * on a loaded map; see LuaEngineUtil::GetDrawSurface's own comment);
      * @param pSoundManager Pointer to the engine's sound manager instance;
      * @param pSpritePool Pointer to the engine's sprite pool instance;
      */
     void LuaEngine :: Init( SunLight :: TileMap :: ITileMap *pTileMap,
+                           SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
                            SunLight :: Sound :: SoundManager *pSoundManager,
                            Engine :: SpritePool *pSpritePool )  {
 
@@ -220,6 +225,9 @@ namespace Scarab  {
 
         lua_pushlightuserdata( m_pLuaState, pTileMap );
         lua_setglobal( m_pLuaState, "tileMapPtr" );
+
+        lua_pushlightuserdata( m_pLuaState, pDrawSurface );
+        lua_setglobal( m_pLuaState, "drawSurfacePtr" );
 
         lua_pushlightuserdata( m_pLuaState, pSoundManager );
         lua_setglobal( m_pLuaState, "soundManagerPtr" );

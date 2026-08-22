@@ -279,7 +279,9 @@ namespace Scarab  {
          * resolved later, from InitEngineStateHandler, since a failure
          * there already has a normal fatal-error path to report through.
          */
-        EngineHost :: EngineHost( SunLight :: TileMap :: ITileMap *pTileMap, std :: string strEntryArg )  : m_LuaEngine( &m_ScriptProcessorMachine ) {
+        EngineHost :: EngineHost( SunLight :: TileMap :: ITileMap *pTileMap,
+                                 SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
+                                 std :: string strEntryArg )  : m_LuaEngine( &m_ScriptProcessorMachine ) {
 
             m_CurrentStateHandler   = nullptr;
             m_nClearInactiveSpriteQueueMilli = 0;
@@ -292,12 +294,14 @@ namespace Scarab  {
             /*
              * Init() resolves the executable's own directory and exposes it
              * to Lua as APP_DIR - main.lua decides where resources actually
-             * live relative to that (BASE_PATH) itself. pTileMap isn't kept
-             * as a member - EngineHost has no C++-side use for it anymore
-             * now that camera auto-scroll moved to Lua (camera.lua), so it's
-             * forwarded straight through instead of stored.
+             * live relative to that (BASE_PATH) itself. Neither pTileMap
+             * nor pDrawSurface (sunlight v0.12.0's IDrawSurface split - see
+             * LuaEngineUtil::GetDrawSurface) is kept as a member - EngineHost
+             * has no C++-side use for either anymore now that camera auto-
+             * scroll moved to Lua (camera.lua), so both are forwarded
+             * straight through instead of stored.
              */
-            m_LuaEngine.Init( pTileMap, &m_SoundManager, &m_SpritePool );
+            m_LuaEngine.Init( pTileMap, pDrawSurface, &m_SoundManager, &m_SpritePool );
 
             // Engine state handlers setup
             m_aEngineStateHandlers[STATE_FATAL_ERROR_HANDLING] = std :: bind( &EngineHost :: FatalErrorHandler, this );

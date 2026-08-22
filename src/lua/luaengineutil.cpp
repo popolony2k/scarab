@@ -27,6 +27,24 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Fetch the engine's IDrawSurface instance stashed as a Lua light userdata
+             * global - screen-space text/rectangle drawing and window-state primitives (see
+             * sunlight's own IDrawSurface header comment), a separate pointer from
+             * GetTileMap()'s since sunlight v0.12.0 split those off ITileMap. Both pointers
+             * happen to address the same underlying TileMapRenderer object today (it
+             * implements both interfaces), but callers should reach for whichever interface
+             * actually matches what they're doing, not assume that always holds.
+             *
+             * @param pLuaState Lua state to be used by engine call.
+             */
+            SunLight :: DrawSurface :: IDrawSurface* LuaEngineUtil :: GetDrawSurface( lua_State *pLuaState )  {
+
+                lua_getglobal( pLuaState, "drawSurfacePtr" );
+
+                return static_cast<SunLight :: DrawSurface :: IDrawSurface *>( lua_touserdata( pLuaState, -1 ) );
+            }
+
+            /**
              * @brief Fetch the engine's SoundManager instance stashed as a Lua light userdata global.
              *
              * @param pLuaState Lua state to be used by engine call.

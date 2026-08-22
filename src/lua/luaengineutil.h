@@ -19,6 +19,7 @@ extern "C"
 }
 
 #include "tilemap/itilemap.h"
+#include "drawsurface/idrawsurface.h"
 #include "sound/soundmanager.h"
 #include "engine/spritepool.h"
 #include "scripting/scriptprocessor.h"
@@ -84,6 +85,7 @@ namespace Scarab  {
                 static std :: mutex                       s_LuaMutex;
 
                 static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State *pLuaState );
+                static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State *pLuaState );
                 static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State *pLuaState );
                 static Engine :: SpritePool* GetSpritePool( lua_State *pLuaState );
                 static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State *pLuaState );

@@ -17,14 +17,14 @@ namespace Scarab  {
              * @brief Load (or replace) the font used by @link DrawText.
              * Accepts any font file raylib itself supports (TrueType/
              * OpenType, or an AngelCode BMFont ".fnt" atlas, told apart by
-             * the file's own extension - see ITileMap::SetFont). Until
+             * the file's own extension - see IDrawSurface::SetFont). Until
              * this is called, DrawText uses the engine's own built-in
              * default font.
              */
             int LuaTextApi :: SetFont( lua_State *pLuaState )  {
 
                 const char  *szFilePath = lua_tostring( pLuaState, 1 );
-                bool        bResult     = LuaEngineUtil :: GetTileMap( pLuaState ) -> SetFont( szFilePath );
+                bool        bResult     = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetFont( szFilePath );
 
                 lua_pushboolean( pLuaState, bResult );
 
@@ -46,7 +46,7 @@ namespace Scarab  {
                 unsigned char  nBlue    = ( unsigned char ) lua_tointeger( pLuaState, 7 );
                 unsigned char  nAlpha   = ( unsigned char ) lua_tointeger( pLuaState, 8 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> DrawText( szText, nPosX, nPosY, nSize,
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawText( szText, nPosX, nPosY, nSize,
                                                                        nRed, nGreen, nBlue, nAlpha );
 
                 return 0;
@@ -63,7 +63,7 @@ namespace Scarab  {
 
                 const char  *szText = lua_tostring( pLuaState, 1 );
                 int         nSize   = ( int ) lua_tointeger( pLuaState, 2 );
-                int         nWidth  = LuaEngineUtil :: GetTileMap( pLuaState ) -> MeasureText( szText, nSize );
+                int         nWidth  = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> MeasureText( szText, nSize );
 
                 lua_pushinteger( pLuaState, nWidth );
 
@@ -75,11 +75,11 @@ namespace Scarab  {
              * width, in pixels - the coordinate space @link DrawText
              * itself draws in. Constant for the app's whole lifetime,
              * deliberately not the live/resizeable OS window size (see
-             * ITileMap::GetWindowWidth).
+             * IDrawSurface::GetWindowWidth).
              */
             int LuaTextApi :: GetWindowWidth( lua_State *pLuaState )  {
 
-                lua_pushinteger( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetWindowWidth() );
+                lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowWidth() );
 
                 return 1;
             }
@@ -89,7 +89,7 @@ namespace Scarab  {
              */
             int LuaTextApi :: GetWindowHeight( lua_State *pLuaState )  {
 
-                lua_pushinteger( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetWindowHeight() );
+                lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowHeight() );
 
                 return 1;
             }

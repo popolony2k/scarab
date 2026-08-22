@@ -19,7 +19,7 @@ namespace Scarab  {
         namespace Lua  {
             /**
              * @brief Text/font Lua primitives - a thin wrapper over
-             * ITileMap::SetFont/DrawText/MeasureText/GetWindowWidth/
+             * IDrawSurface::SetFont/DrawText/MeasureText/GetWindowWidth/
              * GetWindowHeight. All game-side HUD logic (what to draw,
              * when, positioning, score/lives formatting) lives in Lua on
              * top of these; this class knows nothing about what the text

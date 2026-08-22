@@ -13,6 +13,7 @@
 #include <functional>
 #include <cstdint>
 #include "tilemap/itilemaplistener.h"
+#include "drawsurface/idrawsurface.h"
 #include "scripting/scriptprocessor.h"
 #include "sound/soundmanager.h"
 #include "lua/luaengine.h"
@@ -83,7 +84,9 @@ namespace Scarab  {
 
             public:
 
-            EngineHost( SunLight :: TileMap :: ITileMap *pTileMap, std :: string strEntryArg );
+            EngineHost( SunLight :: TileMap :: ITileMap *pTileMap,
+                       SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
+                       std :: string strEntryArg );
             virtual ~EngineHost( void );
 
             // World listener event handler implementation

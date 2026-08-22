@@ -24,7 +24,7 @@ namespace Scarab  {
 
                 const char  *szName = lua_tostring( pLuaState, 1 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetWindowTitle( szName );
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetWindowTitle( szName );
 
                 return 0;
             }
@@ -38,7 +38,7 @@ namespace Scarab  {
 
                 float  fAlpha = ( float ) lua_tonumber( pLuaState, 1 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetScreenFade( fAlpha );
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetScreenFade( fAlpha );
 
                 return 0;
             }
@@ -54,7 +54,7 @@ namespace Scarab  {
 
                 bool  bFullscreen = lua_toboolean( pLuaState, 1 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetFullscreen( bFullscreen );
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetFullscreen( bFullscreen );
 
                 return 0;
             }
@@ -65,7 +65,7 @@ namespace Scarab  {
              */
             int LuaAppApi :: GetFullscreen( lua_State *pLuaState )  {
 
-                bool  bFullscreen = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetFullscreen();
+                bool  bFullscreen = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetFullscreen();
 
                 lua_pushboolean( pLuaState, bFullscreen );
 
@@ -79,7 +79,7 @@ namespace Scarab  {
 
                 bool  bDrawFPS = lua_toboolean( pLuaState, 1 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetDrawFPS( bDrawFPS );
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetDrawFPS( bDrawFPS );
 
                 return 0;
             }
@@ -90,7 +90,7 @@ namespace Scarab  {
              */
             int LuaAppApi :: GetDrawFps( lua_State *pLuaState )  {
 
-                bool  bDrawFPS = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetDrawFPS();
+                bool  bDrawFPS = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetDrawFPS();
 
                 lua_pushboolean( pLuaState, bDrawFPS );
 
@@ -108,7 +108,7 @@ namespace Scarab  {
 
                 bool  bResizeable = lua_toboolean( pLuaState, 1 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetWindowResizeable( bResizeable );
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetWindowResizeable( bResizeable );
 
                 return 0;
             }
@@ -119,7 +119,7 @@ namespace Scarab  {
              */
             int LuaAppApi :: GetWindowResizeable( lua_State *pLuaState )  {
 
-                bool  bResizeable = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetWindowResizeable();
+                bool  bResizeable = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowResizeable();
 
                 lua_pushboolean( pLuaState, bResizeable );
 
@@ -129,14 +129,14 @@ namespace Scarab  {
             /**
              * @brief Choose how the fixed-internal-resolution render
              * target is blitted onto the real window/screen when their
-             * sizes differ - see ITileMap::SetStretchToFill's own doc
+             * sizes differ - see IDrawSurface::SetStretchToFill's own doc
              * comment for the full behavior (letterbox vs. stretch-fill).
              */
             int LuaAppApi :: SetStretchToFill( lua_State *pLuaState )  {
 
                 bool  bStretchToFill = lua_toboolean( pLuaState, 1 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> SetStretchToFill( bStretchToFill );
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetStretchToFill( bStretchToFill );
 
                 return 0;
             }
@@ -147,7 +147,7 @@ namespace Scarab  {
              */
             int LuaAppApi :: GetStretchToFill( lua_State *pLuaState )  {
 
-                bool  bStretchToFill = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetStretchToFill();
+                bool  bStretchToFill = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetStretchToFill();
 
                 lua_pushboolean( pLuaState, bStretchToFill );
 
@@ -156,7 +156,7 @@ namespace Scarab  {
 
             /**
              * @brief Draw a filled, solid-color rectangle in screen space
-             * (see ITileMap::DrawFilledRectangle's own doc comment) -
+             * (see IDrawSurface::DrawFilledRectangle's own doc comment) -
              * meant for simple HUD elements (a progress/health bar) that
              * don't warrant a whole sprite/texture asset. Same screen-
              * space coordinate system as draw_text/screen_get_width -
@@ -174,7 +174,7 @@ namespace Scarab  {
                 unsigned char  nBlue   = ( unsigned char ) lua_tointeger( pLuaState, 7 );
                 unsigned char  nAlpha  = ( unsigned char ) lua_tointeger( pLuaState, 8 );
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> DrawFilledRectangle( nPosX, nPosY, nWidth, nHeight,
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawFilledRectangle( nPosX, nPosY, nWidth, nHeight,
                                                                                   nRed, nGreen, nBlue, nAlpha );
 
                 return 0;

@@ -24,7 +24,7 @@ int main( int argc, char **argv ) {
                                                        APP_NAME,
                                                        FRAMES_PER_SECOND,
                                                        false );
-    Scarab :: Host :: EngineHost                engineHost( &renderer, argv[1] );
+    Scarab :: Host :: EngineHost                engineHost( &renderer, &renderer, argv[1] );
     SunLight :: TileMap :: stDimension2D       viewport;
 
 

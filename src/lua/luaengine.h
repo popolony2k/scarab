@@ -61,6 +61,7 @@ namespace Scarab  {
             int GetActiveEnemyCount( void );
             const std :: string& GetApplicationDirectory( void ) const;
             void Init( SunLight :: TileMap :: ITileMap *pTileMap,
+                      SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
                       SunLight :: Sound :: SoundManager *pSoundManager,
                       Engine :: SpritePool *pSpritePool );
         };
