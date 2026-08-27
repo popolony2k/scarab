@@ -53,6 +53,67 @@
             "externalConsole": false,
             "MIMode": "lldb",
             "preLaunchTask": "cmake build (scarab)"
+        },
+        {
+            // Phase 12 (archive-distribution) - launches against the packaged
+            // build/games/caravellius/caravellius.zip instead of the loose
+            // resource tree, exercising EngineHost::ResolveEntryScript's .zip
+            // branch. Args use the full ${workspaceFolder}-relative path since
+            // the archive's own build output isn't per-config the way
+            // scarab.exe itself is on Windows (cwd here is build/debug, not
+            // where the .zip lands) - a plain relative path would only work
+            // for the gdb/lldb configs, so all three use the same full form
+            // for consistency. To point this at an --entry override instead
+            // of the archive's own default project.json, add "--entry",
+            // "<in-zip path>" as extra args entries.
+            "name": "(Windows) Launch Archive",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/scarab.exe",
+            "args": ["${workspaceFolder}/build/games/caravellius/caravellius.zip"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/debug",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "cmake build (caravellius_archive)"
+        },
+        {
+            "name": "(gdb) Launch Archive",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/scarab",
+            "args": ["${workspaceFolder}/build/games/caravellius/caravellius.zip"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "cmake build (caravellius_archive)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description":  "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(lldb) Launch Archive",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/scarab",
+            "args": ["${workspaceFolder}/build/games/caravellius/caravellius.zip"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "cmake build (caravellius_archive)"
         }
     ]
 }
