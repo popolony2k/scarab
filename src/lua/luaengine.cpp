@@ -230,7 +230,21 @@ namespace Scarab  {
 
         std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
 
-        m_strAppDirectory = SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory();
+        /*
+         * IFileSystem::ToVirtualPath() of the real application directory,
+         * not that raw real-OS-path value itself - main.cpp mounts that
+         * same real directory at this exact virtual-path conversion of
+         * itself (not at itself), since a raw Windows path is illegal as
+         * PHYSFS_mount()'s own mountPoint argument (see ToVirtualPath's
+         * own doc comment, ifilesystem.h). Every APP_DIR-anchored virtual
+         * path Lua/EngineHost build from this value must keep matching
+         * whatever main.cpp actually mounted things at - both derive from
+         * the same GetApplicationDirectory() call and apply the exact same
+         * deterministic conversion, so they agree without needing to
+         * coordinate explicitly.
+         */
+        m_strAppDirectory = SunLight :: FileSystem :: IFileSystem :: ToVirtualPath(
+                                 SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory() );
 
         lua_pushlightuserdata( m_pLuaState, pTileMap );
         lua_setglobal( m_pLuaState, "tileMapPtr" );

@@ -63,23 +63,34 @@ int main( int argc, char **argv ) {
     SunLight :: TileMap :: stDimension2D       viewport;
 
     /*
-     * Mounts the executable's own directory at itself (same real path
-     * used as both PHYSFS_mount's realPath and mountPoint), so every
+     * Mounts the executable's own real directory (Mount()'s source
+     * argument, safe in whatever native OS format GetApplicationDirectory()
+     * returns) at that same directory's own IFileSystem::ToVirtualPath()
+     * equivalent - NOT at the real path itself. PHYSFS_mount()'s
+     * destination/mountPoint argument must already be a legal virtual path
+     * (see IFileSystem's own "virtual path" contract, ifilesystem.h); a raw
+     * Windows path's drive-letter ':' trips the underlying PhysFS backend's
+     * legality check outright, a real bug found live on Windows (never on
+     * Mac/Linux - see ToVirtualPath's own doc comment for the story). Every
      * absolute path this game already constructs (APP_DIR-relative, per
      * resources/scripts' own BASE_PATH convention) resolves through
-     * SunLight::FileSystem unchanged - no path-construction code anywhere
-     * else needs to know this exists. This is the loose-directory case;
-     * when entry is a .zip, EngineHost::ResolveEntryScript mounts that
-     * archive at this SAME mount point, searched first (bAppendToPath=
-     * false) - so a game running from an archive still resolves every
-     * APP_DIR-anchored path unchanged, with this loose mount only ever
-     * acting as a fallback for anything the archive doesn't itself
-     * contain (there shouldn't be anything, in a well-formed bundle).
+     * SunLight::FileSystem unchanged as a result, since LuaEngine::Init()
+     * exposes this exact same ToVirtualPath() conversion as the Lua APP_DIR
+     * global - no other path-construction code anywhere needs to know any
+     * of this exists. This is the loose-directory case; when entry is a
+     * .zip, EngineHost::ResolveEntryScript mounts that archive at this SAME
+     * virtual mount point, searched first (bAppendToPath=false) - so a game
+     * running from an archive still resolves every APP_DIR-anchored path
+     * unchanged, with this loose mount only ever acting as a fallback for
+     * anything the archive doesn't itself contain (there shouldn't be
+     * anything, in a well-formed bundle).
      */
     std :: string  strAppDir = SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory();
 
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Init( argv[0] );
-    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strAppDir, strAppDir, true );
+    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strAppDir,
+                                                                          SunLight :: FileSystem :: IFileSystem :: ToVirtualPath( strAppDir ),
+                                                                          true );
 
     /*
      * Also mounts the process's own current working directory at the

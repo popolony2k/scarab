@@ -20,7 +20,7 @@ option(SCARAB_USE_OFFICIAL_LUA_FTP "Build Scarab with LUA provided by official F
 ####################################################################
 FetchContent_Declare(sunlight
                      GIT_REPOSITORY https://github.com/popolony2k/sunlight.git
-                     GIT_TAG v0.16.0)
+                     GIT_TAG v0.17.0)
 FetchContent_MakeAvailable(sunlight)
 
 ####################################################################
