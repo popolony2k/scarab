@@ -36,6 +36,8 @@ namespace Scarab  {
                 static int GetStretchToFill( lua_State *pLuaState );
                 static int DrawFilledRectangle( lua_State *pLuaState );
 
+                static void RegisterEnums( lua_State *pLuaState );
+
                 public:
 
                 static void Register( lua_State *pLuaState );

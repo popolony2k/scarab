@@ -30,15 +30,25 @@ function on_update( dt )
 end
 ```
 
-## `app_set_fullscreen(fullscreen)` / `app_get_fullscreen()`
+## `app_set_fullscreen(fullscreen, strategy)` / `app_get_fullscreen()`
 
 Enter/leave fullscreen, or query the current state. The game always renders at it's own fixed internal resolution regardless of the actual window/monitor size — the engine handles scaling and letterboxing (black bars, preserving aspect ratio) to fit whatever the real window size ends up being, whether that's from this toggle or the player manually resizing the window. Nothing else needs to account for it.
 
+`strategy` (optional, sunlight `v0.14.0`+) picks which of two fullscreen strategies to enter with:
+
+- `FULLSCREEN_STRATEGY_REAL` (the default when `strategy` is omitted) — a genuine OS-level fullscreen space. On macOS this is the strategy that actually gets the Dock/menu bar to hide automatically; a real bug found live in Caravellius (the Dock drawing on top of the game window) is what prompted sunlight to switch its own default to this.
+- `FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED` — the older behavior (an ordinary window resized to the monitor's native resolution, no real fullscreen space entered) — kept available as a fallback for any platform/window manager where a true video-mode switch misbehaves.
+
+Switching strategy while already fullscreen in the *other* one is unsupported — call `app_set_fullscreen(false)` first, then re-enter fullscreen with the new strategy.
+
 ```lua
--- toggle fullscreen on a key press (edge-triggered, not held)
+-- toggle fullscreen on a key press (edge-triggered, not held) - defaults to real fullscreen
 if input_is_key_released( KEY_F5 ) then
     app_set_fullscreen( not app_get_fullscreen() )
 end
+
+-- explicitly ask for the older borderless-windowed behavior instead
+app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
 ```
 
 ## `app_set_draw_fps(draw_fps)` / `app_get_draw_fps()`

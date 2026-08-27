@@ -8,6 +8,11 @@
 #include "lua/luaappapi.h"
 #include "lua/luaengineutil.h"
 
+extern "C"
+{
+  #include "lauxlib.h"
+}
+
 
 namespace Scarab  {
     namespace Engine  {
@@ -49,12 +54,34 @@ namespace Scarab  {
              * engine handles scaling/letterboxing to whatever the actual
              * window size ends up being, so this is purely a presentation
              * toggle, not something Lua needs to account for elsewhere.
+             *
+             * strategy (optional, second argument) picks which of
+             * IEngine::FullscreenStrategy's two strategies to enter
+             * fullscreen with - FULLSCREEN_STRATEGY_REAL (a genuine OS-
+             * level fullscreen space, sunlight's own default as of
+             * v0.14.0, fixing a real macOS Dock-overlap bug found live in
+             * this game - see the memory/commit history for the story)
+             * or FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED (the older
+             * ordinary-window-resized-to-native-resolution behavior, kept
+             * as a fallback for any platform/window manager where a true
+             * video-mode switch misbehaves). Defaults to
+             * FULLSCREEN_STRATEGY_REAL when omitted, matching
+             * IEngine::SetFullscreen's own C++-side default - a Lua call
+             * site that only ever passed the bool (every one, before this
+             * parameter existed) keeps behaving exactly as before.
+             * Ignored when bFullscreen is false. Switching strategy while
+             * already fullscreen in the OTHER one is unsupported (see
+             * IEngine::SetFullscreen's own doc comment) - call
+             * app_set_fullscreen(false) first, then re-enter fullscreen
+             * with the new strategy.
              */
             int LuaAppApi :: SetFullscreen( lua_State *pLuaState )  {
 
                 bool  bFullscreen = lua_toboolean( pLuaState, 1 );
+                int   nStrategy   = ( int ) luaL_optinteger( pLuaState, 2, SunLight :: Engines :: IEngine :: FULLSCREEN_STRATEGY_REAL );
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetFullscreen( bFullscreen );
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetFullscreen( bFullscreen,
+                    ( SunLight :: Engines :: IEngine :: FullscreenStrategy ) nStrategy );
 
                 return 0;
             }
@@ -181,9 +208,29 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Register app_set_fullscreen's own optional strategy
+             * argument (see @link SetFullscreen) as Lua globals, same
+             * names as the underlying SunLight::Engines::IEngine enum -
+             * mirrors LuaTilemapApi::RegisterEnums's own MAP_ALIGNMENT_*
+             * pattern for a small, engine-defined enum exposed to Lua.
+             */
+            void LuaAppApi :: RegisterEnums( lua_State *pLuaState )  {
+
+                static const stNamedConstant  s_aFullscreenStrategies[] = {
+                    { "FULLSCREEN_STRATEGY_REAL", SunLight :: Engines :: IEngine :: FULLSCREEN_STRATEGY_REAL },
+                    { "FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED", SunLight :: Engines :: IEngine :: FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED },
+                };
+
+                LuaEngineUtil :: RegisterConstants( pLuaState, s_aFullscreenStrategies,
+                    sizeof( s_aFullscreenStrategies ) / sizeof( s_aFullscreenStrategies[0] ) );
+            }
+
+            /**
              * @brief Register the application-level Lua-callable functions.
              */
             void LuaAppApi :: Register( lua_State *pLuaState )  {
+
+                RegisterEnums( pLuaState );
 
                 lua_register( pLuaState, "app_set_name", LuaAppApi :: SetAppName );
                 lua_register( pLuaState, "screen_fade", LuaAppApi :: ScreenFade );
