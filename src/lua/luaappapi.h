@@ -28,6 +28,8 @@ namespace Scarab  {
                 static int ScreenFade( lua_State *pLuaState );
                 static int SetFullscreen( lua_State *pLuaState );
                 static int GetFullscreen( lua_State *pLuaState );
+                static int SetTargetFps( lua_State *pLuaState );
+                static int GetTargetFps( lua_State *pLuaState );
                 static int SetDrawFps( lua_State *pLuaState );
                 static int GetDrawFps( lua_State *pLuaState );
                 static int SetWindowResizeable( lua_State *pLuaState );

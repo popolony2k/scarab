@@ -100,6 +100,35 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Set the renderer's own target frame rate - the cap
+             * the game loop paces itself against, not the current
+             * measured FPS (see @link GetDrawFps/app_get_draw_fps for the
+             * on-screen counter, which shows the latter). Safe to call at
+             * any time - a live change takes effect immediately.
+             */
+            int LuaAppApi :: SetTargetFps( lua_State *pLuaState )  {
+
+                int  nTargetFps = ( int ) lua_tointeger( pLuaState, 1 );
+
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetTargetFPS( nTargetFps );
+
+                return 0;
+            }
+
+            /**
+             * @brief Query the currently configured target FPS (see
+             * @link SetTargetFps) - NOT the current measured FPS.
+             */
+            int LuaAppApi :: GetTargetFps( lua_State *pLuaState )  {
+
+                int  nTargetFps = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetTargetFPS();
+
+                lua_pushinteger( pLuaState, nTargetFps );
+
+                return 1;
+            }
+
+            /**
              * @brief Show or hide the on-screen FPS counter.
              */
             int LuaAppApi :: SetDrawFps( lua_State *pLuaState )  {
@@ -236,6 +265,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "screen_fade", LuaAppApi :: ScreenFade );
                 lua_register( pLuaState, "app_set_fullscreen", LuaAppApi :: SetFullscreen );
                 lua_register( pLuaState, "app_get_fullscreen", LuaAppApi :: GetFullscreen );
+                lua_register( pLuaState, "app_set_target_fps", LuaAppApi :: SetTargetFps );
+                lua_register( pLuaState, "app_get_target_fps", LuaAppApi :: GetTargetFps );
                 lua_register( pLuaState, "app_set_draw_fps", LuaAppApi :: SetDrawFps );
                 lua_register( pLuaState, "app_get_draw_fps", LuaAppApi :: GetDrawFps );
                 lua_register( pLuaState, "app_set_window_resizeable", LuaAppApi :: SetWindowResizeable );

@@ -51,6 +51,15 @@ end
 app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
 ```
 
+## `app_set_target_fps(fps)` / `app_get_target_fps()`
+
+Set (or query) the renderer's own target frame rate — the cap the game loop paces itself against, not the current *measured* FPS (see `app_get_draw_fps`'s own on-screen counter, right below, for that). Scarab's own default is `main.h`'s `FRAMES_PER_SECOND` (`60` today), applied once at boot; this primitive is a genuine live change, taking effect immediately, in either direction:
+
+```lua
+-- halve the target frame rate at runtime
+app_set_target_fps( app_get_target_fps() / 2 )
+```
+
 ## `app_set_draw_fps(draw_fps)` / `app_get_draw_fps()`
 
 Show or hide the on-screen FPS counter (raylib's own, drawn at the top-left corner of the window every frame), or query the current state. Scarab's own default (`main.cpp`) is `false` — a generic engine-level choice, not a game one. Caravellius overrides it to `true`, early in `main.lua`:
