@@ -6,8 +6,8 @@
  */
 
 #include "lua/luajsonapi.h"
+#include "filesystem/filesystemfactory.h"
 #include <nlohmann/json.hpp>
-#include <fstream>
 
 extern "C"
 {
@@ -61,6 +61,16 @@ namespace Scarab  {
             /**
              * @brief Load a JSON file and return it's content as an equivalent Lua table.
              *
+             * Reads the file via SunLight::FileSystem (Phase 12 prototype,
+             * game-engine repo) rather than a raw std::ifstream, matching
+             * every other subsystem already routed through
+             * FileSystemFactory (textures/sound/tilemaps) - the same
+             * mount (a real loose directory today, potentially a real
+             * archive later) now backs every resource read this engine
+             * does, config files included. nlohmann::json parses directly
+             * from the in-memory byte range ReadFile() returns - no
+             * std::ifstream/temporary buffer needed.
+             *
              * @param pLuaState Lua state to be used by engine call.
              * @return int number of return data (if any - required by lua engine)
              */
@@ -73,10 +83,10 @@ namespace Scarab  {
                     return 1;
                 }
 
-                const char       *szFileName = lua_tostring( pLuaState, 1 );
-                std :: ifstream  fStream( szFileName );
+                const char                     *szFileName = lua_tostring( pLuaState, 1 );
+                std :: vector<unsigned char>  data;
 
-                if( !fStream.is_open() )  {
+                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( szFileName, data ) )  {
                     fprintf( stderr, "load_json: Unable to open file [%s].\n", szFileName );
                     lua_pushnil( pLuaState );
 
@@ -84,7 +94,7 @@ namespace Scarab  {
                 }
 
                 try  {
-                    nlohmann :: json   jsonData = nlohmann :: json :: parse( fStream );
+                    nlohmann :: json   jsonData = nlohmann :: json :: parse( data.begin(), data.end() );
 
                     PushJsonValue( pLuaState, jsonData );
                 }

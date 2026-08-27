@@ -7,6 +7,7 @@
 
 #include "lua/luaengine.h"
 #include "lua/luajsonapi.h"
+#include "lua/luafilesystemapi.h"
 #include "lua/luaappapi.h"
 #include "lua/luatextapi.h"
 #include "lua/luacameraapi.h"
@@ -22,6 +23,8 @@
 #include "sound/soundmanager.h"
 #include "engine/spritepool.h"
 #include "engines/enginefactory.h"
+#include "filesystem/filesystemfactory.h"
+#include <vector>
 
 
 namespace Scarab  {
@@ -47,6 +50,12 @@ namespace Scarab  {
         Engine :: Lua :: LuaScriptingApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaTimerApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaJsonApi :: Register( m_pLuaState );
+
+        // Overrides Lua's own built-in dofile() - must run after
+        // luaL_openlibs() (guaranteed, since RegisterCalls() itself is
+        // only ever called right after that) so this replaces the
+        // standard library's version rather than being replaced by it.
+        Engine :: Lua :: LuaFileSystemApi :: Register( m_pLuaState );
     }
 
     /**
@@ -304,7 +313,21 @@ namespace Scarab  {
     }
 
     /**
-     * @brief Execute a lua script;
+     * @brief Execute a lua script - this is the ONE entry point that loads
+     * the game's very first script (EngineHost::LoadLuaScript), before
+     * Lua's own overridden "dofile" global (LuaFileSystemApi::DoFile) even
+     * exists to be called. Originally used the C API's luaL_dofile(),
+     * which reads via a raw fopen() internally - a real gap found while
+     * building Phase 12's archive-distribution support: every other
+     * resource load in this engine (dofile, load_json, textures, sound,
+     * tilemaps) already routed through SunLight::FileSystem, but this one
+     * didn't, so the first script of an archive-distributed game could
+     * never even be reached. Reads the file itself via
+     * SunLight::FileSystem::FileSystemFactory instead (mirrors
+     * LuaFileSystemApi::DoFile's own approach exactly - luaL_loadbuffer +
+     * lua_pcall in place of luaL_loadfile's internal fopen), so this now
+     * works identically whether strFileName is a real loose-directory path
+     * or a virtual path inside a mounted archive.
      *
      * @param strFileName Lua script file name to execute;
      * @return true If operation was succesful;
@@ -314,18 +337,28 @@ namespace Scarab  {
 
         std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
 
-        if( m_pLuaState )  {
-            if( luaL_dofile( m_pLuaState, strFileName.c_str() ) )  {
-                fprintf( stderr, "Lua error: %s\n", lua_tostring( m_pLuaState, -1 ) );
-                lua_pop( m_pLuaState, 1 );
+        if( !m_pLuaState )
+            return false;
 
-                return false;
-            }
+        std :: vector<unsigned char>  data;
 
-            return true;
+        if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strFileName, data ) )  {
+            fprintf( stderr, "Lua error: cannot open %s\n", strFileName.c_str() );
+
+            return false;
         }
 
-        return false;
+        std :: string  strChunkName = std :: string( "@" ) + strFileName;
+        int            nLoadStatus  = luaL_loadbuffer( m_pLuaState, reinterpret_cast<const char *>( data.data() ), data.size(), strChunkName.c_str() );
+
+        if( nLoadStatus != LUA_OK || lua_pcall( m_pLuaState, 0, LUA_MULTRET, 0 ) )  {
+            fprintf( stderr, "Lua error: %s\n", lua_tostring( m_pLuaState, -1 ) );
+            lua_pop( m_pLuaState, 1 );
+
+            return false;
+        }
+
+        return true;
     }
   }
 }

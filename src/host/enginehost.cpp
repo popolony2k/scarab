@@ -6,9 +6,11 @@
  */
 
 #include "host/enginehost.h"
+#include "filesystem/filesystemfactory.h"
 #include <chrono>
 #include <fstream>
 #include <filesystem>
+#include <vector>
 #include <nlohmann/json.hpp>
 
 using namespace std :: chrono;
@@ -51,6 +53,36 @@ enum __EngineStateHandlers  {
     STATE_STAGE_RUNNING
 };
 
+/**
+ * @brief Directory-of-a-virtual-path, for the .zip branch of @see
+ * Scarab::Host::EngineHost::ResolveEntryScript only - a virtual path
+ * inside an archive always uses '/' regardless of platform (matches
+ * SunLight::FileSystem::IFileSystem's own documented contract), so this
+ * deliberately does its own plain string split rather than reusing
+ * std::filesystem::path (which would use '\' on Windows, not matching
+ * what PhysFS itself expects for a virtual path). The .json/.lua
+ * branches keep using std::filesystem::path as before - those really are
+ * native OS paths, not virtual ones.
+ * @param strVirtualPath A virtual path;
+ * @return Everything before the last '/', or "" if there isn't one;
+ */
+static std :: string GetVirtualParentPath( const std :: string &strVirtualPath )  {
+
+    std :: string :: size_type  nSlash = strVirtualPath.find_last_of( '/' );
+
+    return ( nSlash == std :: string :: npos ) ? std :: string() : strVirtualPath.substr( 0, nSlash );
+}
+
+/**
+ * @brief Joins a virtual directory and a relative virtual path with '/' -
+ * see @see GetVirtualParentPath for why this doesn't use
+ * std::filesystem::path.
+ */
+static std :: string JoinVirtualPath( const std :: string &strDir, const std :: string &strRelative )  {
+
+    return strDir.empty() ? strRelative : ( strDir + "/" + strRelative );
+}
+
 namespace Scarab  {
     namespace Host  {
 
@@ -79,45 +111,104 @@ namespace Scarab  {
 
         /**
          * @brief Resolve the user-provided entry argument (m_strEntryArg,
-         * originally argv[1]) to an actual Lua script path. Two forms are
-         * accepted, told apart by extension:
-         *   - a .lua path, used directly as the entry script;
+         * originally the CLI11 "entry" positional in main.cpp) to an
+         * actual Lua script path. Three forms are accepted, told apart by
+         * extension:
+         *   - a .lua path, used directly as the entry script (unchanged
+         *     from before Phase 12 - m_strEntryOverride combined with this
+         *     form is a usage error, since there's no project-file concept
+         *     here for it to override);
          *   - a .json "project file" with a "main_script" field, resolved
          *     relative to the project file's own directory (not APP_DIR -
          *     a project should be relocatable as a whole without the
-         *     executable needing to know where it lives).
-         * Anything else (missing file, malformed JSON, missing
-         * "main_script") is reported via strOutScriptPath being left
-         * untouched and this returning false.
+         *     executable needing to know where it lives). m_strEntryOverride,
+         *     if set, names a *different* .json to use instead of
+         *     strEntryArg itself - everything else about this form is
+         *     otherwise unchanged;
+         *   - a .zip archive (Phase 12, archive-distribution): mounted at
+         *     LuaEngine::GetApplicationDirectory()'s own value - the exact
+         *     same virtual location the loose-directory mount in main.cpp
+         *     already uses for APP_DIR - searched first (bAppendToPath=
+         *     false), so every already-existing APP_DIR-anchored path this
+         *     game's own Lua/JSON already builds (BASE_PATH and everything
+         *     under it) resolves into the archive unchanged; nothing
+         *     downstream needs to know the difference. m_strEntryOverride,
+         *     if set, is the in-archive virtual path to the project .json
+         *     (default: "project.json" at the archive's own root). The
+         *     resolved main_script is then a normal APP_DIR-anchored
+         *     virtual path, read the same way the loose-directory case
+         *     already reads every other resource - see LoadLuaScript /
+         *     LuaEngine::RunFile.
+         * Anything else (missing/unreadable file, malformed JSON, missing
+         * "main_script", a bad --entry/.lua combination) is reported via
+         * strOutScriptPath being left untouched and this returning false.
          *
-         * @param strEntryArg The raw entry argument (a .lua or .json path);
+         * @param strEntryArg The raw entry argument (a .lua, .json, or .zip path);
          * @param strOutScriptPath Receives the resolved script path on success;
          * @return true if strEntryArg resolved to a usable script path.
          */
         bool EngineHost :: ResolveEntryScript( const std :: string& strEntryArg, std :: string& strOutScriptPath )  {
 
-            fs :: path entryPath( strEntryArg );
+            fs :: path   entryPath( strEntryArg );
+            std :: string strExtension = entryPath.extension().string();
 
-            if( entryPath.extension() != ".json" )  {
+            if( strExtension == ".zip" )  {
+                const std :: string  &strAppDir = m_LuaEngine.GetApplicationDirectory();
+
+                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strEntryArg, strAppDir, false ) )  {
+                    OnError( "Error mounting archive => " + strEntryArg );
+                    return false;
+                }
+
+                std :: string  strEntryJsonPath = JoinVirtualPath( strAppDir,
+                                                                    m_strEntryOverride.empty() ? "project.json" : m_strEntryOverride );
+                std :: vector<unsigned char>  data;
+
+                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strEntryJsonPath, data ) )  {
+                    OnError( "Error opening project file inside archive => " + strEntryJsonPath );
+                    return false;
+                }
+
+                nlohmann :: json  projectData = nlohmann :: json :: parse( data.begin(), data.end(), nullptr, false );
+
+                if( projectData.is_discarded() || !projectData.contains( "main_script" ) )  {
+                    OnError( "Error parsing project file (missing or invalid \"main_script\") => " + strEntryJsonPath );
+                    return false;
+                }
+
+                strOutScriptPath = JoinVirtualPath( GetVirtualParentPath( strEntryJsonPath ), projectData["main_script"].get<std :: string>() );
+
+                return true;
+            }
+
+            if( strExtension != ".json" )  {
+                if( !m_strEntryOverride.empty() )  {
+                    OnError( "Error: --entry/-e cannot be combined with a direct .lua script entry point => " + strEntryArg );
+                    return false;
+                }
+
                 strOutScriptPath = strEntryArg;
                 return true;
             }
 
-            std :: ifstream projectFile( entryPath );
+            std :: string  strEffectiveJsonPath = m_strEntryOverride.empty() ? strEntryArg : m_strEntryOverride;
+            fs :: path     effectiveEntryPath( strEffectiveJsonPath );
+
+            std :: ifstream projectFile( effectiveEntryPath );
 
             if( !projectFile.is_open() )  {
-                OnError( "Error opening project file => " + strEntryArg );
+                OnError( "Error opening project file => " + strEffectiveJsonPath );
                 return false;
             }
 
             nlohmann :: json  projectData = nlohmann :: json :: parse( projectFile, nullptr, false );
 
             if( projectData.is_discarded() || !projectData.contains( "main_script" ) )  {
-                OnError( "Error parsing project file (missing or invalid \"main_script\") => " + strEntryArg );
+                OnError( "Error parsing project file (missing or invalid \"main_script\") => " + strEffectiveJsonPath );
                 return false;
             }
 
-            strOutScriptPath = ( entryPath.parent_path() / projectData["main_script"].get<std :: string>() ).string();
+            strOutScriptPath = ( effectiveEntryPath.parent_path() / projectData["main_script"].get<std :: string>() ).string();
 
             return true;
         }
@@ -281,11 +372,13 @@ namespace Scarab  {
          */
         EngineHost :: EngineHost( SunLight :: TileMap :: ITileMap *pTileMap,
                                  SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
-                                 std :: string strEntryArg )  : m_LuaEngine( &m_ScriptProcessorMachine ) {
+                                 std :: string strEntryArg,
+                                 std :: string strEntryOverride )  : m_LuaEngine( &m_ScriptProcessorMachine ) {
 
             m_CurrentStateHandler   = nullptr;
             m_nClearInactiveSpriteQueueMilli = 0;
-            m_strEntryArg = strEntryArg;
+            m_strEntryArg      = strEntryArg;
+            m_strEntryOverride = strEntryOverride;
 
             std :: srand( ( unsigned int ) time( NULL ) );
 
