@@ -240,3 +240,62 @@ Caravellius has been changed to actually use it yet (`cover.tmx` still
 backs the cover screen, unchanged, per step 3 above - intentionally, not
 an oversight). Swapping the cover screen (or building a fresh mapless-
 native demo) over to this is a separate, not-yet-requested follow-up.
+
+---
+
+## 2. A standalone, camera/map-independent `Image` primitive
+
+**Status:** not started - explicitly deferred (2026-08-26) until after
+the Scarab/Caravellius split. Unlike item 1 above, the user did NOT
+override the "wait for the split" sequencing for this one - it stays
+seeded here, untouched, until that split actually happens.
+
+### Motivation
+
+Came up while building Caravellius's Phase 10.1 (storyboard/narrative-
+panel presentation, `games/caravellius/resources/scripts/core/
+storyboard.lua`): every storyboard "square" is drawn as an ordinary
+sprite (camera/viewport/zoom-coupled, needs a real map + a
+`LAYER_STORYBOARD`-carrying layer to attach to), which works but carries
+real couplings a screen-space splash/panel image shouldn't need at all -
+requiring `camera_set_position(0, 0)` workarounds on any zero-scroll map
+that hosts one (`cover.tmx`'s own header comment), and requiring the art
+itself be authored at the engine's fixed pre-zoom native resolution
+(`≈1260/zoom x 920/zoom`) rather than it's own natural size, or it
+renders zoomed a second time on top of the camera's own zoom factor.
+
+### The idea, as discussed (not yet designed in detail)
+
+`IEngine::LoadTexture`/`DrawTexture`/`DrawTextureScaled`/`UnloadTexture`
+already exist in sunlight and are entirely camera/map-independent -
+`TextureCanvas` already calls `EngineFactory::GetEngine()` directly,
+bypassing `TileMapRenderer` entirely, which is the precedent for how a
+future `Image` class should be built: a standalone primitive (mirroring
+`TextureCanvas`'s own shape), NOT bolted onto `IDrawSurface`/
+`TileMapRenderer` - drawn in genuine screen space, like `draw_text`/
+`draw_filled_rectangle` already are, with zero camera/zoom/map coupling
+at all.
+
+This is a Scarab (and possibly sunlight) item, not a Caravellius one -
+the actual engine-level primitive would live in one or both of those
+repos, whichever ends up owning `IEngine`'s own texture-draw surface
+once the split happens and Scarab has it's own independent planning.
+Caravellius's own storyboard code stays exactly as it is today (sprite-
+based, working, live-tested) unless/until a future decision explicitly
+asks it to switch over - same "don't rip out a working workaround
+preemptively" spirit as item 1's own step 3.
+
+### Recommended first steps, whenever this is picked up
+
+1. Design `Image`'s own API surface (load/draw/scale/unload) mirroring
+   `TextureCanvas`'s existing shape as closely as makes sense, rather
+   than inventing a new pattern from scratch.
+2. Decide whether it lives in sunlight (alongside `TextureCanvas`,
+   `IEngine`) or in Scarab's own `src/lua/` (a new `LuaImageApi`, mirroring
+   `LuaTextApi`'s own file split) - likely BOTH, the same layering every
+   other Lua-callable primitive here already follows (a sunlight-side
+   engine capability, exposed to Lua via a thin Scarab-side wrapper).
+3. Once it exists, storyboard.lua's own square-rendering could optionally
+   switch from sprite-based to Image-based, removing the `camera_set_
+   position(0, 0)`/native-pre-zoom-resolution couplings entirely - purely
+   optional, not a prerequisite for anything currently planned.
