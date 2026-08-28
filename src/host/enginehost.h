@@ -57,6 +57,7 @@ namespace Scarab  {
             Engine :: SpritePool                       m_SpritePool;
 
             std :: string                              m_strEntryArg;
+            std :: string                              m_strEntryOverride;
             std :: string                              m_strLastError;
             FunctionStateHandlers                      m_aEngineStateHandlers;
 
@@ -86,7 +87,8 @@ namespace Scarab  {
 
             EngineHost( SunLight :: TileMap :: ITileMap *pTileMap,
                        SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
-                       std :: string strEntryArg );
+                       std :: string strEntryArg,
+                       std :: string strEntryOverride = std :: string() );
             virtual ~EngineHost( void );
 
             // World listener event handler implementation

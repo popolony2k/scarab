@@ -20,7 +20,7 @@ option(SCARAB_USE_OFFICIAL_LUA_FTP "Build Scarab with LUA provided by official F
 ####################################################################
 FetchContent_Declare(sunlight
                      GIT_REPOSITORY https://github.com/popolony2k/sunlight.git
-                     GIT_TAG v0.15.0)
+                     GIT_TAG v0.17.0)
 FetchContent_MakeAvailable(sunlight)
 
 ####################################################################
@@ -30,6 +30,22 @@ FetchContent_Declare(nlohmann_json
                      GIT_REPOSITORY https://github.com/nlohmann/json.git
                      GIT_TAG master)
 FetchContent_MakeAvailable(nlohmann_json)
+
+####################################################################
+# CLI11 (command line parsing - Phase 12, archive-distribution:
+# main.cpp's entry argument grew a real --entry/-e option once a bare
+# argv[1]/argv[2] scan wasn't enough to express "override which project
+# file the entry point resolves to." No C++ standard library facility
+# does this (there's no <cliparse>; POSIX getopt isn't available on
+# Windows/MSVC without extra tooling, ruling it out given this project's
+# own Windows/vcpkg support). CLI11 is header-only, MIT licensed, and
+# needs nothing beyond what's already fetched for every other dependency
+# here.)
+####################################################################
+FetchContent_Declare(cli11
+                     GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+                     GIT_TAG v2.4.2)
+FetchContent_MakeAvailable(cli11)
 
 if(NOT SCARAB_USE_OFFICIAL_LUA_FTP)
 ####################################################################
@@ -157,7 +173,7 @@ if(SCARAB_USE_OFFICIAL_LUA_FTP)
   add_dependencies(scarab lua_library_download)
 endif()
 
-target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json ${LUA_LIBRARIES})
+target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES})
 
 add_custom_target(scarab_copy_binaries
 COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:scarab>
