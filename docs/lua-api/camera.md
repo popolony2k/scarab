@@ -15,10 +15,10 @@ camera_move_left()
 camera_move_right()
 ```
 
-Caravellius drives a constant downward auto-scroll from `resources/scripts/camera.lua`'s `Camera.update`, called every frame via `Enemies.register_update` — that's ordinary game script using `camera_move_down()`, not a separate engine mechanism.
+Caravellius drives a constant downward auto-scroll from `src/camera.lua`'s `Camera.update`, called every frame via `Enemies.register_update` — that's ordinary game script using `camera_move_down()`, not a separate engine mechanism.
 
 ```lua
--- resources/scripts/camera.lua (simplified)
+-- src/camera.lua (simplified)
 local MAX_FPS_PER_SCROLL = 2
 local fpsCount = 1
 

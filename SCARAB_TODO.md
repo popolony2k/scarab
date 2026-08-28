@@ -30,14 +30,14 @@ Caravellius's Phase 10 cover/presentation screen.
 Building a title/cover screen (shown before any real gameplay stage
 exists, and returned to on game-over/stage-clear) needed a full-screen
 image plus blinking text. Scarab's entire stage-bootstrap today
-(`on_load_stage` in `games/caravellius/resources/scripts/core/bootstrap.lua`,
+(`on_load_stage` in `caravellius/src/core/bootstrap.lua`,
 calling `tilemap_load_map`) hard-requires a real `.tmx` map to be loaded
 before *anything* can be shown — there is no "just show an image / draw
 some text" mode that doesn't go through the full stage/map machinery.
 
 The workaround shipped in Caravellius: the cover screen is it's own
 "stage" backed by a deliberately minimal, degenerate map
-(`games/caravellius/resources/tilemap/cover/cover.tmx`) — a single Tiled
+(`caravellius/resources/tilemap/cover/cover.tmx`) — a single Tiled
 `<imagelayer>` sized to exactly fill the screen, no tile layer or tileset
 at all, plus the same empty placeholder object-group layers every other
 stage map carries. It works, and is a reasonable stopgap given the
@@ -253,7 +253,7 @@ seeded here, untouched, until that split actually happens.
 ### Motivation
 
 Came up while building Caravellius's Phase 10.1 (storyboard/narrative-
-panel presentation, `games/caravellius/resources/scripts/core/
+panel presentation, `caravellius/src/core/
 storyboard.lua`): every storyboard "square" is drawn as an ordinary
 sprite (camera/viewport/zoom-coupled, needs a real map + a
 `LAYER_STORYBOARD`-carrying layer to attach to), which works but carries

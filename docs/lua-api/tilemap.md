@@ -26,7 +26,7 @@ local mapW, mapH, tileW, tileH = tilemap_get_map_info()
 
 ## Layers
 
-Every sprite lives on a numbered (or named) Tiled layer — layer ids are whatever you assigned them to in the Tiled editor, not something the engine invents (Caravellius keeps its own names for them in `resources/scripts/layerids.lua`).
+Every sprite lives on a numbered (or named) Tiled layer — layer ids are whatever you assigned them to in the Tiled editor, not something the engine invents (Caravellius keeps its own names for them in `src/layerids.lua`).
 
 ### `tilemap_get_layer(layerId) -> visible, opacity, offsetX, offsetY`
 ### `tilemap_get_layer_by_name(layerName) -> visible, opacity, offsetX, offsetY`
