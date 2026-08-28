@@ -26,7 +26,7 @@ namespace fs = std :: filesystem;
 /*
  * The only sound id C++ still has any opinion about - matches the old
  * SoundUniqueId::ID_NO_AUDIO. Every other sound id is opaque to C++ and
- * defined purely in Lua now (resources/scripts/soundids.lua) - this one
+ * defined purely in Lua now (src/soundids.lua) - this one
  * isn't, since it's a genuine C++-side sentinel ("no song currently
  * tracked") that nothing in Lua ever references by name.
  */
@@ -426,7 +426,7 @@ namespace Scarab  {
              * bullets, player-bullets-vs-enemies) used to be 3 hardcoded
              * AddColliderToColliderRule calls here, keyed off the C++-only
              * __SpriteLayerId enum. Moved to Lua (Bootstrap.setup_collision_
-             * rules, resources/scripts/bootstrap.lua/layerids.lua) via the
+             * rules, src/bootstrap.lua/layerids.lua) via the
              * already-existing collision_add_rule primitive - which layers
              * collide with which is Caravellius game design, not engine
              * plumbing, so it belongs in Lua like every other enemy-specific
@@ -499,7 +499,7 @@ namespace Scarab  {
                 case  SunLight :: Scripting :: Commands :: MOVE_SPRITES_TO_SCREEN_CMD :
                     /*
                      * Wave-spawn state ids are entirely Lua-owned now (see
-                     * resources/scripts/wavestates.lua and each enemy
+                     * src/wavestates.lua and each enemy
                      * module's register_wave_handler calls) - C++ no longer
                      * knows what a valid range even is, so there's nothing
                      * left to bounds-check here; TryDispatchMoveSpritesToScreen's

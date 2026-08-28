@@ -39,7 +39,7 @@ namespace Scarab  {
              * convention luaL_loadfile itself uses internally) so error
              * messages/tracebacks still report the real file path, not a
              * generic "[string ...]" - eg. a syntax error still reads
-             * "resources/scripts/foo.lua:12: ...", identical to before
+             * "src/foo.lua:12: ...", identical to before
              * this override existed.
              *
              * The vector/string holding the file's own bytes and chunk

@@ -77,9 +77,10 @@ int main( int argc, char **argv ) {
      * Windows path's drive-letter ':' trips the underlying PhysFS backend's
      * legality check outright, a real bug found live on Windows (never on
      * Mac/Linux - see ToVirtualPath's own doc comment for the story). Every
-     * absolute path this game already constructs (APP_DIR-relative, per
-     * resources/scripts' own BASE_PATH convention) resolves through
-     * SunLight::FileSystem unchanged as a result, since LuaEngine::Init()
+     * absolute path this game already constructs (APP_DIR-relative - the
+     * BASE_PATH convention for resources/, or the separate SRC_PATH one for
+     * src/, main.lua's own globals) resolves through SunLight::FileSystem
+     * unchanged as a result, since LuaEngine::Init()
      * exposes this exact same ToVirtualPath() conversion as the Lua APP_DIR
      * global - no other path-construction code anywhere needs to know any
      * of this exists. This is the loose-directory case; when entry is a
@@ -107,7 +108,7 @@ int main( int argc, char **argv ) {
      * whole). Given a bare relative entry path (the documented, normal
      * invocation - "./scarab project.json" from the build output
      * directory), that resolution produces a bare CWD-relative path (eg.
-     * "resources/scripts/main.lua"), not an APP_DIR-anchored one - the
+     * "src/main.lua"), not an APP_DIR-anchored one - the
      * strAppDir mount above only ever answers virtual paths that start
      * with that exact absolute prefix, so a bare relative path matches
      * neither mount, and every load of the game's own very first script

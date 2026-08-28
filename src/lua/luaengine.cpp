@@ -87,7 +87,7 @@ namespace Scarab  {
     /**
      * @brief Dispatch a MOVE_SPRITES_TO_SCREEN_CMD state id to Lua, via the
      * optional global on_move_sprites_to_screen(stateId). The state id
-     * itself is entirely Lua-owned (see resources/scripts/wavestates.lua) -
+     * itself is entirely Lua-owned (see src/wavestates.lua) -
      * C++ just ferries the ScriptProcessor's queued integer back to Lua
      * opaquely, so stage scripts' sp_move_sprites_to_screen(...) calls (and
      * their sp_wait/sp_wait_queue_empty pacing) work the same regardless of
@@ -134,7 +134,7 @@ namespace Scarab  {
      * ports), there is no legacy C++ fallback here - Lua is expected to
      * always claim a valid stage id.
      *
-     * @param nStageId The stage id (resources/scripts/stageids.lua) received from the queue;
+     * @param nStageId The stage id (src/stageids.lua) received from the queue;
      * @return true if Lua loaded the stage's map and script successfully.
      */
     bool LuaEngine :: TryDispatchLoadStage( uint16_t nStageId )  {
