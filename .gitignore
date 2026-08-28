@@ -33,9 +33,14 @@ CMakeSettings.json
 # Exception: this is game content (debug-only launch stages/scripts), not
 # a CMake Debug/Release build-output directory - the **/debug/ rule above
 # is aimed at the latter and would otherwise also catch this real,
-# tracked source folder.
-!games/caravellius/resources/scripts/debug/
-!games/caravellius/resources/scripts/debug/**
+# tracked source folder. Updated 2026-08-28 when resources/scripts/ moved
+# to src/ - the negation is keyed to the literal path, so it silently
+# stopped matching anything the moment the directory it names moved,
+# with no warning (git just quietly stopped tracking new content there,
+# confirmed live: `git add games/caravellius/src` picked up every other
+# subfolder except debug/) - a real trap for any future path rename here.
+!games/caravellius/src/debug/
+!games/caravellius/src/debug/**
 **/Release/
 **/release/
 **/GeneratedFiles/
