@@ -27,11 +27,15 @@ int main( int argc, char **argv ) {
      *     (unchanged from before this phase);
      *   - a .zip archive bundling a whole project (project.json + every
      *     resource it references) into one file.
-     * --entry/-e names where the project .json actually lives:
-     *   - inside the .zip, when entry is an archive (default, if omitted:
-     *     "project.json" at the archive's own root);
-     *   - as an outright override of *which* .json to use, when entry is
-     *     itself a .json project file (a plain .lua entry ignores this -
+     * --entry/-e names the actual entry point when that's not simply
+     * "entry itself" - told apart by it's own extension, same as entry:
+     *   - inside a .zip, this is where the real entry point lives (default,
+     *     if omitted: "project.json" at the archive's own root) - a .lua
+     *     path here is used directly (no project.json indirection at all),
+     *     anything else is read as a .json project file, same as the loose
+     *     .json case below;
+     *   - as an outright override of *which* .json to use, when entry
+     *     itself is a .json project file (a plain .lua entry ignores this -
      *     EngineHost::ResolveEntryScript reports that combination as a
      *     usage error, since there's no project-file concept to override).
      * See EngineHost::ResolveEntryScript for how these are actually
@@ -48,8 +52,9 @@ int main( int argc, char **argv ) {
        ->check( CLI :: ExistingFile );
 
     app.add_option( "-e,--entry", strEntryOverride,
-                    "Project .json location - inside the .zip when entry is an archive "
-                    "(default: project.json at its root), or overriding entry itself when "
+                    "Actual entry point location - inside the .zip when entry is an archive "
+                    "(a .lua path there runs directly, anything else is read as project.json "
+                    "- default: project.json at its root), or overriding entry itself when "
                     "it's already a .json project file" );
 
     CLI11_PARSE( app, argc, argv );

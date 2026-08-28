@@ -76,11 +76,18 @@ static std :: string GetVirtualParentPath( const std :: string &strVirtualPath )
 /**
  * @brief Joins a virtual directory and a relative virtual path with '/' -
  * see @see GetVirtualParentPath for why this doesn't use
- * std::filesystem::path.
+ * std::filesystem::path. Strips a leading '/' off strRelative first (a
+ * user-supplied --entry/-e value is the one place this can come from,
+ * eg. "--entry /main.lua") - PhysFS itself already tolerates the
+ * resulting redundant "//" without one (confirmed live), but stripping it
+ * here keeps the built path itself clean rather than relying on that
+ * tolerance.
  */
 static std :: string JoinVirtualPath( const std :: string &strDir, const std :: string &strRelative )  {
 
-    return strDir.empty() ? strRelative : ( strDir + "/" + strRelative );
+    std :: string  strCleanRelative = ( !strRelative.empty() && strRelative.front() == '/' ) ? strRelative.substr( 1 ) : strRelative;
+
+    return strDir.empty() ? strCleanRelative : ( strDir + "/" + strCleanRelative );
 }
 
 namespace Scarab  {
@@ -133,12 +140,17 @@ namespace Scarab  {
          *     game's own Lua/JSON already builds (BASE_PATH and everything
          *     under it) resolves into the archive unchanged; nothing
          *     downstream needs to know the difference. m_strEntryOverride,
-         *     if set, is the in-archive virtual path to the project .json
-         *     (default: "project.json" at the archive's own root). The
-         *     resolved main_script is then a normal APP_DIR-anchored
-         *     virtual path, read the same way the loose-directory case
-         *     already reads every other resource - see LoadLuaScript /
-         *     LuaEngine::RunFile.
+         *     if set, is the in-archive virtual path to the *actual entry
+         *     point* (default: "project.json" at the archive's own root) -
+         *     told apart by it's own extension, mirroring exactly how the
+         *     top-level entry argument itself is told apart: a ".lua" entry
+         *     is used directly as the entry script (no project-file
+         *     indirection at all), anything else is read and parsed as a
+         *     .json project file with a "main_script" field, same as the
+         *     loose-directory .json case. The resolved script path is then
+         *     a normal APP_DIR-anchored virtual path, read the same way the
+         *     loose-directory case already reads every other resource -
+         *     see LoadLuaScript / LuaEngine::RunFile.
          * Anything else (missing/unreadable file, malformed JSON, missing
          * "main_script", a bad --entry/.lua combination) is reported via
          * strOutScriptPath being left untouched and this returning false.
@@ -160,8 +172,15 @@ namespace Scarab  {
                     return false;
                 }
 
-                std :: string  strEntryJsonPath = JoinVirtualPath( strAppDir,
-                                                                    m_strEntryOverride.empty() ? "project.json" : m_strEntryOverride );
+                std :: string  strInnerEntry = m_strEntryOverride.empty() ? "project.json" : m_strEntryOverride;
+                std :: string  strInnerEntryPath = JoinVirtualPath( strAppDir, strInnerEntry );
+
+                if( fs :: path( strInnerEntry ).extension() == ".lua" )  {
+                    strOutScriptPath = strInnerEntryPath;
+                    return true;
+                }
+
+                std :: string  strEntryJsonPath = strInnerEntryPath;
                 std :: vector<unsigned char>  data;
 
                 if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strEntryJsonPath, data ) )  {
