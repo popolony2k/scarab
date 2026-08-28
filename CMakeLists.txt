@@ -260,7 +260,7 @@ add_dependencies(scarab scarab_copy_binaries)
 # Setup games built on Scarab
 ###################################################################
 
-add_subdirectory( games/caravellius )
+add_subdirectory( caravellius )
 
 # Installation
 # INSTALL(

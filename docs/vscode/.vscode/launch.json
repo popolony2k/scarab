@@ -56,7 +56,7 @@
         },
         {
             // Phase 12 (archive-distribution) - launches against the packaged
-            // build/games/caravellius/caravellius.zip instead of the loose
+            // build/caravellius/caravellius.zip instead of the loose
             // resource tree, exercising EngineHost::ResolveEntryScript's .zip
             // branch. Args use the full ${workspaceFolder}-relative path since
             // the archive's own build output isn't per-config the way
@@ -70,7 +70,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/debug/scarab.exe",
-            "args": ["${workspaceFolder}/build/games/caravellius/caravellius.zip"],
+            "args": ["${workspaceFolder}/build/caravellius/caravellius.zip"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build/debug",
             "environment": [],
@@ -82,7 +82,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/scarab",
-            "args": ["${workspaceFolder}/build/games/caravellius/caravellius.zip"],
+            "args": ["${workspaceFolder}/build/caravellius/caravellius.zip"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
             "environment": [],
@@ -107,7 +107,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/scarab",
-            "args": ["${workspaceFolder}/build/games/caravellius/caravellius.zip"],
+            "args": ["${workspaceFolder}/build/caravellius/caravellius.zip"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
             "environment": [],

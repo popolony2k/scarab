@@ -42,7 +42,7 @@
 				"kind": "build",
 				"isDefault": false
 			},
-			"detail": "Builds scarab and copies it's runtime resources (games/caravellius Lua scripts/configs/sprites/audio) into build/ - wired as every debug launch config's preLaunchTask, so Run/Debug can never launch against stale copied resources the way a plain 'run the existing binary' launch could."
+			"detail": "Builds scarab and copies it's runtime resources (caravellius Lua scripts/configs/sprites/audio) into build/ - wired as every debug launch config's preLaunchTask, so Run/Debug can never launch against stale copied resources the way a plain 'run the existing binary' launch could."
 		},
 		{
 			"type": "shell",
@@ -66,7 +66,7 @@
 			},
 			"dependsOn": ["cmake build (scarab)"],
 			"dependsOrder": "sequence",
-			"detail": "Builds scarab (via 'cmake build (scarab)' first) AND packages Caravellius's resources into build/games/caravellius/caravellius.zip (Phase 12, archive-distribution) - caravellius_archive isn't part of the default ALL build, so it needs this dedicated task. Wired as every '... Launch Archive' debug config's own preLaunchTask, so those always debug against a freshly rebuilt archive, never a stale one."
+			"detail": "Builds scarab (via 'cmake build (scarab)' first) AND packages Caravellius's resources into build/caravellius/caravellius.zip (Phase 12, archive-distribution) - caravellius_archive isn't part of the default ALL build, so it needs this dedicated task. Wired as every '... Launch Archive' debug config's own preLaunchTask, so those always debug against a freshly rebuilt archive, never a stale one."
 		}
 	]
 }
