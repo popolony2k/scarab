@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luaengine.h
- *
- *  Created on: Dec 13, 2023
- *      Author: popolony2k
- */
-
 #ifndef __LUAENGINE_H__
 #define __LUAENGINE_H__
 

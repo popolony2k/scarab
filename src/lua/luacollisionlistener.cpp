@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luacollisionlistener.cpp
- *
- *  Created on: Jul 6, 2026
- *      Author: popolony2k
- */
-
 #include "lua/luacollisionlistener.h"
 #include "engine/spritehandle.h"
 #include "tilemap/tilemapdefs.h"

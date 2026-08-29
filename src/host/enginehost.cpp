@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * enginehost.cpp
- *
- *  Created on: Sep 9, 2021
- *      Author: popolony2k
- */
-
 #include "host/enginehost.h"
 #include "filesystem/filesystemfactory.h"
 #include <chrono>
@@ -442,15 +435,13 @@ namespace Scarab  {
             m_CurrentStateHandler = m_aEngineStateHandlers[STATE_INIT_ENGINE];
 
             /*
-             * Collision rule setup (player-vs-enemies, player-vs-enemy-
-             * bullets, player-bullets-vs-enemies) used to be 3 hardcoded
-             * AddColliderToColliderRule calls here, keyed off the C++-only
-             * __SpriteLayerId enum. Moved to Lua (Bootstrap.setup_collision_
-             * rules, src/bootstrap.lua/layerids.lua) via the
-             * already-existing collision_add_rule primitive - which layers
-             * collide with which is Caravellius game design, not engine
-             * plumbing, so it belongs in Lua like every other enemy-specific
-             * decision.
+             * Collision rule setup used to be a handful of hardcoded
+             * AddColliderToColliderRule calls here, keyed off a C++-only
+             * layer-id enum specific to one particular game. Moved entirely
+             * to Lua (via the already-existing collision_add_rule primitive)
+             * - which layers collide with which is a specific game's own
+             * design, not engine plumbing, so it belongs in that game's own
+             * Lua bootstrap, not here.
              */
 
             m_ScriptProcessorMachine.AddScriptListener( this );

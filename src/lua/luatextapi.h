@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luatextapi.h
- *
- *  Created on: Aug 14, 2026
- *      Author: popolony2k
- */
-
 #ifndef __LUATEXTAPI_H__
 #define __LUATEXTAPI_H__
 

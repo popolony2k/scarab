@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luainputapi.cpp
- *
- *  Created on: Jul 6, 2026
- *      Author: popolony2k
- */
-
 #include "lua/luainputapi.h"
 #include "lua/luaengineutil.h"
 #include "input/iinputhandler.h"

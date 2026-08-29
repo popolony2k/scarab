@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luatextapi.cpp
- *
- *  Created on: Aug 14, 2026
- *      Author: popolony2k
- */
-
 #include "lua/luatextapi.h"
 #include "lua/luaengineutil.h"
 

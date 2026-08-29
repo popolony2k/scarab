@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luatimerapi.cpp
- *
- *  Created on: Jul 11, 2026
- *      Author: popolony2k
- */
-
 #include "lua/luatimerapi.h"
 #include "lua/luaengineutil.h"
 #include <cstdio>

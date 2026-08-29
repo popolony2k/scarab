@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luasoundapi.h
- *
- *  Created on: Jul 6, 2026
- *      Author: popolony2k
- */
-
 #ifndef __LUASOUNDAPI_H__
 #define __LUASOUNDAPI_H__
 

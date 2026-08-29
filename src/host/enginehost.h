@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * enginehost.h
- *
- *  Created on: Sep 9, 2021
- *      Author: popolony2k
- */
-
 #ifndef __ENGINEHOST_H__
 #define __ENGINEHOST_H__
 

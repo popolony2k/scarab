@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luacollisionapi.cpp
- *
- *  Created on: Jul 6, 2026
- *      Author: popolony2k
- */
-
 #include "lua/luacollisionapi.h"
 #include "lua/luaengineutil.h"
 
@@ -56,10 +49,12 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Register the Lua function to call whenever two colliders
-             * (at least one of them Lua-owned) hit one another - fn(handleA, handleB).
-             * A side that isn't Lua-owned (e.g. a still-legacy Caravellius
-             * sprite) is passed as INVALID_SPRITE_HANDLE (0).
+             * @brief Register the Lua function to call whenever two Lua-owned
+             * colliders hit one another - fn(handleA, handleB). Every sprite
+             * in the game is Lua/SpritePool-owned today, so this always fires
+             * with two real handles; see LuaCollisionListener::OnCollision's
+             * own comment for the defensive (non-Lua-owned-side) check this
+             * still guards against.
              */
             int LuaCollisionApi :: SetHandler( lua_State *pLuaState )  {
 

@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luaappapi.cpp
- *
- *  Created on: Jul 11, 2026
- *      Author: popolony2k
- */
-
 #include "lua/luaappapi.h"
 #include "lua/luaengineutil.h"
 
@@ -69,18 +62,19 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Enter or leave fullscreen. Caravellius always renders
-             * at it's own fixed internal resolution regardless - the
-             * engine handles scaling/letterboxing to whatever the actual
-             * window size ends up being, so this is purely a presentation
-             * toggle, not something Lua needs to account for elsewhere.
+             * @brief Enter or leave fullscreen. A game always renders at
+             * it's own fixed internal resolution regardless - the engine
+             * handles scaling/letterboxing to whatever the actual window
+             * size ends up being, so this is purely a presentation toggle,
+             * not something Lua needs to account for elsewhere.
              *
              * strategy (optional, second argument) picks which of
              * IEngine::FullscreenStrategy's two strategies to enter
              * fullscreen with - FULLSCREEN_STRATEGY_REAL (a genuine OS-
              * level fullscreen space, sunlight's own default as of
-             * v0.14.0, fixing a real macOS Dock-overlap bug found live in
-             * this game - see the memory/commit history for the story)
+             * v0.14.0, fixing a real macOS Dock-overlap bug found live in a
+             * game built on this engine - see the memory/commit history for
+             * the story)
              * or FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED (the older
              * ordinary-window-resized-to-native-resolution behavior, kept
              * as a fallback for any platform/window manager where a true

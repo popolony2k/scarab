@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luainputapi.h
- *
- *  Created on: Jul 6, 2026
- *      Author: popolony2k
- */
-
 #ifndef __LUAINPUTAPI_H__
 #define __LUAINPUTAPI_H__
 

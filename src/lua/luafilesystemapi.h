@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luafilesystemapi.h
- *
- *  Created on: Aug 27, 2026
- *      Author: popolony2k
- */
-
 #ifndef __LUAFILESYSTEMAPI_H__
 #define __LUAFILESYSTEMAPI_H__
 

@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * main.h
- *
- *  Created on: Sep 1, 2021
- *      Author: popolony2k
- */
-
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
@@ -43,8 +36,7 @@
  * Scarab is a game-agnostic engine - it doesn't hardcode a specific
  * game's name. "Scarab" is only the initial window title, shown before
  * any Lua exists to override it; the actual game (main.lua) is expected
- * to call app_set_name(...) with its own name (e.g. "Caravellius") once
- * it starts running.
+ * to call app_set_name(...) with its own name once it starts running.
  */
 #define APP_NAME                  "Scarab"
 

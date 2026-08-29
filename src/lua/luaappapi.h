@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luaappapi.h
- *
- *  Created on: Jul 11, 2026
- *      Author: popolony2k
- */
-
 #ifndef __LUAAPPAPI_H__
 #define __LUAAPPAPI_H__
 

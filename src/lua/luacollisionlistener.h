@@ -18,13 +18,6 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-/*
- * luacollisionlistener.h
- *
- *  Created on: Jul 6, 2026
- *      Author: popolony2k
- */
-
 #ifndef __LUACOLLISIONLISTENER_H__
 #define __LUACOLLISIONLISTENER_H__
 

@@ -20,11 +20,8 @@
 
 /**<main.cpp>
  * Scarab main entry point source file - builds the window/engine host and
- * runs whichever game argv[1] points at (Caravellius today, but nothing
- * here is Caravellius-specific).
- *
- *  Created on: Jun 30, 2021
- *      Author: popolony2k
+ * runs whichever game argv[1] points at. Nothing here is specific to any
+ * one game.
  */
 #include <cstdio>
 #include <string>
