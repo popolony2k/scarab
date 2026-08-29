@@ -37,6 +37,14 @@ Every resource load in this engine (Lua's `dofile`/`load_json`, texture/sound/ti
 
 No test suite exists for Scarab itself (`sunlight` has it's own, separate `doctest`-based suite — see it's own `CLAUDE.md`). There is no linter/formatter config; match the existing style (see below).
 
+## CI/CD
+
+`.github/workflows/ci.yml` — build verification only (ubuntu-latest/macos-latest/windows-latest matrix, mirroring sunlight's own `ci.yml`'s dependency-install steps), triggered on push/PR to `main`. No test step — see "No test suite exists" above. Unlike sunlight's own `ci.yml`, there's no `-DBUILD_LIBRARY_SAMPLES`/`-DBUILD_LIBRARY_TESTS` — those options don't exist here.
+
+`.github/workflows/release.yml` — triggered on `v*` tag push. Unlike sunlight's own `release.yml` (which does `cmake --install` — sunlight is a library with a real `install()` target), **Scarab has no `install()` target at all** (only a commented-out stub near the end of the root `CMakeLists.txt`) — it's an executable, not something a consumer links against, so there's nothing to "install" in the CMake sense. Packaging instead archives the built `scarab` executable together with whatever `scarab_copy_binaries` already copied next to it (raylib/tmx/libxml2/sunlight's shared libs), read directly out of the build output directory: `build/` itself on Linux/macOS (single-config Unix Makefiles, no per-config subdirectory), `build/Release/` on Windows (the multi-config Visual Studio generator GitHub's `windows-latest` runner defaults to) — see the `$<TARGET_FILE_DIR:scarab>` gotcha in the Build section above for why this split exists. If a real `install()` target is ever added to `CMakeLists.txt`, switch `release.yml` to `cmake --install` instead (matching sunlight's own approach) rather than keeping both paths.
+
+`.github/workflows/doxygen.yml` — generates a Doxygen HTML reference from `src/`'s own `/** @brief */` comments (see `Doxyfile`, mirroring sunlight's own) and deploys it to GitHub Pages on push to `main`; also runs (build-only, no deploy) on PRs. **This is a C++ source-structure reference only — classes/methods/params — it does not and cannot know that a C++ method like `LuaSpriteApi::SetCollisionInset` is registered into Lua under a different name (`sprite_set_collision_inset`)**, since that mapping only exists inside a runtime `lua_register()`/`luaL_setfuncs()` call, not anything statically parseable. `docs/lua-api/*.md` (the hand-written, example-driven Lua-facing reference — see the Code style rule above) is the one that actually documents the Lua-callable surface, and Doxygen is not a substitute for keeping it updated.
+
 ## Architecture
 
 C++ is a thin, game-agnostic engine layer; all game logic lives in whatever game is pointed at it via the entry-point argument — this repo has no game logic in it at all.
