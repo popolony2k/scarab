@@ -1,22 +1,19 @@
 # Scarab TODO
 
 Engine-level work items for **Scarab** (the C++ engine layer — `src/` at
-this repo's root, built on top of `sunlight`), earmarked to start **after**
-Caravellius splits out into it's own repo (see
-[[project_scarab_caravellius_split_plan]] in Claude's own project memory —
-that split is scheduled but not yet triggered). Once the split happens,
-Scarab gets it's own independent phase planning; this document is the
-seed of that plan, not something to act on before then.
+this repo's root, built on top of `sunlight`). Originally seeded while
+Scarab and Caravellius still shared one monorepo, earmarked to start once
+Scarab split out into it's own repo — that split has now happened (this
+repo is the result), so everything below is live/actionable, not
+something still waiting on a future event.
 
-Nothing in this document should be started before the split actually
-happens, unless the user explicitly says otherwise.
-
-**Item 1 (mapless rendering) is the one explicit exception so far** -
-the user knowingly overrode the "wait for the split" sequencing for it
-on 2026-08-22, reasoning that real projects refactor opportunistically
-rather than always waiting for a "clean" planning window, and that
-building it now (while the design is fresh) beats letting it sit as an
-unwritten plan. See it's own section below for what actually shipped.
+**Item 1 (mapless rendering)** was actually started early, 2026-08-22,
+before the split itself — the user knowingly overrode the original
+"wait for the split" sequencing for it, reasoning that real projects
+refactor opportunistically rather than always waiting for a "clean"
+planning window, and that building it now (while the design is fresh)
+beats letting it sit as an unwritten plan. See it's own section below for
+what actually shipped.
 
 ---
 
@@ -209,8 +206,7 @@ rather than something requiring an engine change.
 1. Extend `AddSprite`/`GetLayer` (and whatever `LuaSpriteApi` surface sits
    on top) to accept operating with no map loaded — layer ids become pure
    grouping keys for collision, with no tmx layer required to back them.
-   **DONE, 2026-08-22** (see the reference_sunlight_cross_repo_workflow
-   memory's own entry) - `AddSprite`'s `GetLayer(nLayerId)` check is
+   **DONE, 2026-08-22** - `AddSprite`'s `GetLayer(nLayerId)` check is
    skipped entirely when `m_pTmxMap == nullptr`, unchanged (still real-
    layer-validated) whenever a map IS loaded. Shipped as sunlight
    `v0.13.0` (bundled with the user's own unrelated raylib-backend-
@@ -219,50 +215,29 @@ rather than something requiring an engine change.
    actually checks `AddCollider`'s own return value (previously silently
    discarded), so an out-of-range `nLayerId` (>= `MAX_COLLIDER_LAYERS`,
    255) correctly fails `AddSprite` instead of "succeeding" with a sprite
-   whose collider never registered - confirmed safe against every one of
-   Caravellius's real layer ids (1-6). `GIT_TAG` bumped, full rebuild +
-   live smoke test both clean.
+   whose collider never registered - confirmed safe against a real
+   consumer's own layer ids. `GIT_TAG` bumped, full rebuild + live smoke
+   test both clean.
 2. ~~Extend Scarab's own `EngineHost` state machine...~~ **Not needed -
    see the correction above.** `EngineHost` already runs it's per-frame
    loop with no map ever loaded; nothing here needs to change.
-3. Caravellius's own `cover.tmx` workaround does not need to be ripped
-   out as a prerequisite — once a real mapless primitive exists, it can
-   be swapped over as a routine follow-up whenever convenient, not as a
-   blocking step of this work itself. **Still not done - the primitive
-   now exists, but Caravellius hasn't been asked to switch over to it.**
 
-### Status: engine-side primitive DONE (2026-08-22); Caravellius adoption not started
+### Status: DONE (2026-08-22)
 
 The actual capability this item wanted - a sprite existing and drawing
 with zero tile map ever loaded - now exists at the engine level, verified
-safe, and shipped in a real sunlight release. What's NOT done: nothing in
-Caravellius has been changed to actually use it yet (`cover.tmx` still
-backs the cover screen, unchanged, per step 3 above - intentionally, not
-an oversight). Swapping the cover screen (or building a fresh mapless-
-native demo) over to this is a separate, not-yet-requested follow-up.
+safe, and shipped in a real sunlight release. Whether any particular game
+built on Scarab has adopted it yet is that game's own concern to track,
+not this engine-level TODO's - see it's own `CLAUDE.md` for that side of
+the story, moved there once Scarab split into it's own repo.
 
 ---
 
 ## 2. A standalone, camera/map-independent `Image` primitive
 
-**Status:** not started - explicitly deferred (2026-08-26) until after
-the Scarab/Caravellius split. Unlike item 1 above, the user did NOT
-override the "wait for the split" sequencing for this one - it stays
-seeded here, untouched, until that split actually happens.
-
-### Motivation
-
-Came up while building Caravellius's Phase 10.1 (storyboard/narrative-
-panel presentation, `caravellius/src/core/
-storyboard.lua`): every storyboard "square" is drawn as an ordinary
-sprite (camera/viewport/zoom-coupled, needs a real map + a
-`LAYER_STORYBOARD`-carrying layer to attach to), which works but carries
-real couplings a screen-space splash/panel image shouldn't need at all -
-requiring `camera_set_position(0, 0)` workarounds on any zero-scroll map
-that hosts one (`cover.tmx`'s own header comment), and requiring the art
-itself be authored at the engine's fixed pre-zoom native resolution
-(`≈1260/zoom x 920/zoom`) rather than it's own natural size, or it
-renders zoomed a second time on top of the camera's own zoom factor.
+**Status:** not started, now unblocked - the Scarab/Caravellius split
+this item was waiting on has actually happened (this repo is the
+result), so this is now a live, actionable item like item 1 above.
 
 ### The idea, as discussed (not yet designed in detail)
 
@@ -276,14 +251,12 @@ future `Image` class should be built: a standalone primitive (mirroring
 `draw_filled_rectangle` already are, with zero camera/zoom/map coupling
 at all.
 
-This is a Scarab (and possibly sunlight) item, not a Caravellius one -
-the actual engine-level primitive would live in one or both of those
-repos, whichever ends up owning `IEngine`'s own texture-draw surface
-once the split happens and Scarab has it's own independent planning.
-Caravellius's own storyboard code stays exactly as it is today (sprite-
-based, working, live-tested) unless/until a future decision explicitly
-asks it to switch over - same "don't rip out a working workaround
-preemptively" spirit as item 1's own step 3.
+This is a Scarab (and possibly sunlight) item - the actual engine-level
+primitive would live in one or both of those repos, whichever ends up
+owning `IEngine`'s own texture-draw surface. The concrete motivation
+that first raised this (a real game's own storyboard/panel rendering
+needing exactly this) is preserved in that game's own repo, not here -
+see it's own `CLAUDE.md` for the full story.
 
 ### Recommended first steps, whenever this is picked up
 
@@ -295,7 +268,8 @@ preemptively" spirit as item 1's own step 3.
    `LuaTextApi`'s own file split) - likely BOTH, the same layering every
    other Lua-callable primitive here already follows (a sunlight-side
    engine capability, exposed to Lua via a thin Scarab-side wrapper).
-3. Once it exists, storyboard.lua's own square-rendering could optionally
-   switch from sprite-based to Image-based, removing the `camera_set_
-   position(0, 0)`/native-pre-zoom-resolution couplings entirely - purely
-   optional, not a prerequisite for anything currently planned.
+3. Once it exists, any consuming game's own screen-space panel/splash
+   rendering (built on an ordinary sprite today, for lack of a better
+   primitive) could optionally switch over to Image-based drawing instead
+   - purely optional, a consumer's own call to make, not a prerequisite
+   for anything in this repo.
