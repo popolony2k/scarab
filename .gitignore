@@ -44,3 +44,7 @@ CMakeSettings.json
 # docs/vscode/.vscode (see docs/vscode/README.md); copy from there instead
 # of editing here directly, so intentional changes don't get lost.
 /.vscode/
+
+# Generated Doxygen output (doxygen.yml regenerates it on every push/PR to
+# main and deploys it to GitHub Pages - not meant to be committed).
+docs/doxygen/

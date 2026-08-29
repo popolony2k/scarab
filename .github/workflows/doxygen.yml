@@ -34,7 +34,7 @@ jobs:
         if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: doc/doxygen/html
+          path: docs/doxygen/html
 
   deploy:
     if: github.event_name == 'push'
