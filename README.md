@@ -2,6 +2,8 @@
 
 A thin, game-agnostic C++17 host for 2D games scripted entirely in Lua, run from a script, project file, or single bundled `.zip` archive. Scarab owns the window/render loop, resource loading, and the Lua-callable primitive API; the game itself — every enemy, the player, config/stage bootstrap, everything — lives entirely in Lua, with no C++ game logic anywhere in this repo.
 
+Licensed under the [zlib License](LICENSE), the same license `sunlight` (the engine Scarab is built on) uses.
+
 ## Repository layout
 
 ```
@@ -81,3 +83,7 @@ Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, th
 ## Lua API reference
 
 Every Lua-callable primitive the engine exposes to game scripts — camera, input, tile map, sound, sprites, collision, JSON loading, script sequencing, timers, and the callbacks the engine calls back into Lua — is documented in [docs/lua-api/](docs/lua-api/README.md), one page per category with runnable examples. This is the engine's own generic API surface — it documents nothing about any specific game's own Lua modules, since none live in this repo.
+
+## License
+
+Scarab is licensed under the [zlib License](LICENSE) — permissive, no attribution required at runtime, alterations must be marked as such. Every `.cpp`/`.h` file under `src/` carries the license notice at its top (see [docs/HEADER.txt](docs/HEADER.txt) for the exact text new files should start with).

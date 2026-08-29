@@ -1,6 +1,6 @@
 #
 # CMake file for building Scarab, a thin, game-agnostic 2D engine host.
-# Copyright (c) since 2021 by PopolonY2k
+# Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
 #
 
 cmake_minimum_required(VERSION 3.24)
