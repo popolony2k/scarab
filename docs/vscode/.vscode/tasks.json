@@ -42,31 +42,7 @@
 				"kind": "build",
 				"isDefault": false
 			},
-			"detail": "Builds scarab and copies it's runtime resources (caravellius Lua scripts/configs/sprites/audio) into build/ - wired as every debug launch config's preLaunchTask, so Run/Debug can never launch against stale copied resources the way a plain 'run the existing binary' launch could."
-		},
-		{
-			"type": "shell",
-			"label": "cmake build (caravellius_archive)",
-			"command": "cmake",
-			"args": [
-				"--build",
-				"${workspaceFolder}/build",
-				"--target",
-				"caravellius_archive"
-			],
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"problemMatcher": [
-				"$gcc"
-			],
-			"group": {
-				"kind": "build",
-				"isDefault": false
-			},
-			"dependsOn": ["cmake build (scarab)"],
-			"dependsOrder": "sequence",
-			"detail": "Builds scarab (via 'cmake build (scarab)' first) AND packages Caravellius's resources into build/caravellius/caravellius.zip (Phase 12, archive-distribution) - caravellius_archive isn't part of the default ALL build, so it needs this dedicated task. Wired as every '... Launch Archive' debug config's own preLaunchTask, so those always debug against a freshly rebuilt archive, never a stale one."
+			"detail": "Builds scarab and copies it's own runtime dependency binaries (raylib/tmx/libxml2/sunlight) into build/ next to the executable - wired as every debug launch config's preLaunchTask, so Run/Debug can never launch against a stale build the way a plain 'run the existing binary' launch could."
 		}
 	]
 }
