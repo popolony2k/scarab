@@ -1,6 +1,6 @@
-# game-engine
+# Scarab
 
-A C++17 monorepo containing the **sunlight** 2D tile-map game engine and the games built on top of it. Today the only game is **Caravellius**, a vertical-scrolling space shooter.
+A thin, game-agnostic C++17 host for 2D games scripted entirely in Lua, run from a script, project file, or single bundled `.zip` archive. Scarab owns the window/render loop, resource loading, and the Lua-callable primitive API; the game itself — every enemy, the player, config/stage bootstrap, everything — lives entirely in Lua, with no C++ game logic anywhere in this repo.
 
 ## Repository layout
 
