@@ -54,6 +54,7 @@ C++ is a thin, game-agnostic engine layer; all game logic lives in whatever game
 - Struct-of-data types are prefixed `st`. Enums are UPPER_SNAKE with a type-prefixed member name (`SPRITE_MODE_CIRCULAR`) and end with a `_LAST` (and sometimes `_UNLISTED`) sentinel — keep sentinels last when extending, and watch for a sentinel that doubles as a real, meaningful value before assuming an id-assignment loop's own bound should be exclusive.
 - Doxygen-style `/** @brief ... */` comments precede non-trivial methods; this repo does use them (unlike the terser default) — follow the existing pattern when touching documented methods, but don't add commentary the surrounding code doesn't already have.
 - No magic numbers, project-wide — every numeric/string literal that means something gets a named constant, with a comment where the value itself needs explaining (derivation, tuning history, pointers back to an original name where relevant).
+- **Whenever a new Lua-callable primitive is added to `src/lua/`, or an existing one's signature/behavior changes, update the matching `docs/lua-api/*.md` page in the same change** — these are hand-written, example-driven references (one page per primitive category, matching `src/lua/`'s own file split), not generated from source, and nothing keeps them in sync automatically. A new primitive with no matching doc entry is an incomplete change, not merely an undocumented one.
 
 ## Known gotchas
 
