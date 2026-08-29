@@ -34,7 +34,7 @@ sp_move_sprites_to_screen(STATE_MOVE_CYLINDER_SHIP_TO_SCREEN_LEFT_SIDE)  -- only
 
 ## `sp_move_sprites_to_screen(stateId)`
 
-Queue a wave-spawn command. `stateId` is an opaque integer — Caravellius defines its own meaningful names for these in `src/wavestates.lua` (`STATE_MOVE_SATELLITES_TO_SCREEN_RANDOM`, etc.); the engine itself doesn't know or care what any specific id means; it's forwarded verbatim to the game's own `on_move_sprites_to_screen(stateId)` hook (see [callbacks.md](callbacks.md)).
+Queue a wave-spawn command. `stateId` is an opaque integer — Caravellius defines its own meaningful names for these in `caravellius/src/wavestates.lua` (`STATE_MOVE_SATELLITES_TO_SCREEN_RANDOM`, etc.); the engine itself doesn't know or care what any specific id means; it's forwarded verbatim to the game's own `on_move_sprites_to_screen(stateId)` hook (see [callbacks.md](callbacks.md)).
 
 ```lua
 sp_move_sprites_to_screen(STATE_MOVE_SATELLITES_TO_SCREEN_RANDOM)
@@ -55,7 +55,7 @@ sp_goto_label(1)  -- repeats the wave forever
 
 ## `sp_load_stage(stageId)`
 
-Queue a stage load. `stageId` is opaque to the engine the same way wave-spawn ids are — Caravellius defines `STAGE_FIRST`/`STAGE_LAST` in `src/stageids.lua`. When the queue reaches this command, the engine calls the game's `on_load_stage(stageId)` hook (see [callbacks.md](callbacks.md)), which is expected to load a map and `dofile` a stage script. There is no built-in stage concept beyond this — the engine only ferries the id through.
+Queue a stage load. `stageId` is opaque to the engine the same way wave-spawn ids are — Caravellius defines `STAGE_FIRST`/`STAGE_LAST` in `caravellius/src/stageids.lua`. When the queue reaches this command, the engine calls the game's `on_load_stage(stageId)` hook (see [callbacks.md](callbacks.md)), which is expected to load a map and `dofile` a stage script. There is no built-in stage concept beyond this — the engine only ferries the id through.
 
 ```lua
 sp_load_stage(STAGE_FIRST)
