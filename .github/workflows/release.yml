@@ -102,6 +102,33 @@ jobs:
           Copy-Item build/Release/scarab.exe scarab-${{ github.ref_name }}-${{ matrix.platform }}/
           Copy-Item build/Release/*.dll scarab-${{ github.ref_name }}-${{ matrix.platform }}/ -ErrorAction SilentlyContinue
 
+      # Confirms the staged files actually run once relocated OUTSIDE the
+      # build tree - not a redundant re-check of "Build" above, which never
+      # leaves the build tree at all. A real bug this caught live
+      # (2026-08-29): scarab's own executable/shared libs looked fine right
+      # after Build, but failed with "Library not loaded: @rpath/..." the
+      # moment the released archive was extracted anywhere else - CMake's
+      # default rpath bakes in the build tree's own absolute paths, which
+      # don't exist outside the machine that built it. Fixed via
+      # BUILD_WITH_INSTALL_RPATH/@loader_path+$ORIGIN in the root
+      # CMakeLists.txt; this step exists so a regression there (or an
+      # equivalent problem on Linux/Windows this session couldn't test
+      # locally) fails CI loudly instead of shipping silently broken again.
+      - name: Smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cp -r scarab-${{ github.ref_name }}-${{ matrix.platform }} /tmp/scarab-smoketest
+          cd /tmp/scarab-smoketest
+          ./scarab --help
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse "scarab-${{ github.ref_name }}-${{ matrix.platform }}" "$env:TEMP\scarab-smoketest"
+          & "$env:TEMP\scarab-smoketest\scarab.exe" --help
+          if ($LASTEXITCODE -ne 0) { throw "scarab.exe --help exited with code $LASTEXITCODE" }
+
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
         run: tar -czf scarab-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz scarab-${{ github.ref_name }}-${{ matrix.platform }}

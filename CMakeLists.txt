@@ -175,12 +175,71 @@ endif()
 
 target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES})
 
+#
+# scarab_copy_binaries (below) flattens scarab + every one of its own runtime
+# dependency dylibs/shared objects into one directory. CMake's own default
+# rpath handling is correct for running straight out of the build tree (each
+# binary's baked-in rpath points at its dependencies' real absolute build
+# locations) but that default does NOT survive relocation - and since Scarab
+# has no install() step (see the commented-out stub near the end of this
+# file), the build output *is* what release.yml packages verbatim. Confirmed
+# live (2026-08-29): a released macOS archive's scarab executable failed to
+# even start once extracted anywhere else - `dyld: Library not loaded:
+# @rpath/libsunlight.dylib`, `otool -l` showing its LC_RPATH entries were the
+# CI runner's own absolute /Users/runner/work/... build paths. sunlight and
+# tmx (both FetchContent'd, not something this file defines) turned out to
+# have the identical problem for the same reason - their own build-time
+# rpath entries point at THEIR OWN dependencies' build locations (sunlight ->
+# raylib/tmx/libxml2; tmx -> libxml2). raylib/libxml2 needed no fix - neither
+# has any rpath entry pointing at another FetchContent'd target's build dir.
+#
+# The fix: force every affected target's rpath to @loader_path (macOS) /
+# $ORIGIN (Linux) - "look for my dependencies in my own directory" - which is
+# exactly where scarab_copy_binaries puts them. BUILD_WITH_INSTALL_RPATH is
+# what makes this apply directly to the BUILD output (there being no real
+# install() step for it to apply to instead). Windows needs no equivalent -
+# DLL search order defaults to "next to the .exe" with no baked-in-path
+# mechanism to fix.
+#
+if(APPLE)
+  set_target_properties(scarab sunlight tmx PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "@loader_path")
+elseif(UNIX)
+  set_target_properties(scarab sunlight tmx PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "$ORIGIN")
+endif()
+
+#
+# On Unix, raylib/tmx/LibXml2 (unlike sunlight, which sets no VERSION/
+# SOVERSION) each build as a *real* versioned shared object plus one or more
+# symlinks - e.g. raylib: libraylib.5.5.0.dylib (real file) <-
+# libraylib.550.dylib (SOVERSION symlink, matching the dylib's own embedded
+# install name/ID - what every OTHER binary's @rpath reference actually
+# looks for) <- libraylib.dylib (unversioned symlink). $<TARGET_FILE:X> only
+# ever resolves to the real, fully-versioned file - copying just that one
+# leaves the SOVERSION-symlink name missing from the flattened output
+# directory, which the @loader_path rpath fix above then can't find (a real,
+# previously-masked bug: the old broken absolute-path rpath happened to
+# search the *original* build directory instead, where the symlinks still
+# existed alongside it - see this file's own rpath comment above for the
+# full story). $<TARGET_SONAME_FILE:X> is the generator expression CMake
+# provides specifically for this - resolves to the symlink name the target's
+# own SOVERSION/embedded ID actually uses, uniformly across ELF's SONAME and
+# Mach-O's install name. Harmless no-op duplicate for sunlight (no
+# versioning set, so its SONAME file and TARGET_FILE are identical).
+#
 add_custom_target(scarab_copy_binaries
 COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:LibXml2> $<TARGET_FILE_DIR:scarab>
+COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:LibXml2> $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:raylib> $<TARGET_FILE_DIR:scarab>
+COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:raylib> $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:tmx> $<TARGET_FILE_DIR:scarab>
+COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:tmx> $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sunlight> $<TARGET_FILE_DIR:scarab>
+COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:sunlight> $<TARGET_FILE_DIR:scarab>
 COMMENT "Copying Scarab's own runtime dependency binaries" VERBATIM)
 
 if(WIN32 AND DEFINED Iconv_LIBRARY)
