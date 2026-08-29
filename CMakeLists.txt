@@ -1,5 +1,5 @@
 #
-# CMake file for building Scarab (the engine) and the games built on it.
+# CMake file for building Scarab, a thin, game-agnostic 2D engine host.
 # Copyright (c) since 2021 by PopolonY2k
 #
 
@@ -255,12 +255,6 @@ if(WIN32)
 endif()
 
 add_dependencies(scarab scarab_copy_binaries)
-
-###################################################################
-# Setup games built on Scarab
-###################################################################
-
-add_subdirectory( caravellius )
 
 # Installation
 # INSTALL(
