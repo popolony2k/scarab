@@ -230,17 +230,31 @@ endif()
 # Mach-O's install name. Harmless no-op duplicate for sunlight (no
 # versioning set, so its SONAME file and TARGET_FILE are identical).
 #
+# $<TARGET_SONAME_FILE:X> is a HARD CMake configure-time error on Windows
+# ("TARGET_SONAME_FILE is not allowed for DLL target platforms") - confirmed
+# live, broke Windows configure entirely the first time this was added.
+# Windows DLLs have no SONAME/versioned-symlink concept at all, so these
+# extra copies are Unix-only (if(NOT WIN32)), added as separate POST_BUILD
+# commands on the already-defined target rather than folded into its main
+# COMMAND list, matching this file's own existing pattern for the
+# Windows-only Iconv/zlib DLL copies further below.
+#
 add_custom_target(scarab_copy_binaries
 COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:LibXml2> $<TARGET_FILE_DIR:scarab>
-COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:LibXml2> $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:raylib> $<TARGET_FILE_DIR:scarab>
-COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:raylib> $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:tmx> $<TARGET_FILE_DIR:scarab>
-COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:tmx> $<TARGET_FILE_DIR:scarab>
 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sunlight> $<TARGET_FILE_DIR:scarab>
-COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:sunlight> $<TARGET_FILE_DIR:scarab>
 COMMENT "Copying Scarab's own runtime dependency binaries" VERBATIM)
+
+if(NOT WIN32)
+  add_custom_command(TARGET scarab_copy_binaries POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:LibXml2> $<TARGET_FILE_DIR:scarab>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:raylib> $<TARGET_FILE_DIR:scarab>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:tmx> $<TARGET_FILE_DIR:scarab>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:sunlight> $<TARGET_FILE_DIR:scarab>
+    COMMENT "Copying SOVERSION-symlink names (needed by @loader_path/$ORIGIN rpath resolution)" VERBATIM)
+endif()
 
 if(WIN32 AND DEFINED Iconv_LIBRARY)
   # libxml2 (Iconv) and tmx (zlib) both link these vcpkg-provided libraries
