@@ -19,8 +19,9 @@ what actually shipped.
 
 ## 1. Mapless rendering support (fonts/images/sprites without a loaded Tiled map)
 
-**Status:** investigated, not started. Found 2026-08-21 while building
-Caravellius's Phase 10 cover/presentation screen.
+**Status: DONE (2026-08-22)** — see this item's own "Status: DONE" note
+near the end of this section for what actually shipped. Found 2026-08-21
+while building Caravellius's Phase 10 cover/presentation screen.
 
 ### Motivation
 
