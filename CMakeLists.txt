@@ -11,9 +11,9 @@ cmake_minimum_required(VERSION 3.24)
 # main.cpp) read it from here, so bumping a sunlight dependency never means
 # updating the tag in two places that could drift out of sync.
 #
-set(SCARAB_SUNLIGHT_VERSION "0.17.1")
+set(SCARAB_SUNLIGHT_VERSION "0.17.2")
 
-project(scarab VERSION 0.1.3)
+project(scarab VERSION 0.1.4)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
