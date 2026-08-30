@@ -61,7 +61,7 @@ The repo root's `.vscode` folder is **gitignored** — it's local, per-developer
 
 ## Running
 
-The built `scarab` executable **requires** a command-line argument naming the entry point — a `.json` project file, a `.lua` script directly, or a single bundled `.zip` archive — and refuses to start (printing a usage message, no window opened) without one. Argument parsing is CLI11, so `--help` is always available:
+The built `scarab` executable **requires** a command-line argument naming the entry point — a `.json` project file, a `.lua` script directly, or a single bundled `.zip` archive — and refuses to start (printing a usage message, no window opened) without one. Argument parsing is CLI11, so `--help` is always available, and so is `--version`/`-v` (prints both Scarab's own version and the exact pinned sunlight version, e.g. `scarab v0.1.2 (sunlight v0.17.1)`):
 
 ```shell
 cd build

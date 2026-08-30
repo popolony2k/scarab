@@ -60,6 +60,13 @@ int main( int argc, char **argv ) {
      */
     CLI :: App  app{ "Scarab - a thin, game-agnostic 2D engine host built on sunlight" };
 
+    // SCARAB_VERSION/SCARAB_SUNLIGHT_VERSION are compiler-defined string
+    // literals (target_compile_definitions, root CMakeLists.txt) - adjacent
+    // string literal concatenation joins them into one literal at compile
+    // time, so this always reflects the exact sunlight tag actually fetched,
+    // not a hand-copied value that could drift out of sync.
+    app.set_version_flag( "--version,-v", "scarab v" SCARAB_VERSION " (sunlight v" SCARAB_SUNLIGHT_VERSION ")" );
+
     std :: string  strEntryPath;
     std :: string  strEntryOverride;
 

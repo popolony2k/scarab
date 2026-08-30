@@ -5,7 +5,15 @@
 
 cmake_minimum_required(VERSION 3.24)
 
-project(pog-games-distribution)
+#
+# SCARAB_SUNLIGHT_VERSION is the one place the pinned sunlight release lives -
+# both the FetchContent GIT_TAG below and the --version/-v CLI output (see
+# main.cpp) read it from here, so bumping a sunlight dependency never means
+# updating the tag in two places that could drift out of sync.
+#
+set(SCARAB_SUNLIGHT_VERSION "0.17.1")
+
+project(scarab VERSION 0.1.3)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
@@ -20,7 +28,7 @@ option(SCARAB_USE_OFFICIAL_LUA_FTP "Build Scarab with LUA provided by official F
 ####################################################################
 FetchContent_Declare(sunlight
                      GIT_REPOSITORY https://github.com/popolony2k/sunlight.git
-                     GIT_TAG v0.17.1)
+                     GIT_TAG v${SCARAB_SUNLIGHT_VERSION})
 FetchContent_MakeAvailable(sunlight)
 
 ####################################################################
@@ -174,6 +182,16 @@ if(SCARAB_USE_OFFICIAL_LUA_FTP)
 endif()
 
 target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES})
+
+#
+# Feeds --version/-v (main.cpp) - PROJECT_VERSION comes from this file's own
+# project(scarab VERSION ...) above; SCARAB_SUNLIGHT_VERSION is the same
+# variable the sunlight FetchContent_Declare's GIT_TAG already reads, so the
+# printed sunlight version always matches what was actually fetched.
+#
+target_compile_definitions(scarab PRIVATE
+  SCARAB_VERSION="${PROJECT_VERSION}"
+  SCARAB_SUNLIGHT_VERSION="${SCARAB_SUNLIGHT_VERSION}")
 
 #
 # scarab_copy_binaries (below) flattens scarab + every one of its own runtime
