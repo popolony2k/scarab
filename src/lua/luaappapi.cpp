@@ -1,6 +1,6 @@
 /*
  * Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
- * 
+ *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
  * arising from the use of this software.
@@ -37,6 +37,18 @@ namespace Scarab  {
              * is created with a generic default title (APP_NAME, "Scarab")
              * before any Lua exists, and the game's own main.lua is expected
              * to call this with its real name once it starts running.
+             *
+             * @luaname{app_set_name(name)}
+             * @luadoc
+             * Set the application window's title. Scarab (the engine) has no
+             * opinion on what a game calls itself — the window opens with a
+             * generic default title (`"Scarab"`, `main.h`'s `APP_NAME`)
+             * before any Lua exists to override it, since the window has to
+             * exist before `main.lua`'s first line runs. Call this once,
+             * early, with the game's real name:
+             * @luaexample
+             * -- main.lua
+             * app_set_name( "Caravellius" )
              */
             int LuaAppApi :: SetAppName( lua_State *pLuaState )  {
 
@@ -51,6 +63,27 @@ namespace Scarab  {
              * @brief Set a whole-screen fade overlay, drawn on top of every
              * other rendered element - used for stage-start/stage-end (and
              * game-over) transitions, not any single sprite/texture effect.
+             *
+             * @luaname{screen_fade(alpha)}
+             * @luadoc
+             * Set a whole-screen fade overlay, drawn on top of every other
+             * rendered element (tilemap, sprites, everything) — not a
+             * per-texture effect. `alpha` ranges from `0.0` (fully visible,
+             * no overlay) to `1.0` (fully black). Intended for
+             * stage-start/stage-end and game-over transitions: ramp it over
+             * several frames from `on_update` to fade in/out rather than
+             * jumping straight to an endpoint.
+             * @luaexample
+             * -- fade in from black over ~1 second at 60fps
+             * local __FADE_STEP = 1 / 60
+             * local fade_alpha = 1.0
+             *
+             * function on_update( dt )
+             *     if fade_alpha > 0 then
+             *         fade_alpha = math.max( 0, fade_alpha - __FADE_STEP )
+             *         screen_fade( fade_alpha )
+             *     end
+             * end
              */
             int LuaAppApi :: ScreenFade( lua_State *pLuaState )  {
 
@@ -88,6 +121,44 @@ namespace Scarab  {
              * IEngine::SetFullscreen's own doc comment) - call
              * app_set_fullscreen(false) first, then re-enter fullscreen
              * with the new strategy.
+             *
+             * @luaname{app_set_fullscreen(fullscreen, strategy)}
+             * @luagroup{fullscreen}
+             * @luadoc
+             * Enter/leave fullscreen, or query the current state. The game
+             * always renders at it's own fixed internal resolution
+             * regardless of the actual window/monitor size — the engine
+             * handles scaling and letterboxing (black bars, preserving
+             * aspect ratio) to fit whatever the real window size ends up
+             * being, whether that's from this toggle or the player manually
+             * resizing the window. Nothing else needs to account for it.
+             *
+             * `strategy` (optional, sunlight `v0.14.0`+) picks which of two
+             * fullscreen strategies to enter with:
+             *
+             * - `FULLSCREEN_STRATEGY_REAL` (the default when `strategy` is
+             *   omitted) — a genuine OS-level fullscreen space. On macOS
+             *   this is the strategy that actually gets the Dock/menu bar
+             *   to hide automatically; a real bug found live in Caravellius
+             *   (the Dock drawing on top of the game window) is what
+             *   prompted sunlight to switch its own default to this.
+             * - `FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED` — the older
+             *   behavior (an ordinary window resized to the monitor's
+             *   native resolution, no real fullscreen space entered) — kept
+             *   available as a fallback for any platform/window manager
+             *   where a true video-mode switch misbehaves.
+             *
+             * Switching strategy while already fullscreen in the *other*
+             * one is unsupported — call `app_set_fullscreen(false)` first,
+             * then re-enter fullscreen with the new strategy.
+             * @luaexample
+             * -- toggle fullscreen on a key press (edge-triggered, not held) - defaults to real fullscreen
+             * if input_is_key_released( KEY_F5 ) then
+             *     app_set_fullscreen( not app_get_fullscreen() )
+             * end
+             *
+             * -- explicitly ask for the older borderless-windowed behavior instead
+             * app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
              */
             int LuaAppApi :: SetFullscreen( lua_State *pLuaState )  {
 
@@ -103,6 +174,9 @@ namespace Scarab  {
             /**
              * @brief Query whether the window is currently fullscreen (see
              * @link SetFullscreen).
+             *
+             * @luaname{app_get_fullscreen()}
+             * @luagroup{fullscreen}
              */
             int LuaAppApi :: GetFullscreen( lua_State *pLuaState )  {
 
@@ -119,6 +193,20 @@ namespace Scarab  {
              * measured FPS (see @link GetDrawFps/app_get_draw_fps for the
              * on-screen counter, which shows the latter). Safe to call at
              * any time - a live change takes effect immediately.
+             *
+             * @luaname{app_set_target_fps(fps)}
+             * @luagroup{target_fps}
+             * @luadoc
+             * Set (or query) the renderer's own target frame rate — the cap
+             * the game loop paces itself against, not the current
+             * *measured* FPS (see `app_get_draw_fps`'s own on-screen
+             * counter, right below, for that). Scarab's own default is
+             * `main.h`'s `FRAMES_PER_SECOND` (`60` today), applied once at
+             * boot; this primitive is a genuine live change, taking effect
+             * immediately, in either direction:
+             * @luaexample
+             * -- halve the target frame rate at runtime
+             * app_set_target_fps( app_get_target_fps() / 2 )
              */
             int LuaAppApi :: SetTargetFps( lua_State *pLuaState )  {
 
@@ -132,6 +220,9 @@ namespace Scarab  {
             /**
              * @brief Query the currently configured target FPS (see
              * @link SetTargetFps) - NOT the current measured FPS.
+             *
+             * @luaname{app_get_target_fps()}
+             * @luagroup{target_fps}
              */
             int LuaAppApi :: GetTargetFps( lua_State *pLuaState )  {
 
@@ -144,6 +235,18 @@ namespace Scarab  {
 
             /**
              * @brief Show or hide the on-screen FPS counter.
+             *
+             * @luaname{app_set_draw_fps(draw_fps)}
+             * @luagroup{draw_fps}
+             * @luadoc
+             * Show or hide the on-screen FPS counter (raylib's own, drawn
+             * at the top-left corner of the window every frame), or query
+             * the current state. Scarab's own default (`main.cpp`) is
+             * `false` — a generic engine-level choice, not a game one.
+             * Caravellius overrides it to `true`, early in `main.lua`:
+             * @luaexample
+             * -- main.lua
+             * app_set_draw_fps( true )
              */
             int LuaAppApi :: SetDrawFps( lua_State *pLuaState )  {
 
@@ -157,6 +260,9 @@ namespace Scarab  {
             /**
              * @brief Query whether the FPS counter is currently being drawn
              * (see @link SetDrawFps).
+             *
+             * @luaname{app_get_draw_fps()}
+             * @luagroup{draw_fps}
              */
             int LuaAppApi :: GetDrawFps( lua_State *pLuaState )  {
 
@@ -173,6 +279,22 @@ namespace Scarab  {
              * before the window is created and, unlike the old pre-Start()
              * -only mechanism, while it's already running too (a genuine
              * live toggle, in either direction).
+             *
+             * @luaname{app_set_window_resizeable(resizeable)}
+             * @luagroup{window_resizeable}
+             * @luadoc
+             * Allow or disallow the user resizing the window by dragging
+             * its edges/corners, or query the current state. A genuine
+             * **live** toggle — safe to call both before the window exists
+             * and at any point after, in either direction (unlike raylib's
+             * own pre-`InitWindow`-only `FLAG_WINDOW_RESIZABLE` config
+             * flag). Scarab's own default (`main.cpp`) is `true`;
+             * Caravellius overrides it to `false` (the game renders at a
+             * fixed internal resolution with letterboxing, so a resizeable
+             * window offers no benefit):
+             * @luaexample
+             * -- main.lua
+             * app_set_window_resizeable( false )
              */
             int LuaAppApi :: SetWindowResizeable( lua_State *pLuaState )  {
 
@@ -186,6 +308,9 @@ namespace Scarab  {
             /**
              * @brief Query whether the window is currently resizeable (see
              * @link SetWindowResizeable).
+             *
+             * @luaname{app_get_window_resizeable()}
+             * @luagroup{window_resizeable}
              */
             int LuaAppApi :: GetWindowResizeable( lua_State *pLuaState )  {
 
@@ -201,6 +326,29 @@ namespace Scarab  {
              * target is blitted onto the real window/screen when their
              * sizes differ - see IDrawSurface::SetStretchToFill's own doc
              * comment for the full behavior (letterbox vs. stretch-fill).
+             *
+             * @luaname{app_set_stretch_to_fill(stretchToFill)}
+             * @luagroup{stretch_to_fill}
+             * @luadoc
+             * Choose how the engine's fixed internal render resolution
+             * (`DISPLAY_W`x`DISPLAY_H`, `1260x920` today — what
+             * `screen_get_width`/`screen_get_height` report, unrelated to
+             * the real window size) gets blitted onto the real
+             * window/screen whenever the two sizes differ (fullscreen, or
+             * a live-resized window). Recomputed every frame, so it applies
+             * immediately regardless of when it's called.
+             *
+             * - `false` (the engine's own default, both Scarab's and
+             *   Caravellius's) — **letterbox**: preserves the render
+             *   target's own aspect ratio via one uniform scale factor,
+             *   filling whichever axis doesn't fit exactly with black bars.
+             * - `true` — **stretch-to-fill**: fills the entire
+             *   window/screen with no black bars at all, using independent
+             *   X/Y scale factors — the image visibly warps
+             *   (stretches/squishes) whenever the window's own aspect
+             *   ratio doesn't match the render target's `1260:920`.
+             * @luaexample
+             * app_set_stretch_to_fill( true )   -- fill the window completely, no letterboxing
              */
             int LuaAppApi :: SetStretchToFill( lua_State *pLuaState )  {
 
@@ -214,6 +362,9 @@ namespace Scarab  {
             /**
              * @brief Query whether the render target is currently being
              * stretched to fill (see @link SetStretchToFill).
+             *
+             * @luaname{app_get_stretch_to_fill()}
+             * @luagroup{stretch_to_fill}
              */
             int LuaAppApi :: GetStretchToFill( lua_State *pLuaState )  {
 
@@ -232,6 +383,27 @@ namespace Scarab  {
              * space coordinate system as draw_text/screen_get_width -
              * independent of the live window size/fullscreen/stretch-to-
              * fill state, same as every other screen-space draw call.
+             *
+             * @luaname{draw_filled_rectangle(x, y, width, height, r, g, b, a)}
+             * @luadoc
+             * Draw a filled, solid-color rectangle in screen space — same
+             * coordinate system as `draw_text`/`screen_get_width` (the
+             * fixed `1260x920` design resolution, independent of the live
+             * window size, fullscreen state, or `app_set_stretch_to_fill`),
+             * not a world-space/camera-relative one. Meant for simple HUD
+             * elements — a progress/health bar, a meter — that don't
+             * warrant a whole sprite/texture asset. A thin pass-through to
+             * `ITileMap::DrawFilledRectangle`, itself a thin pass-through
+             * to `IEngine::DrawFilledRectangle` — the same underlying call
+             * the whole-screen `screen_fade` overlay already uses
+             * internally, just exposed here as it's own
+             * arbitrary-position/size/color primitive rather than that
+             * fixed, full-window, single-alpha-value overlay.
+             * @luaexample
+             * -- a simple health bar: a dark background plate, then a colored fill
+             * -- proportional to some fraction (0.0-1.0)
+             * draw_filled_rectangle( x, y, width, height, 40, 40, 40, 255 )
+             * draw_filled_rectangle( x, y, math.floor( width * fraction ), height, 220, 40, 40, 255 )
              */
             int LuaAppApi :: DrawFilledRectangle( lua_State *pLuaState )  {
 
@@ -259,6 +431,36 @@ namespace Scarab  {
              * cross-platform C++ project in this ecosystem (raylib,
              * sunlight's own CMakeLists.txt) already relies on - no new
              * platform-detection mechanism invented here.
+             *
+             * @luaname{app_get_platform()}
+             * @luadoc
+             * Query which host platform Scarab was compiled for —
+             * `PLATFORM_WINDOWS`, `PLATFORM_MACOS`, `PLATFORM_LINUX`, or
+             * `PLATFORM_UNKNOWN` (compiled for something other than those
+             * three). A pure compile-time fact
+             * (`_WIN32`/`__APPLE__`/`__linux__` preprocessor macros), not a
+             * runtime probe — the result never changes for the lifetime of
+             * a given built executable, and there's no dependency on
+             * `IEngine`/raylib/GLFW or any other engine-owned state.
+             *
+             * Useful for any platform-conditional Lua behavior a game
+             * needs — for example, picking which `app_set_fullscreen`
+             * strategy to default to per platform. `FULLSCREEN_STRATEGY_REAL`
+             * causes a measured performance regression on Linux. Windows
+             * isn't affected by that specific issue, but
+             * `FULLSCREEN_STRATEGY_REAL` is kept macOS-only project-wide
+             * rather than per-platform — Linux and Windows both use
+             * `FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED` here by deliberate
+             * choice, not because Windows itself has a problem with
+             * `FULLSCREEN_STRATEGY_REAL`:
+             * @luaexample
+             * local platform = app_get_platform()
+             *
+             * if platform == PLATFORM_MACOS then
+             *     app_set_fullscreen( true, FULLSCREEN_STRATEGY_REAL )
+             * else
+             *     app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
+             * end
              */
             int LuaAppApi :: GetPlatform( lua_State *pLuaState )  {
 

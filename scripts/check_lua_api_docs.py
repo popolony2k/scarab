@@ -30,54 +30,18 @@ in the primitive's mapped docs/lua-api/*.md file - see CLAUDE.md's own
 "Whenever a new Lua-callable primitive is added..." rule, which this makes
 mechanically enforced instead of relying on whoever wrote the change
 remembering it by hand.
+
+(Phase 2/3 is migrating docs/lua-api/*.md's own content into tagged source
+comments, generated rather than hand-written - see
+scripts/generate_lua_api_docs.py. Until every category file has migrated,
+this script keeps checking the not-yet-migrated ones the same way it always
+has; a migrated file's hand-written doc entries still satisfy this check
+just fine, since the generator's own output is what ends up there.)
 """
 
-import re
 import sys
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SRC_LUA_DIR = REPO_ROOT / "src" / "lua"
-DOCS_DIR = REPO_ROOT / "docs" / "lua-api"
-
-# Explicit source-file -> doc-file mapping. Deliberately NOT auto-derived
-# from filenames (e.g. by stripping "lua"/"api.cpp") - two real exceptions
-# exist today: luafilesystemapi.cpp's one primitive (dofile) is folded into
-# scripting.md rather than getting its own filesystem.md, and
-# luatimerapi.cpp maps to the plural timers.md, not timer.md. A naming-
-# convention guess would silently mis-map either of those. Add new files
-# here explicitly when a new src/lua/*api.cpp file is added - a KeyError
-# below (surfaced as a "missing mapping" finding) is the intended failure
-# mode for "nobody updated this table yet", not a silent skip.
-SOURCE_TO_DOC = {
-    "luaappapi.cpp":        "app.md",
-    "luacameraapi.cpp":     "camera.md",
-    "luacollisionapi.cpp":  "collision.md",
-    "luafilesystemapi.cpp": "scripting.md",
-    "luainputapi.cpp":      "input.md",
-    "luajsonapi.cpp":       "json.md",
-    "luascriptingapi.cpp":  "scripting.md",
-    "luasoundapi.cpp":      "sound.md",
-    "luaspriteapi.cpp":     "sprite.md",
-    "luatextapi.cpp":       "text.md",
-    "luatilemapapi.cpp":    "tilemap.md",
-    "luatimerapi.cpp":      "timers.md",
-}
-
-# Matches this codebase's consistent, single-line lua_register() call shape,
-# e.g. `lua_register( pLuaState, "app_get_platform", LuaAppApi :: GetPlatform );`
-REGISTER_RE = re.compile(r'lua_register\(\s*pLuaState\s*,\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,')
-
-
-def find_registrations():
-    """Yields (name, source_path, line_no) for every lua_register() call
-    under src/lua/*api.cpp, in deterministic (sorted-by-filename) order."""
-
-    for src_file in sorted(SRC_LUA_DIR.glob("*api.cpp")):
-        for line_no, line in enumerate(src_file.read_text().splitlines(), start=1):
-            match = REGISTER_RE.search(line)
-            if match:
-                yield match.group(1), src_file, line_no
+from _lua_api_shared import DOCS_DIR, REPO_ROOT, find_registrations
 
 
 def is_documented(name, doc_text):
@@ -91,23 +55,26 @@ def is_documented(name, doc_text):
     to tolerate every heading convention already in real use across these
     12 files rather than assuming one single style."""
 
+    import re
     return re.search(r'\b' + re.escape(name) + r'\s*\(', doc_text) is not None
 
 
 def main():
+    from _lua_api_shared import SOURCE_TO_DOC
+
     missing = []
     doc_text_by_file = {}
     total_checked = 0
 
-    for name, src_file, line_no in find_registrations():
+    for name, _class_name, _method_name, src_file, line_no in find_registrations():
         total_checked += 1
         doc_filename = SOURCE_TO_DOC.get(src_file.name)
 
         if doc_filename is None:
             missing.append(
                 f"{src_file.relative_to(REPO_ROOT)}:{line_no}: '{name}' is "
-                f"registered, but {src_file.name} has no entry in this "
-                f"script's SOURCE_TO_DOC mapping - add one."
+                f"registered, but {src_file.name} has no entry in "
+                f"_lua_api_shared.py's SOURCE_TO_DOC mapping - add one."
             )
             continue
 

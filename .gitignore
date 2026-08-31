@@ -48,3 +48,6 @@ CMakeSettings.json
 # Generated Doxygen output (doxygen.yml regenerates it on every push/PR to
 # main and deploys it to GitHub Pages - not meant to be committed).
 docs/doxygen/
+
+__pycache__/
+*.pyc

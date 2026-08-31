@@ -34,6 +34,12 @@ namespace Scarab  {
              * @brief Application-level Lua primitives - concerns that belong
              * to the running app/game itself, not to any one engine
              * subsystem (camera, sound, sprites, ...).
+             *
+             * @luacategory{App}
+             * @luadoc
+             * Application-level primitives — concerns that belong to the
+             * running app/game itself, not to any one engine subsystem
+             * (camera, sound, sprites, ...).
              */
             class LuaAppApi  {
 
