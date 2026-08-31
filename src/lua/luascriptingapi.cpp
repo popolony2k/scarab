@@ -82,7 +82,7 @@ namespace Scarab  {
              * until the engine reports the screen is clear of active
              * enemies (`EngineHost::CheckSpritesQueueEmpty`, driven by
              * the game's own `get_active_enemy_count()` — see
-             * callbacks.md). The classic "don't spawn wave 2 until wave
+             * [callbacks.md](callbacks.md)). The classic "don't spawn wave 2 until wave
              * 1 is dead" gate.
              * @luaexample
              * sp_move_sprites_to_screen(STATE_MOVE_SATELLITES_TO_SCREEN_RANDOM)
@@ -111,7 +111,7 @@ namespace Scarab  {
              * engine itself doesn't know or care what any specific id
              * means; it's forwarded verbatim to the game's own
              * `on_move_sprites_to_screen(stateId)` hook (see
-             * callbacks.md).
+             * [callbacks.md](callbacks.md)).
              * @luaexample
              * sp_move_sprites_to_screen(STATE_MOVE_SATELLITES_TO_SCREEN_RANDOM)
              */
@@ -181,7 +181,7 @@ namespace Scarab  {
              * `STAGE_FIRST`/`STAGE_LAST` in
              * `caravellius/src/stageids.lua`. When the queue reaches
              * this command, the engine calls the game's
-             * `on_load_stage(stageId)` hook (see callbacks.md), which is
+             * `on_load_stage(stageId)` hook (see [callbacks.md](callbacks.md)), which is
              * expected to load a map and `dofile` a stage script. There
              * is no built-in stage concept beyond this — the engine only
              * ferries the id through.

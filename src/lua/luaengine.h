@@ -72,7 +72,7 @@ namespace Scarab  {
          * on this page, but since they're registered via an explicit
          * function call rather than just defining a magic global name,
          * they're documented alongside the rest of the collision API in
-         * collision.md.
+         * [collision.md](collision.md).
          */
         class LuaEngine  {
 

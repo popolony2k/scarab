@@ -210,13 +210,9 @@ namespace Scarab  {
              * auto-repeated, which is what you want for a one-off sound
              * effect (a shot, an explosion) rather than music.
              *
-             * | | Queued (participates in the `sp_*` command queue,
-             * becomes the looping BGM) | Direct, looping (immediate,
-             * still becomes the looping BGM) | Direct, one-shot
-             * (immediate, never looped) |
+             * | | Queued (participates in the `sp_*` command queue, becomes the looping BGM) | Direct, looping (immediate, still becomes the looping BGM) | Direct, one-shot (immediate, never looped) |
              * | --- | --- | --- | --- |
-             * | Play | `sp_play_song(id)` | `play_song_looping(id)` |
-             * `play_song(id)` |
+             * | Play | `sp_play_song(id)` | `play_song_looping(id)` | `play_song(id)` |
              * | Pause | `sp_pause_song(id)` | — | `pause_song(id)` |
              * | Stop | `sp_stop_song(id)` | — | `stop_song(id)` |
              * | Resume | `sp_resume_song(id)` | — | `resume_song(id)` |

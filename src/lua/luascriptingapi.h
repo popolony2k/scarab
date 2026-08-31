@@ -56,7 +56,7 @@ namespace Scarab  {
              * ## Song commands via the queue
              *
              * `sp_play_song`/`sp_pause_song`/`sp_stop_song`/
-             * `sp_resume_song` are documented in sound.md alongside
+             * `sp_resume_song` are documented in [sound.md](sound.md) alongside
              * their non-queued (`play_song`/`pause_song`/...)
              * counterparts, since the two forms only differ in *when*
              * they take effect (queued vs. immediate), not in what they

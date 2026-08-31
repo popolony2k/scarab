@@ -512,7 +512,7 @@ namespace Scarab  {
              * @luaheading{Layers}
              * @luadoc
              * Adding a sprite to a layer is also what registers it for
-             * collision detection on that layer (see collision.md) — a
+             * collision detection on that layer (see [collision.md](collision.md)) — a
              * sprite never added to any layer never collides with
              * anything, regardless of `collision_add_rule`.
              * @luaexample

@@ -155,7 +155,7 @@ namespace Scarab  {
              * the engine always letterbox-scales this fixed resolution to
              * fit whatever the real window size ends up being (whether
              * from `app_set_fullscreen` or the player manually resizing
-             * the window, see app.md). HUD layout should always measure
+             * the window, see [app.md](app.md)). HUD layout should always measure
              * against these, not against anything that varies with the
              * actual window.
              */

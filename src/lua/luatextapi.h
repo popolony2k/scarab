@@ -46,7 +46,7 @@ namespace Scarab  {
              * draw, when, positioning, score/lives formatting) lives in
              * game-side Lua on top of these; this API knows nothing about
              * what the text being drawn actually means. Kept as its own
-             * page/file (not folded into app.md) since text/font is its
+             * page/file (not folded into [app.md](app.md)) since text/font is its
              * own subsystem, not a generic app-level concern.
              */
             class LuaTextApi  {

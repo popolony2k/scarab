@@ -133,7 +133,7 @@ namespace Scarab  {
      * @luaname{on_move_sprites_to_screen(stateId) -> handled}
      * @luadoc
      * Called when the `ScriptProcessor` queue reaches an
-     * `sp_move_sprites_to_screen(stateId)` command (see scripting.md).
+     * `sp_move_sprites_to_screen(stateId)` command (see [scripting.md](scripting.md)).
      * Return `true` if you handled this `stateId` (spawned something);
      * returning `false`/nothing tells the engine this particular
      * wave-spawn id wasn't recognized.
@@ -242,7 +242,7 @@ namespace Scarab  {
      * @luaname{get_active_enemy_count() -> count}
      * @luadoc
      * Called periodically by the engine to resolve
-     * `sp_wait_queue_empty()` (see scripting.md) — the queue only
+     * `sp_wait_queue_empty()` (see [scripting.md](scripting.md)) — the queue only
      * unblocks once this returns `0`. If you never define this global
      * at all, the engine treats it as always reporting `0` active
      * enemies, so `sp_wait_queue_empty()` unblocks immediately rather

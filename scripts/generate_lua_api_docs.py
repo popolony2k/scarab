@@ -438,6 +438,71 @@ def render_page(category, src_files, primitives):
     return "\n".join(lines).rstrip("\n") + "\n"
 
 
+# Bare "name.md" links (docs/lua-api/*.md's own convention throughout,
+# e.g. "see scripting.md" or "[tilemap.md](tilemap.md)") need to become
+# "name.html" once these pages are actually published as HTML siblings of
+# each other, not Markdown files on GitHub. Deliberately narrow - only
+# rewrites a target ending in exactly ".md" (never touches ".md" appearing
+# mid-word, a URL fragment, or a non-doc-page link) since every one of
+# these pages' own cross-references is always a bare same-directory
+# filename with no path segments.
+MD_LINK_TARGET_RE = re.compile(r'(\]\()([A-Za-z0-9_-]+)\.md(\))')
+
+PAGE_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title} — Scarab Lua API</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {{ color-scheme: light dark; }}
+  body {{
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 20px 64px;
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }}
+  nav.crumbs {{ font-size: 14px; margin-bottom: 24px; }}
+  nav.crumbs a {{ text-decoration: none; }}
+  h1 {{ font-size: 1.8em; margin-bottom: 0.2em; }}
+  h2 {{ margin-top: 2em; border-bottom: 1px solid light-dark(#ddd, #444); padding-bottom: 0.3em; }}
+  code, pre {{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }}
+  code {{ background: light-dark(#f2f2f2, #2a2a2a); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }}
+  pre {{ background: light-dark(#f2f2f2, #2a2a2a); padding: 12px 14px; border-radius: 6px; overflow-x: auto; }}
+  pre code {{ background: none; padding: 0; }}
+  table {{ border-collapse: collapse; margin: 1em 0; }}
+  th, td {{ border: 1px solid light-dark(#ddd, #444); padding: 6px 10px; text-align: left; }}
+  a {{ color: light-dark(#0969da, #58a6ff); }}
+</style>
+</head>
+<body>
+<nav class="crumbs"><a href="../index.html">Scarab C++ reference</a> &middot; <a href="index.html">Lua API</a></nav>
+{body}
+</body>
+</html>
+"""
+
+
+def render_page_html(category, src_files, primitives):
+    """Same content as render_page(), converted to a standalone HTML page.
+    Reuses render_page()'s own Markdown output rather than a second,
+    parallel renderer - runs it through the `markdown` package (tables +
+    fenced_code extensions, since sound.md's comparison table and every
+    page's ```lua examples both need to survive the conversion), then
+    rewrites bare "name.md" cross-reference links to "name.html" (these
+    pages' own convention throughout) since the published siblings are
+    HTML, not Markdown. Lazy-imports `markdown` so plain Markdown-mode
+    generation (the default) never requires the dependency at all."""
+
+    import markdown as markdown_lib
+
+    md_text = render_page(category, src_files, primitives)
+    md_text = MD_LINK_TARGET_RE.sub(r'\1\2.html\3', md_text)
+    body_html = markdown_lib.markdown(md_text, extensions=["tables", "fenced_code"])
+
+    return PAGE_HTML_TEMPLATE.format(title=category["title"], body=body_html)
+
+
 def doc_file_to_sources(requested_source_names):
     """Groups SOURCE_TO_DOC by doc filename, restricted to doc files that
     have at least one of `requested_source_names` as a contributor.
@@ -470,6 +535,14 @@ def main():
                          help="Write generated pages here instead of printing to "
                               "stdout (one file per category, named like the "
                               "mapped docs/lua-api/*.md file).")
+    parser.add_argument("--format", choices=["markdown", "html"], default="markdown",
+                         help="Output format. 'markdown' (default) matches "
+                              "docs/lua-api/*.md's own shape exactly, for local "
+                              "fidelity-checking against the hand-written pages. "
+                              "'html' is what actually gets published (see the "
+                              "doxygen.yml merge) - requires the `markdown` "
+                              "package (pip install markdown), only imported "
+                              "when this mode is actually used.")
     args = parser.parse_args()
 
     requested = set(args.source) if args.source else set(SOURCE_TO_DOC)
@@ -520,15 +593,20 @@ def main():
         ordered = sorted(all_primitives, key=lambda item: item[0] != primary_file)
         primitives = [p for _f, _c, prims in ordered for p in prims]
 
-        page = render_page(category, src_files, primitives)
+        if args.format == "html":
+            page = render_page_html(category, src_files, primitives)
+            out_name = Path(doc_filename).with_suffix(".html").name
+        else:
+            page = render_page(category, src_files, primitives)
+            out_name = doc_filename
 
         if args.out_dir:
             args.out_dir.mkdir(parents=True, exist_ok=True)
-            out_path = args.out_dir / doc_filename
+            out_path = args.out_dir / out_name
             out_path.write_text(page)
             print(f"wrote {out_path}")
         else:
-            print(f"--- {doc_filename} (from {', '.join(source_names)}) ---\n")
+            print(f"--- {out_name} (from {', '.join(source_names)}) ---\n")
             print(page)
 
     return 0

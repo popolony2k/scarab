@@ -37,7 +37,7 @@ namespace Scarab  {
              * @luadoc
              * All input functions poll current state once per call —
              * there's no event/callback model for input (unlike
-             * collisions, which do have a callback — see collision.md).
+             * collisions, which do have a callback — see [collision.md](collision.md)).
              * Call these from your own per-frame update function.
              * @luaoutro
              * ## Constants
