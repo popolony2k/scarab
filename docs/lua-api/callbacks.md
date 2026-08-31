@@ -8,7 +8,7 @@ Define these as plain global functions (not table members) — the engine looks 
 
 Called once per frame, after the engine's own per-frame bookkeeping (script queue processing, sprite pool update). This is the main per-frame hook — virtually all real-time game logic (movement, input polling, timers you're tracking by hand) lives here.
 
-Caravellius never defines a single monolithic `on_update` — instead `caravellius/src/enemies/common.lua` defines the *only* real `on_update`, which just fans out to every module that registered itself via `Enemies.register_update(fn)`. If you're adding a new per-frame system, register with that dispatcher rather than defining a second `on_update` (which would silently replace, not stack with, the first).
+Only one `on_update` global can exist — the engine calls exactly that one function per frame. If your project needs several independent per-frame systems, building a small fan-out (a table of registered callbacks, each invoked from your own single `on_update`) is a common pattern, but it's entirely your own code to write — the engine has no opinion on it.
 
 ```lua
 function on_update(dt)
