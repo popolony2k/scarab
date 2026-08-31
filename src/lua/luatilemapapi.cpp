@@ -1,6 +1,6 @@
 /*
  * Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
- * 
+ *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
  * arising from the use of this software.
@@ -33,6 +33,24 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
+            /**
+             * @luaname{tilemap_load_map(path, alignment) -> success}
+             * @luadoc
+             * Load a `.tmx` map file, replacing any currently loaded map.
+             * `alignment` (optional, defaults to `MAP_ALIGNMENT_CENTER`)
+             * controls how the map is positioned relative to the
+             * viewport when it's smaller than the screen.
+             *
+             * Alignment constants: `MAP_ALIGNMENT_CENTER`,
+             * `MAP_ALIGNMENT_TOP_LEFT`, `MAP_ALIGNMENT_TOP_RIGHT`,
+             * `MAP_ALIGNMENT_BOTTOM_LEFT`, `MAP_ALIGNMENT_BOTTOM_RIGHT`,
+             * `MAP_ALIGNMENT_CENTER_WIDTH_TOP`,
+             * `MAP_ALIGNMENT_CENTER_WIDTH_BOTTOM`,
+             * `MAP_ALIGNMENT_CENTER_HEIGHT_LEFT`,
+             * `MAP_ALIGNMENT_CENTER_HEIGHT_RIGHT`.
+             * @luaexample
+             * tilemap_load_map(BASE_PATH .. "tilemap/corsair/corsair.tmx", MAP_ALIGNMENT_CENTER_WIDTH_BOTTOM)
+             */
             int LuaTilemapApi :: LoadMap( lua_State *pLuaState )  {
 
                 const char  *szPath      = lua_tostring( pLuaState, 1 );
@@ -44,6 +62,11 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{tilemap_unload_map() -> success}
+             * @luadoc
+             * Unload the current map.
+             */
             int LuaTilemapApi :: UnloadMap( lua_State *pLuaState )  {
 
                 bool  bResult = LuaEngineUtil :: GetTileMap( pLuaState ) -> UnloadMap();
@@ -53,6 +76,16 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{tilemap_get_map_info() -> mapWidth, mapHeight, tileWidth, tileHeight}
+             * @luadoc
+             * Dimensions of the currently loaded map, in tiles
+             * (`mapWidth`/`mapHeight`) and pixels-per-tile
+             * (`tileWidth`/`tileHeight`). Returns `nil` if no map is
+             * loaded.
+             * @luaexample
+             * local mapW, mapH, tileW, tileH = tilemap_get_map_info()
+             */
             int LuaTilemapApi :: GetMapInfo( lua_State *pLuaState )  {
 
                 stMapInfo  mapInfo;
@@ -72,6 +105,18 @@ namespace Scarab  {
                 return 4;
             }
 
+            /**
+             * @luaname{tilemap_get_layer(layerId) -> visible, opacity, offsetX, offsetY}
+             * @luagroup{get_layer}
+             * @luadoc
+             * Every sprite lives on a numbered (or named) Tiled layer —
+             * layer ids are whatever you assigned them to in the Tiled
+             * editor, not something the engine invents (Caravellius
+             * keeps its own names for them in
+             * `caravellius/src/layerids.lua`).
+             * @luaexample
+             * local visible, opacity, offX, offY = tilemap_get_layer(2)
+             */
             int LuaTilemapApi :: GetLayer( lua_State *pLuaState )  {
 
                 int      nLayerId = ( int ) lua_tointeger( pLuaState, 1 );
@@ -92,6 +137,10 @@ namespace Scarab  {
                 return 4;
             }
 
+            /**
+             * @luaname{tilemap_get_layer_by_name(layerName) -> visible, opacity, offsetX, offsetY}
+             * @luagroup{get_layer}
+             */
             int LuaTilemapApi :: GetLayerByName( lua_State *pLuaState )  {
 
                 const char  *szLayerName = lua_tostring( pLuaState, 1 );
@@ -112,6 +161,13 @@ namespace Scarab  {
                 return 4;
             }
 
+            /**
+             * @luaname{tilemap_set_layer(layerId, visible, opacity, offsetX, offsetY) -> success}
+             * @luagroup{set_layer}
+             * @luaexample
+             * -- fade a layer out
+             * tilemap_set_layer(2, true, 128, 0, 0)
+             */
             int LuaTilemapApi :: SetLayer( lua_State *pLuaState )  {
 
                 ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
@@ -138,6 +194,10 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{tilemap_set_layer_by_name(layerName, visible, opacity, offsetX, offsetY) -> success}
+             * @luagroup{set_layer}
+             */
             int LuaTilemapApi :: SetLayerByName( lua_State *pLuaState )  {
 
                 ITileMap    *pTileMap    = LuaEngineUtil :: GetTileMap( pLuaState );
@@ -160,6 +220,17 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{tilemap_get_tile(row, col, layerId) -> gid, x, y, width, height}
+             * @luadoc
+             * Look up a single tile by its row/column position on a given
+             * layer. `gid` is the tile's Tiled global id (`0`
+             * conventionally means "no tile here" in Tiled, same as the
+             * raw `.tmx` format). Returns `nil` if the layer or tile
+             * position doesn't exist.
+             * @luaexample
+             * local gid, x, y, w, h = tilemap_get_tile(0, 0, 1)
+             */
             int LuaTilemapApi :: GetTile( lua_State *pLuaState )  {
 
                 ITileMap          *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
@@ -194,6 +265,16 @@ namespace Scarab  {
                 return 5;
             }
 
+            /**
+             * @luaname{tilemap_to_tile_matrix(worldX, worldY) -> row, col}
+             * @luadoc
+             * Convert a world/screen pixel coordinate to a tile
+             * row/column — the inverse of the position math you'd
+             * otherwise do by hand against `tilemap_get_map_info`'s tile
+             * size. Returns `nil` if the coordinate is outside the map.
+             * @luaexample
+             * local row, col = tilemap_to_tile_matrix(100, 250)
+             */
             int LuaTilemapApi :: ToTileMatrix( lua_State *pLuaState )  {
 
                 stCoordinate2D  coord;
@@ -216,6 +297,21 @@ namespace Scarab  {
                 return 2;
             }
 
+            /**
+             * @luaname{tilemap_get_object_by_name(name) -> x, y, width, height}
+             * @luadoc
+             * Look up a level-design-authored object — a Tiled
+             * `<object>` placed inside any `<objectgroup>` layer, e.g. a
+             * trigger/marker — by name, as set in the map editor.
+             * Searches every object-group layer in the loaded map.
+             * Returns `nil` if no object with that name exists.
+             * @luaexample
+             * local x, y, w, h = tilemap_get_object_by_name("SubBossIntervalStart")
+             *
+             * if x ~= nil then
+             *   camera_set_position(x, y)
+             * end
+             */
             int LuaTilemapApi :: GetObjectByName( lua_State *pLuaState )  {
 
                 const char  *szObjectName = lua_tostring( pLuaState, 1 );

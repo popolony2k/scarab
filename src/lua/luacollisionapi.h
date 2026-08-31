@@ -32,6 +32,20 @@ namespace Scarab  {
         namespace Lua  {
             /**
              * @brief Collision rule/handler registration Lua primitives.
+             *
+             * @luacategory{Collision}
+             * @luadoc
+             * Also implemented in `src/lua/luacollisionlistener.cpp` (the
+             * sole collision listener, decoding the packed handles a
+             * collision callback receives - no Lua-callable primitives of
+             * its own). Collision detection in this engine is entirely
+             * **layer-based**: you declare which pairs of Tiled layers
+             * should be checked against each other (`collision_add_rule`),
+             * and register one global handler function that's called
+             * whenever any two colliding sprites belong to a ruled-together
+             * pair. There's no per-sprite "on hit" registration — dispatch
+             * to the right game logic based on the two handles is entirely
+             * up to your handler.
              */
             class LuaCollisionApi  {
 

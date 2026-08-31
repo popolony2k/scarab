@@ -1,6 +1,6 @@
 /*
  * Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
- * 
+ *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
  * arising from the use of this software.
@@ -37,6 +37,13 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
+            /**
+             * @luaname{pool_register_type(typeTag, capacity) -> success}
+             * @luadoc
+             * Reserve `capacity` slots for sprites acquired with this
+             * `typeTag` string. Must be called once before the first
+             * `sprite_acquire` for that tag.
+             */
             int LuaSpriteApi :: RegisterType( lua_State *pLuaState )  {
 
                 const char  *szTypeTag = lua_tostring( pLuaState, 1 );
@@ -48,6 +55,13 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{sprite_acquire(typeTag) -> handle}
+             * @luadoc
+             * Get a free handle from the pool registered for `typeTag`.
+             * Returns `0` if the pool is exhausted (every slot currently
+             * in use).
+             */
             int LuaSpriteApi :: Acquire( lua_State *pLuaState )  {
 
                 const char    *szTypeTag = lua_tostring( pLuaState, 1 );
@@ -58,6 +72,14 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{sprite_release(handle) -> success}
+             * @luadoc
+             * Return a handle to its pool, making the slot available for
+             * a future `sprite_acquire`. **Call
+             * `sprite_remove_from_layer` first** if the sprite was ever
+             * added to a layer (see the gotcha above).
+             */
             int LuaSpriteApi :: Release( lua_State *pLuaState )  {
 
                 SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
@@ -71,6 +93,32 @@ namespace Scarab  {
             /**
              * @brief Load a texture sequence's file and configure it's tiling/
              * animation, mirroring the old WorldBase::LoadSprite per-texture body.
+             *
+             * @luaname{sprite_configure_texture(handle, sequenceId, path, framesByTexture, activeTileIndex, animationMode, delayMilli?) -> success}
+             * @luadoc
+             * Load a texture file and configure it as animation
+             * `sequenceId` on `handle`. `path` points at a texture sheet
+             * containing `framesByTexture` equal-width frames laid out
+             * horizontally; `activeTileIndex` is which frame to start on.
+             * `delayMilli` (optional, defaults to `-1`) controls
+             * automatic switching to a *different* texture later added to
+             * this same sequence — pass `-1` to disable that switching
+             * entirely, which is what every sprite in Caravellius does
+             * today (each sequence holds exactly one texture). It's
+             * unrelated to the per-frame tile animation within that one
+             * texture, which `animationMode` controls.
+             *
+             * Animation mode constants:
+             *
+             * | Constant | Behavior |
+             * |---|---|
+             * | `TEXTURE_ANIMATION_MODE_MANUAL` | No automatic frame advance — you control the active tile yourself |
+             * | `TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR` | Cycles through frames automatically, wrapping around |
+             * | `TEXTURE_ANIMATION_MODE_AUTOMATIC_RIGHT_LEFT` | Cycles automatically, bouncing back and forth |
+             * | `TEXTURE_ANIMATION_MODE_ANIMATE_LEFT` / `_RIGHT` / `_CENTER` | Runtime-switchable directional animation — the player ship uses these to bank left/right/center in response to input (see `sprite_set_animation_mode` below) |
+             * @luaexample
+             * -- a 5-frame strip, starting on frame 2, auto-animating
+             * sprite_configure_texture(handle, 0, path, 5, 2, TEXTURE_ANIMATION_MODE_ANIMATE_CENTER, 100)
              */
             int LuaSpriteApi :: ConfigureTexture( lua_State *pLuaState )  {
 
@@ -147,6 +195,63 @@ namespace Scarab  {
              * size - a step callers had to remember to do separately in the old
              * C++ path (and the old path never had to worry about a recycled,
              * reconfigured texture's size becoming unreliable to re-read).
+             *
+             * @luaname{sprite_set_active_sequence(handle, sequenceId) -> success}
+             * @luadoc
+             * Switch which configured sequence is currently
+             * displayed/collided against (also syncs the sprite's
+             * bounding box to that sequence's size — important since a
+             * "main" and an "explosion" sequence are often different
+             * sizes).
+             *
+             * **Gotcha: this unconditionally resets the target
+             * sequence's own animation state**, even if it's already the
+             * active sequence — confirmed via sunlight's own source
+             * (`Sprite::SetActiveTextureSequence`,
+             * `src/sprite/sprite.cpp`) unconditionally calling `Reset()`
+             * on the newly-selected sequence's `TextureCanvas`, which
+             * snaps it back to it's own starting tile every time.
+             * Calling this every frame regardless of whether the
+             * sequence actually changed (found live building
+             * Options/satellites' pose-sync, 2026-08-19 — see
+             * `caravellius/src/core/options.lua`'s own header comment)
+             * silently freezes any
+             * `AUTOMATIC_CIRCULAR`/`AUTOMATIC_RIGHT_LEFT` animation on
+             * that sequence at it's first frame forever, since the reset
+             * undoes each frame's own advance before it's ever drawn.
+             * Always track the last sequence you actually set and only
+             * call this again when it genuinely changes:
+             *
+             * ```lua
+             * if sat.lastLeanIndex ~= leanIndex then
+             *   sprite_set_active_sequence(sat.handle, leanIndex)
+             *   sat.lastLeanIndex = leanIndex
+             * end
+             * ```
+             *
+             * **Pattern: pose-following without a new engine
+             * primitive.** Nothing exposes a sequence's own *currently
+             * animating tile* back to Lua (`sprite_get_active_sequence`
+             * returns which *sequence* is active, not the current *tile*
+             * within it) — so a sprite that needs to track another
+             * sprite's real-time animated pose (e.g. Options' satellites
+             * echoing the player ship's own left/center/right lean)
+             * can't just read that pose back from C++. The working
+             * pattern, built for exactly this case: give the follower
+             * one texture sequence per pose the leader can be in
+             * (`sprite_configure_texture` called once per pose, sequence
+             * id == pose index), then have Lua *independently recompute*
+             * which pose the leader is currently in (mirroring whatever
+             * discrete input/state drives the leader's own animation,
+             * ticked at the leader's own real `animation_delay`) and
+             * drive the follower's `sprite_set_active_sequence` from
+             * that — see `player.lua`'s
+             * `update_lean_index`/`Player.get_lean_index()` and
+             * `options.lua`'s pose-sync loop for a full worked example.
+             * Cheaper and simpler than adding a C++ read-back primitive
+             * for a purely cosmetic need.
+             * @luaexample
+             * sprite_set_active_sequence(handle, 1)  -- switch to the explosion sequence
              */
             int LuaSpriteApi :: SetActiveSequence( lua_State *pLuaState )  {
 
@@ -181,6 +286,17 @@ namespace Scarab  {
              * that switch between ANIMATE_LEFT/RIGHT/CENTER at runtime in
              * response to input, unlike enemies which set their mode once at
              * ConfigureTexture time and never touch it again.
+             *
+             * @luaname{sprite_set_animation_mode(handle, sequenceId, mode) -> success}
+             * @luadoc
+             * Change a sequence's animation mode *after* it's already
+             * configured — for sprites that switch modes at runtime
+             * (e.g. the player ship banking left/right based on input).
+             * Enemies that only ever set their mode once typically just
+             * pass the final mode to `sprite_configure_texture` and never
+             * call this.
+             * @luaexample
+             * sprite_set_animation_mode(handle, 0, TEXTURE_ANIMATION_MODE_ANIMATE_LEFT)
              */
             int LuaSpriteApi :: SetAnimationMode( lua_State *pLuaState )  {
 
@@ -203,6 +319,9 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{sprite_get_active_sequence(handle) -> sequenceId}
+             */
             int LuaSpriteApi :: GetActiveSequence( lua_State *pLuaState )  {
 
                 SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
@@ -219,6 +338,14 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{sprite_set_visible(handle, visible)}
+             * @luagroup{visibility}
+             * @luaheading{Visibility}
+             * @luaexample
+             * sprite_set_visible(handle, visible)
+             * sprite_get_visible(handle) -> visible
+             */
             int LuaSpriteApi :: SetVisible( lua_State *pLuaState )  {
 
                 SpriteHandle  handle   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
@@ -231,6 +358,10 @@ namespace Scarab  {
                 return 0;
             }
 
+            /**
+             * @luaname{sprite_get_visible(handle) -> visible}
+             * @luagroup{visibility}
+             */
             int LuaSpriteApi :: GetVisible( lua_State *pLuaState )  {
 
                 SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
@@ -241,6 +372,21 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{sprite_get_pos(handle) -> x, y}
+             * @luagroup{position_size}
+             * @luaheading{Position and size}
+             * @luadoc
+             * Position is **top-left anchored**, not center-anchored —
+             * `x, y` is the sprite's top-left corner, matching both the
+             * render clip rect and the AABB collision math. `pos -
+             * height/2` means "above the sprite's own top edge," not
+             * "above center."
+             * @luaexample
+             * sprite_get_pos(handle) -> x, y
+             * sprite_set_pos(handle, x, y)
+             * sprite_get_size(handle) -> width, height
+             */
             int LuaSpriteApi :: GetPos( lua_State *pLuaState )  {
 
                 SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
@@ -260,6 +406,10 @@ namespace Scarab  {
                 return 2;
             }
 
+            /**
+             * @luaname{sprite_set_pos(handle, x, y)}
+             * @luagroup{position_size}
+             */
             int LuaSpriteApi :: SetPos( lua_State *pLuaState )  {
 
                 SpriteHandle  handle = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
@@ -275,6 +425,10 @@ namespace Scarab  {
                 return 0;
             }
 
+            /**
+             * @luaname{sprite_get_size(handle) -> width, height}
+             * @luagroup{position_size}
+             */
             int LuaSpriteApi :: GetSize( lua_State *pLuaState )  {
 
                 SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
@@ -306,6 +460,30 @@ namespace Scarab  {
              * Collider::SetInset's own doc comment in sunlight) - the
              * sprite's drawn size/position and how other sprites see it are
              * untouched.
+             *
+             * @luaname{sprite_set_collision_inset(handle, leftPct, topPct, rightPct, bottomPct)}
+             * @luaheading{Collision inset}
+             * @luadoc
+             * Shrinks the rectangle used for this sprite's own side of a
+             * collision test, relative to it's full render size — useful
+             * for a non-rectangular sprite (a ship hull tapered at
+             * bow/stern, a round enemy) whose actual art doesn't fill
+             * it's whole bounding box, so the default full-size hitbox
+             * reads as unfair ("that clearly missed"). Every argument is
+             * a fraction (`0.0`-`1.0`) of the sprite's own current
+             * width/height, e.g.
+             * `sprite_set_collision_inset(handle, 0.15, 0.10, 0.15, 0.10)`
+             * shrinks 15% off each side and 10% off top/bottom.
+             * Recomputed from the sprite's current size on every
+             * collision check rather than cached as pixels, so it stays
+             * correct even if the active sequence later changes size.
+             * Defaults to `0` on every side (today's full-size behavior)
+             * until called — only affects this sprite's own side of the
+             * test, not how other sprites collide against each other.
+             * Only shrinks the collision rectangle, never the drawn
+             * sprite or it's tracked position.
+             * @luaexample
+             * sprite_set_collision_inset(handle, leftPct, topPct, rightPct, bottomPct)
              */
             int LuaSpriteApi :: SetCollisionInset( lua_State *pLuaState )  {
 
@@ -328,6 +506,18 @@ namespace Scarab  {
              * parent and stashing the opaque handle on the collider so a future
              * collision callback can decode which sprite collided without
              * exposing raw pointers to Lua.
+             *
+             * @luaname{sprite_add_to_layer(handle, layerId) -> success}
+             * @luagroup{layers}
+             * @luaheading{Layers}
+             * @luadoc
+             * Adding a sprite to a layer is also what registers it for
+             * collision detection on that layer (see collision.md) — a
+             * sprite never added to any layer never collides with
+             * anything, regardless of `collision_add_rule`.
+             * @luaexample
+             * sprite_add_to_layer(handle, layerId) -> success
+             * sprite_remove_from_layer(handle, layerId) -> success
              */
             int LuaSpriteApi :: AddToLayer( lua_State *pLuaState )  {
 
@@ -353,6 +543,10 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{sprite_remove_from_layer(handle, layerId) -> success}
+             * @luagroup{layers}
+             */
             int LuaSpriteApi :: RemoveFromLayer( lua_State *pLuaState )  {
 
                 SpriteHandle  handle   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
- * 
+ *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
  * arising from the use of this software.
@@ -144,6 +144,21 @@ namespace Scarab  {
                 __CONST( CONTROLLER_TOUCH ),
             };
 
+            /**
+             * @luaname{input_is_key_down(key) -> down}
+             * @luagroup{keyboard}
+             * @luaheading{Keyboard}
+             * @luaexample
+             * input_is_key_down(key) -> down       -- true every frame the key is held
+             * input_is_key_up(key) -> up           -- true every frame the key is NOT held
+             * input_is_key_released(key) -> released -- true only on the frame the key transitions from down to up
+             *
+             * function Player.update(dt)
+             *   if input_is_key_down(KEY_LEFT) then
+             *     -- move left
+             *   end
+             * end
+             */
             int LuaInputApi :: IsKeyDown( lua_State *pLuaState )  {
 
                 KeyboardKey  key     = ( KeyboardKey ) lua_tointeger( pLuaState, 1 );
@@ -154,6 +169,10 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{input_is_key_up(key) -> up}
+             * @luagroup{keyboard}
+             */
             int LuaInputApi :: IsKeyUp( lua_State *pLuaState )  {
 
                 KeyboardKey  key     = ( KeyboardKey ) lua_tointeger( pLuaState, 1 );
@@ -164,6 +183,10 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{input_is_key_released(key) -> released}
+             * @luagroup{keyboard}
+             */
             int LuaInputApi :: IsKeyReleased( lua_State *pLuaState )  {
 
                 KeyboardKey  key     = ( KeyboardKey ) lua_tointeger( pLuaState, 1 );
@@ -174,6 +197,36 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{input_is_gamepad_button_down(gamepadId, button) -> down}
+             * @luagroup{gamepad}
+             * @luaheading{Gamepad}
+             * @luadoc
+             * A gamepad must be registered with `input_add_gamepad` once
+             * (typically at startup) before any
+             * `input_is_gamepad_button_*`/`input_get_gamepad_axis` call
+             * for that id will report real state.
+             * @luaexample
+             * input_is_gamepad_button_down(gamepadId, button) -> down
+             * input_is_gamepad_button_up(gamepadId, button) -> up
+             * input_get_gamepad_axis(gamepadId, axis) -> value   -- -1.0 .. 1.0
+             * input_add_gamepad(gamepadId)                        -- register a gamepad id so it's actually polled
+             *
+             * input_add_gamepad(0)
+             *
+             * function Player.update(dt)
+             *   if input_is_gamepad_button_down(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT) then
+             *     -- move left
+             *   end
+             *
+             *   -- analog stick, with a deadzone - raw axis values jitter near 0 even
+             *   -- when the stick is physically centered
+             *   local axisX = input_get_gamepad_axis(0, GAMEPAD_AXIS_LEFT_X)
+             *   if axisX < -0.1 then
+             *     -- move left
+             *   end
+             * end
+             */
             int LuaInputApi :: IsGamepadButtonDown( lua_State *pLuaState )  {
 
                 int            nGamePadId = ( int ) lua_tointeger( pLuaState, 1 );
@@ -185,6 +238,10 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{input_is_gamepad_button_up(gamepadId, button) -> up}
+             * @luagroup{gamepad}
+             */
             int LuaInputApi :: IsGamepadButtonUp( lua_State *pLuaState )  {
 
                 int            nGamePadId = ( int ) lua_tointeger( pLuaState, 1 );
@@ -196,6 +253,10 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{input_get_gamepad_axis(gamepadId, axis) -> value}
+             * @luagroup{gamepad}
+             */
             int LuaInputApi :: GetGamepadAxisMovement( lua_State *pLuaState )  {
 
                 int         nGamePadId = ( int ) lua_tointeger( pLuaState, 1 );
@@ -210,6 +271,9 @@ namespace Scarab  {
             /**
              * @brief Register a gamepad id with the tile map so it's polled for
              * button/axis state - mirrors the old EngineHost::InitializeGamePads.
+             *
+             * @luaname{input_add_gamepad(gamepadId)}
+             * @luagroup{gamepad}
              */
             int LuaInputApi :: AddGamepad( lua_State *pLuaState )  {
 

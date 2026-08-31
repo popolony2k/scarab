@@ -1,6 +1,6 @@
 /*
  * Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
- * 
+ *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
  * arising from the use of this software.
@@ -26,6 +26,24 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
+            /**
+             * @luaname{collision_add_rule(layerA, layerB) -> success}
+             * @luadoc
+             * Declare that sprites on `layerA` should be checked against
+             * sprites on `layerB` every frame. Order doesn't matter for
+             * the check itself, but your handler always receives the two
+             * handles in a fixed order matching how the *engine*
+             * discovered the pair, not necessarily the order you declared
+             * the rule in.
+             *
+             * Declaring `collision_add_rule(x, x)` with both arguments the
+             * same layer causes every collider on that layer to "collide
+             * with itself" every frame (trivially, at distance 0) —
+             * always use two distinct layers.
+             * @luaexample
+             * collision_add_rule(LAYER_PLAYER_SHIP, LAYER_ENEMIES_SHIPS)
+             * collision_add_rule(LAYER_PLAYER_SHIP_BULLETS, LAYER_ENEMIES_SHIPS)
+             */
             int LuaCollisionApi :: AddRule( lua_State *pLuaState )  {
 
                 int   nLayerA  = ( int ) lua_tointeger( pLuaState, 1 );
@@ -37,6 +55,13 @@ namespace Scarab  {
                 return 1;
             }
 
+            /**
+             * @luaname{collision_add_tile_rule(layerId, tileLayerId) -> success}
+             * @luadoc
+             * Declare that sprites on `layerId` should be checked against
+             * the static tiles of `tileLayerId` (e.g. terrain collision,
+             * as opposed to sprite-vs-sprite).
+             */
             int LuaCollisionApi :: AddTileRule( lua_State *pLuaState )  {
 
                 int   nLayerId     = ( int ) lua_tointeger( pLuaState, 1 );
@@ -55,6 +80,34 @@ namespace Scarab  {
              * with two real handles; see LuaCollisionListener::OnCollision's
              * own comment for the defensive (non-Lua-owned-side) check this
              * still guards against.
+             *
+             * @luaname{collision_set_handler(fn)}
+             * @luadoc
+             * Register the single global function called whenever two
+             * sprites on a ruled pair of layers collide:
+             * `fn(handleA, handleB)`.
+             *
+             * Only one handler can be registered at a time — a second
+             * `collision_set_handler` call replaces the first, it doesn't
+             * add a second listener.
+             *
+             * **Immunity gotcha**: if your handler doesn't guard against
+             * re-triggering on a sprite that's already reacting to a
+             * previous hit (already exploding, already blinking
+             * invincible, etc.), two sprites overlapping for several
+             * consecutive frames re-fires the handler every single frame
+             * of that overlap — not just once per "touch." Track and
+             * check hit/invincibility state yourself inside the handler;
+             * the engine has no concept of "already handled this
+             * collision."
+             * @luaexample
+             * collision_set_handler(function(handleA, handleB)
+             *   -- dispatch based on which layer(s) these handles actually belong to -
+             *   -- the engine doesn't tell you that here, your own game bookkeeping does
+             *   if Enemies.owners[handleA] then
+             *     Enemies.owners[handleA].on_hit(handleA)
+             *   end
+             * end)
              */
             int LuaCollisionApi :: SetHandler( lua_State *pLuaState )  {
 
@@ -73,6 +126,18 @@ namespace Scarab  {
             /**
              * @brief Register the Lua function to call whenever a Lua-owned
              * collider hits a tile - fn(handle, gid, x, y, width, height).
+             *
+             * @luaname{collision_set_tile_handler(fn)}
+             * @luadoc
+             * Register the handler for sprite-vs-tile collisions (from
+             * `collision_add_tile_rule`):
+             * `fn(handle, gid, x, y, width, height)` — `gid` is the
+             * tile's Tiled global id, `x`/`y`/`width`/`height` its
+             * world-space position and size.
+             * @luaexample
+             * collision_set_tile_handler(function(handle, gid, x, y, width, height)
+             *   print(("hit tile gid %d at %d,%d"):format(gid, x, y))
+             * end)
              */
             int LuaCollisionApi :: SetTileHandler( lua_State *pLuaState )  {
 

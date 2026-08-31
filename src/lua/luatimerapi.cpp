@@ -63,6 +63,25 @@ namespace Scarab  {
              *
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
+             *
+             * @luaname{set_timer(id, intervalMilli, callback)}
+             * @luadoc
+             * Register a new periodic timer. `id` is any integer you
+             * choose, used later to cancel it via `reset_timer`.
+             * `callback` is a Lua function taking no arguments, called
+             * every `intervalMilli` milliseconds until `reset_timer(id)`
+             * is called.
+             *
+             * Registering a `set_timer` with an `id` that's already
+             * active is a no-op (logs an error) — always `reset_timer`
+             * before re-registering the same id.
+             * @luaexample
+             * local shotsFired = 0
+             *
+             * set_timer(1, 1000, function()
+             *   shotsFired = shotsFired + 1
+             *   print("ticks: " .. shotsFired)
+             * end)
              */
             int LuaTimerApi :: SetTimer( lua_State *pLuaState )  {
 
@@ -144,6 +163,15 @@ namespace Scarab  {
              *
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
+             *
+             * @luaname{reset_timer(id)}
+             * @luadoc
+             * Stop and remove a timer previously registered with
+             * `set_timer`. Safe to call even if you're not sure the timer
+             * is still running — logs an error (not a crash) if `id`
+             * doesn't exist.
+             * @luaexample
+             * reset_timer(1)
              */
             int LuaTimerApi :: ResetTimer( lua_State *pLuaState )  {
                 if( lua_gettop( pLuaState ) == 1 )  {

@@ -35,6 +35,32 @@ namespace Scarab  {
              * only (waits, labels, wave-spawn/stage-load dispatch); song
              * playback commands live in LuaSoundApi instead, even the queued
              * ones, since they're topically about sound, not queue mechanics.
+             *
+             * @luacategory{Scripting — the `ScriptProcessor` command queue}
+             * @luadoc
+             * Also implemented in `SunLight::Scripting::ScriptProcessor`
+             * (sunlight engine).
+             *
+             * Stage scripts don't drive gameplay by calling functions
+             * directly and waiting for them to return — they push
+             * commands onto a queue, and the engine drains that queue
+             * one command at a time, once per frame, from
+             * `EngineHost::RunStageStateHandler`. This is what lets
+             * `sp_wait(2000)` mean "pause the *queue*, not the whole
+             * engine" — sprites keep moving, input keeps being read,
+             * only the next queued command waits.
+             *
+             * Every `sp_*` function in this file just appends to that
+             * queue; none of them block or take effect immediately.
+             * @luaoutro
+             * ## Song commands via the queue
+             *
+             * `sp_play_song`/`sp_pause_song`/`sp_stop_song`/
+             * `sp_resume_song` are documented in sound.md alongside
+             * their non-queued (`play_song`/`pause_song`/...)
+             * counterparts, since the two forms only differ in *when*
+             * they take effect (queued vs. immediate), not in what they
+             * do.
              */
             class LuaScriptingApi  {
 

@@ -66,6 +66,25 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return Number of values the loaded chunk itself returned
              * (required by the Lua C API calling convention);
+             *
+             * @luaname{dofile(filename)}
+             * @luadoc
+             * Scarab overrides Lua's own built-in `dofile` to load and
+             * run the named file through `SunLight::FileSystem` instead
+             * of a raw `fopen()` — otherwise it behaves exactly like the
+             * standard function: loads the file as a Lua chunk and runs
+             * it, returning whatever the chunk itself returns, and
+             * raises a genuine Lua error (not a silent `nil`) if the
+             * file is missing or fails to compile.
+             *
+             * This is what lets `dofile` calls reach into a mounted
+             * `.zip` archive the same way every other resource load in
+             * the engine does — a loose directory or an archived build
+             * both work identically, with no path-construction code
+             * anywhere needing to know the difference.
+             * @luaexample
+             * -- runs identically whether the game is a loose directory or a mounted .zip
+             * dofile( BASE_PATH .. "scripts/stages/1st_stage_corsair.lua" )
              */
             int LuaFileSystemApi :: DoFile( lua_State *pLuaState )  {
 

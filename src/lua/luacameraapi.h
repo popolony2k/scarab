@@ -32,6 +32,12 @@ namespace Scarab  {
         namespace Lua  {
             /**
              * @brief Camera/viewport/zoom Lua primitives, thin wrappers over ITileMap.
+             *
+             * @luacategory{Camera}
+             * @luadoc
+             * All camera functions act on the currently loaded map's
+             * viewport (`tilemap_load_map`) — there's no separate "camera
+             * object" to create or select.
              */
             class LuaCameraApi  {
 

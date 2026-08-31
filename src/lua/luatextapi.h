@@ -37,6 +37,17 @@ namespace Scarab  {
              * when, positioning, score/lives formatting) lives in Lua on
              * top of these; this class knows nothing about what the text
              * being drawn actually means.
+             *
+             * @luacategory{Text}
+             * @luadoc
+             * Font loading and screen-space text rendering — a thin
+             * wrapper over `ITileMap::SetFont`/`DrawText`/`MeasureText`/
+             * `GetWindowWidth`/`GetWindowHeight`. All HUD logic (what to
+             * draw, when, positioning, score/lives formatting) lives in
+             * game-side Lua on top of these; this API knows nothing about
+             * what the text being drawn actually means. Kept as its own
+             * page/file (not folded into app.md) since text/font is its
+             * own subsystem, not a generic app-level concern.
              */
             class LuaTextApi  {
 

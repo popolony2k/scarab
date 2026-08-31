@@ -32,6 +32,59 @@ namespace Scarab  {
         namespace Lua  {
             /**
              * @brief Sprite handle pool + rendering Lua primitives.
+             *
+             * @luacategory{Sprites}
+             * @luadoc
+             * Backed by `Scarab::Engine::SpritePool` — a fixed-capacity
+             * pool of sprite slots, not a dynamically-growing list. Every
+             * sprite in the game (enemies, bullets, the player ship) is
+             * acquired from this same pool.
+             *
+             * ## Handles
+             *
+             * `sprite_acquire` returns an opaque integer **handle**, not
+             * an object. `0` always means "invalid"
+             * (`INVALID_SPRITE_HANDLE`) — check for it after
+             * `sprite_acquire` in case the pool for that type is
+             * exhausted. A handle from a released slot doesn't silently
+             * alias a new sprite that reuses the same slot — every
+             * operation on a stale handle simply fails (returns
+             * `false`/`nil`) instead of touching the wrong sprite, since
+             * each slot's internal generation counter is bumped on
+             * release.
+             *
+             * ## The full lifecycle
+             *
+             * ```lua
+             * -- 1. Register a pool for this sprite type, once, with a fixed capacity
+             * pool_register_type("enemy_satellite", 50)
+             *
+             * -- 2. Acquire a handle
+             * local handle = sprite_acquire("enemy_satellite")
+             * if handle == 0 then
+             *   return  -- pool exhausted
+             * end
+             *
+             * -- 3. Configure at least one texture sequence (sequence 0 is the convention
+             * --    for "main" appearance; sequence 1 is commonly "explosion", but any
+             * --    sequence id is valid - it's just an index you choose)
+             * sprite_configure_texture(handle, 0, BASE_PATH .. "sprites/satellite-ship.png",
+             *                           3, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 150)
+             * sprite_set_active_sequence(handle, 0)
+             *
+             * -- 4. Position it and make it visible on a Tiled layer
+             * sprite_set_pos(handle, 100, 0)
+             * sprite_add_to_layer(handle, LAYER_ENEMIES_SHIPS)
+             *
+             * -- ... later, on death/despawn ...
+             *
+             * -- 5. Remove from the layer BEFORE releasing - the pool has no idea which
+             * --    layer(s) a handle was added to, so skipping this step leaves a
+             * --    dangling collider that keeps firing collision callbacks against a
+             * --    handle that no longer resolves to anything.
+             * sprite_remove_from_layer(handle, LAYER_ENEMIES_SHIPS)
+             * sprite_release(handle)
+             * ```
              */
             class LuaSpriteApi  {
 

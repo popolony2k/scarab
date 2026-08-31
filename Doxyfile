@@ -64,18 +64,20 @@ WARN_FORMAT            = "$file:$line: $text"
 # rendering the Lua-callable name a method is registered under (something
 # this reference otherwise has no way to show at all, since that mapping
 # only exists in a runtime lua_register() call - see doxygen.yml's own
-# workflow comment). @luagroup/@luacategory carry no meaningful text for a
-# C++ reader (they're pure grouping keys for the generator) so they expand
-# to nothing. @luadoc/@luaexample take no argument - the text that follows
-# either one, until the next recognized command, is read as plain
-# Doxygen detailed-description text same as always; only the generator
-# script gives it different treatment.
+# workflow comment). @luagroup/@luacategory/@luaheading carry no meaningful
+# text for a C++ reader (they're pure grouping/heading-override keys for
+# the generator) so they expand to nothing. @luadoc/@luaexample/@luaoutro
+# take no argument - the text that follows any one of them, until the next
+# recognized command, is read as plain Doxygen detailed-description text
+# same as always; only the generator script gives it different treatment.
 #
 ALIASES                += luaname{1}="\par Lua-callable as:^^`\1`"
 ALIASES                += luagroup{1}=
 ALIASES                += luacategory{1}=
+ALIASES                += luaheading{1}=
 ALIASES                += luadoc=
 ALIASES                += luaexample=
+ALIASES                += luaoutro=
 INPUT                  = src README.md
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \

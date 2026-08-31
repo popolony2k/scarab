@@ -34,6 +34,10 @@ namespace Scarab  {
              * @brief Generic, game-agnostic JSON <-> Lua bridge. Converts any JSON
              * document into an equivalent Lua table, with no knowledge of any
              * particular config schema.
+             *
+             * @luacategory{JSON}
+             * @luadoc
+             * Wraps `nlohmann::json`.
              */
             class LuaJsonApi  {
 

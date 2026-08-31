@@ -32,6 +32,10 @@ namespace Scarab  {
         namespace Lua  {
             /**
              * @brief Tile map management Lua primitives, thin wrapper over the full ITileMap surface.
+             *
+             * @luacategory{Tile map}
+             * @luadoc
+             * Wraps sunlight's `ITileMap` (Tiled `.tmx` maps via libtmx).
              */
             class LuaTilemapApi  {
 

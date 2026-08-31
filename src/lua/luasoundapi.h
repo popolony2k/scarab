@@ -38,6 +38,17 @@ namespace Scarab  {
              * (direct and queued respectively) instead go through the
              * ScriptProcessor/EngineHost, since "which song is the tracked
              * BGM" is state EngineHost::OnCommand owns, not SoundManager.
+             *
+             * @luacategory{Sound}
+             * @luadoc
+             * Both `sound_*` and the `sp_*_song`/`*_song` forms live in
+             * this one file.
+             *
+             * All sound ids are plain integers you choose (Caravellius
+             * keeps its own names for them in
+             * `caravellius/src/soundids.lua`) — the engine never
+             * interprets what a specific id means, it's just a key into
+             * `SoundManager`.
              */
             class LuaSoundApi  {
 
