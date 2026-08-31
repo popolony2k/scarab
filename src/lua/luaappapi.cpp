@@ -251,6 +251,31 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Query which host platform Scarab was compiled for
+             * (see LuaAppApi::Platform) - a pure compile-time fact, not a
+             * runtime probe, so this never changes for the lifetime of a
+             * given built executable. Resolved via the same
+             * _WIN32/__APPLE__/__linux__ preprocessor macros every other
+             * cross-platform C++ project in this ecosystem (raylib,
+             * sunlight's own CMakeLists.txt) already relies on - no new
+             * platform-detection mechanism invented here.
+             */
+            int LuaAppApi :: GetPlatform( lua_State *pLuaState )  {
+
+                #if defined( _WIN32 )
+                    lua_pushinteger( pLuaState, LuaAppApi :: PLATFORM_WINDOWS );
+                #elif defined( __APPLE__ )
+                    lua_pushinteger( pLuaState, LuaAppApi :: PLATFORM_MACOS );
+                #elif defined( __linux__ )
+                    lua_pushinteger( pLuaState, LuaAppApi :: PLATFORM_LINUX );
+                #else
+                    lua_pushinteger( pLuaState, LuaAppApi :: PLATFORM_UNKNOWN );
+                #endif
+
+                return 1;
+            }
+
+            /**
              * @brief Register app_set_fullscreen's own optional strategy
              * argument (see @link SetFullscreen) as Lua globals, same
              * names as the underlying SunLight::Engines::IEngine enum -
@@ -266,6 +291,16 @@ namespace Scarab  {
 
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aFullscreenStrategies,
                     sizeof( s_aFullscreenStrategies ) / sizeof( s_aFullscreenStrategies[0] ) );
+
+                static const stNamedConstant  s_aPlatforms[] = {
+                    { "PLATFORM_WINDOWS", LuaAppApi :: PLATFORM_WINDOWS },
+                    { "PLATFORM_MACOS", LuaAppApi :: PLATFORM_MACOS },
+                    { "PLATFORM_LINUX", LuaAppApi :: PLATFORM_LINUX },
+                    { "PLATFORM_UNKNOWN", LuaAppApi :: PLATFORM_UNKNOWN },
+                };
+
+                LuaEngineUtil :: RegisterConstants( pLuaState, s_aPlatforms,
+                    sizeof( s_aPlatforms ) / sizeof( s_aPlatforms[0] ) );
             }
 
             /**
@@ -288,6 +323,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "app_set_stretch_to_fill", LuaAppApi :: SetStretchToFill );
                 lua_register( pLuaState, "app_get_stretch_to_fill", LuaAppApi :: GetStretchToFill );
                 lua_register( pLuaState, "draw_filled_rectangle", LuaAppApi :: DrawFilledRectangle );
+                lua_register( pLuaState, "app_get_platform", LuaAppApi :: GetPlatform );
             }
         }
     }

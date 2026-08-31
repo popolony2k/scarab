@@ -89,6 +89,22 @@ Choose how the engine's fixed internal render resolution (`DISPLAY_W`x`DISPLAY_H
 app_set_stretch_to_fill( true )   -- fill the window completely, no letterboxing
 ```
 
+## `app_get_platform()`
+
+Query which host platform Scarab was compiled for — `PLATFORM_WINDOWS`, `PLATFORM_MACOS`, `PLATFORM_LINUX`, or `PLATFORM_UNKNOWN` (compiled for something other than those three). A pure compile-time fact (`_WIN32`/`__APPLE__`/`__linux__` preprocessor macros), not a runtime probe — the result never changes for the lifetime of a given built executable, and there's no dependency on `IEngine`/raylib/GLFW or any other engine-owned state.
+
+Useful for any platform-conditional Lua behavior a game needs — for example, picking which `app_set_fullscreen` strategy to default to per platform. `FULLSCREEN_STRATEGY_REAL` causes a measured performance regression on Linux. Windows isn't affected by that specific issue, but `FULLSCREEN_STRATEGY_REAL` is kept macOS-only project-wide rather than per-platform — Linux and Windows both use `FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED` here by deliberate choice, not because Windows itself has a problem with `FULLSCREEN_STRATEGY_REAL`:
+
+```lua
+local platform = app_get_platform()
+
+if platform == PLATFORM_MACOS then
+    app_set_fullscreen( true, FULLSCREEN_STRATEGY_REAL )
+else
+    app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
+end
+```
+
 ## `draw_filled_rectangle(x, y, width, height, r, g, b, a)`
 
 Draw a filled, solid-color rectangle in screen space — same coordinate system as `draw_text`/`screen_get_width` (the fixed `1260x920` design resolution, independent of the live window size, fullscreen state, or `app_set_stretch_to_fill`), not a world-space/camera-relative one. Meant for simple HUD elements — a progress/health bar, a meter — that don't warrant a whole sprite/texture asset. A thin pass-through to `ITileMap::DrawFilledRectangle`, itself a thin pass-through to `IEngine::DrawFilledRectangle` — the same underlying call the whole-screen `screen_fade` overlay already uses internally, just exposed here as it's own arbitrary-position/size/color primitive rather than that fixed, full-window, single-alpha-value overlay.

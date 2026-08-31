@@ -50,10 +50,30 @@ namespace Scarab  {
                 static int SetStretchToFill( lua_State *pLuaState );
                 static int GetStretchToFill( lua_State *pLuaState );
                 static int DrawFilledRectangle( lua_State *pLuaState );
+                static int GetPlatform( lua_State *pLuaState );
 
                 static void RegisterEnums( lua_State *pLuaState );
 
                 public:
+
+                /**
+                 * @brief Host platform Scarab itself was compiled for,
+                 * exposed to Lua via app_get_platform() as PLATFORM_*
+                 * globals (see RegisterEnums). Deliberately NOT owned by
+                 * SunLight::Engines::IEngine (unlike FullscreenStrategy) -
+                 * this is a pure compile-time fact (_WIN32/__APPLE__/
+                 * __linux__), resolved once by the preprocessor, with no
+                 * runtime OS probing and no dependency on raylib/GLFW or
+                 * any other engine-owned window/render state, so it
+                 * doesn't belong at that layer the way a real runtime
+                 * window operation like SetFullscreen does.
+                 */
+                enum Platform  {
+                    PLATFORM_WINDOWS = 0,
+                    PLATFORM_MACOS   = 1,
+                    PLATFORM_LINUX   = 2,
+                    PLATFORM_UNKNOWN = 3  // compiled on something other than the three platforms above
+                };
 
                 static void Register( lua_State *pLuaState );
             };
