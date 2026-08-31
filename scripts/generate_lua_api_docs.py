@@ -89,7 +89,14 @@ import re
 import sys
 from pathlib import Path
 
-from _lua_api_shared import DOCS_DIR, REPO_ROOT, SOURCE_TO_DOC, SRC_LUA_DIR, find_registrations
+from _lua_api_shared import (
+    CALLBACK_SOURCE_FILE,
+    DOCS_DIR,
+    REPO_ROOT,
+    SOURCE_TO_DOC,
+    SRC_LUA_DIR,
+    find_registrations,
+)
 
 # A category display title per source file, for the generated page's H1 -
 # not derivable from the filename alone (e.g. "App", not "Luaapp"). Only
@@ -290,6 +297,106 @@ def collect_primitives(src_file):
     return primitives
 
 
+# luaengine.cpp's reverse-direction scan: it has NO lua_register() calls at
+# all (that's the whole point - these are globals the engine looks up and
+# calls INTO Lua, via lua_getglobal, not primitives Lua calls into the
+# engine). GENERIC_DEFINITION_RE is deliberately looser than DEFINITION_RE
+# above - a dispatch method like `void LuaEngine :: CallOnUpdate( uint32_t
+# nDeltaMilli )` shares no signature shape with `int Class :: Method(
+# lua_State *pLuaState )` at all (different return type, no lua_State*
+# parameter), and this also has to match the constructor/destructor forms
+# (`LuaEngine :: LuaEngine(...)`, `LuaEngine :: ~LuaEngine(...)`) so their
+# bodies are correctly excluded as "no lua_getglobal call inside" rather
+# than mis-attributing some other method's callback to them.
+GENERIC_DEFINITION_RE = re.compile(r'^\s*(?:[\w:&*<>]+\s+)*LuaEngine\s*::\s*(~?\w+)\s*\(')
+GETGLOBAL_RE = re.compile(r'lua_getglobal\(\s*\w+\s*,\s*"([A-Za-z_]\w*)"\s*\)')
+
+
+def collect_callback_primitives(src_file):
+    """Like collect_primitives(), but for the reverse direction: scans
+    `src_file` (luaengine.cpp) for lua_getglobal("name") calls, resolves
+    each to its ENCLOSING LuaEngine method (by body range between one
+    method definition and the next), and reads that method's own existing
+    doc comment for @luaname/@luadoc/@luaexample - the same tag grammar,
+    just anchored differently since there's no lua_register() call to
+    anchor to instead. Returns the same list-of-dicts shape
+    collect_primitives() does, so render_page() needs no changes at all.
+    A LuaEngine method with no lua_getglobal call inside it (RunFile,
+    Init, RegisterCalls, the ctor/dtor, ...) is simply not a callback
+    dispatcher and is silently skipped - only methods that actually call
+    lua_getglobal are candidates for the hard-fail-if-untagged check."""
+
+    lines = src_file.read_text().splitlines()
+
+    definitions = []  # (line_idx, method_name)
+    for idx, line in enumerate(lines):
+        match = GENERIC_DEFINITION_RE.match(line)
+        if match:
+            definitions.append((idx, match.group(1)))
+
+    def enclosing_method(line_idx):
+        enclosing = None
+        for def_idx, name in definitions:
+            if def_idx <= line_idx:
+                enclosing = (def_idx, name)
+            else:
+                break
+        return enclosing
+
+    # Which method each lua_getglobal("name") call belongs to, in the
+    # order the *methods* were defined (not call order) - so the
+    # generated page reads in the same order as the source file, same as
+    # every other category page.
+    dispatchers = {}  # method_name -> (global_name, def_idx)
+    for idx, line in enumerate(lines):
+        get_match = GETGLOBAL_RE.search(line)
+        if not get_match:
+            continue
+        enclosing = enclosing_method(idx)
+        if enclosing is None:
+            raise GeneratorError(
+                f"{src_file.relative_to(REPO_ROOT)}:{idx + 1}: "
+                f"lua_getglobal(\"{get_match.group(1)}\") found with no "
+                f"enclosing LuaEngine method - GENERIC_DEFINITION_RE "
+                f"didn't match whatever contains this call."
+            )
+        def_idx, method_name = enclosing
+        dispatchers[method_name] = (get_match.group(1), def_idx)
+
+    primitives = []
+    for def_idx, method_name in sorted(definitions, key=lambda d: d[0]):
+        if method_name not in dispatchers:
+            continue  # not a callback-dispatch method - nothing to check
+
+        global_name, _get_idx = dispatchers[method_name]
+        doc_lines = extract_preceding_comment(lines, def_idx)
+        try:
+            tags = parse_lua_tags(doc_lines) if doc_lines is not None else {}
+        except DuplicateTagError as err:
+            raise GeneratorError(f"{src_file.relative_to(REPO_ROOT)}:{def_idx + 1}: {err}")
+
+        if not tags.get("luaname"):
+            raise GeneratorError(
+                f"{src_file.relative_to(REPO_ROOT)}:{def_idx + 1}: "
+                f"'LuaEngine :: {method_name}' calls lua_getglobal("
+                f"\"{global_name}\") but has no @luaname tag in its own "
+                f"doc comment - add one before this can be generated."
+            )
+
+        primitives.append({
+            "registered_name": global_name,
+            "class_name": "LuaEngine",
+            "method_name": method_name,
+            "luaname": tags["luaname"],
+            "luagroup": tags.get("luagroup"),
+            "luaheading": tags.get("luaheading"),
+            "luadoc": tags.get("luadoc"),
+            "luaexample": tags.get("luaexample"),
+        })
+
+    return primitives
+
+
 def render_page(category, src_files, primitives):
     impl_list = " and ".join(f"`{f.relative_to(REPO_ROOT)}`" for f in src_files)
     lines = [f"# {category['title']}", "", f"*Implemented in* {impl_list}.", ""]
@@ -383,7 +490,8 @@ def main():
             for src_file in src_files:
                 category = find_class_category(src_file.with_suffix(".h"))
                 categories.append((src_file, category))
-                all_primitives.append((src_file, category, collect_primitives(src_file)))
+                collector = collect_callback_primitives if src_file.name == CALLBACK_SOURCE_FILE else collect_primitives
+                all_primitives.append((src_file, category, collector(src_file)))
         except GeneratorError as err:
             print(f"Lua API doc generation FAILED:\n\n  - {err}\n", file=sys.stderr)
             return 1

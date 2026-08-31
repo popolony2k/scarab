@@ -51,6 +51,28 @@ namespace Scarab  {
         /**
          * @brief Implements a C++ abstraction for using
          * Lua engine;
+         *
+         * @luacategory{Engine callbacks — hooks the engine calls *into*}
+         * @luadoc
+         * Every other page in this reference documents functions your
+         * Lua script calls *into* the engine. This page is the reverse
+         * direction: global Lua functions the engine looks up and calls
+         * *from* C++, if you define them. Every one of these is
+         * optional — the engine checks whether the global exists and is
+         * a function before calling it, and silently no-ops if it isn't
+         * defined (except `on_load_stage`, see below).
+         *
+         * Define these as plain global functions (not table members) —
+         * the engine looks them up by exact name via `lua_getglobal`.
+         * @luaoutro
+         * ## The collision handlers are documented separately
+         *
+         * `collision_set_handler`/`collision_set_tile_handler` follow
+         * the same "engine calls into a Lua global" shape as everything
+         * on this page, but since they're registered via an explicit
+         * function call rather than just defining a magic global name,
+         * they're documented alongside the rest of the collision API in
+         * collision.md.
          */
         class LuaEngine  {
 

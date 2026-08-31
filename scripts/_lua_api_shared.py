@@ -45,6 +45,7 @@ SOURCE_TO_DOC = {
     "luaappapi.cpp":        "app.md",
     "luacameraapi.cpp":     "camera.md",
     "luacollisionapi.cpp":  "collision.md",
+    "luaengine.cpp":        "callbacks.md",
     "luafilesystemapi.cpp": "scripting.md",
     "luainputapi.cpp":      "input.md",
     "luajsonapi.cpp":       "json.md",
@@ -55,6 +56,16 @@ SOURCE_TO_DOC = {
     "luatilemapapi.cpp":    "tilemap.md",
     "luatimerapi.cpp":      "timers.md",
 }
+
+# luaengine.cpp is the one file scanned for the REVERSE direction - Lua
+# globals the engine calls INTO (lua_getglobal), not primitives Lua calls
+# into the engine (lua_register). Its own dispatch methods (CallOnUpdate,
+# TryDispatchLoadStage, ...) don't share lua_register()'s call shape at
+# all, so generate_lua_api_docs.py's collect_callback_primitives() scans
+# it separately - this constant just marks which SOURCE_TO_DOC entry that
+# applies to, so find_registrations() (the lua_register()-only scanner)
+# is never asked to look at it.
+CALLBACK_SOURCE_FILE = "luaengine.cpp"
 
 # Matches this codebase's consistent, single-line lua_register() call shape,
 # e.g. `lua_register( pLuaState, "app_get_platform", LuaAppApi :: GetPlatform );`
