@@ -4,7 +4,26 @@ A thin, game-agnostic C++17 host for 2D games scripted entirely in Lua, run from
 
 Licensed under the [zlib License](LICENSE), the same license `sunlight` (the engine Scarab is built on) uses.
 
-## Repository layout
+## Table of Contents :pushpin:
+* [Lua API reference](#lua-api-reference-book) :book:
+* [Scarab Class Documentation](#scarab-class-documentation-gear) :gear:
+* [Repository layout](#repository-layout-package) :package:
+* [Prerequisites](#prerequisites-memo) :memo:
+* [Building](#building-hammer) :hammer:
+    - [Lua backend option](#lua-backend-option)
+    - [VSCode setup](#vscode-setup)
+* [Running](#running-rocket) :rocket:
+* [License](#license-scroll) :scroll:
+
+## Lua API reference :book:
+
+Every Lua-callable primitive the engine exposes to game scripts — camera, input, tile map, sound, sprites, collision, JSON loading, script sequencing, timers, and the callbacks the engine calls back into Lua — is published at **[popolony2k.github.io/scarab/lua-api/](https://popolony2k.github.io/scarab/lua-api/)**, one page per category with runnable examples, rebuilt on every push to `main`. This is the engine's own generic API surface — it documents nothing about any specific game's own Lua modules, since none live in this repo. Generated straight from `@luaname`/`@luadoc`/`@luaexample` tags on each primitive's own C++ doc comment in [src/lua/](src/lua/) (see [scripts/generate_lua_api_docs.py](scripts/generate_lua_api_docs.py)), not hand-written separately — [docs/lua-api/README.md](docs/lua-api/README.md) is the one page still hand-written (an index with no single-primitive anchor to tag), also serving as that site's own landing page.
+
+## Scarab Class Documentation :gear:
+
+The C++ source itself — every class/method/param under `src/`, generated from its own `/** @brief */` comments via Doxygen (see [Doxyfile](Doxyfile)) — is published at **[popolony2k.github.io/scarab](https://popolony2k.github.io/scarab/)**, rebuilt on every push to `main` ([.github/workflows/doxygen.yml](.github/workflows/doxygen.yml)), alongside the Lua API reference above at the same site (`/lua-api/`). Unlike `sunlight`, Scarab isn't consumed as a library — nothing links against these classes from outside this repo — so this is a structure reference for working on Scarab's own C++, not a public API surface. It also doesn't (and can't) know that a method like `LuaAppApi::GetPlatform` is registered into Lua under a different name (`app_get_platform`), since that mapping only exists in a runtime `lua_register()` call; the Lua API reference above is the one built specifically to document that mapping.
+
+## Repository layout :package:
 
 ```
 scarab/
@@ -15,7 +34,7 @@ scarab/
 │   ├── lua/                   # Lua scripting engine glue - LuaEngine + every Lua-callable primitive (camera/input/tilemap/sound/sprite/collision/JSON/filesystem)
 │   └── engine/                # game-agnostic sprite pool (SpritePool/SpriteHandle) - the one piece with no Lua dependency
 ├── docs/
-│   ├── lua-api/            # full Lua engine API reference - see "Lua API reference" below
+│   ├── lua-api/            # the one hand-written page (README.md) - see "Lua API reference" above
 │   ├── vscode/.vscode/     # tracked .vscode sample - see "VSCode setup" below
 │   └── README-DEBUG.txt   # debug build flags
 └── CMakePresets.json       # default/windows-vcpkg presets (only real platform-conditional CMake config)
@@ -25,7 +44,7 @@ Scarab is a standalone engine — it has no bundled game and can't render anythi
 
 The **sunlight** engine itself is not vendored here — it's pulled in via CMake `FetchContent` from `github.com/popolony2k/sunlight` (see the root [CMakeLists.txt](CMakeLists.txt)). It wraps [raylib](https://www.raylib.com/) (rendering/input/audio) and [libtmx](https://github.com/baylej/tmx.git) (Tiled map loading) behind its own `SunLight::*` namespaces (renderer, canvas/sprite, collision, input, sound, scripting).
 
-## Prerequisites
+## Prerequisites :memo:
 
 - CMake 3.24+
 - A C++17 compiler (Clang on macOS, GCC on Linux, MSVC on Windows)
@@ -34,7 +53,7 @@ The **sunlight** engine itself is not vendored here — it's pulled in via CMake
 
 All other dependencies (sunlight, raylib, libtmx, libxml2, Lua, nlohmann/json, CLI11) are fetched automatically at configure time.
 
-## Building
+## Building :hammer:
 
 ```shell
 cmake -B build -S .
@@ -59,7 +78,7 @@ On Windows, `libxml2`/`tmx` link vcpkg's `iconv`/`zlib` dynamically, so configur
 
 The repo root's `.vscode` folder is **gitignored** — it's local, per-developer state. The tracked source of truth is [docs/vscode/.vscode](docs/vscode/README.md); copy its contents into a `.vscode` folder at the repo root to get started, and copy any `.vscode` change you want to keep back into that folder rather than leaving it only in your local copy. See [docs/vscode/README.md](docs/vscode/README.md) for the per-OS `settings.<os>.json` variants and the recommended extension that auto-swaps them in.
 
-## Running
+## Running :rocket:
 
 The built `scarab` executable **requires** a command-line argument naming the entry point — a `.json` project file, a `.lua` script directly, or a single bundled `.zip` archive — and refuses to start (printing a usage message, no window opened) without one. Argument parsing is CLI11, so `--help` is always available, and so is `--version`/`-v` (prints both Scarab's own version and the exact pinned sunlight version, e.g. `scarab v0.1.2 (sunlight v0.17.1)`):
 
@@ -80,14 +99,6 @@ A whole project can also be packaged into a single self-contained `.zip` and run
 
 Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, the entry script/project-file reads themselves) routes through a mount-based filesystem abstraction (PhysFS-backed) — a loose directory or a real archive read identically, so the same project runs unchanged either way.
 
-## Lua API reference
-
-Every Lua-callable primitive the engine exposes to game scripts — camera, input, tile map, sound, sprites, collision, JSON loading, script sequencing, timers, and the callbacks the engine calls back into Lua — is published at **[popolony2k.github.io/scarab/lua-api/](https://popolony2k.github.io/scarab/lua-api/)**, one page per category with runnable examples, rebuilt on every push to `main`. This is the engine's own generic API surface — it documents nothing about any specific game's own Lua modules, since none live in this repo. Generated straight from `@luaname`/`@luadoc`/`@luaexample` tags on each primitive's own C++ doc comment in [src/lua/](src/lua/) (see [scripts/generate_lua_api_docs.py](scripts/generate_lua_api_docs.py)), not hand-written separately — [docs/lua-api/README.md](docs/lua-api/README.md) is the one page still hand-written (an index with no single-primitive anchor to tag), also serving as that site's own landing page.
-
-## API documentation
-
-The C++ source itself — every class/method/param under `src/`, generated from its own `/** @brief */` comments via Doxygen (see [Doxyfile](Doxyfile)) — is published at **[popolony2k.github.io/scarab](https://popolony2k.github.io/scarab/)**, rebuilt on every push to `main` ([.github/workflows/doxygen.yml](.github/workflows/doxygen.yml)), alongside the Lua API reference above at the same site (`/lua-api/`). The C++ side is a structure reference only — it doesn't (and can't) know that a method like `LuaAppApi::GetPlatform` is registered into Lua under a different name (`app_get_platform`), since that mapping only exists in a runtime `lua_register()` call; the Lua API reference is the one built specifically to document that mapping.
-
-## License
+## License :scroll:
 
 Scarab is licensed under the [zlib License](LICENSE) — permissive, no attribution required at runtime, alterations must be marked as such. Every `.cpp`/`.h` file under `src/` carries the license notice at its top (see [docs/HEADER.txt](docs/HEADER.txt) for the exact text new files should start with).
