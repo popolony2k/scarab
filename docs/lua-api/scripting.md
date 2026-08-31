@@ -64,3 +64,14 @@ sp_load_stage(STAGE_FIRST)
 ## Song commands via the queue
 
 `sp_play_song`/`sp_pause_song`/`sp_stop_song`/`sp_resume_song` are documented in [sound.md](sound.md) alongside their non-queued (`play_song`/`pause_song`/...) counterparts, since the two forms only differ in *when* they take effect (queued vs. immediate), not in what they do.
+
+## `dofile(filename)`
+
+Scarab overrides Lua's own built-in `dofile` (implemented in `src/lua/luafilesystemapi.cpp`, not `luascriptingapi.cpp` — kept on this page rather than its own, since every other mention of `dofile` in this doc set already assumes it) to load and run the named file through `SunLight::FileSystem` instead of a raw `fopen()` — otherwise it behaves exactly like the standard function: loads the file as a Lua chunk and runs it, returning whatever the chunk itself returns, and raises a genuine Lua error (not a silent `nil`) if the file is missing or fails to compile.
+
+This is what lets `dofile` calls reach into a mounted `.zip` archive the same way every other resource load in the engine does (see `SunLight::FileSystem` in the main `CLAUDE.md`) — a loose directory or an archived build both work identically, with no path-construction code anywhere needing to know the difference.
+
+```lua
+-- runs identically whether the game is a loose directory or a mounted .zip
+dofile( BASE_PATH .. "scripts/stages/1st_stage_corsair.lua" )
+```

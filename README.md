@@ -84,6 +84,10 @@ Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, th
 
 Every Lua-callable primitive the engine exposes to game scripts — camera, input, tile map, sound, sprites, collision, JSON loading, script sequencing, timers, and the callbacks the engine calls back into Lua — is documented in [docs/lua-api/](docs/lua-api/README.md), one page per category with runnable examples. This is the engine's own generic API surface — it documents nothing about any specific game's own Lua modules, since none live in this repo.
 
+## API documentation
+
+The C++ source itself — every class/method/param under `src/`, generated from its own `/** @brief */` comments via Doxygen (see [Doxyfile](Doxyfile)) — is published at **[popolony2k.github.io/scarab](https://popolony2k.github.io/scarab/)**, rebuilt on every push to `main` ([.github/workflows/doxygen.yml](.github/workflows/doxygen.yml)). This is a C++ structure reference only — it doesn't (and can't) know that a method like `LuaAppApi::GetPlatform` is registered into Lua under a different name (`app_get_platform`), since that mapping only exists in a runtime `lua_register()` call. For the actual Lua-callable surface a game script calls, see [Lua API reference](#lua-api-reference) above — [docs/lua-api/](docs/lua-api/README.md) is the one that documents that.
+
 ## License
 
 Scarab is licensed under the [zlib License](LICENSE) — permissive, no attribution required at runtime, alterations must be marked as such. Every `.cpp`/`.h` file under `src/` carries the license notice at its top (see [docs/HEADER.txt](docs/HEADER.txt) for the exact text new files should start with).
