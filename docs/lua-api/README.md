@@ -6,20 +6,22 @@ Every function listed here is available in any Lua script the engine runs, from 
 
 ## Pages
 
+Generated straight from `@luaname`/`@luadoc`/`@luaexample` tags on each primitive's own C++ doc comment in `src/lua/` (see `scripts/generate_lua_api_docs.py`) — this page is the one hand-written exception (see the note at the very bottom).
+
 | Page | Covers |
 |---|---|
-| [scripting.md](scripting.md) | The `ScriptProcessor` command queue — `sp_wait`, `sp_clear`, `sp_wait_queue_empty`, `sp_move_sprites_to_screen`, `sp_add_label`/`sp_goto_label`, `sp_load_stage` |
-| [sound.md](sound.md) | Loading and playing sounds — `sound_*` (direct playback state) and the queued/direct song commands (`sp_play_song`/`play_song` and friends) |
-| [timers.md](timers.md) | `set_timer`/`reset_timer` — background-thread periodic/delayed callbacks |
-| [app.md](app.md) | Application-level primitives — `app_set_name` (window title), `app_set_fullscreen`/`app_get_fullscreen`, `app_set_draw_fps`/`app_get_draw_fps`, `app_set_window_resizeable`/`app_get_window_resizeable` |
-| [text.md](text.md) | Font loading and screen-space text rendering — `set_font`, `draw_text`, `measure_text`, `screen_get_width`/`screen_get_height` |
-| [camera.md](camera.md) | Camera panning and zoom — `camera_*`, `zoom_*`, `viewport_get_*` |
-| [input.md](input.md) | Keyboard and gamepad polling — `input_*`, plus the `KEY_*`/`GAMEPAD_BUTTON_*`/`GAMEPAD_AXIS_*`/`CONTROLLER_*` constants |
-| [tilemap.md](tilemap.md) | Loading maps and reading/writing layers and tiles — `tilemap_*`, plus `MAP_ALIGNMENT_*` |
-| [sprite.md](sprite.md) | The sprite handle pool — `pool_register_type`, `sprite_*`, plus `TEXTURE_ANIMATION_MODE_*` |
-| [collision.md](collision.md) | Collision rules and handlers — `collision_*` |
-| [json.md](json.md) | `load_json` — the generic JSON→Lua config bridge |
-| [callbacks.md](callbacks.md) | The Lua-side hooks the engine calls **into** — `on_update`, `on_move_sprites_to_screen`, `on_load_stage`, `get_active_enemy_count` |
+| [Scripting](https://popolony2k.github.io/scarab/lua-api/scripting.html) | The `ScriptProcessor` command queue — `sp_wait`, `sp_clear`, `sp_wait_queue_empty`, `sp_move_sprites_to_screen`, `sp_add_label`/`sp_goto_label`, `sp_load_stage` |
+| [Sound](https://popolony2k.github.io/scarab/lua-api/sound.html) | Loading and playing sounds — `sound_*` (direct playback state) and the queued/direct song commands (`sp_play_song`/`play_song` and friends) |
+| [Timers](https://popolony2k.github.io/scarab/lua-api/timers.html) | `set_timer`/`reset_timer` — background-thread periodic/delayed callbacks |
+| [App](https://popolony2k.github.io/scarab/lua-api/app.html) | Application-level primitives — `app_set_name` (window title), `app_set_fullscreen`/`app_get_fullscreen`, `app_set_draw_fps`/`app_get_draw_fps`, `app_set_window_resizeable`/`app_get_window_resizeable` |
+| [Text](https://popolony2k.github.io/scarab/lua-api/text.html) | Font loading and screen-space text rendering — `set_font`, `draw_text`, `measure_text`, `screen_get_width`/`screen_get_height` |
+| [Camera](https://popolony2k.github.io/scarab/lua-api/camera.html) | Camera panning and zoom — `camera_*`, `zoom_*`, `viewport_get_*` |
+| [Input](https://popolony2k.github.io/scarab/lua-api/input.html) | Keyboard and gamepad polling — `input_*`, plus the `KEY_*`/`GAMEPAD_BUTTON_*`/`GAMEPAD_AXIS_*`/`CONTROLLER_*` constants |
+| [Tile map](https://popolony2k.github.io/scarab/lua-api/tilemap.html) | Loading maps and reading/writing layers and tiles — `tilemap_*`, plus `MAP_ALIGNMENT_*` |
+| [Sprites](https://popolony2k.github.io/scarab/lua-api/sprite.html) | The sprite handle pool — `pool_register_type`, `sprite_*`, plus `TEXTURE_ANIMATION_MODE_*` |
+| [Collision](https://popolony2k.github.io/scarab/lua-api/collision.html) | Collision rules and handlers — `collision_*` |
+| [JSON](https://popolony2k.github.io/scarab/lua-api/json.html) | `load_json` — the generic JSON→Lua config bridge |
+| [Engine callbacks](https://popolony2k.github.io/scarab/lua-api/callbacks.html) | The Lua-side hooks the engine calls **into** — `on_update`, `on_move_sprites_to_screen`, `on_load_stage`, `get_active_enemy_count` |
 
 ## Globals
 
@@ -46,3 +48,7 @@ A few other globals exist purely as internal plumbing between `LuaEngine`/the `L
 - **Handle** means an opaque integer (`SpriteHandle`) returned by `sprite_acquire` — never construct one by hand, and `0` always means "invalid" (`sprite_acquire` returning `0` means the pool is exhausted).
 - Every example is a minimal, runnable snippet — most assume a sprite pool type has already been registered and a map is already loaded, since that's the real order engine code runs in.
 - Parameter types follow Lua's own dynamic typing — "int"/"number"/"string"/"bool"/"function" describe what the engine expects, not a Lua-enforced type.
+
+---
+
+This file is the one page in this directory kept hand-written on purpose — it has no single-primitive or single-class C++ anchor to hang tags on (it's an index/globals-list/conventions guide about the whole Lua environment, not about any one entity), unlike every page linked above, which is generated from source. It also doubles as the source for [popolony2k.github.io/scarab/lua-api/](https://popolony2k.github.io/scarab/lua-api/)'s own landing page (`scripts/generate_lua_api_docs.py`'s `render_readme_html`), rebuilt on every push to `main` alongside the rest of the site.

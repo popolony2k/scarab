@@ -19,18 +19,26 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-PILOT / Phase 2-3 of the "Lua API docs" plan (see project memory and
-CLAUDE.md) - generates a docs/lua-api/*.md-shaped page straight from the
-@luaname/@luagroup/@luaheading/@luadoc/@luaexample tags in each primitive's
-own C++ doc comment in src/lua/*api.cpp (plus @luacategory/@luadoc/
-@luaoutro on the owning class's comment in the matching .h file), instead
-of the file being hand-written.
+Generates the Lua API reference published at
+https://popolony2k.github.io/scarab/lua-api/ straight from the
+@luaname/@luagroup/@luaheading/@luadoc/@luaexample tags in each
+primitive's own C++ doc comment in src/lua/*api.cpp (plus
+@luacategory/@luadoc/@luaoutro on the owning class's comment in the
+matching .h file) - see project memory and CLAUDE.md for the full "Lua
+API docs" plan this completed. docs/doxygen.yml runs this (--format
+html) right after the Doxygen C++ reference build, landing the output
+under docs/doxygen/html/lua-api/ so both publish in the same deploy.
+docs/lua-api/*.md (the old hand-written pages) no longer exist -
+docs/lua-api/README.md is the one page still hand-written on purpose
+(no single-primitive/class anchor to tag - see its own closing note),
+and doubles as this site's own landing page (render_readme_html).
 
-This does NOT yet replace docs/lua-api/*.md or wire into doxygen.yml's
-publish step - see the plan for why. It hard-fails on any registered
-primitive with no @luaname tag, so running it against a not-yet-migrated
-file correctly fails rather than silently skipping. Use --source to scope
-a run to one or more source files during migration, e.g.:
+With no arguments (the default, --format markdown, no --out-dir), this
+is also ci.yml's own CI check: it hard-fails on any lua_register()'d
+primitive with no @luaname tag, so a new primitive shipped without one
+fails CI rather than silently missing from the published site. Use
+--source to scope a run to one or more source files, e.g. for a quick
+local check while editing one file's tags:
 
     python3 scripts/generate_lua_api_docs.py --source luaappapi.cpp
 

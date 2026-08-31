@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check every Lua-callable primitive has a docs/lua-api entry
-        run: python3 scripts/check_lua_api_docs.py
+      - name: Check every Lua-callable primitive is tagged for docs generation
+        run: python3 scripts/generate_lua_api_docs.py
 
   build:
     strategy:

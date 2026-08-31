@@ -19,12 +19,14 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Shared scanning helpers for scripts/check_lua_api_docs.py (Phase 1) and
-scripts/generate_lua_api_docs.py (Phase 2/3 pilot) - both need the same
-"which src/lua/*api.cpp file maps to which docs/lua-api/*.md category" and
-"find every lua_register() call" logic, and keeping that in one place is the
-whole point of either script existing (a mapping table that drifted between
-two copies would defeat the purpose).
+Shared scanning helpers for scripts/generate_lua_api_docs.py - the
+SOURCE_TO_DOC mapping ("which src/lua/*api.cpp file maps to which
+category") and the lua_register() scanner it's built from. Originally
+also shared with scripts/check_lua_api_docs.py (Phase 1's own CI check,
+retired once the generator's own hard-fail took over that job - see
+project memory for the full "Lua API docs" plan) - kept as its own
+module rather than folded back into generate_lua_api_docs.py, since
+nothing about it is generator-specific.
 """
 
 import re
