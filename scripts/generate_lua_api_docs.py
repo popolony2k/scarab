@@ -503,6 +503,33 @@ def render_page_html(category, src_files, primitives):
     return PAGE_HTML_TEMPLATE.format(title=category["title"], body=body_html)
 
 
+README_TITLE_RE = re.compile(r'^#\s+(.+?)\s*$')
+
+
+def render_readme_html(readme_path):
+    """Converts docs/lua-api/README.md - the one hand-written page in this
+    directory, deliberately not tag-generated (see project memory: it has
+    no single-primitive/single-class anchor to hang tags on at all, being
+    an index/globals-list/conventions guide about the whole Lua
+    environment rather than about any one C++ entity) - into this
+    published site's lua-api/index.html landing page. Same conversion
+    pipeline as render_page_html() (markdown package, .md->.html link
+    rewriting, same page template) so it reads as part of the same site
+    rather than a bolted-on exception."""
+
+    import markdown as markdown_lib
+
+    md_text = readme_path.read_text()
+
+    title_match = README_TITLE_RE.match(md_text.splitlines()[0])
+    title = title_match.group(1) if title_match else "Lua API"
+
+    md_text = MD_LINK_TARGET_RE.sub(r'\1\2.html\3', md_text)
+    body_html = markdown_lib.markdown(md_text, extensions=["tables", "fenced_code"])
+
+    return PAGE_HTML_TEMPLATE.format(title=title, body=body_html)
+
+
 def doc_file_to_sources(requested_source_names):
     """Groups SOURCE_TO_DOC by doc filename, restricted to doc files that
     have at least one of `requested_source_names` as a contributor.
@@ -608,6 +635,15 @@ def main():
         else:
             print(f"--- {out_name} (from {', '.join(source_names)}) ---\n")
             print(page)
+
+    # docs/lua-api/README.md -> lua-api/index.html - only when actually
+    # writing a full HTML site to disk (not a scoped --source preview, and
+    # not plain Markdown mode, which has no need for an index page at all).
+    if args.format == "html" and args.out_dir and not args.source:
+        index_page = render_readme_html(DOCS_DIR / "README.md")
+        index_path = args.out_dir / "index.html"
+        index_path.write_text(index_page)
+        print(f"wrote {index_path}")
 
     return 0
 

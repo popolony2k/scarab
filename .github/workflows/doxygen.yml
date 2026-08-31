@@ -27,8 +27,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y doxygen graphviz
 
+      - name: Install Lua API doc generator's own dependency
+        run: pip install markdown
+
       - name: Generate documentation
         run: doxygen Doxyfile
+
+      - name: Generate Lua API docs
+        run: python3 scripts/generate_lua_api_docs.py --format html --out-dir docs/doxygen/html/lua-api
 
       - name: Upload Pages artifact
         if: github.event_name == 'push'
