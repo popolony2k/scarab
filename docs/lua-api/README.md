@@ -44,5 +44,5 @@ A few other globals exist purely as internal plumbing between `LuaEngine`/the `L
 
 - **Signature line** shows the Lua call shape: `function_name(param1, param2) -> return1, return2`. A function with no return value shows no `->`.
 - **Handle** means an opaque integer (`SpriteHandle`) returned by `sprite_acquire` — never construct one by hand, and `0` always means "invalid" (`sprite_acquire` returning `0` means the pool is exhausted).
-- Every example is a minimal, runnable snippet — most assume a sprite pool type has already been registered and a map is already loaded, since that's the real order engine code runs in (see [Data flow for a stage](../../CLAUDE.md) in the root `CLAUDE.md`).
+- Every example is a minimal, runnable snippet — most assume a sprite pool type has already been registered and a map is already loaded, since that's the real order engine code runs in.
 - Parameter types follow Lua's own dynamic typing — "int"/"number"/"string"/"bool"/"function" describe what the engine expects, not a Lua-enforced type.
