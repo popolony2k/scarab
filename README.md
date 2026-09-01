@@ -19,6 +19,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
     - [Lua backend option](#lua-backend-option)
     - [VSCode setup](#vscode-setup)
 * [Running](#running-rocket) :rocket:
+* [Samples](#samples-video_game) :video_game:
 * [License](#license-scroll) :scroll:
 
 ## Lua API reference :book:
@@ -43,6 +44,7 @@ scarab/
 │   ├── lua-api/            # the one hand-written page (README.md) - see "Lua API reference" above
 │   ├── vscode/.vscode/     # tracked .vscode sample - see "VSCode setup" below
 │   └── README-DEBUG.txt   # debug build flags
+├── samples/                # pure-Lua sample games, one per Lua API category - see "Samples" below
 └── CMakePresets.json       # default/windows-vcpkg presets (only real platform-conditional CMake config)
 ```
 
@@ -104,6 +106,10 @@ A project file just names the first Lua file to run:
 A whole project can also be packaged into a single self-contained `.zip` and run the same way: `./scarab game.zip`. `--entry`/`-e <path>` names the actual entry point when it's not simply `project.json` at the archive's own root — either another `.json` project file inside the archive, or a `.lua` path to run directly with no project-file indirection at all.
 
 Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, the entry script/project-file reads themselves) routes through a mount-based filesystem abstraction (PhysFS-backed) — a loose directory or a real archive read identically, so the same project runs unchanged either way.
+
+## Samples :video_game:
+
+Small, focused Lua scripts under [samples/](samples/) that each demonstrate one corner of the [Lua API reference](https://popolony2k.github.io/scarab/lua-api/) at a time — starting from [hello-world](samples/hello-world/docs/README.md) (the smallest possible Scarab game) and then one sample per API category (`app`, `text`, `timers`, `input`, `tilemap`, `camera`, `sprite`, `collision`, `scripting`, `sound`, `json`), mirroring how sunlight's own [samples](https://github.com/popolony2k/sunlight/tree/main/samples) work — adapted for an engine where the entire game is Lua, so every sample here is just a `project.json` + `.lua` script run directly against the built `scarab` executable, nothing to compile. See [samples/README.md](samples/README.md) for the full, up-to-date list.
 
 ## License :scroll:
 
