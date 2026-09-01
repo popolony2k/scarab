@@ -29,7 +29,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [sprite](sprite/docs/README.md) — acquiring/configuring/moving an animated sprite (sunlight's own "sunny" character), built on `tilemap/`
 * [collision](collision/docs/README.md) — a keyboard-controlled sprite colliding with a fixed one, `collision_add_rule`/`collision_set_handler`, built on `sprite/`
 * [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
-* `sound/` — direct, queued, and one-shot sound/song playback — *planned*
+* [sound](sound/docs/README.md) — direct one-shot, direct looping, and queued song forms side by side, plus pause/stop/resume/volume
 * `json/` — `load_json` — *planned*
 
 Built one category at a time; this list is updated as each one lands.
