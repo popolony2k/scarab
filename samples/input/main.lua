@@ -22,12 +22,14 @@
  input - keyboard and gamepad reading (docs/lua-api/input.html).
 
  Moves a plain rectangle (no sprite yet - see the "sprite" sample) around
- the screen with the arrow keys/WASD, resets its position on a key
- release, and shows live gamepad axis/button state for gamepad id 0
- (input_add_gamepad must be called once, at startup, before any
- gamepad_* primitive reports real state for that id - it's harmless to
- call this and then read gamepad state every frame even with no gamepad
- actually connected, everything just reads as centered/not-pressed).
+ the screen with the arrow keys/WASD, or gamepad 0's left stick (with a
+ deadzone, the same pattern input_is_gamepad_button_down's own doc
+ example uses), and resets it's position on a keyboard key release or a
+ gamepad face-down button press. input_add_gamepad must be called once,
+ at startup, before any gamepad_* primitive reports real state for that
+ id - it's harmless to call this and then read gamepad state every
+ frame even with no gamepad actually connected, everything just reads
+ as centered/not-pressed.
 ]]
 
 app_set_name( "Scarab - input sample" )
@@ -43,6 +45,7 @@ local screenHeight = screen_get_height()
 
 local __SQUARE_SIZE = 40
 local __SPEED        = 6  -- pixels/frame - fine for a short demo, see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
+local __STICK_DEADZONE = 0.1  -- raw axis values jitter near 0 even when the stick is physically centered
 
 local function startPos()
     return ( screenWidth - __SQUARE_SIZE ) / 2, ( screenHeight - __SQUARE_SIZE ) / 2
@@ -51,6 +54,10 @@ end
 local squareX, squareY = startPos()
 
 function on_update( dt )
+
+    local axisX = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_X )
+    local axisY = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_Y )
+    local faceDown = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN )
 
     if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then
         squareX = squareX - __SPEED
@@ -68,22 +75,28 @@ function on_update( dt )
         squareY = squareY + __SPEED
     end
 
+    -- Same movement, driven by the left stick instead - deadzone first,
+    -- since a raw axis value jitters near 0 even when physically centered.
+    if math.abs( axisX ) > __STICK_DEADZONE then
+        squareX = squareX + ( axisX * __SPEED )
+    end
+
+    if math.abs( axisY ) > __STICK_DEADZONE then
+        squareY = squareY + ( axisY * __SPEED )
+    end
+
     -- Keep the square fully on screen.
     squareX = math.max( 0, math.min( screenWidth - __SQUARE_SIZE, squareX ) )
     squareY = math.max( 0, math.min( screenHeight - __SQUARE_SIZE, squareY ) )
 
-    if input_is_key_released( KEY_R ) then
+    if input_is_key_released( KEY_R ) or faceDown then
         squareX, squareY = startPos()
     end
 
     draw_filled_rectangle( math.floor( squareX ), math.floor( squareY ), __SQUARE_SIZE, __SQUARE_SIZE, 60, 160, 220, 255 )
 
-    local axisX = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_X )
-    local axisY = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_Y )
-    local faceDown = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN )
-
-    draw_text( "input sample - arrows/WASD to move, R to reset", 20, 20, 24, 255, 255, 255, 255 )
+    draw_text( "input sample - arrows/WASD or left stick to move, R or face-down button to reset", 20, 20, 20, 255, 255, 255, 255 )
     draw_text( "gamepad 0 left stick: " .. string.format( "%.2f, %.2f", axisX, axisY )
-        .. "  face-down button: " .. tostring( faceDown ), 20, 54, 20, 200, 200, 200, 255 )
-    draw_text( "(reads centered/false with no gamepad connected - that's expected, not an error)", 20, 78, 18, 150, 150, 150, 255 )
+        .. "  face-down button: " .. tostring( faceDown ), 20, 50, 18, 200, 200, 200, 255 )
+    draw_text( "(reads centered/false with no gamepad connected - that's expected, not an error)", 20, 72, 18, 150, 150, 150, 255 )
 end
