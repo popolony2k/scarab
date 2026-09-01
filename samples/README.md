@@ -28,7 +28,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [camera](camera/docs/README.md) — scrolling/zooming the camera (keyboard pan/zoom + an absolute `camera_set_position` jump) over the same map `tilemap` loads
 * [sprite](sprite/docs/README.md) — acquiring/configuring/moving an animated sprite (sunlight's own "sunny" character), built on `tilemap/`
 * [collision](collision/docs/README.md) — a keyboard-controlled sprite colliding with a fixed one, `collision_add_rule`/`collision_set_handler`, built on `sprite/`
-* `scripting/` — `ScriptProcessor`'s `sp_*` queued-command sequencing — *planned*
+* [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
 * `sound/` — direct, queued, and one-shot sound/song playback — *planned*
 * `json/` — `load_json` — *planned*
 

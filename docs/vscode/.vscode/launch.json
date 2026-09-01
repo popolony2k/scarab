@@ -33,7 +33,8 @@
                 "samples/tilemap/project.json",
                 "samples/camera/project.json",
                 "samples/sprite/project.json",
-                "samples/collision/project.json"
+                "samples/collision/project.json",
+                "samples/scripting/project.json"
             ],
             "default": "samples/hello-world/project.json"
         }
