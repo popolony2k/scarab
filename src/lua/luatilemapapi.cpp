@@ -333,6 +333,13 @@ namespace Scarab  {
 
             void LuaTilemapApi :: RegisterEnums( lua_State *pLuaState )  {
 
+                /**
+                 * @luaconstants{Map alignments}
+                 * @luadoc
+                 * The `alignment` argument `tilemap_load_map` optionally
+                 * takes, controlling how the map is positioned relative
+                 * to the viewport when it's smaller than the screen.
+                 */
                 static const stNamedConstant  s_aMapAlignments[] = {
                     { "MAP_ALIGNMENT_CENTER", ITileMap :: MAP_ALIGNMENT_CENTER },
                     { "MAP_ALIGNMENT_TOP_RIGHT", ITileMap :: MAP_ALIGNMENT_TOP_RIGHT },
