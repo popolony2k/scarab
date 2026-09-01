@@ -22,14 +22,20 @@
  input - keyboard and gamepad reading (docs/lua-api/input.html).
 
  Moves a plain rectangle (no sprite yet - see the "sprite" sample) around
- the screen with the arrow keys/WASD, or gamepad 0's left stick (with a
+ the screen with the arrow keys/WASD, gamepad 0's left stick (with a
  deadzone, the same pattern input_is_gamepad_button_down's own doc
- example uses), and resets it's position on a keyboard key release or a
- gamepad face-down button press. input_add_gamepad must be called once,
- at startup, before any gamepad_* primitive reports real state for that
- id - it's harmless to call this and then read gamepad state every
- frame even with no gamepad actually connected, everything just reads
- as centered/not-pressed.
+ example uses), or it's D-pad, and resets it's position on a keyboard
+ key release or a gamepad face-down button press. input_add_gamepad
+ must be called once, at startup, before any gamepad_* primitive
+ reports real state for that id - it's harmless to call this and then
+ read gamepad state every frame even with no gamepad actually
+ connected, everything just reads as centered/not-pressed.
+
+ NOTE: raylib's own gamepad button naming (which this engine's
+ GAMEPAD_BUTTON_* constants mirror exactly) calls the D-pad
+ "LEFT_FACE" (GAMEPAD_BUTTON_LEFT_FACE_UP/DOWN/LEFT/RIGHT) - the face
+ buttons (A/B/X/Y or equivalent) are "RIGHT_FACE". Easy to mix up the
+ two at a glance.
 ]]
 
 app_set_name( "Scarab - input sample" )
@@ -58,6 +64,10 @@ function on_update( dt )
     local axisX = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_X )
     local axisY = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_Y )
     local faceDown = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN )
+    local dpadUp    = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_UP )
+    local dpadDown  = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_DOWN )
+    local dpadLeft  = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_LEFT )
+    local dpadRight = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT )
 
     if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then
         squareX = squareX - __SPEED
@@ -85,6 +95,25 @@ function on_update( dt )
         squareY = squareY + ( axisY * __SPEED )
     end
 
+    -- Same movement again, driven by the D-pad - a digital input, so no
+    -- deadzone needed, just plain input_is_gamepad_button_down checks,
+    -- the same shape as the keyboard's own arrow-key handling above.
+    if dpadLeft then
+        squareX = squareX - __SPEED
+    end
+
+    if dpadRight then
+        squareX = squareX + __SPEED
+    end
+
+    if dpadUp then
+        squareY = squareY - __SPEED
+    end
+
+    if dpadDown then
+        squareY = squareY + __SPEED
+    end
+
     -- Keep the square fully on screen.
     squareX = math.max( 0, math.min( screenWidth - __SQUARE_SIZE, squareX ) )
     squareY = math.max( 0, math.min( screenHeight - __SQUARE_SIZE, squareY ) )
@@ -95,8 +124,10 @@ function on_update( dt )
 
     draw_filled_rectangle( math.floor( squareX ), math.floor( squareY ), __SQUARE_SIZE, __SQUARE_SIZE, 60, 160, 220, 255 )
 
-    draw_text( "input sample - arrows/WASD or left stick to move, R or face-down button to reset", 20, 20, 20, 255, 255, 255, 255 )
+    draw_text( "input sample - arrows/WASD, left stick, or D-pad to move; R or face-down button to reset", 20, 20, 18, 255, 255, 255, 255 )
     draw_text( "gamepad 0 left stick: " .. string.format( "%.2f, %.2f", axisX, axisY )
-        .. "  face-down button: " .. tostring( faceDown ), 20, 50, 18, 200, 200, 200, 255 )
-    draw_text( "(reads centered/false with no gamepad connected - that's expected, not an error)", 20, 72, 18, 150, 150, 150, 255 )
+        .. "  face-down: " .. tostring( faceDown ), 20, 46, 18, 200, 200, 200, 255 )
+    draw_text( "D-pad up/down/left/right: " .. tostring( dpadUp ) .. "/" .. tostring( dpadDown )
+        .. "/" .. tostring( dpadLeft ) .. "/" .. tostring( dpadRight ), 20, 68, 18, 200, 200, 200, 255 )
+    draw_text( "(reads centered/false with no gamepad connected - that's expected, not an error)", 20, 90, 18, 150, 150, 150, 255 )
 end
