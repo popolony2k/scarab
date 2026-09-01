@@ -27,7 +27,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [tilemap](tilemap/docs/README.md) — loading a Tiled `.tmx` map, reporting its dimensions — the minimal map-on-screen sample, no sprites (map shared from [resources/tilemap/](../resources/tilemap/README.md))
 * [camera](camera/docs/README.md) — scrolling/zooming the camera (keyboard pan/zoom + an absolute `camera_set_position` jump) over the same map `tilemap` loads
 * [sprite](sprite/docs/README.md) — acquiring/configuring/moving an animated sprite (sunlight's own "sunny" character), built on `tilemap/`
-* `collision/` — collision rules/handlers, built on `sprite/` — *planned*
+* [collision](collision/docs/README.md) — a keyboard-controlled sprite colliding with a fixed one, `collision_add_rule`/`collision_set_handler`, built on `sprite/`
 * `scripting/` — `ScriptProcessor`'s `sp_*` queued-command sequencing — *planned*
 * `sound/` — direct, queued, and one-shot sound/song playback — *planned*
 * `json/` — `load_json` — *planned*
