@@ -566,6 +566,13 @@ namespace Scarab  {
 
             void LuaSpriteApi :: RegisterEnums( lua_State *pLuaState )  {
 
+                /**
+                 * @luaconstants{Animation modes}
+                 * @luadoc
+                 * The `animationMode` argument `sprite_configure_texture`/
+                 * `sprite_set_animation_mode` take — see either
+                 * primitive's own doc for the full behavior of each mode.
+                 */
                 static const stNamedConstant  s_aAnimationModes[] = {
                     __CONST( TEXTURE_ANIMATION_MODE_MANUAL ),
                     __CONST( TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR ),

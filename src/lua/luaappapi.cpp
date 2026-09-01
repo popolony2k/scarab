@@ -486,6 +486,14 @@ namespace Scarab  {
              */
             void LuaAppApi :: RegisterEnums( lua_State *pLuaState )  {
 
+                /**
+                 * @luaconstants{Fullscreen strategies}
+                 * @luadoc
+                 * The `strategy` argument `app_set_fullscreen` optionally
+                 * takes — see that primitive's own doc for what each one
+                 * actually does and why `FULLSCREEN_STRATEGY_REAL` is
+                 * kept macOS-only project-wide.
+                 */
                 static const stNamedConstant  s_aFullscreenStrategies[] = {
                     { "FULLSCREEN_STRATEGY_REAL", SunLight :: Engines :: IEngine :: FULLSCREEN_STRATEGY_REAL },
                     { "FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED", SunLight :: Engines :: IEngine :: FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED },
@@ -494,6 +502,11 @@ namespace Scarab  {
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aFullscreenStrategies,
                     sizeof( s_aFullscreenStrategies ) / sizeof( s_aFullscreenStrategies[0] ) );
 
+                /**
+                 * @luaconstants{Platforms}
+                 * @luadoc
+                 * The values `app_get_platform()` returns.
+                 */
                 static const stNamedConstant  s_aPlatforms[] = {
                     { "PLATFORM_WINDOWS", LuaAppApi :: PLATFORM_WINDOWS },
                     { "PLATFORM_MACOS", LuaAppApi :: PLATFORM_MACOS },

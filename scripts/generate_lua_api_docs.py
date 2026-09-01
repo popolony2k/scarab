@@ -24,8 +24,10 @@ https://popolony2k.github.io/scarab/lua-api/ straight from the
 @luaname/@luagroup/@luaheading/@luadoc/@luaexample tags in each
 primitive's own C++ doc comment in src/lua/*api.cpp (plus
 @luacategory/@luadoc/@luaoutro on the owning class's comment in the
-matching .h file) - see project memory and CLAUDE.md for the full "Lua
-API docs" plan this completed. docs/doxygen.yml runs this (--format
+matching .h file), and from @luaconstants/@luadoc on each `static const
+stNamedConstant name[] = { ... }` array (typically inside a
+RegisterEnums() method) - see project memory and CLAUDE.md for the full
+"Lua API docs" plan this completed. docs/doxygen.yml runs this (--format
 html) right after the Doxygen C++ reference build, landing the output
 under docs/doxygen/html/lua-api/ so both publish in the same deploy.
 docs/lua-api/*.md (the old hand-written pages) no longer exist -
@@ -35,8 +37,9 @@ and doubles as this site's own landing page (render_readme_html).
 
 With no arguments (the default, --format markdown, no --out-dir), this
 is also ci.yml's own CI check: it hard-fails on any lua_register()'d
-primitive with no @luaname tag, so a new primitive shipped without one
-fails CI rather than silently missing from the published site. Use
+primitive with no @luaname tag, or any `stNamedConstant` array with no
+@luaconstants tag, so a new primitive/constant group shipped without
+one fails CI rather than silently missing from the published site. Use
 --source to scope a run to one or more source files, e.g. for a quick
 local check while editing one file's tags:
 
@@ -51,6 +54,10 @@ parses the raw comment text itself):
     @luagroup{<group key>}              optional; see below
     @luaheading{<heading text>}         optional override for a group's
                                          rendered heading (see below)
+    @luaconstants{<group title>}        required on every tagged constant
+                                         array (see below) - mutually
+                                         exclusive with @luaname/@luagroup
+                                         on the same comment
     @luadoc                             starts Lua-facing prose (Markdown),
                                          runs until the next @lua* tag
     @luaexample                         starts a Lua code example, runs
@@ -72,6 +79,25 @@ every member's @luaname joined with " / "; @luaheading on the primary
 overrides that entirely with arbitrary text (e.g. sound.md's "Song
 commands — queued vs. direct", covering 9 members under one heading with a
 comparison table, not a list of 9 joined signatures).
+
+@luaconstants tags a `static const stNamedConstant name[] = { ... };`
+array literal (typically inside a RegisterEnums() method, registering
+its entries as plain Lua globals via LuaEngineUtil::RegisterConstants -
+a completely different mechanism than lua_register(), and one this
+generator was blind to before @luaconstants existed at all: these
+constants were previously undocumented anywhere except incidentally,
+wherever some unrelated primitive's own @luaexample happened to mention
+one by name). The tag goes on a comment immediately preceding the array
+declaration itself, `@luaconstants{<display title>}` naming the
+rendered section's heading; every constant's own Lua-visible name (the
+quoted string literal it registers under - whether the array spells
+each entry as a literal `{ "NAME", value }` pair or via the `__CONST(
+NAME )` stringifying macro, both forms appear across src/lua/*api.cpp
+today and are extracted identically) is read straight from the array's
+own source text, never hand-duplicated in the comment - the published
+list can't drift from what's actually registered. An optional @luadoc
+under an @luaconstants tag adds prose above the rendered constant list,
+same as any primitive's own @luadoc.
 
 Every docs/lua-api/*.md file maps to exactly one or more src/lua/*api.cpp
 files via SOURCE_TO_DOC (see _lua_api_shared.py) - most map 1:1, but
@@ -120,8 +146,21 @@ DEFINITION_RE = re.compile(
 )
 CLASS_RE = re.compile(r'^\s*class\s+([A-Za-z_]\w*)\b')
 COMMENT_LINE_RE = re.compile(r'^\s*\*\s?(.*)$')
-BRACE_TAG_RE = re.compile(r'^@lua(name|group|category|heading)\{([^}]*)\}\s*$')
+BRACE_TAG_RE = re.compile(r'^@lua(name|group|category|heading|constants)\{([^}]*)\}\s*$')
 BARE_TAG_RE = re.compile(r'^@lua(doc|example|outro)\s*$')
+
+# A tagged constant group: `static const stNamedConstant s_aXxx[] = {`
+# (always this exact shape across src/lua/*api.cpp today - see
+# LuaEngineUtil::stNamedConstant/RegisterConstants, luaengineutil.h).
+CONST_ARRAY_RE = re.compile(r'^\s*static\s+const\s+stNamedConstant\s+(\w+)\s*\[\]\s*=\s*\{')
+
+# Each array entry is either a literal `{ "NAME", value },` pair
+# (luaappapi.cpp/luatilemapapi.cpp) or the stringifying `__CONST( NAME )`
+# macro (`#define __CONST( name ) { #name, ( int ) name }` -
+# luainputapi.cpp/luaspriteapi.cpp) - both register the exact same
+# Lua-visible name, just spelled differently in C++; whichever
+# alternative matches for a given entry, group(1) or group(2) holds it.
+CONST_ENTRY_NAME_RE = re.compile(r'__CONST\(\s*([A-Za-z_]\w*)\s*\)|"([A-Za-z_]\w*)"')
 
 
 class GeneratorError(Exception):
@@ -173,13 +212,13 @@ def extract_preceding_comment(lines, def_line_idx):
 
 
 def parse_lua_tags(doc_lines):
-    """Parses @luaname/@luagroup/@luacategory/@luaheading/@luadoc/
-    @luaexample/@luaoutro out of a de-prefixed comment body. Returns a
-    dict; the block tags (luadoc/luaexample/luaoutro) are None if the tag
-    wasn't present at all (distinct from present-but-empty)."""
+    """Parses @luaname/@luagroup/@luacategory/@luaheading/@luaconstants/
+    @luadoc/@luaexample/@luaoutro out of a de-prefixed comment body.
+    Returns a dict; the block tags (luadoc/luaexample/luaoutro) are None
+    if the tag wasn't present at all (distinct from present-but-empty)."""
 
     result = {"luaname": None, "luagroup": None, "luacategory": None, "luaheading": None,
-              "luadoc": None, "luaexample": None, "luaoutro": None}
+              "luaconstants": None, "luadoc": None, "luaexample": None, "luaoutro": None}
     collecting = None  # None | "luadoc" | "luaexample" | "luaoutro"
     collected = {"luadoc": [], "luaexample": [], "luaoutro": []}
     already_seen = set()
@@ -305,6 +344,83 @@ def collect_primitives(src_file):
     return primitives
 
 
+def collect_constant_groups(src_file):
+    """Returns an ordered list of dicts (one per `static const
+    stNamedConstant name[] = { ... };` array declared in `src_file`,
+    typically inside a RegisterEnums() method), shaped compatibly with
+    collect_primitives()'s own dicts so both flow through render_page()
+    unchanged - luaname/luagroup/luaexample are always None (a constant
+    group is not a callable primitive and never grouped with one, the
+    way a get/set pair is), luaconstants holds the group's display
+    title, and constant_names holds every constant's own Lua-visible
+    name, auto-extracted from the array's own source text (via
+    CONST_ENTRY_NAME_RE, matching either spelling these arrays use) so
+    the published list can never drift from what's actually registered.
+    Raises GeneratorError if an array has no @luaconstants tag on it's
+    own preceding comment - same hard-fail philosophy
+    collect_primitives() already applies to @luaname."""
+
+    lines = src_file.read_text().splitlines()
+    groups = []
+
+    for idx, line in enumerate(lines):
+        array_match = CONST_ARRAY_RE.match(line)
+        if not array_match:
+            continue
+
+        array_name = array_match.group(1)
+
+        # This array literal's own closing brace, via depth-tracking, so
+        # it's body can be sliced out regardless of how many lines the
+        # initializer list spans (every array here does span several).
+        depth = 0
+        end_idx = None
+        for j in range(idx, len(lines)):
+            depth += lines[j].count("{") - lines[j].count("}")
+            if depth == 0:
+                end_idx = j
+                break
+
+        if end_idx is None:
+            raise GeneratorError(
+                f"{src_file.relative_to(REPO_ROOT)}:{idx + 1}: "
+                f"'{array_name}' - unterminated array literal (no "
+                f"matching closing '}}' found)."
+            )
+
+        body_text = "\n".join(lines[idx:end_idx + 1])
+        constant_names = [m.group(1) or m.group(2) for m in CONST_ENTRY_NAME_RE.finditer(body_text)]
+
+        doc_lines = extract_preceding_comment(lines, idx)
+        try:
+            tags = parse_lua_tags(doc_lines) if doc_lines is not None else {}
+        except DuplicateTagError as err:
+            raise GeneratorError(f"{src_file.relative_to(REPO_ROOT)}:{idx + 1}: {err}")
+
+        if not tags.get("luaconstants"):
+            raise GeneratorError(
+                f"{src_file.relative_to(REPO_ROOT)}:{idx + 1}: "
+                f"'{array_name}' ({len(constant_names)} constants) has no "
+                f"@luaconstants tag in it's own preceding doc comment - "
+                f"add one before this can be generated."
+            )
+
+        groups.append({
+            "registered_name": array_name,
+            "class_name": None,
+            "method_name": None,
+            "luaname": None,
+            "luagroup": None,
+            "luaheading": tags.get("luaheading"),
+            "luaconstants": tags.get("luaconstants"),
+            "luadoc": tags.get("luadoc"),
+            "luaexample": None,
+            "constant_names": constant_names,
+        })
+
+    return groups
+
+
 # luaengine.cpp's reverse-direction scan: it has NO lua_register() calls at
 # all (that's the whole point - these are globals the engine looks up and
 # calls INTO Lua, via lua_getglobal, not primitives Lua calls into the
@@ -425,12 +541,19 @@ def render_page(category, src_files, primitives):
                 members.append(primitives[idx])
                 idx += 1
 
-        heading = primary["luaheading"] or " / ".join(f"`{m['luaname']}`" for m in members)
+        if primary.get("luaconstants"):
+            heading = primary["luaheading"] or primary["luaconstants"]
+        else:
+            heading = primary["luaheading"] or " / ".join(f"`{m['luaname']}`" for m in members)
         lines.append(f"## {heading}")
         lines.append("")
 
         if primary["luadoc"]:
             lines.append(primary["luadoc"])
+            lines.append("")
+
+        if primary.get("constant_names"):
+            lines.append(", ".join(f"`{n}`" for n in primary["constant_names"]))
             lines.append("")
 
         if primary["luaexample"]:
@@ -598,8 +721,26 @@ def main():
             for src_file in src_files:
                 category = find_class_category(src_file.with_suffix(".h"))
                 categories.append((src_file, category))
-                collector = collect_callback_primitives if src_file.name == CALLBACK_SOURCE_FILE else collect_primitives
-                all_primitives.append((src_file, category, collector(src_file)))
+                is_callback_source = src_file.name == CALLBACK_SOURCE_FILE
+                collector = collect_callback_primitives if is_callback_source else collect_primitives
+                items = collector(src_file)
+                if not is_callback_source:
+                    # Every primitive first, then every tagged constant
+                    # group (RegisterEnums()'s own stNamedConstant arrays -
+                    # a different registration mechanism than
+                    # lua_register(), luaengine.cpp's callback-dispatch
+                    # methods have none of these at all) - deliberately
+                    # NOT interleaved by source position: luainputapi.cpp
+                    # declares its arrays at the top of the file, before
+                    # any primitive, while every other file's live inside
+                    # RegisterEnums() at the bottom, so sorting by raw line
+                    # number would put "Constants" first on one category
+                    # page and last on every other - constants always read
+                    # as a trailing reference section instead, consistent
+                    # across every page regardless of where they actually
+                    # sit in that file.
+                    items = items + collect_constant_groups(src_file)
+                all_primitives.append((src_file, category, items))
         except GeneratorError as err:
             print(f"Lua API doc generation FAILED:\n\n  - {err}\n", file=sys.stderr)
             return 1

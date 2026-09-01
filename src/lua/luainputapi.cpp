@@ -31,6 +31,13 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
+            /**
+             * @luaconstants{Keyboard keys}
+             * @luadoc
+             * The `key` argument `input_is_key_down`/`input_is_key_up`/
+             * `input_is_key_released` take - every one raylib itself
+             * supports.
+             */
             static const stNamedConstant  s_aKeyboardKeys[] = {
                 __CONST( KEY_NULL ),
                 __CONST( KEY_APOSTROPHE ),
@@ -106,6 +113,16 @@ namespace Scarab  {
                 __CONST( KEY_VOLUME_DOWN ),
             };
 
+            /**
+             * @luaconstants{Gamepad buttons}
+             * @luadoc
+             * The `button` argument `input_is_gamepad_button_down`/
+             * `input_is_gamepad_button_up` take. **Naming gotcha**:
+             * raylib's own gamepad button naming (mirrored here exactly)
+             * calls the D-pad `LEFT_FACE_UP`/`DOWN`/`LEFT`/`RIGHT` - the
+             * face buttons (A/B/X/Y or equivalent) are `RIGHT_FACE_*`.
+             * Easy to mix up the two at a glance.
+             */
             static const stNamedConstant  s_aGamepadButtons[] = {
                 __CONST( GAMEPAD_BUTTON_UNKNOWN ),
                 __CONST( GAMEPAD_BUTTON_LEFT_FACE_UP ),
@@ -127,6 +144,11 @@ namespace Scarab  {
                 __CONST( GAMEPAD_BUTTON_RIGHT_THUMB ),
             };
 
+            /**
+             * @luaconstants{Gamepad axes}
+             * @luadoc
+             * The `axis` argument `input_get_gamepad_axis` takes.
+             */
             static const stNamedConstant  s_aGamepadAxis[] = {
                 __CONST( GAMEPAD_AXIS_LEFT_X ),
                 __CONST( GAMEPAD_AXIS_LEFT_Y ),
@@ -136,6 +158,13 @@ namespace Scarab  {
                 __CONST( GAMEPAD_AXIS_RIGHT_TRIGGER ),
             };
 
+            /**
+             * @luaconstants{Controller types}
+             * @luadoc
+             * Mirrors raylib's own `ControllerType` for completeness —
+             * no primitive in this file actually takes one as an
+             * argument today.
+             */
             static const stNamedConstant  s_aControllerTypes[] = {
                 __CONST( CONTROLLER_NULL ),
                 __CONST( CONTROLLER_KEYBOARD ),
