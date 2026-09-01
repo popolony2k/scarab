@@ -4,6 +4,12 @@ A thin, game-agnostic C++17 host for 2D games scripted entirely in Lua, run from
 
 Licensed under the [zlib License](LICENSE), the same license `sunlight` (the engine Scarab is built on) uses.
 
+## Motivation :bulb:
+
+Scarab started as a personal project with a simple goal: build a game called **Caravellius**. Months into that game's own development, the parts that had nothing to do with any specific game — the window/render loop, tile-map rendering, sprites, collision, sound, input — were split out into their own library, [**sunlight**](https://github.com/popolony2k/sunlight). About a year later, a second idea became clear: that same game-agnostic split could go one step further, into a thin host with *no* game-specific C++ left at all, where an entire game is scripted in Lua on top of sunlight instead. That idea became Scarab, split out by its author into a project of its own.
+
+Read the full story, in the author's own words: [*From a Transforming Ship to a Transforming Engine*](https://www.popolony2k.com.br/from-a-transforming-ship-to-a-transforming-engine/).
+
 ## Table of Contents :pushpin:
 * [Lua API reference](#lua-api-reference-book) :book:
 * [Scarab Class Documentation](#scarab-class-documentation-gear) :gear:
