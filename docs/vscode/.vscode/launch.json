@@ -35,7 +35,8 @@
                 "samples/sprite/project.json",
                 "samples/collision/project.json",
                 "samples/scripting/project.json",
-                "samples/sound/project.json"
+                "samples/sound/project.json",
+                "samples/json/project.json"
             ],
             "default": "samples/hello-world/project.json"
         }

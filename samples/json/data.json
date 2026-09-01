@@ -1,0 +1,8 @@
+{
+    "title": "json sample",
+    "debug": true,
+    "enemies": [
+        { "name": "satellite", "hp": 3 },
+        { "name": "cylinder", "hp": 5 }
+    ]
+}
