@@ -20,10 +20,10 @@ From the repo root:
 
 Everything past `hello-world` is grouped by exactly the categories the [Lua API reference](https://popolony2k.github.io/scarab/lua-api/) itself is split into — each sample links back to its own category page for the full primitive docs. `callbacks` has no sample of its own since it isn't a primitive surface to demo in isolation — it's the `on_update`/etc. mechanism every sample above already runs on.
 
-* `app/` — window/app-level basics (`app_set_name`, `app_get_platform`, `app_set_draw_fps`, window resizing, ...) — *planned*
-* `text/` — font loading and HUD-style text layout (`set_font`, `measure_text`, `screen_get_width`/`height`) beyond `hello-world`'s minimal use — *planned*
-* `timers/` — `set_timer`/`reset_timer` — *planned*
-* `input/` — keyboard and gamepad reading — *planned*
+* [app](app/docs/README.md) — window/app-level basics: fullscreen, the FPS counter, window resizing, letterbox vs. stretch-to-fill, target FPS, a startup fade, a simple HUD bar
+* [text](text/docs/README.md) — HUD-style text layout: `measure_text`-based right-alignment, `screen_get_width`/`height`, `set_font`'s documented graceful-failure behavior, and a real custom-font swap (Press Start 2P, OFL — see [resources/fonts/](../resources/fonts/README.md))
+* [timers](timers/docs/README.md) — two independent background timers, and the "callbacks run on a background thread" gotcha handled correctly
+* [input](input/docs/README.md) — keyboard and gamepad reading: a rectangle moved with the keyboard, live gamepad axis/button state
 * `tilemap/` — loading a Tiled `.tmx` map — *planned*
 * `camera/` — scrolling/zooming the camera over a loaded map — *planned*
 * `sprite/` — sprite acquire/configure/animate, built on `tilemap/` — *planned*

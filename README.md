@@ -20,6 +20,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
     - [VSCode setup](#vscode-setup)
 * [Running](#running-rocket) :rocket:
 * [Samples](#samples-video_game) :video_game:
+* [Shared resources](#shared-resources-art) :art:
 * [License](#license-scroll) :scroll:
 
 ## Lua API reference :book:
@@ -45,6 +46,7 @@ scarab/
 │   ├── vscode/.vscode/     # tracked .vscode sample - see "VSCode setup" below
 │   └── README-DEBUG.txt   # debug build flags
 ├── samples/                # pure-Lua sample games, one per Lua API category - see "Samples" below
+├── resources/               # open-source shared assets (fonts, ...) - see "Shared resources" below
 └── CMakePresets.json       # default/windows-vcpkg presets (only real platform-conditional CMake config)
 ```
 
@@ -110,6 +112,10 @@ Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, th
 ## Samples :video_game:
 
 Small, focused Lua scripts under [samples/](samples/) that each demonstrate one corner of the [Lua API reference](https://popolony2k.github.io/scarab/lua-api/) at a time — starting from [hello-world](samples/hello-world/docs/README.md) (the smallest possible Scarab game) and then one sample per API category (`app`, `text`, `timers`, `input`, `tilemap`, `camera`, `sprite`, `collision`, `scripting`, `sound`, `json`), mirroring how sunlight's own [samples](https://github.com/popolony2k/sunlight/tree/main/samples) work — adapted for an engine where the entire game is Lua, so every sample here is just a `project.json` + `.lua` script run directly against the built `scarab` executable, nothing to compile. See [samples/README.md](samples/README.md) for the full, up-to-date list.
+
+## Shared resources :art:
+
+[resources/](resources/) is a permanent, open-source shared-assets area shipped with Scarab itself — not scoped to `samples/` alone. It's free for this repo's own samples to draw on, and for any community game built on Scarab to use directly, the same way a game already depends on Scarab itself via `FetchContent`. Everything in it carries clear licensing/attribution in its own subfolder README (e.g. [resources/fonts/README.md](resources/fonts/README.md)) — either an original asset contributed to this repo, or a real open-license third-party one (SIL OFL, CC0, etc.) fetched and credited under its own real name/license text, never silently relicensed or renamed to obscure where it came from.
 
 ## License :scroll:
 

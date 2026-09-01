@@ -10,6 +10,30 @@
     // see this repo's own CLAUDE.md/README.md), or use a real game's own
     // checkout as an external test project if you're developing Scarab
     // itself.
+    // sampleProjectJson backs the "Launch sample" configurations below -
+    // cwd for those is the repo root (NOT build/), and the value here must
+    // stay a relative path with no ".." segments: main_script gets resolved
+    // relative to the project file's own directory and then read through
+    // Scarab's mount-based filesystem (SunLight::FileSystem), which rejects
+    // ".." path segments outright - a "cd build && ./scarab
+    // ../samples/x/project.json"-shaped invocation fails even though the
+    // file genuinely exists there (see samples/README.md). Add new entries
+    // here as new samples/<category>/ directories land.
+    "inputs": [
+        {
+            "id": "sampleProjectJson",
+            "type": "pickString",
+            "description": "Which samples/ project to launch",
+            "options": [
+                "samples/hello-world/project.json",
+                "samples/app/project.json",
+                "samples/timers/project.json",
+                "samples/text/project.json",
+                "samples/input/project.json"
+            ],
+            "default": "samples/hello-world/project.json"
+        }
+    ],
     "configurations": [
         {
             "name": "(Windows) Launch",
@@ -56,6 +80,56 @@
             "args": ["project.json"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "cmake build (scarab)"
+        },
+        {
+            "name": "(Windows) Launch sample",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/debug/scarab.exe",
+            "args": ["${input:sampleProjectJson}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "externalTerminal",
+            "preLaunchTask": "cmake build (scarab)"
+        },
+        {
+            "name": "(gdb) Launch sample",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/scarab",
+            "args": ["${input:sampleProjectJson}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "cmake build (scarab)",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description":  "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(lldb) Launch sample",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/scarab",
+            "args": ["${input:sampleProjectJson}"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb",
