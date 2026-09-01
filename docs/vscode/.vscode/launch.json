@@ -30,7 +30,8 @@
                 "samples/timers/project.json",
                 "samples/text/project.json",
                 "samples/input/project.json",
-                "samples/tilemap/project.json"
+                "samples/tilemap/project.json",
+                "samples/camera/project.json"
             ],
             "default": "samples/hello-world/project.json"
         }

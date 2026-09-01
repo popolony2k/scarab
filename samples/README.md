@@ -25,7 +25,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [timers](timers/docs/README.md) — two independent background timers, and the "callbacks run on a background thread" gotcha handled correctly
 * [input](input/docs/README.md) — keyboard and gamepad reading: a rectangle moved with the keyboard, live gamepad axis/button state
 * [tilemap](tilemap/docs/README.md) — loading a Tiled `.tmx` map, reporting its dimensions — the minimal map-on-screen sample, no sprites (map shared from [resources/tilemap/](../resources/tilemap/README.md))
-* `camera/` — scrolling/zooming the camera over a loaded map — *planned*
+* [camera](camera/docs/README.md) — scrolling/zooming the camera (keyboard pan/zoom + an absolute `camera_set_position` jump) over the same map `tilemap` loads
 * `sprite/` — sprite acquire/configure/animate, built on `tilemap/` — *planned*
 * `collision/` — collision rules/handlers, built on `sprite/` — *planned*
 * `scripting/` — `ScriptProcessor`'s `sp_*` queued-command sequencing — *planned*
