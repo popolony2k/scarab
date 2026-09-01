@@ -24,22 +24,27 @@
 
  Demonstrates measure_text (right-aligning a growing counter against
  screen_get_width), screen_get_width/screen_get_height (drawing a border
- exactly on the render target's edges), and set_font twice over: first a
- path that can't exist, to show its documented graceful-failure behavior
- (returns false, leaves the previously-active font untouched, no error
- or crash), then "Press Start 2P" (resources/fonts/, OFL-licensed - see
- resources/fonts/README.md and ofl-pressstart2p.txt for full attribution)
- for a real successful custom-font swap.
+ exactly on the render target's edges), and set_font three times over:
+ first a path that can't exist, to show its documented graceful-failure
+ behavior (returns false, leaves the previously-active font untouched,
+ no error or crash); then "Press Start 2P" (resources/fonts/,
+ OFL-licensed - see resources/fonts/README.md and ofl-pressstart2p.txt
+ for full attribution), a single-file TrueType font; then
+ "caravellius8x8" (resources/fonts/, an original bitmap font made for
+ Caravellius), a multi-file AngelCode BMFont atlas - the last set_font
+ call wins, so caravellius8x8 ends up the font actually used for the
+ rest of this sample, same call shape either way regardless of format
+ (set_font has no format-specific logic of it's own; raylib's LoadFont
+ auto-detects TrueType/OpenType vs. a BMFont ".fnt" atlas purely from
+ the file's own extension).
 
- NOTE: resources/fonts/ also holds an original bitmap font made for
- Caravellius (caravellius8x8.fnt) - this sample deliberately does NOT
- use it. A real, verified engine bug means multi-file AngelCode BMFont
- loading (a ".fnt" plus it's own separate ".png" atlas) currently fails
- under Scarab's mount-based filesystem hook, even though the exact same
- files load correctly through plain raylib on it's own - see root
- CLAUDE.md's "Known gotchas" and resources/fonts/README.md for the full
- story. Press Start 2P is a single-file TrueType font, unaffected by
- that bug, which is exactly why it's the one used here.
+ NOTE: multi-file BMFont loading (like caravellius8x8.fnt's separate
+ ".png" atlas) used to fail here - a real, verified engine bug in how
+ Scarab's mount-based filesystem hook interacted with raylib's own
+ internal BMFont loading, root-caused and fixed upstream in sunlight
+ v0.17.3 (see root CLAUDE.md's "Known gotchas" and
+ resources/fonts/README.md for the full story). This sample now
+ demonstrates the real, working multi-file BMFont load as a result.
 ]]
 
 app_set_name( "Scarab - text sample" )
@@ -53,11 +58,19 @@ sp_wait( 1 )
 -- describes. bogusFontLoaded is only ever used for the HUD line below.
 local bogusFontLoaded = set_font( "resources/fonts/this-font-does-not-exist.ttf" )
 
--- The real thing: "Press Start 2P" by The Press Start 2P Project Authors,
--- SIL Open Font License 1.1 (resources/fonts/ofl-pressstart2p.txt) -
--- used here unmodified, under it's own real name, per OFL's own Reserved
--- Font Name terms (see resources/fonts/README.md).
-local fontLoaded = set_font( "resources/fonts/pressstart2p-regular.ttf" )
+-- "Press Start 2P" by The Press Start 2P Project Authors, SIL Open Font
+-- License 1.1 (resources/fonts/ofl-pressstart2p.txt) - used here
+-- unmodified, under it's own real name, per OFL's own Reserved Font
+-- Name terms (see resources/fonts/README.md). A single-file TrueType
+-- font - was never affected by the BMFont bug mentioned above.
+local pressStart2PLoaded = set_font( "resources/fonts/pressstart2p-regular.ttf" )
+
+-- caravellius8x8 - an original bitmap font made for Caravellius
+-- (resources/fonts/README.md). A multi-file AngelCode BMFont atlas -
+-- this is the call that used to fail (see the module comment above);
+-- fixed in sunlight v0.17.3. Called last, so this becomes the font
+-- actually active for the rest of this sample.
+local caravelliusLoaded = set_font( "resources/fonts/caravellius8x8.fnt" )
 
 local screenWidth  = screen_get_width()
 local screenHeight = screen_get_height()
@@ -83,9 +96,10 @@ function on_update( dt )
     draw_filled_rectangle( 0, 0, 4, screenHeight, 80, 80, 80, 255 )
     draw_filled_rectangle( screenWidth - 4, 0, 4, screenHeight, 80, 80, 80, 255 )
 
-    draw_text( "text sample - now using Press Start 2P (OFL)", 20, 20, 20, 255, 255, 255, 255 )
-    draw_text( "set_font( bad path ) returned: " .. tostring( bogusFontLoaded )
-        .. "   set_font( real path ) returned: " .. tostring( fontLoaded ), 20, 54, 14, 200, 200, 200, 255 )
+    draw_text( "text sample - now using caravellius8x8 (a multi-file BMFont)", 20, 20, 20, 255, 255, 255, 255 )
+    draw_text( "set_font: bad path=" .. tostring( bogusFontLoaded )
+        .. "  Press Start 2P=" .. tostring( pressStart2PLoaded )
+        .. "  caravellius8x8=" .. tostring( caravelliusLoaded ), 20, 50, 14, 200, 200, 200, 255 )
 
     -- Right-align "Count: N" against the right edge via measure_text,
     -- rather than a hardcoded x - the text's own width changes as the
