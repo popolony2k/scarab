@@ -24,7 +24,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [text](text/docs/README.md) — HUD-style text layout: `measure_text`-based right-alignment, `screen_get_width`/`height`, `set_font`'s documented graceful-failure behavior, and a real custom-font swap (Press Start 2P, OFL — see [resources/fonts/](../resources/fonts/README.md))
 * [timers](timers/docs/README.md) — two independent background timers, and the "callbacks run on a background thread" gotcha handled correctly
 * [input](input/docs/README.md) — keyboard and gamepad reading: a rectangle moved with the keyboard, live gamepad axis/button state
-* `tilemap/` — loading a Tiled `.tmx` map — *planned*
+* [tilemap](tilemap/docs/README.md) — loading a Tiled `.tmx` map, reporting its dimensions — the minimal map-on-screen sample, no sprites (map shared from [resources/tilemap/](../resources/tilemap/README.md))
 * `camera/` — scrolling/zooming the camera over a loaded map — *planned*
 * `sprite/` — sprite acquire/configure/animate, built on `tilemap/` — *planned*
 * `collision/` — collision rules/handlers, built on `sprite/` — *planned*
