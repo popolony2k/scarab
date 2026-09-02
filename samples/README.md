@@ -31,5 +31,6 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
 * [sound](sound/docs/README.md) — direct one-shot, direct looping, and queued song forms side by side, plus pause/stop/resume/volume
 * [json](json/docs/README.md) — `load_json`, walking a small nested object/array config file into an equivalent Lua table
+* [crypto](crypto/docs/README.md) — `crypto_encrypt_data`/`crypto_decrypt_data`: an encrypt → decrypt roundtrip, and a tamper test showing the authenticated-encryption failure mode; behavior depends on whether the running `scarab` was built with a real `SCARAB_CONTENT_KEY` (see [docs/content-encryption-plan.md](../docs/content-encryption-plan.md))
 
-Every Lua API category listed above now has a sample.
+Every Lua API category listed above now has a sample, except **Pack** (`pack_*`, `LuaPackApi`) — its own worked example is [tools/pack.lua](../tools/README.md), run via `scarab --pack <config.json>` rather than kept as a `samples/pack` here; packaging is a dev-time tool operating on real native OS paths (deliberately unmounted, see `docs/content-encryption-plan.md`), not something that fits this repo's usual "opens a window, draws something" sample shape.

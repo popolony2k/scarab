@@ -29,31 +29,46 @@
  (EngineHost::ResolveEntryScript), just with every file's content
  opaque to anyone who doesn't have this exact build's own key.
 
- USAGE - run from THIS REPO'S OWN ROOT, exactly like every samples/
- entry already is (see samples/README.md's own "..".-relative-path
- gotcha - the same mount-based virtual filesystem every OTHER resource
- load in this engine goes through applies to the entry script itself,
- tools/pack.lua included, so it can't be referenced from just anywhere):
+ USAGE - two equivalent ways to run this:
 
-     cd /path/to/scarab
-     ./build/scarab tools/pack.lua
+ 1) `scarab --pack <config.json>` (recommended - see main.cpp), from
+    ANY directory, no cd required. main.cpp reads <config.json> itself
+    (a real native OS path, anywhere on disk) and hands source_dir/
+    output to this script as the SCARAB_PACK_SOURCE_DIR/
+    SCARAB_PACK_OUTPUT environment variables (read below via Lua's own
+    os.getenv - no engine changes needed on this side at all); this
+    script itself is copied next to the scarab executable at build
+    time (scarab_copy_binaries, root CMakeLists.txt) and located via
+    the same APP_DIR mount every archived (.zip) game's own entry
+    script already resolves through - see main.cpp's own --pack
+    handling for the exact mechanism.
 
- pack-config.json (gitignored - see .gitignore - lives at THIS REPO'S
- OWN ROOT, read via load_json like any other config; see
- tools/pack-config.example.json for a starting point):
+ 2) Directly, run from THIS REPO'S OWN ROOT, exactly like every
+    samples/ entry already is (see samples/README.md's own "..".-
+    relative-path gotcha - the same mount-based virtual filesystem
+    every OTHER resource load in this engine goes through applies to
+    the entry script itself, tools/pack.lua included, so it can't be
+    referenced from just anywhere this way):
 
-     { "source_dir": "my_game_source", "output": "my_game.zip" }
+        cd /path/to/scarab
+        ./build/scarab tools/pack.lua
 
- source_dir/output themselves are NOT subject to that same
- restriction, unlike pack-config.json's own location - every
- pack_*/crypto_* primitive this script calls (LuaPackApi/LuaCryptoApi)
- reads/writes real native OS paths directly, completely bypassing the
- mount-based virtual filesystem (that only makes sense once something's
- already been bundled/mounted - packing runs before any of that exists
- at all). So source_dir/output can be absolute paths pointing anywhere
- on disk, including a completely different project having nothing to
- do with this repo - only pack-config.json's own location, and this
- script itself, need to stay reachable from the repo root.
+    pack-config.json (gitignored - see .gitignore - lives at THIS
+    REPO'S OWN ROOT, read via load_json like any other config; see
+    tools/pack-config.example.json for a starting point):
+
+        { "source_dir": "my_game_source", "output": "my_game.zip" }
+
+ Either way, source_dir/output are NOT subject to the mount
+ restriction that governs pack-config.json's own location (form 2) or
+ this script's own location (both forms) - every pack_*/crypto_*
+ primitive this script calls (LuaPackApi/LuaCryptoApi) reads/writes
+ real native OS paths directly, completely bypassing the mount-based
+ virtual filesystem (that only makes sense once something's already
+ been bundled/mounted - packing runs before any of that exists at
+ all). So source_dir/output can be absolute paths pointing anywhere on
+ disk, including a completely different project having nothing to do
+ with this repo.
 
  Like every Scarab entry script, this still needs at least one queued
  sp_* command (see samples/hello-world/docs/README.md) even though
@@ -66,15 +81,25 @@
 app_set_name( "Scarab - content packer" )
 sp_wait( 1 )
 
-local config = load_json( "pack-config.json" )
+-- Set only when launched via `scarab --pack <config.json>` (main.cpp) -
+-- see this file's own USAGE comment above, form 1.
+local sourceDir = os.getenv( "SCARAB_PACK_SOURCE_DIR" )
+local outputZip = os.getenv( "SCARAB_PACK_OUTPUT" )
 
-if config == nil then
-    error( "tools/pack.lua: could not read pack-config.json in the current directory - "
-        .. "see tools/pack-config.example.json for a starting point" )
+if sourceDir == nil or outputZip == nil then
+    -- Direct-invocation form (USAGE form 2) - pack-config.json read from
+    -- the current directory (this repo's own root, by convention).
+    local config = load_json( "pack-config.json" )
+
+    if config == nil then
+        error( "tools/pack.lua: could not read pack-config.json in the current directory - "
+            .. "see tools/pack-config.example.json for a starting point, or use "
+            .. "'scarab --pack <config.json>' instead (see this file's own USAGE comment)" )
+    end
+
+    sourceDir = config.source_dir
+    outputZip = config.output
 end
-
-local sourceDir = config.source_dir
-local outputZip = config.output
 
 print( "Packing '" .. sourceDir .. "' -> '" .. outputZip .. "'..." )
 

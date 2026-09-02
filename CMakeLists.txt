@@ -396,6 +396,26 @@ if(SCARAB_LIBSODIUM_SHARED)
     COMMENT "Copying libsodium's own shared library (SCARAB_LIBSODIUM_SHARED=ON)" VERBATIM)
 endif()
 
+# tools/pack.lua (the content-encryption packaging tool - see
+# docs/content-encryption-plan.md) copied next to the built executable,
+# unconditionally, on every platform - this is what makes `scarab --pack
+# <config.json>` (main.cpp) work from ANY directory, not just this repo's
+# own root: main.cpp resolves the packer's own entry script as an
+# APP_DIR-anchored absolute path (<APP_DIR>/tools/pack.lua), which only
+# exists at runtime because of this copy. Whole tools/ directory copied
+# (not just pack.lua) so pack-config.example.json/README.md ship
+# alongside it too. Same $<TARGET_FILE_DIR:scarab> destination pattern as
+# every other copy in this target, for the same single-config-generator
+# reason documented above scarab_copy_binaries itself. This also means
+# any downstream project consuming scarab via FetchContent gets its own
+# copy of the packer for free, from its own build output directory -
+# CMAKE_CURRENT_SOURCE_DIR here always refers to scarab's own source
+# tree regardless of who FetchContent'd it.
+add_custom_command(TARGET scarab_copy_binaries POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          "${CMAKE_CURRENT_SOURCE_DIR}/tools" $<TARGET_FILE_DIR:scarab>/tools
+  COMMENT "Copying tools/ (content-encryption packaging tool)" VERBATIM)
+
 if(WIN32 AND DEFINED Iconv_LIBRARY)
   # libxml2 (Iconv) and tmx (zlib) both link these vcpkg-provided libraries
   # dynamically on Windows. Their own IMPORTED targets (Iconv::Iconv,
