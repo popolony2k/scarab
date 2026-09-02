@@ -4,7 +4,7 @@ Lua-based tooling for Scarab itself, run via `scarab.exe` the same way any game 
 
 ## pack.lua — content encryption packaging tool
 
-See [docs/content-encryption-plan.md](../docs/content-encryption-plan.md) for the full design. Encrypts a game's own loose source directory (Lua scripts + every asset) into a single `.zip` bundle, using a shared secret compiled into *this specific build* of `scarab` — only that same build can decrypt what it packs. This is deterrence, not unbreakable DRM (see the plan doc's own "Motivation" section).
+See the root [README.md](../README.md#content-encryption-lock)'s own "Content encryption" section for the full design. Encrypts a game's own loose source directory (Lua scripts + every asset) into a single `.zip` bundle, using a shared secret compiled into *this specific build* of `scarab` — only that same build can decrypt what it packs. This is deterrence, not unbreakable DRM.
 
 Two equivalent ways to run it — `--pack` (recommended) needs no `cd` into this repo at all; the direct form is the underlying mechanism `--pack` is sugar for, useful for e.g. scripting a build from inside this repo's own tree.
 

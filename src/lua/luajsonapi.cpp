@@ -152,11 +152,11 @@ namespace Scarab  {
                     return 1;
                 }
 
-                // Transparent content-encryption support (checkpoint 3,
-                // docs/content-encryption-plan.md) - see LuaEngine::RunFile's
-                // own identical hook for the full rationale; silently falls
-                // back to the raw bytes as-is (plaintext) if decryption
-                // doesn't apply.
+                // Transparent content-encryption support (see the root
+                // README.md's own "Content encryption" section) - see
+                // LuaEngine::RunFile's own identical hook for the full
+                // rationale; silently falls back to the raw bytes as-is
+                // (plaintext) if decryption doesn't apply.
                 std :: vector<unsigned char>  decrypted;
 
                 if( LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )

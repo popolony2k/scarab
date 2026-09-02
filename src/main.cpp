@@ -120,8 +120,8 @@ int main( int argc, char **argv ) {
      * already follows.
      */
     CLI :: Option  *pPackOption = app.add_option( "--pack", strPackConfigPath,
-                    "Encrypt + zip a game's own source directory (see "
-                    "docs/content-encryption-plan.md) and exit - no window opens. "
+                    "Encrypt + zip a game's own source directory (see README.md's "
+                    "own \"Content encryption\" section) and exit - no window opens. "
                     "<config.json>: {\"source_dir\": \"...\", \"output\": \"...\"} - "
                     "relative paths inside it resolve against the config file's own "
                     "directory, not the current working directory." )
@@ -241,13 +241,16 @@ int main( int argc, char **argv ) {
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Init( argv[0] );
 
     /*
-     * Content encryption, checkpoint 4 (docs/content-encryption-plan.md) -
-     * registers LuaCryptoApi::TryDecryptBytes as sunlight's own generic
-     * IFileSystem::SetReadFilter hook (sunlight v0.18.0+), so every read
-     * sunlight itself performs - textures (RaylibEngine), sounds
-     * (RayLibSound), tilemaps (TileMapRenderer::LoadMap) - transparently
-     * decrypts content packed by tools/pack.lua the exact same way
-     * checkpoint 3 already made Scarab's own reads do. Registered before
+     * Content encryption (see README.md's own "Content encryption"
+     * section) - registers LuaCryptoApi::TryDecryptBytes as sunlight's
+     * own generic IFileSystem::SetReadFilter hook (sunlight v0.18.0+),
+     * so every read sunlight itself performs - textures (RaylibEngine),
+     * sounds (RayLibSound), tilemaps (TileMapRenderer::LoadMap) -
+     * transparently decrypts content packed by tools/pack.lua the exact
+     * same way every read path Scarab's own code owns already does
+     * (LuaEngine::RunFile/LuaJsonApi::LoadJson/LuaFileSystemApi::DoFile/
+     * EngineHost::ResolveEntryScript's own .zip-branch project.json
+     * read). Registered before
      * any Mount() call below so it's in effect for every read from the
      * very first one; sunlight itself has no crypto dependency or
      * awareness of what this callback does (see IFileSystem::

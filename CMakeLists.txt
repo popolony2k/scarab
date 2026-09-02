@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.24)
 #
 set(SCARAB_SUNLIGHT_VERSION "0.18.0")
 
-project(scarab VERSION 0.1.6)
+project(scarab VERSION 0.1.7)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
@@ -27,7 +27,8 @@ option(SCARAB_USE_OFFICIAL_LUA_FTP "Build Scarab with LUA provided by official F
 # SCARAB_CONTENT_KEY: a hex-encoded 32-byte (64 hex characters) shared
 # secret, compiled into this build, used by crypto_encrypt_data/
 # crypto_decrypt_data (LuaCryptoApi) to protect a game's own .zip
-# bundle content - see docs/content-encryption-plan.md. Deliberately
+# bundle content - see the README's own "Content encryption" section
+# and tools/README.md for the full design/workflow. Deliberately
 # left empty by default: crypto_encrypt_data/crypto_decrypt_data fail
 # cleanly (not silently, and not with some fixed public placeholder
 # key everyone would share) if no key was configured at build time.
@@ -36,15 +37,15 @@ option(SCARAB_USE_OFFICIAL_LUA_FTP "Build Scarab with LUA provided by official F
 # `cmake -B build -S . -DSCARAB_CONTENT_KEY=<64 hex chars>`, typically
 # from a CI secret rather than typed/stored anywhere in source control.
 #
-set(SCARAB_CONTENT_KEY "" CACHE STRING "Hex-encoded 32-byte shared secret for content encryption - see docs/content-encryption-plan.md")
+set(SCARAB_CONTENT_KEY "" CACHE STRING "Hex-encoded 32-byte shared secret for content encryption - see README.md's own \"Content encryption\" section")
 
 #
 # SCARAB_LIBSODIUM_SHARED: build libsodium as a shared/dynamic library
 # (libsodium.dylib/.so/.dll) instead of the default static one. Static
 # is the simpler deployment story (baked straight into scarab, nothing
 # separate to ship or protect) and is what's actually been verified
-# live (see docs/content-encryption-plan.md) - this option exists for
-# whoever specifically wants the dynamic-linking tradeoffs instead
+# live - this option exists for whoever specifically wants the
+# dynamic-linking tradeoffs instead
 # (e.g. sharing one libsodium build across several binaries).
 #
 option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library instead of static" OFF)
@@ -143,8 +144,8 @@ else()
 endif()
 
 ####################################################################
-# libsodium, via robinlinden/libsodium-cmake (content encryption -
-# see docs/content-encryption-plan.md). libsodium's own native build
+# libsodium, via robinlinden/libsodium-cmake (content encryption - see
+# README.md's own "Content encryption" section). libsodium's own native build
 # system is Autotools, not CMake, and this project deliberately never
 # mixes in a non-CMake build tool (no ExternalProject_Add shelling out
 # to `./configure && make`, no vcpkg-only-on-Windows asymmetry) - this
@@ -196,8 +197,8 @@ set(BUILD_SHARED_LIBS ${__scarab_saved_build_shared_libs})
 unset(__scarab_saved_build_shared_libs)
 
 ####################################################################
-# miniz (content encryption's own packaging tool - see
-# docs/content-encryption-plan.md checkpoint 2). Unlike libsodium,
+# miniz (content encryption's own packaging tool - see tools/README.md).
+# Unlike libsodium,
 # miniz ships it's own real, official CMakeLists.txt (verified
 # directly before pinning) - a plain FetchContent_Declare/
 # MakeAvailable is enough, no wrapper needed. Always kept static here
@@ -397,7 +398,7 @@ if(SCARAB_LIBSODIUM_SHARED)
 endif()
 
 # tools/pack.lua (the content-encryption packaging tool - see
-# docs/content-encryption-plan.md) copied next to the built executable,
+# tools/README.md) copied next to the built executable,
 # unconditionally, on every platform - this is what makes `scarab --pack
 # <config.json>` (main.cpp) work from ANY directory, not just this repo's
 # own root: main.cpp resolves the packer's own entry script as an

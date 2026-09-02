@@ -32,7 +32,8 @@ namespace Scarab  {
         namespace Lua  {
             /**
              * @brief Packaging-tool support for content encryption -
-             * see docs/content-encryption-plan.md checkpoint 2. Backs
+             * see the root README.md's own "Content encryption" section
+             * and tools/README.md. Backs
              * `tools/pack.lua`, the Lua script that actually walks a
              * game's source tree and produces an encrypted .zip bundle
              * (calling `crypto_encrypt_data` - see LuaCryptoApi - on

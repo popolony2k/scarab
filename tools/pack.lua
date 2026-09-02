@@ -19,8 +19,8 @@
 ]]
 
 --[[
- pack.lua - Scarab's own content-encryption packaging tool. See
- docs/content-encryption-plan.md for the full design.
+ pack.lua - Scarab's own content-encryption packaging tool. See the
+ root README.md's own "Content encryption" section for the full design.
 
  Walks a game's own loose source directory, encrypts every file's
  bytes with THIS BUILD's own compiled-in key (SCARAB_CONTENT_KEY - see
@@ -73,8 +73,7 @@
  Like every Scarab entry script, this still needs at least one queued
  sp_* command (see samples/hello-world/docs/README.md) even though
  packing itself finishes almost instantly - and like every sample in
- this repo, there's no programmatic "quit" primitive yet (see
- docs/content-encryption-plan.md's own follow-up notes), so once
+ this repo, there's no programmatic "quit" primitive yet, so once
  "Done" prints, close the window (or press Esc) to actually exit.
 ]]
 

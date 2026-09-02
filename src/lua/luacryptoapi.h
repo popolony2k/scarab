@@ -35,8 +35,9 @@ namespace Scarab  {
             /**
              * @brief Content encryption - protects a game's own .zip
              * bundle content so only that game's own privately-built
-             * scarab executable can read it back. See
-             * docs/content-encryption-plan.md for the full design.
+             * scarab executable can read it back. See the root
+             * README.md's own "Content encryption" section and
+             * tools/README.md for the full design/workflow.
              *
              * @luacategory{Crypto}
              * @luadoc
@@ -49,8 +50,8 @@ namespace Scarab  {
              * every game's own privately-built `scarab` has it's own
              * key, and only that same build can decrypt what it
              * encrypted. This is deterrence, not unbreakable DRM - see
-             * `docs/content-encryption-plan.md`'s own "Motivation"
-             * section for why that distinction matters.
+             * the root `README.md`'s own "Content encryption" section
+             * for why that distinction matters.
              * @luaoutro
              * ## Key configuration
              *

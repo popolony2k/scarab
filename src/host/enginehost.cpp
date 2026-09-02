@@ -203,8 +203,8 @@ namespace Scarab  {
                 }
 
                 /*
-                 * Transparent content-encryption support (checkpoint 3,
-                 * docs/content-encryption-plan.md) - a packed, encrypted
+                 * Transparent content-encryption support (see README.md's
+                 * own "Content encryption" section) - a packed, encrypted
                  * .zip's own project.json needs this same hook as every
                  * other read path (LuaEngine::RunFile/LuaJsonApi::LoadJson/
                  * LuaFileSystemApi::DoFile) - this is a fourth, distinct

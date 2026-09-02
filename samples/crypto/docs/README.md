@@ -1,6 +1,6 @@
 # crypto sample
 
-`crypto_encrypt_data`/`crypto_decrypt_data`, the content-encryption primitives behind [tools/pack.lua](../../../tools/README.md) (see [docs/content-encryption-plan.md](../../../docs/content-encryption-plan.md) for the full design). See [samples/README.md](../../README.md) for the full sample list.
+`crypto_encrypt_data`/`crypto_decrypt_data`, the content-encryption primitives behind [tools/pack.lua](../../../tools/README.md) (see the root [README.md](../../../README.md#content-encryption-lock)'s own "Content encryption" section for the full design). See [samples/README.md](../../README.md) for the full sample list.
 
 ## Running
 

@@ -21,11 +21,11 @@
 --[[
  crypto - crypto_encrypt_data/crypto_decrypt_data
  (docs/lua-api/crypto.html), the content-encryption primitives behind
- tools/pack.lua (see docs/content-encryption-plan.md for the full
- design). Both primitives are keyed entirely by SCARAB_CONTENT_KEY, a
- compile-time secret - never a Lua-supplied value - so this sample's
- own behavior depends on how the running `scarab` binary was actually
- built:
+ tools/pack.lua (see the root README.md's own "Content encryption"
+ section for the full design). Both primitives are keyed entirely by
+ SCARAB_CONTENT_KEY, a compile-time secret - never a Lua-supplied
+ value - so this sample's own behavior depends on how the running
+ `scarab` binary was actually built:
 
    - Default build (no key configured, cmake's own default): both
      primitives return nil and log a warning to stderr - "content

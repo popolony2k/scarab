@@ -450,9 +450,10 @@ namespace Scarab  {
         }
 
         /*
-         * Transparent content-encryption support (checkpoint 3,
-         * docs/content-encryption-plan.md) - tries to decrypt whatever
-         * ReadFile() returned using this build's own SCARAB_CONTENT_KEY
+         * Transparent content-encryption support (see the root
+         * README.md's own "Content encryption" section) - tries to
+         * decrypt whatever ReadFile() returned using this build's own
+         * SCARAB_CONTENT_KEY
          * before treating it as Lua source; silently falls back to the
          * raw bytes as-is (plaintext) if decryption doesn't apply - see
          * LuaCryptoApi::TryDecryptBytes's own doc comment for exactly
