@@ -41,7 +41,10 @@
     time (scarab_copy_binaries, root CMakeLists.txt) and located via
     the same APP_DIR mount every archived (.zip) game's own entry
     script already resolves through - see main.cpp's own --pack
-    handling for the exact mechanism.
+    handling for the exact mechanism. Genuinely headless - no
+    TileMapRenderer/window/EngineHost is ever constructed for this
+    form, so nothing needs closing; the process exits on its own the
+    moment this script finishes running.
 
  2) Directly, run from THIS REPO'S OWN ROOT, exactly like every
     samples/ entry already is (see samples/README.md's own "..".-
@@ -70,14 +73,30 @@
  disk, including a completely different project having nothing to do
  with this repo.
 
- Like every Scarab entry script, this still needs at least one queued
- sp_* command (see samples/hello-world/docs/README.md) even though
- packing itself finishes almost instantly - and like every sample in
- this repo, there's no programmatic "quit" primitive yet, so once
- "Done" prints, close the window (or press Esc) to actually exit.
+ Form 2 still needs at least one queued sp_* command the way every
+ normal (windowed) Scarab entry script does (see samples/hello-world/
+ docs/README.md), even though packing itself finishes almost
+ instantly - and like every sample in this repo, there's no
+ programmatic "quit" primitive for a real window yet, so once "Done"
+ prints under form 2, close the window (or press Esc) to actually
+ exit. Form 1 (--pack) has no such wait, since no window ever opens
+ for it in the first place.
 ]]
 
-app_set_name( "Scarab - content packer" )
+-- app_set_name is only registered once a real window/TileMapRenderer
+-- exists (LuaEngine::Init, never called for `scarab --pack` - see
+-- main.cpp's own headless --pack handling) - nil-guarded so this same
+-- script keeps working for form 2 (a real window, app_set_name calling
+-- successfully) too.
+if app_set_name then
+    app_set_name( "Scarab - content packer" )
+end
+
+-- Harmless either way: for form 1 (headless --pack), this queues into a
+-- throwaway ScriptProcessor nothing ever drains, since no per-frame loop
+-- exists to - not the "must not be empty" requirement it is for form 2's
+-- own ScriptProcessor::Compile() check (see samples/hello-world/docs/
+-- README.md).
 sp_wait( 1 )
 
 -- Set only when launched via `scarab --pack <config.json>` (main.cpp) -
@@ -138,7 +157,13 @@ if not pack_close_archive( archive ) then
     error( "tools/pack.lua: failed to finalize the archive at '" .. outputZip .. "'" )
 end
 
-print( "Done - packed " .. packedCount .. " file(s) into '" .. outputZip .. "'. Close this window (or press Esc) to exit." )
+-- app_set_name's own nil-guard above doubles as the "which form is this"
+-- signal here: only form 2 (a real window) ever registers it.
+if app_set_name then
+    print( "Done - packed " .. packedCount .. " file(s) into '" .. outputZip .. "'. Close this window (or press Esc) to exit." )
+else
+    print( "Done - packed " .. packedCount .. " file(s) into '" .. outputZip .. "'." )
+end
 
 function on_update( dt )
 end
