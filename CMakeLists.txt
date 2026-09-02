@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.24)
 # main.cpp) read it from here, so bumping a sunlight dependency never means
 # updating the tag in two places that could drift out of sync.
 #
-set(SCARAB_SUNLIGHT_VERSION "0.17.3")
+set(SCARAB_SUNLIGHT_VERSION "0.18.0")
 
 project(scarab VERSION 0.1.6)
 

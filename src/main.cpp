@@ -32,6 +32,7 @@
 #include <nlohmann/json.hpp>
 #include "main.h"
 #include "enginehost.h"
+#include "lua/luacryptoapi.h"
 #include "renderer/tilemaprenderer.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
@@ -238,6 +239,30 @@ int main( int argc, char **argv ) {
     // the --pack handling, before EngineHost is constructed) - reused here
     // rather than calling GetApplicationDirectory()/ToVirtualPath() again.
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Init( argv[0] );
+
+    /*
+     * Content encryption, checkpoint 4 (docs/content-encryption-plan.md) -
+     * registers LuaCryptoApi::TryDecryptBytes as sunlight's own generic
+     * IFileSystem::SetReadFilter hook (sunlight v0.18.0+), so every read
+     * sunlight itself performs - textures (RaylibEngine), sounds
+     * (RayLibSound), tilemaps (TileMapRenderer::LoadMap) - transparently
+     * decrypts content packed by tools/pack.lua the exact same way
+     * checkpoint 3 already made Scarab's own reads do. Registered before
+     * any Mount() call below so it's in effect for every read from the
+     * very first one; sunlight itself has no crypto dependency or
+     * awareness of what this callback does (see IFileSystem::
+     * SetReadFilter's own doc comment) - unset, this would be a pure
+     * no-op, byte-identical to today's behavior. TryDecryptBytes already
+     * silently falls back to "not encrypted, use the raw bytes" (returns
+     * false) when this build has no SCARAB_CONTENT_KEY configured, so
+     * this registration is unconditional - it costs nothing for a build
+     * with no key at all.
+     */
+    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().SetReadFilter(
+        []( const std :: vector<unsigned char> &in, std :: vector<unsigned char> &out ) {
+            return Scarab :: Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( in, out );
+        } );
+
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strAppDir,
                                                                           strVirtualAppDir,
                                                                           true );
