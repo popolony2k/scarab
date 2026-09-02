@@ -11,9 +11,9 @@ cmake_minimum_required(VERSION 3.24)
 # main.cpp) read it from here, so bumping a sunlight dependency never means
 # updating the tag in two places that could drift out of sync.
 #
-set(SCARAB_SUNLIGHT_VERSION "0.17.3")
+set(SCARAB_SUNLIGHT_VERSION "0.18.0")
 
-project(scarab VERSION 0.1.6)
+project(scarab VERSION 0.1.7)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
@@ -22,6 +22,33 @@ include(ExternalProject)
 
 option(SCARAB_DEBUG_SYMBOLS_UNIX "Build Scarab with debug symbols on Unixes (Mac and Linux)" ON)
 option(SCARAB_USE_OFFICIAL_LUA_FTP "Build Scarab with LUA provided by official FTP (Windows VS Studio unsupported)" OFF)
+
+#
+# SCARAB_CONTENT_KEY: a hex-encoded 32-byte (64 hex characters) shared
+# secret, compiled into this build, used by crypto_encrypt_data/
+# crypto_decrypt_data (LuaCryptoApi) to protect a game's own .zip
+# bundle content - see the README's own "Content encryption" section
+# and tools/README.md for the full design/workflow. Deliberately
+# left empty by default: crypto_encrypt_data/crypto_decrypt_data fail
+# cleanly (not silently, and not with some fixed public placeholder
+# key everyone would share) if no key was configured at build time.
+# Every game that wants this feature sets it's own, kept private and
+# NEVER committed to a public repo - pass it at configure time, e.g.
+# `cmake -B build -S . -DSCARAB_CONTENT_KEY=<64 hex chars>`, typically
+# from a CI secret rather than typed/stored anywhere in source control.
+#
+set(SCARAB_CONTENT_KEY "" CACHE STRING "Hex-encoded 32-byte shared secret for content encryption - see README.md's own \"Content encryption\" section")
+
+#
+# SCARAB_LIBSODIUM_SHARED: build libsodium as a shared/dynamic library
+# (libsodium.dylib/.so/.dll) instead of the default static one. Static
+# is the simpler deployment story (baked straight into scarab, nothing
+# separate to ship or protect) and is what's actually been verified
+# live - this option exists for whoever specifically wants the
+# dynamic-linking tradeoffs instead
+# (e.g. sharing one libsodium build across several binaries).
+#
+option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library instead of static" OFF)
 
 ####################################################################
 # sunlight
@@ -116,6 +143,88 @@ else()
   #
 endif()
 
+####################################################################
+# libsodium, via robinlinden/libsodium-cmake (content encryption - see
+# README.md's own "Content encryption" section). libsodium's own native build
+# system is Autotools, not CMake, and this project deliberately never
+# mixes in a non-CMake build tool (no ExternalProject_Add shelling out
+# to `./configure && make`, no vcpkg-only-on-Windows asymmetry) - this
+# wrapper is a real, purpose-built CMakeLists.txt around the actual,
+# unmodified official libsodium source (a git submodule, not a fork),
+# the exact same shape as walterschell/Lua just above solving the
+# identical problem for official (also Makefile-based) Lua. Verified
+# directly (not assumed) before pinning: builds statically by default
+# (BUILD_SHARED_LIBS is unset above, so it stays static - the simplest
+# deployment story for a key-embedding library, no separate shared
+# library to add to scarab_copy_binaries), and a real functional
+# encrypt/decrypt roundtrip was confirmed live on macOS Intel before
+# this was ever added here. Pinned to it's current HEAD at the time of
+# adding, since the wrapper repo has no tagged releases.
+####################################################################
+FetchContent_Declare(sodium
+                     GIT_REPOSITORY https://github.com/robinlinden/libsodium-cmake.git
+                     GIT_TAG 9b2848dfc1b917a9410f0de9d81059b26cbfaa8d)
+set(SODIUM_DISABLE_TESTS ON CACHE BOOL "" FORCE)
+
+# libsodium-cmake respects the standard BUILD_SHARED_LIBS variable (no
+# custom toggle of it's own) - saved/restored around just this one
+# FetchContent_MakeAvailable() call rather than set directly, since
+# BUILD_SHARED_LIBS is a genuinely global CMake variable that would
+# otherwise leak into every other add_library() call project-wide,
+# including ones in dependencies fetched later than this block.
+#
+# Must be set EXPLICITLY either way (ON or OFF), not left alone when
+# SCARAB_LIBSODIUM_SHARED is OFF - raylib's own CMakeLists.txt (fetched
+# earlier, via sunlight above) force-caches BUILD_SHARED_LIBS=ON to
+# build itself shared, and CACHE variables persist for the rest of this
+# same configure pass. A first attempt here that only ever set it ON
+# (and otherwise left BUILD_SHARED_LIBS untouched) silently inherited
+# raylib's already-cached ON instead of defaulting to static as
+# intended - confirmed live: scarab failed to even start
+# ("dyld: Library not loaded: @rpath/libsodium.dylib") despite
+# SCARAB_LIBSODIUM_SHARED defaulting OFF, until this was set explicitly
+# in both directions.
+set(__scarab_saved_build_shared_libs ${BUILD_SHARED_LIBS})
+if(SCARAB_LIBSODIUM_SHARED)
+  set(BUILD_SHARED_LIBS ON)
+else()
+  set(BUILD_SHARED_LIBS OFF)
+endif()
+
+FetchContent_MakeAvailable(sodium)
+
+set(BUILD_SHARED_LIBS ${__scarab_saved_build_shared_libs})
+unset(__scarab_saved_build_shared_libs)
+
+####################################################################
+# miniz (content encryption's own packaging tool - see tools/README.md).
+# Unlike libsodium,
+# miniz ships it's own real, official CMakeLists.txt (verified
+# directly before pinning) - a plain FetchContent_Declare/
+# MakeAvailable is enough, no wrapper needed. Always kept static here
+# (unlike sodium, no SCARAB_MINIZ_SHARED toggle) - miniz is only ever
+# used internally by the packaging tool itself, never something a
+# consuming game links against or has reason to care about, so there's
+# no case for exposing a build-mode choice for it. Same
+# BUILD_SHARED_LIBS save/restore pattern as sodium above, for the same
+# reason (it also just respects the standard variable, no option of
+# it's own, and would otherwise inherit raylib's already-cached ON).
+####################################################################
+FetchContent_Declare(miniz
+                     GIT_REPOSITORY https://github.com/richgel999/miniz.git
+                     GIT_TAG 3.1.2)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_FUZZERS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+set(__scarab_saved_build_shared_libs ${BUILD_SHARED_LIBS})
+set(BUILD_SHARED_LIBS OFF)
+
+FetchContent_MakeAvailable(miniz)
+
+set(BUILD_SHARED_LIBS ${__scarab_saved_build_shared_libs})
+unset(__scarab_saved_build_shared_libs)
+
 # Add all include files
 include_directories("src")
 include_directories("src/lua")
@@ -181,7 +290,7 @@ if(SCARAB_USE_OFFICIAL_LUA_FTP)
   add_dependencies(scarab lua_library_download)
 endif()
 
-target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES})
+target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES} sodium miniz)
 
 #
 # Feeds --version/-v (main.cpp) - PROJECT_VERSION comes from this file's own
@@ -191,7 +300,8 @@ target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CL
 #
 target_compile_definitions(scarab PRIVATE
   SCARAB_VERSION="${PROJECT_VERSION}"
-  SCARAB_SUNLIGHT_VERSION="${SCARAB_SUNLIGHT_VERSION}")
+  SCARAB_SUNLIGHT_VERSION="${SCARAB_SUNLIGHT_VERSION}"
+  SCARAB_CONTENT_KEY="${SCARAB_CONTENT_KEY}")
 
 #
 # scarab_copy_binaries (below) flattens scarab + every one of its own runtime
@@ -273,6 +383,39 @@ if(NOT WIN32)
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_SONAME_FILE:sunlight> $<TARGET_FILE_DIR:scarab>
     COMMENT "Copying SOVERSION-symlink names (needed by @loader_path/$ORIGIN rpath resolution)" VERBATIM)
 endif()
+
+if(SCARAB_LIBSODIUM_SHARED)
+  # Only needed when SCARAB_LIBSODIUM_SHARED actually built a real
+  # libsodium.dylib/.so/.dll - the default static build has nothing
+  # separate to copy at all, it's already inside scarab itself. sodium
+  # sets no VERSION/SOVERSION target property (confirmed directly in
+  # it's own CMakeLists.txt, same as sunlight - unlike raylib/tmx/
+  # LibXml2), so unlike those three, no $<TARGET_SONAME_FILE:sodium>
+  # companion copy is needed here at all.
+  add_custom_command(TARGET scarab_copy_binaries POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sodium> $<TARGET_FILE_DIR:scarab>
+    COMMENT "Copying libsodium's own shared library (SCARAB_LIBSODIUM_SHARED=ON)" VERBATIM)
+endif()
+
+# tools/pack.lua (the content-encryption packaging tool - see
+# tools/README.md) copied next to the built executable,
+# unconditionally, on every platform - this is what makes `scarab --pack
+# <config.json>` (main.cpp) work from ANY directory, not just this repo's
+# own root: main.cpp resolves the packer's own entry script as an
+# APP_DIR-anchored absolute path (<APP_DIR>/tools/pack.lua), which only
+# exists at runtime because of this copy. Whole tools/ directory copied
+# (not just pack.lua) so pack-config.example.json/README.md ship
+# alongside it too. Same $<TARGET_FILE_DIR:scarab> destination pattern as
+# every other copy in this target, for the same single-config-generator
+# reason documented above scarab_copy_binaries itself. This also means
+# any downstream project consuming scarab via FetchContent gets its own
+# copy of the packer for free, from its own build output directory -
+# CMAKE_CURRENT_SOURCE_DIR here always refers to scarab's own source
+# tree regardless of who FetchContent'd it.
+add_custom_command(TARGET scarab_copy_binaries POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          "${CMAKE_CURRENT_SOURCE_DIR}/tools" $<TARGET_FILE_DIR:scarab>/tools
+  COMMENT "Copying tools/ (content-encryption packaging tool)" VERBATIM)
 
 if(WIN32 AND DEFINED Iconv_LIBRARY)
   # libxml2 (Iconv) and tmx (zlib) both link these vcpkg-provided libraries

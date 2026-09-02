@@ -24,14 +24,39 @@
  * one game.
  */
 #include <cstdio>
+#include <cstdlib>
 #include <string>
+#include <fstream>
 #include <filesystem>
 #include <CLI/CLI.hpp>
+#include <nlohmann/json.hpp>
 #include "main.h"
 #include "enginehost.h"
+#include "lua/luacryptoapi.h"
 #include "renderer/tilemaprenderer.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
+
+
+/**
+ * @brief Cross-platform single-variable environment setter -
+ * SCARAB_PACK_SOURCE_DIR/SCARAB_PACK_OUTPUT (see the --pack handling in
+ * main() below) are handed to tools/pack.lua this way rather than as a
+ * new mount/Lua-global plumbed through EngineHost/LuaEngine, since
+ * that's the one thing Lua's own standard library (os.getenv) already
+ * reads with zero engine changes needed on the Lua side. POSIX's
+ * setenv() and MSVC's _putenv_s() aren't unified anywhere in the C/C++
+ * standard library, hence the #ifdef - matches this project's existing
+ * precedent of small, explicit platform ifdefs for OS APIs (never
+ * Autotools/etc - see CLAUDE.md's "Build" section).
+ */
+static void SetPackEnvVar( const char *szName, const std :: string &strValue )  {
+#ifdef _WIN32
+    _putenv_s( szName, strValue.c_str() );
+#else
+    setenv( szName, strValue.c_str(), 1 );
+#endif
+}
 
 
 int main( int argc, char **argv ) {
@@ -69,19 +94,114 @@ int main( int argc, char **argv ) {
 
     std :: string  strEntryPath;
     std :: string  strEntryOverride;
+    std :: string  strPackConfigPath;
 
-    app.add_option( "path", strEntryPath,
+    CLI :: Option  *pPathOption = app.add_option( "path", strEntryPath,
                     "Entry point: a .lua script, a .json project file, or a .zip bundle" )
-       ->required()
        ->check( CLI :: ExistingFile );
 
-    app.add_option( "-e,--entry", strEntryOverride,
+    CLI :: Option  *pEntryOption = app.add_option( "-e,--entry", strEntryOverride,
                     "Actual entry point location - inside the .zip when entry is an archive "
                     "(a .lua path there runs directly, anything else is read as project.json "
                     "- default: project.json at its root), or overriding entry itself when "
                     "it's already a .json project file" );
 
+    /*
+     * --pack is sugar for running the (compiled-in) content-encryption
+     * packaging tool - tools/pack.lua, copied next to this executable by
+     * scarab_copy_binaries (root CMakeLists.txt) - without needing to
+     * `cd` into this repo/build's own directory first, or hand-author a
+     * pack-config.json there (see tools/README.md's own two-invocation-
+     * styles note). No positional entry point applies in this mode, so
+     * it's mutually exclusive with both "path" and "--entry" - combining
+     * them is a usage error CLI11 itself reports (via excludes()),
+     * matching the "a bad argument combination fails before any window
+     * opens" philosophy ResolveEntryScript's own --entry/.lua check
+     * already follows.
+     */
+    CLI :: Option  *pPackOption = app.add_option( "--pack", strPackConfigPath,
+                    "Encrypt + zip a game's own source directory (see README.md's "
+                    "own \"Content encryption\" section) and exit - no window opens. "
+                    "<config.json>: {\"source_dir\": \"...\", \"output\": \"...\"} - "
+                    "relative paths inside it resolve against the config file's own "
+                    "directory, not the current working directory." )
+       ->check( CLI :: ExistingFile );
+
+    pPathOption->excludes( pPackOption );
+    pPackOption->excludes( pPathOption );
+    pEntryOption->excludes( pPackOption );
+    pPackOption->excludes( pEntryOption );
+
     CLI11_PARSE( app, argc, argv );
+
+    if( strEntryPath.empty() && strPackConfigPath.empty() )  {
+        fprintf( stderr, "scarab: either the entry-point positional or --pack <config.json> is required "
+            "(see --help).\n" );
+        return EXIT_FAILURE;
+    }
+
+    /*
+     * strAppDir/strVirtualAppDir computed early (moved up from where this
+     * exact GetApplicationDirectory() call used to sit, right before the
+     * APP_DIR Mount() below) - --pack needs the virtual (ToVirtualPath()-
+     * converted) form *before* EngineHost is constructed, to synthesize
+     * an APP_DIR-anchored strEntryPath pointing at tools/pack.lua. See
+     * that Mount() call's own doc comment below for why the virtual form,
+     * not the raw real-OS-path one, is what actually resolves through
+     * SunLight::FileSystem.
+     */
+    std :: string  strAppDir        = SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory();
+    std :: string  strVirtualAppDir = SunLight :: FileSystem :: IFileSystem :: ToVirtualPath( strAppDir );
+
+    if( !strPackConfigPath.empty() )  {
+
+        /*
+         * Read directly via std::ifstream/nlohmann::json - a real,
+         * arbitrary native OS path (wherever the user's own config.json
+         * actually lives), same as ResolveEntryScript's own loose
+         * project.json branch (enginehost.cpp) - deliberately NOT routed
+         * through SunLight::FileSystem, since nothing has been
+         * mounted/resolved yet at this point in main(), and this config
+         * is native-path-shaped by convention anyway (matching
+         * LuaPackApi's own primitives - see docs/content-encryption-
+         * plan.md).
+         */
+        std :: filesystem :: path  packConfigPath( strPackConfigPath );
+        std :: ifstream            packConfigFile( packConfigPath );
+
+        if( !packConfigFile.is_open() )  {
+            fprintf( stderr, "scarab: --pack: could not open config file => %s\n", strPackConfigPath.c_str() );
+            return EXIT_FAILURE;
+        }
+
+        nlohmann :: json  packConfigData = nlohmann :: json :: parse( packConfigFile, nullptr, false );
+
+        if( packConfigData.is_discarded() || !packConfigData.contains( "source_dir" ) || !packConfigData.contains( "output" ) )  {
+            fprintf( stderr, "scarab: --pack: malformed config (needs \"source_dir\" and \"output\") => %s\n",
+                strPackConfigPath.c_str() );
+            return EXIT_FAILURE;
+        }
+
+        std :: filesystem :: path  packConfigDir = std :: filesystem :: absolute( packConfigPath ).parent_path();
+
+        // Relative source_dir/output resolve against the config file's own
+        // directory (relocatable, like project.json's main_script - not
+        // against whatever the caller's own CWD happens to be); an
+        // already-absolute path is used unchanged.
+        auto ResolvePackPath = [ &packConfigDir ]( const std :: string &strRaw ) -> std :: string  {
+            std :: filesystem :: path  rawPath( strRaw );
+
+            return ( rawPath.is_absolute() ? rawPath : ( packConfigDir / rawPath ) ).string();
+        };
+
+        SetPackEnvVar( "SCARAB_PACK_SOURCE_DIR", ResolvePackPath( packConfigData[ "source_dir" ].get<std :: string>() ) );
+        SetPackEnvVar( "SCARAB_PACK_OUTPUT",     ResolvePackPath( packConfigData[ "output" ].get<std :: string>() ) );
+
+        // APP_DIR-anchored, exactly matching what LuaEngine::Init() itself
+        // later exposes to Lua as APP_DIR - see the identity Mount() call
+        // just below, which is what actually makes this resolvable.
+        strEntryPath = strVirtualAppDir + "tools/pack.lua";
+    }
 
     SunLight :: Renderer :: TileMapRenderer  renderer( DISPLAY_W,
                                                        DISPLAY_H,
@@ -115,11 +235,39 @@ int main( int argc, char **argv ) {
      * anything the archive doesn't itself contain (there shouldn't be
      * anything, in a well-formed bundle).
      */
-    std :: string  strAppDir = SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory();
-
+    // strAppDir/strVirtualAppDir already computed above (needed earlier by
+    // the --pack handling, before EngineHost is constructed) - reused here
+    // rather than calling GetApplicationDirectory()/ToVirtualPath() again.
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Init( argv[0] );
+
+    /*
+     * Content encryption (see README.md's own "Content encryption"
+     * section) - registers LuaCryptoApi::TryDecryptBytes as sunlight's
+     * own generic IFileSystem::SetReadFilter hook (sunlight v0.18.0+),
+     * so every read sunlight itself performs - textures (RaylibEngine),
+     * sounds (RayLibSound), tilemaps (TileMapRenderer::LoadMap) -
+     * transparently decrypts content packed by tools/pack.lua the exact
+     * same way every read path Scarab's own code owns already does
+     * (LuaEngine::RunFile/LuaJsonApi::LoadJson/LuaFileSystemApi::DoFile/
+     * EngineHost::ResolveEntryScript's own .zip-branch project.json
+     * read). Registered before
+     * any Mount() call below so it's in effect for every read from the
+     * very first one; sunlight itself has no crypto dependency or
+     * awareness of what this callback does (see IFileSystem::
+     * SetReadFilter's own doc comment) - unset, this would be a pure
+     * no-op, byte-identical to today's behavior. TryDecryptBytes already
+     * silently falls back to "not encrypted, use the raw bytes" (returns
+     * false) when this build has no SCARAB_CONTENT_KEY configured, so
+     * this registration is unconditional - it costs nothing for a build
+     * with no key at all.
+     */
+    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().SetReadFilter(
+        []( const std :: vector<unsigned char> &in, std :: vector<unsigned char> &out ) {
+            return Scarab :: Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( in, out );
+        } );
+
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strAppDir,
-                                                                          SunLight :: FileSystem :: IFileSystem :: ToVirtualPath( strAppDir ),
+                                                                          strVirtualAppDir,
                                                                           true );
 
     /*

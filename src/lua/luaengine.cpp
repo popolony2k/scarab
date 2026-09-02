@@ -32,6 +32,8 @@
 #include "lua/luacollisionlistener.h"
 #include "lua/luascriptingapi.h"
 #include "lua/luatimerapi.h"
+#include "lua/luacryptoapi.h"
+#include "lua/luapackapi.h"
 #include "tilemap/itilemap.h"
 #include "sound/soundmanager.h"
 #include "engine/spritepool.h"
@@ -63,6 +65,8 @@ namespace Scarab  {
         Engine :: Lua :: LuaScriptingApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaTimerApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaJsonApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaCryptoApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaPackApi :: Register( m_pLuaState );
 
         // Overrides Lua's own built-in dofile() - must run after
         // luaL_openlibs() (guaranteed, since RegisterCalls() itself is
@@ -444,6 +448,24 @@ namespace Scarab  {
 
             return false;
         }
+
+        /*
+         * Transparent content-encryption support (see the root
+         * README.md's own "Content encryption" section) - tries to
+         * decrypt whatever ReadFile() returned using this build's own
+         * SCARAB_CONTENT_KEY
+         * before treating it as Lua source; silently falls back to the
+         * raw bytes as-is (plaintext) if decryption doesn't apply - see
+         * LuaCryptoApi::TryDecryptBytes's own doc comment for exactly
+         * when that happens (no key configured, or data just isn't a
+         * genuine encrypted blob for this key). This is the entry
+         * script's own load path - the very first script a packed,
+         * encrypted .zip bundle needs to run.
+         */
+        std :: vector<unsigned char>  decrypted;
+
+        if( Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )
+            data = std :: move( decrypted );
 
         std :: string  strChunkName = std :: string( "@" ) + strFileName;
         int            nLoadStatus  = luaL_loadbuffer( m_pLuaState, reinterpret_cast<const char *>( data.data() ), data.size(), strChunkName.c_str() );

@@ -19,6 +19,7 @@
  */
 
 #include "lua/luafilesystemapi.h"
+#include "lua/luacryptoapi.h"
 #include "filesystem/filesystemfactory.h"
 
 #include <string>
@@ -82,6 +83,13 @@ namespace Scarab  {
              * the engine does — a loose directory or an archived build
              * both work identically, with no path-construction code
              * anywhere needing to know the difference.
+             *
+             * Transparently runs content encrypted by
+             * `crypto_encrypt_data`/`tools/pack.lua` too — nothing to
+             * opt into on the calling side; this build's own
+             * `SCARAB_CONTENT_KEY` is tried automatically, falling back
+             * to the file as plain Lua source if it doesn't apply (no
+             * key configured, or the file just isn't encrypted).
              * @luaexample
              * -- runs identically whether the game is a loose directory or a mounted .zip
              * dofile( BASE_PATH .. "scripts/stages/1st_stage_corsair.lua" )
@@ -102,6 +110,16 @@ namespace Scarab  {
 
                     if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( szFileName, data ) )
                         return luaL_error( pLuaState, "cannot open %s", szFileName );
+
+                    // Transparent content-encryption support (see the root
+                    // README.md's own "Content encryption" section) - see
+                    // LuaEngine::RunFile's own identical hook for the full
+                    // rationale; silently falls back to the raw bytes as-is
+                    // (plaintext) if decryption doesn't apply.
+                    std :: vector<unsigned char>  decrypted;
+
+                    if( LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )
+                        data = std :: move( decrypted );
 
                     std :: string  strChunkName = std :: string( "@" ) + szFileName;
 
