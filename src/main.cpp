@@ -33,6 +33,7 @@
 #include "main.h"
 #include "enginehost.h"
 #include "lua/luacryptoapi.h"
+#include "lua/luaengine.h"
 #include "renderer/tilemaprenderer.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
@@ -203,14 +204,6 @@ int main( int argc, char **argv ) {
         strEntryPath = strVirtualAppDir + "tools/pack.lua";
     }
 
-    SunLight :: Renderer :: TileMapRenderer  renderer( DISPLAY_W,
-                                                       DISPLAY_H,
-                                                       APP_NAME,
-                                                       FRAMES_PER_SECOND,
-                                                       false );
-    Scarab :: Host :: EngineHost                engineHost( &renderer, &renderer, strEntryPath, strEntryOverride );
-    SunLight :: TileMap :: stDimension2D       viewport;
-
     /*
      * Mounts the executable's own real directory (Mount()'s source
      * argument, safe in whatever native OS format GetApplicationDirectory()
@@ -233,11 +226,14 @@ int main( int argc, char **argv ) {
      * running from an archive still resolves every APP_DIR-anchored path
      * unchanged, with this loose mount only ever acting as a fallback for
      * anything the archive doesn't itself contain (there shouldn't be
-     * anything, in a well-formed bundle).
+     * anything, in a well-formed bundle). Done before constructing
+     * TileMapRenderer/EngineHost below (moved up from where this call used
+     * to sit) - mounting itself only needs strAppDir/strVirtualAppDir,
+     * already computed above, so it has no actual ordering dependency on
+     * either of those objects existing yet, and --pack mode below needs
+     * these same mounts in place before it can resolve tools/pack.lua's
+     * own path, without ever constructing either object at all.
      */
-    // strAppDir/strVirtualAppDir already computed above (needed earlier by
-    // the --pack handling, before EngineHost is constructed) - reused here
-    // rather than calling GetApplicationDirectory()/ToVirtualPath() again.
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Init( argv[0] );
 
     /*
@@ -295,6 +291,43 @@ int main( int argc, char **argv ) {
      */
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( std :: filesystem :: current_path().string(), "/", true );
 
+    if( !strPackConfigPath.empty() )  {
+        /*
+         * Genuinely headless --pack: no TileMapRenderer/EngineHost is ever
+         * constructed, so no window ever opens - there was never an actual
+         * requirement for one. tools/pack.lua only calls primitives
+         * LuaEngine's own constructor already registers unconditionally
+         * (LuaScriptingApi/LuaJsonApi/LuaCryptoApi/LuaPackApi/
+         * LuaFileSystemApi - see LuaEngine::RegisterCalls), all of which
+         * need no ITileMap/SoundManager/SpritePool at all; only the
+         * primitives Init() adds (camera/input/tilemap/sound/sprite/
+         * collision/app) need those, and tools/pack.lua calls none of
+         * them (app_set_name is nil-guarded there for exactly this
+         * reason). ScriptProcessor's own constructor takes no arguments
+         * and touches nothing window-related either - it exists here
+         * purely to satisfy LuaEngine's constructor signature; nothing
+         * ever drains its queue (no per-frame loop exists to), so
+         * tools/pack.lua's sp_wait(1) call is a harmless no-op in this
+         * mode, not a requirement the way it is for a normal windowed
+         * entry script (see ScriptProcessor::Compile()'s own "queue
+         * must not be empty" check, in EngineHost::LoadLuaScript, which
+         * this path never calls at all).
+         */
+        SunLight :: Scripting :: ScriptProcessor  packScriptProcessor;
+        Scarab :: Lua :: LuaEngine                packLuaEngine( &packScriptProcessor );
+
+        bool  bPackOk = packLuaEngine.RunFile( strEntryPath );
+
+        return bPackOk ? EXIT_SUCCESS : EXIT_FAILURE;
+    }
+
+    SunLight :: Renderer :: TileMapRenderer  renderer( DISPLAY_W,
+                                                       DISPLAY_H,
+                                                       APP_NAME,
+                                                       FRAMES_PER_SECOND,
+                                                       false );
+    Scarab :: Host :: EngineHost                engineHost( &renderer, &renderer, strEntryPath, strEntryOverride );
+    SunLight :: TileMap :: stDimension2D       viewport;
 
     renderer.SetScrollStepSize( W_SCROLL_STEP_SIZE, H_SCROLL_STEP_SIZE );
     renderer.SetViewControlMode( SunLight :: Renderer :: ViewControlMode :: VIEW_CONTROL_MODE_ACTIVE );
