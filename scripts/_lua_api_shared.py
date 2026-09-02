@@ -47,6 +47,7 @@ SOURCE_TO_DOC = {
     "luaappapi.cpp":        "app.md",
     "luacameraapi.cpp":     "camera.md",
     "luacollisionapi.cpp":  "collision.md",
+    "luacryptoapi.cpp":     "crypto.md",
     "luaengine.cpp":        "callbacks.md",
     "luafilesystemapi.cpp": "scripting.md",
     "luainputapi.cpp":      "input.md",

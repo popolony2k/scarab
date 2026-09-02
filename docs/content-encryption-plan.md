@@ -62,10 +62,16 @@ Verified directly against `doc.libsodium.org/installation`: builds both static a
 - [x] Zip writer decided: miniz (license verified)
 - [x] Crypto library decided: libsodium via `robinlinden/libsodium-cmake` (license + static/shared + Linux/Windows/macOS-Intel verified; macOS ARM64 accepted as a known risk)
 
-### 1. `LuaCryptoApi` — not started
-- [ ] New `src/lua/luacryptoapi.h`/`.cpp`
-- [ ] `crypto_encrypt_data`/`crypto_decrypt_data` primitives (+ maybe file-level convenience wrappers)
-- [ ] Key baked in at compile time via a new CMake option/compile definition, matching the existing `SCARAB_VERSION`/`SCARAB_SUNLIGHT_VERSION` pattern — kept out of general Lua-readable global state, used internally by the engine's own decrypt path only
+### 1. `LuaCryptoApi` — ✅ done
+- [x] New `src/lua/luacryptoapi.h`/`.cpp` — libsodium `crypto_secretbox_easy`/`crypto_secretbox_open_easy` (XSalsa20-Poly1305, authenticated), a random 24-byte nonce generated per call and prepended to the returned blob
+- [x] `crypto_encrypt_data(data) -> encrypted` / `crypto_decrypt_data(encrypted) -> data` — no key argument on either; both use `SCARAB_CONTENT_KEY` internally only
+- [x] Key baked in at compile time via a new `SCARAB_CONTENT_KEY` CMake cache string + `target_compile_definitions`, matching the existing `SCARAB_VERSION`/`SCARAB_SUNLIGHT_VERSION` pattern — never exposed to Lua as a readable value; empty by default, both primitives fail cleanly (`nil` + a clear stderr message) rather than falling back to a shared public placeholder key
+- [x] `SCARAB_LIBSODIUM_SHARED` option added too (default OFF, static) — real bug found and fixed while wiring it: `raylib`'s own CMakeLists.txt caches `BUILD_SHARED_LIBS=ON` earlier in the same configure pass (to build itself shared), so a first version of this logic that only ever set `BUILD_SHARED_LIBS` when the option was ON silently inherited that cached `ON` even with the option OFF — confirmed live (`dyld: Library not loaded: @rpath/libsodium.dylib` despite the option defaulting off). Fixed by setting it explicitly both ways.
+- [x] Verified for real, through the actual Lua binding (not just the isolated C test from checkpoint 0): a genuine `crypto_encrypt_data`/`crypto_decrypt_data` roundtrip, including a binary-safe embedded zero byte surviving intact (confirms `lua_tolstring`/`lua_pushlstring` are used correctly, not the null-terminated Lua C API forms), and a tamper test (flip one ciphertext byte) correctly triggering the AEAD authentication failure — `nil` returned, clean error logged, no crash
+- [x] Registered in `LuaEngine::RegisterCalls` alongside `LuaJsonApi`/`LuaScriptingApi`/`LuaTimerApi` (no `ITileMap`/`SoundManager`/`SpritePool` dependency)
+- [x] Tagged for the Lua API doc generator (`@luacategory{Crypto}`/`@luaname`/`@luagroup`/`@luadoc`/`@luaexample`/`@luaoutro`) — `scripts/_lua_api_shared.py`'s `SOURCE_TO_DOC` updated (`luacryptoapi.cpp` → `crypto.md`); full generator run confirmed clean
+- [x] `CLAUDE.md`'s `src/lua/` architecture bullet updated to mention `LuaCryptoApi`
+- [x] Regression-checked `hello-world`/`sprite` samples post-integration, both clean
 
 ### 2. Packaging tool — not started
 - [ ] A Lua script, run via `scarab` itself, encrypting + zipping (miniz) in one step
