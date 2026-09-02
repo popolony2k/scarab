@@ -19,6 +19,7 @@
  */
 
 #include "host/enginehost.h"
+#include "lua/luacryptoapi.h"
 #include "filesystem/filesystemfactory.h"
 #include <chrono>
 #include <fstream>
@@ -200,6 +201,22 @@ namespace Scarab  {
                     OnError( "Error opening project file inside archive => " + strEntryJsonPath );
                     return false;
                 }
+
+                /*
+                 * Transparent content-encryption support (checkpoint 3,
+                 * docs/content-encryption-plan.md) - a packed, encrypted
+                 * .zip's own project.json needs this same hook as every
+                 * other read path (LuaEngine::RunFile/LuaJsonApi::LoadJson/
+                 * LuaFileSystemApi::DoFile) - this is a fourth, distinct
+                 * read site (project.json is read directly here, in C++,
+                 * never through load_json), easy to miss for exactly that
+                 * reason. Silently falls back to the raw bytes as-is
+                 * (plaintext) if decryption doesn't apply.
+                 */
+                std :: vector<unsigned char>  decryptedProjectData;
+
+                if( Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( data, decryptedProjectData ) )
+                    data = std :: move( decryptedProjectData );
 
                 nlohmann :: json  projectData = nlohmann :: json :: parse( data.begin(), data.end(), nullptr, false );
 

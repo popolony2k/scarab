@@ -19,6 +19,7 @@
  */
 
 #include "lua/luajsonapi.h"
+#include "lua/luacryptoapi.h"
 #include "filesystem/filesystemfactory.h"
 #include <nlohmann/json.hpp>
 
@@ -124,6 +125,13 @@ namespace Scarab  {
              * the JSON actually contains. Nested objects/arrays convert
              * recursively; numbers, strings, booleans, and `null` (→ Lua
              * `nil`) convert directly.
+             *
+             * Transparently reads content encrypted by
+             * `crypto_encrypt_data`/`tools/pack.lua` too — nothing to
+             * opt into on the calling side; this build's own
+             * `SCARAB_CONTENT_KEY` is tried automatically, falling back
+             * to plain JSON if it doesn't apply (no key configured, or
+             * the file just isn't encrypted).
              */
             int LuaJsonApi :: LoadJson( lua_State *pLuaState )  {
 
@@ -143,6 +151,16 @@ namespace Scarab  {
 
                     return 1;
                 }
+
+                // Transparent content-encryption support (checkpoint 3,
+                // docs/content-encryption-plan.md) - see LuaEngine::RunFile's
+                // own identical hook for the full rationale; silently falls
+                // back to the raw bytes as-is (plaintext) if decryption
+                // doesn't apply.
+                std :: vector<unsigned char>  decrypted;
+
+                if( LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )
+                    data = std :: move( decrypted );
 
                 try  {
                     nlohmann :: json   jsonData = nlohmann :: json :: parse( data.begin(), data.end() );

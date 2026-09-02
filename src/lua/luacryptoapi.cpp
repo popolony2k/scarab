@@ -134,6 +134,43 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Shared core behind both crypto_decrypt_data
+             * (DecryptData below) and the transparent runtime hook
+             * (TryDecryptBytes, this class's own public interface) - one
+             * real implementation of "split a blob into nonce/ciphertext
+             * and call crypto_secretbox_open_easy", rather than two
+             * copies of buffer-arithmetic-adjacent-to-security-code that
+             * could silently drift apart. Deliberately logs nothing on
+             * failure either way - DecryptData/TryDecryptBytes each
+             * decide for themselves whether a failure here is worth
+             * reporting (see TryDecryptBytes's own doc comment for why
+             * it stays silent).
+             *
+             * @return true and fills out on success; false (out left
+             * untouched) if pKey is null, blob is too short to be
+             * valid, or the AEAD authentication check itself fails.
+             */
+            static bool DecryptCore( const unsigned char *pKey, const unsigned char *pBlob, size_t nBlobLen,
+                    std :: vector<unsigned char> &out )  {
+
+                if( ( pKey == nullptr ) || ( nBlobLen < ( crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES ) ) )
+                    return false;
+
+                const unsigned char  *pNonce      = pBlob;
+                const unsigned char  *pCiphertext = pBlob + crypto_secretbox_NONCEBYTES;
+                size_t                nCipherLen  = nBlobLen - crypto_secretbox_NONCEBYTES;
+
+                std :: vector<unsigned char>  plain( nCipherLen - crypto_secretbox_MACBYTES );
+
+                if( crypto_secretbox_open_easy( plain.data(), pCiphertext, nCipherLen, pNonce, pKey ) != 0 )
+                    return false;
+
+                out = std :: move( plain );
+
+                return true;
+            }
+
+            /**
              * @luaname{crypto_decrypt_data(encrypted) -> data}
              * @luagroup{crypto_data}
              * @luadoc
@@ -166,21 +203,11 @@ namespace Scarab  {
                 size_t       nBlobLen;
                 const char   *szBlob = lua_tolstring( pLuaState, 1, &nBlobLen );
 
-                if( nBlobLen < ( crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES ) )  {
-                    fprintf( stderr, "LuaCryptoApi: crypto_decrypt_data given a blob too short to be valid.\n" );
-                    lua_pushnil( pLuaState );
+                std :: vector<unsigned char>  plain;
 
-                    return 1;
-                }
-
-                const unsigned char  *pNonce      = ( const unsigned char * ) szBlob;
-                const unsigned char  *pCiphertext = ( const unsigned char * ) szBlob + crypto_secretbox_NONCEBYTES;
-                size_t                nCipherLen  = nBlobLen - crypto_secretbox_NONCEBYTES;
-
-                std :: vector<unsigned char>  plain( nCipherLen - crypto_secretbox_MACBYTES );
-
-                if( crypto_secretbox_open_easy( plain.data(), pCiphertext, nCipherLen, pNonce, pKey ) != 0 )  {
-                    fprintf( stderr, "LuaCryptoApi: crypto_decrypt_data failed - wrong key or corrupted data.\n" );
+                if( !DecryptCore( pKey, ( const unsigned char * ) szBlob, nBlobLen, plain ) )  {
+                    fprintf( stderr, "LuaCryptoApi: crypto_decrypt_data failed - wrong key, corrupted data, "
+                        "or a blob too short to be valid.\n" );
                     lua_pushnil( pLuaState );
 
                     return 1;
@@ -189,6 +216,17 @@ namespace Scarab  {
                 lua_pushlstring( pLuaState, ( const char * ) plain.data(), plain.size() );
 
                 return 1;
+            }
+
+            /**
+             * @brief See this method's own declaration (luacryptoapi.h)
+             * for the full rationale - the transparent runtime decrypt
+             * hook shared by LuaEngine::RunFile/LuaJsonApi::LoadJson/
+             * LuaFileSystemApi::DoFile.
+             */
+            bool LuaCryptoApi :: TryDecryptBytes( const std :: vector<unsigned char> &data, std :: vector<unsigned char> &out )  {
+
+                return DecryptCore( GetContentKey(), data.data(), data.size(), out );
             }
 
             /**

@@ -21,6 +21,8 @@
 #ifndef __LUACRYPTOAPI_H__
 #define __LUACRYPTOAPI_H__
 
+#include <vector>
+
 extern "C"
 {
   #include "lua.h"
@@ -74,6 +76,43 @@ namespace Scarab  {
                 public:
 
                 static void Register( lua_State *pLuaState );
+
+                /**
+                 * @brief Attempt to decrypt a buffer that may have been
+                 * produced by crypto_encrypt_data/tools/pack.lua, using
+                 * this build's own SCARAB_CONTENT_KEY. NOT Lua-bound -
+                 * this is the transparent runtime decrypt hook shared by
+                 * LuaEngine::RunFile, LuaJsonApi::LoadJson, and
+                 * LuaFileSystemApi::DoFile (see docs/content-encryption-
+                 * plan.md, checkpoint 3), each calling this directly on
+                 * whatever raw bytes SunLight::FileSystem::ReadFile()
+                 * returns, before treating them as Lua source/JSON text -
+                 * so a packed (encrypted) bundle and a loose,
+                 * unencrypted one both just work, with no caller needing
+                 * to know which it got ahead of time.
+                 *
+                 * @param data The raw bytes read from disk - may be
+                 * plaintext (an unencrypted game, or this build has no
+                 * key configured at all) or a genuine
+                 * crypto_encrypt_data-produced blob.
+                 * @param out Receives the decrypted bytes on success;
+                 * left untouched on failure.
+                 * @return true if data was successfully decrypted (this
+                 * build has a valid key AND data authenticates against
+                 * it) - false otherwise. False is the normal, expected
+                 * outcome for plaintext content, not an error condition;
+                 * callers should silently fall back to treating data as
+                 * plaintext rather than logging anything (unlike
+                 * crypto_decrypt_data itself, which DOES log - a Lua
+                 * caller invoking it directly is always expecting
+                 * encrypted input). A blob encrypted for a DIFFERENT key
+                 * also returns false here (indistinguishable from
+                 * plaintext, by design - see AEAD's own guarantee) - the
+                 * caller then treats the still-encrypted bytes as
+                 * plaintext, surfacing as an ordinary Lua/JSON parse
+                 * error rather than a dedicated "wrong key" message.
+                 */
+                static bool TryDecryptBytes( const std :: vector<unsigned char> &data, std :: vector<unsigned char> &out );
             };
         }
     }

@@ -449,6 +449,23 @@ namespace Scarab  {
             return false;
         }
 
+        /*
+         * Transparent content-encryption support (checkpoint 3,
+         * docs/content-encryption-plan.md) - tries to decrypt whatever
+         * ReadFile() returned using this build's own SCARAB_CONTENT_KEY
+         * before treating it as Lua source; silently falls back to the
+         * raw bytes as-is (plaintext) if decryption doesn't apply - see
+         * LuaCryptoApi::TryDecryptBytes's own doc comment for exactly
+         * when that happens (no key configured, or data just isn't a
+         * genuine encrypted blob for this key). This is the entry
+         * script's own load path - the very first script a packed,
+         * encrypted .zip bundle needs to run.
+         */
+        std :: vector<unsigned char>  decrypted;
+
+        if( Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )
+            data = std :: move( decrypted );
+
         std :: string  strChunkName = std :: string( "@" ) + strFileName;
         int            nLoadStatus  = luaL_loadbuffer( m_pLuaState, reinterpret_cast<const char *>( data.data() ), data.size(), strChunkName.c_str() );
 
