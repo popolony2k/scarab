@@ -52,6 +52,7 @@ SOURCE_TO_DOC = {
     "luafilesystemapi.cpp": "scripting.md",
     "luainputapi.cpp":      "input.md",
     "luajsonapi.cpp":       "json.md",
+    "luapackapi.cpp":       "pack.md",
     "luascriptingapi.cpp":  "scripting.md",
     "luasoundapi.cpp":      "sound.md",
     "luaspriteapi.cpp":     "sprite.md",

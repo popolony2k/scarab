@@ -51,3 +51,10 @@ docs/doxygen/
 
 __pycache__/
 *.pyc
+
+# tools/pack.lua's own local, per-developer config (see tools/README.md) -
+# points at wherever your own game source/output actually live, run from
+# the repo root the same way every samples/ entry already is; never meant
+# to be tracked (it may reference private absolute paths outside this repo
+# entirely).
+/pack-config.json

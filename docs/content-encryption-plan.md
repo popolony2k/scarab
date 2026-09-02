@@ -73,8 +73,16 @@ Verified directly against `doc.libsodium.org/installation`: builds both static a
 - [x] `CLAUDE.md`'s `src/lua/` architecture bullet updated to mention `LuaCryptoApi`
 - [x] Regression-checked `hello-world`/`sprite` samples post-integration, both clean
 
-### 2. Packaging tool — not started
-- [ ] A Lua script, run via `scarab` itself, encrypting + zipping (miniz) in one step
+### 2. Packaging tool — ✅ done
+- [x] A Lua script, run via `scarab` itself, encrypting + zipping (miniz) in one step: new `tools/pack.lua` + `tools/pack-config.example.json` + `tools/README.md`
+- [x] New `src/lua/luapackapi.h`/`.cpp` (`Scarab::Engine::Lua::LuaPackApi`) — `pack_list_directory`/`pack_read_file`/`pack_write_file`/`pack_create_archive`/`pack_add_entry`/`pack_close_archive`, miniz-backed (`mz_zip_writer_*`, `#include "miniz.h"` — the umbrella header, not `miniz_zip.h` directly, which alone is missing `time_t`/`MZ_DEFAULT_COMPRESSION`); archive handles follow the same "0 is never a valid handle" convention as `sprite_acquire`, tracked via `static std::map<int, mz_zip_archive*>`
+- [x] Deliberately the one `src/lua/` file whose primitives read/write real native OS paths, bypassing `SunLight::FileSystem` entirely — documented explicitly in both the class-level doc comment and `CLAUDE.md`, since packaging runs against a loose, not-yet-mounted source tree before any mounting concept applies
+- [x] `miniz` added to the root `CMakeLists.txt` via `FetchContent` (pinned `3.1.2`), forced static, same save/restore `BUILD_SHARED_LIBS` pattern already used for libsodium (guards against the same raylib-leaks-`BUILD_SHARED_LIBS=ON` bug from checkpoint 1)
+- [x] Registered in `LuaEngine::RegisterCalls` alongside `LuaCryptoApi`/`LuaJsonApi`/`LuaScriptingApi`/`LuaTimerApi`
+- [x] Tagged for the Lua API doc generator (`@luacategory{Pack}`/`@luaname`/`@luagroup`/`@luaheading`/`@luadoc`/`@luaoutro`) — `scripts/_lua_api_shared.py`'s `SOURCE_TO_DOC` updated (`luapackapi.cpp` → `pack.md`); full generator run confirmed clean, `pack.md` renders correctly
+- [x] `CLAUDE.md`'s `src/lua/` architecture bullet updated to mention `LuaPackApi`
+- [x] Verified for real, end-to-end, with the actual `tools/pack.lua` script (not just an ad-hoc scratchpad stand-in) invoked the correct, documented way (`cd` to this repo's own root, `./build/scarab tools/pack.lua`, with a gitignored `pack-config.json` at the repo root whose `source_dir`/`output` fields are absolute native paths) — produced a genuine, standard `.zip` (`unzip -l` confirms real structure/filenames), each entry's content encrypted (byte counts grow by the 24-byte nonce + 16-byte MAC overhead: 36→76, 25→65, 17→57), for a 3-file test tree including one file with an embedded null byte
+- [x] First documented USAGE (run from the *game's own* directory, passing an absolute path to `tools/pack.lua` elsewhere on disk) was wrong and confirmed to fail live with the same mount-restriction error already known from checkpoint 0/1 work (`Lua error: cannot open ...`) — `pack.lua`'s own entry-script path and `pack-config.json`'s location both still route through the mount-based filesystem even though the primitives they call don't; corrected to the same "run from this repo's own root" convention every `samples/` entry already uses, re-verified working after the fix
 
 ### 3. Runtime decrypt hook — Scarab's own read paths — not started
 - [ ] `LuaEngine::RunFile`, `LuaJsonApi::LoadJson`, `LuaFileSystemApi::DoFile`

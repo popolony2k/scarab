@@ -195,6 +195,35 @@ FetchContent_MakeAvailable(sodium)
 set(BUILD_SHARED_LIBS ${__scarab_saved_build_shared_libs})
 unset(__scarab_saved_build_shared_libs)
 
+####################################################################
+# miniz (content encryption's own packaging tool - see
+# docs/content-encryption-plan.md checkpoint 2). Unlike libsodium,
+# miniz ships it's own real, official CMakeLists.txt (verified
+# directly before pinning) - a plain FetchContent_Declare/
+# MakeAvailable is enough, no wrapper needed. Always kept static here
+# (unlike sodium, no SCARAB_MINIZ_SHARED toggle) - miniz is only ever
+# used internally by the packaging tool itself, never something a
+# consuming game links against or has reason to care about, so there's
+# no case for exposing a build-mode choice for it. Same
+# BUILD_SHARED_LIBS save/restore pattern as sodium above, for the same
+# reason (it also just respects the standard variable, no option of
+# it's own, and would otherwise inherit raylib's already-cached ON).
+####################################################################
+FetchContent_Declare(miniz
+                     GIT_REPOSITORY https://github.com/richgel999/miniz.git
+                     GIT_TAG 3.1.2)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_FUZZERS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+set(__scarab_saved_build_shared_libs ${BUILD_SHARED_LIBS})
+set(BUILD_SHARED_LIBS OFF)
+
+FetchContent_MakeAvailable(miniz)
+
+set(BUILD_SHARED_LIBS ${__scarab_saved_build_shared_libs})
+unset(__scarab_saved_build_shared_libs)
+
 # Add all include files
 include_directories("src")
 include_directories("src/lua")
@@ -260,7 +289,7 @@ if(SCARAB_USE_OFFICIAL_LUA_FTP)
   add_dependencies(scarab lua_library_download)
 endif()
 
-target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES} sodium)
+target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES} sodium miniz)
 
 #
 # Feeds --version/-v (main.cpp) - PROJECT_VERSION comes from this file's own
