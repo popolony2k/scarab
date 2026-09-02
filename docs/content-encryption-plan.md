@@ -111,8 +111,12 @@ Verified directly against `doc.libsodium.org/installation`: builds both static a
 ### 5. Backward compatibility check — ✅ done (verified as part of checkpoint 3, see above)
 - [x] A plain, unencrypted `.zip` must keep working exactly as it does today — this whole feature stays opt-in, never a breaking change
 
-### 6. Docs — not started
-- [ ] How a consuming game generates/stores its own key safely, explicit "never commit a real key to version control" warning, demoed with a throwaway/example key rather than a real one anywhere in this repo's own tracked files
+### 6. Docs — ✅ done
+- [x] New `## Content encryption :lock:` section in the root `README.md` (with a Table of Contents entry) — the permanent home for this feature's own documentation, since this plan doc itself is temporary (removed once the feature is done, per its own opening note)
+- [x] Explicit framing up front: opt-in, off by default, deterrence not unbreakable DRM, and — an easy point to miss — **Scarab's own public releases are never built with a real key**, since there's no one universal key to bake into a generic, publicly-distributed engine; encryption only exists once a consumer builds their own private copy from source with their own key
+- [x] A quick, runnable end-to-end example (generate a key, build, pack, run), then a link out to `tools/README.md` for the full packaging workflow and the `crypto`/`pack` Lua API reference pages, rather than duplicating that mechanical detail in two places
+- [x] "How a consuming game generates/stores its own key safely" — per-project key generation, an explicit "never commit a real key to version control" warning (naming the concrete places a key could accidentally leak into a tracked file), a concrete CI secret example (GitHub Actions), and a note on the (deliberate, unrecoverable) consequence of losing the key
+- [x] Demoed entirely with placeholder/example values — no real key anywhere in this repo's own tracked files (verified: the example key-generation command is real and runnable, but its *output* is never itself committed anywhere)
 
 ## Explicitly out of scope for now
 

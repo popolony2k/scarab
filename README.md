@@ -19,6 +19,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
     - [Lua backend option](#lua-backend-option)
     - [VSCode setup](#vscode-setup)
 * [Running](#running-rocket) :rocket:
+* [Content encryption](#content-encryption-lock) :lock:
 * [Samples](#samples-video_game) :video_game:
 * [Shared resources](#shared-resources-art) :art:
 * [License](#license-scroll) :scroll:
@@ -108,6 +109,44 @@ A project file just names the first Lua file to run:
 A whole project can also be packaged into a single self-contained `.zip` and run the same way: `./scarab game.zip`. `--entry`/`-e <path>` names the actual entry point when it's not simply `project.json` at the archive's own root — either another `.json` project file inside the archive, or a `.lua` path to run directly with no project-file indirection at all.
 
 Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, the entry script/project-file reads themselves) routes through a mount-based filesystem abstraction (PhysFS-backed) — a loose directory or a real archive read identically, so the same project runs unchanged either way.
+
+## Content encryption :lock:
+
+A game's own loose source directory (every Lua script and asset) can be packed into a single `.zip`, encrypted with a shared secret compiled into one specific build of `scarab` — only that same build can read it back. This is **deterrence, not unbreakable DRM**: the goal is raising the bar past "just unzip it," not defeating a determined reverse-engineer with the key-extraction tools and time to go after a native binary.
+
+**This is entirely opt-in, and off by default.** Scarab's own public releases (the `.zip`/`.tar.gz` archives on the [Releases](https://github.com/popolony2k/scarab/releases) page) are never built with a real key — there's no one universal key to bake into a generic, publicly-distributed engine build. Encryption only exists once *you* build your own private copy of `scarab` from source with your own key; a plain, unencrypted `.zip`/loose directory keeps working exactly as it always has, on any build, keyed or not.
+
+Quick example — build with a key, pack a game, run it:
+
+```shell
+# 1. Generate a key (32 random bytes, hex-encoded) and build scarab with it
+python3 -c "import secrets; print(secrets.token_hex(32))"
+cmake -B build -S . -DSCARAB_CONTENT_KEY=<the 64 hex characters just generated>
+cmake --build build -j 4
+
+# 2. Pack a game's own source directory into an encrypted .zip
+echo '{ "source_dir": "/path/to/my_game_source", "output": "/path/to/my_game.zip" }' > pack-config.json
+./build/scarab --pack pack-config.json
+
+# 3. Run it - only this same build (same key) can read it back
+./build/scarab /path/to/my_game.zip
+```
+
+See [tools/README.md](tools/README.md) for the full packaging workflow (including the direct-invocation alternative to `--pack`), and the [`crypto`](https://popolony2k.github.io/scarab/lua-api/crypto.html)/[`pack`](https://popolony2k.github.io/scarab/lua-api/pack.html) Lua API reference pages for the underlying primitives, if you're scripting your own packaging step instead of using `tools/pack.lua` directly.
+
+### Generating and storing your own key
+
+* Generate one **per game/project** (`python3 -c "import secrets; print(secrets.token_hex(32))"`, or any tool producing 32 random bytes as 64 hex characters) — never reuse Scarab's own docs/example values (there aren't any real ones checked into this repo; every example above is a placeholder) as an actual production key.
+
+* **Never commit a real key to version control** — not in a `CMakeCache.txt`, not in a script, not in a CI config file checked into the repo. Keep it in a local, gitignored file (matching this repo's own `/pack-config.json` gitignore entry, itself never containing a real key either — only paths) or your CI provider's own secret store.
+
+* For CI (e.g. GitHub Actions), pass it as a repository/environment secret exposed as an environment variable, then forward that into the `cmake` configure step — never typed into the workflow file itself:
+
+  ```yaml
+  - run: cmake -B build -S . -DSCARAB_CONTENT_KEY=${{ secrets.GAME_CONTENT_KEY }}
+  ```
+
+* Losing the key permanently locks you out of every `.zip` packed with it just as much as it locks out anyone else — there's no recovery mechanism, by design (a recoverable key would be a weaker one). Treat it with the same care as a code-signing certificate or a production database credential.
 
 ## Samples :video_game:
 
