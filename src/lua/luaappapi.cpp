@@ -506,6 +506,52 @@ namespace Scarab  {
             }
 
             /**
+             * @luaname{app_set_exit_key(key)}
+             * @luagroup{exit_key}
+             * @luadoc
+             * Sets which key, when pressed, triggers the default
+             * quit-the-application behavior (`app_quit()`'s own effect,
+             * but from a raw keypress rather than a direct call) —
+             * `KEY_ESCAPE` (see the "Keyboard keys" constants on
+             * `input.md`) by default. Pass `KEY_NULL` to disable this
+             * entirely, so
+             * pressing `ESC` no longer closes the game on its own —
+             * useful for a game that wants `ESC` to mean something else
+             * instead (a back/cancel action in its own menu system, for
+             * example), handled entirely in Lua by polling
+             * `input_is_key_released(KEY_ESCAPE)` each frame, rather than
+             * an un-interceptable quit racing ahead of it.
+             * @luaexample
+             * -- disable the default ESC-quits behavior; this game's own
+             * -- Lua code decides what ESC does instead
+             * app_set_exit_key( KEY_NULL )
+             */
+            int LuaAppApi :: SetExitKey( lua_State *pLuaState )  {
+
+                int  nKey = ( int ) lua_tointeger( pLuaState, 1 );
+
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetExitKey( ( SunLight :: Input :: KeyboardKey ) nKey );
+
+                return 0;
+            }
+
+            /**
+             * @brief Query the key currently configured to trigger
+             * quit-on-press (see @link SetExitKey).
+             *
+             * @luaname{app_get_exit_key()}
+             * @luagroup{exit_key}
+             */
+            int LuaAppApi :: GetExitKey( lua_State *pLuaState )  {
+
+                SunLight :: Input :: KeyboardKey  key = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetExitKey();
+
+                lua_pushinteger( pLuaState, ( lua_Integer ) key );
+
+                return 1;
+            }
+
+            /**
              * @brief Register app_set_fullscreen's own optional strategy
              * argument (see @link SetFullscreen) as Lua globals, same
              * names as the underlying SunLight::Engines::IEngine enum -
@@ -568,6 +614,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "draw_filled_rectangle", LuaAppApi :: DrawFilledRectangle );
                 lua_register( pLuaState, "app_get_platform", LuaAppApi :: GetPlatform );
                 lua_register( pLuaState, "app_quit", LuaAppApi :: Quit );
+                lua_register( pLuaState, "app_set_exit_key", LuaAppApi :: SetExitKey );
+                lua_register( pLuaState, "app_get_exit_key", LuaAppApi :: GetExitKey );
             }
         }
     }

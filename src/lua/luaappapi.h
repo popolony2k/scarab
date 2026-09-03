@@ -58,6 +58,8 @@ namespace Scarab  {
                 static int DrawFilledRectangle( lua_State *pLuaState );
                 static int GetPlatform( lua_State *pLuaState );
                 static int Quit( lua_State *pLuaState );
+                static int SetExitKey( lua_State *pLuaState );
+                static int GetExitKey( lua_State *pLuaState );
 
                 static void RegisterEnums( lua_State *pLuaState );
 
