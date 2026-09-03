@@ -53,7 +53,7 @@ cd /path/to/scarab-repo
 ./build/scarab tools/pack.lua
 ```
 
-Unlike `--pack`, this form keeps the window open once packing finishes (like every other Scarab entry script today — there's no programmatic "quit" primitive yet), until you close it or press Esc.
+Unlike `--pack`, this form briefly opens a real window — but it closes itself automatically once packing finishes (`app_quit()`, sunlight v0.19.0+), same as `--pack`'s own process exiting on its own; nothing to close manually either way.
 
 Either way: every file under `source_dir`, recursively, gets encrypted and added to `output` — a genuine, standard `.zip` (readable by any zip tool for its structure/filenames; only each file's *content* is opaque).
 
