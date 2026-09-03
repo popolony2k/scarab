@@ -4,7 +4,9 @@ Shared, open-source font assets — part of `resources/` at the repo root, the g
 
 ## caravellius8x8
 
-`caravellius8x8.fnt`/`.png` and `caravellius8x8_bold.fnt`/`.png` — an original AngelCode BMFont bitmap font, created for (and named after) **Caravellius**, contributed by its author for shared use here. Royalty-free; no separate license file needed beyond this project's own [zlib License](../../LICENSE). A `.fnt` file references its own bitmap atlas by filename only (`page id=0 file="caravellius8x8.png"`, etc.) — keep each pair in the same directory, don't rename one without the other.
+`caravellius8x8.fnt`/`.png` and `caravellius8x8_bold.fnt`/`.png` — an original AngelCode BMFont bitmap font, created for (and named after) **Caravellius**, contributed by its author for shared use here. **Dual-licensed**: available under either this project's own [zlib License](../../LICENSE) or the **SIL Open Font License 1.1** (full text: [OFL.txt](OFL.txt)), recipient's choice — OFL added alongside zlib specifically because it's the license the open-source font world already knows and trusts, so anyone reusing just the font on its own (independent of the rest of this engine) has a familiar, purpose-built option rather than only the engine's own code license. `Reserved Font Name`: `Caravellius8x8`. A `.fnt` file references its own bitmap atlas by filename only (`page id=0 file="caravellius8x8.png"`, etc.) — keep each pair in the same directory, don't rename one without the other.
+
+Extended (2026-09-03) with 6 additional glyphs for Spanish-language support — `Ñ`/`ñ` (char ids 209/241), `Ü`/`ü` (220/252), `¡`/`¿` (161/191) — added identically to both the regular and bold variants (121 → 127 glyphs each).
 
 **Fixed as of sunlight v0.17.3** — see "A real, verified engine bug (fixed in sunlight v0.17.3)" below. Previously unloadable via `set_font`.
 
