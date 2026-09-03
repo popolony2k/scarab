@@ -478,6 +478,34 @@ namespace Scarab  {
             }
 
             /**
+             * @luaname{app_quit()}
+             * @luadoc
+             * Requests the game close, the programmatic equivalent of the
+             * player pressing the configured exit key (`ESC` by default)
+             * or clicking the window's close button. Takes effect on the
+             * next frame, not immediately — safe to call from anywhere
+             * `on_update`/an engine callback reaches, including mid-frame;
+             * whatever's already queued to draw this frame still finishes
+             * drawing normally before the game actually closes.
+             *
+             * There was no programmatic way to quit at all before this —
+             * every prior sample/tool worked around that by just telling
+             * the player to close the window manually.
+             * @luaexample
+             * function on_update(dt)
+             *   if quit_button_pressed then
+             *     app_quit()
+             *   end
+             * end
+             */
+            int LuaAppApi :: Quit( lua_State *pLuaState )  {
+
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> RequestExit();
+
+                return 0;
+            }
+
+            /**
              * @brief Register app_set_fullscreen's own optional strategy
              * argument (see @link SetFullscreen) as Lua globals, same
              * names as the underlying SunLight::Engines::IEngine enum -
@@ -539,6 +567,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "app_get_stretch_to_fill", LuaAppApi :: GetStretchToFill );
                 lua_register( pLuaState, "draw_filled_rectangle", LuaAppApi :: DrawFilledRectangle );
                 lua_register( pLuaState, "app_get_platform", LuaAppApi :: GetPlatform );
+                lua_register( pLuaState, "app_quit", LuaAppApi :: Quit );
             }
         }
     }

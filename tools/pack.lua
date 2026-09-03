@@ -76,11 +76,11 @@
  Form 2 still needs at least one queued sp_* command the way every
  normal (windowed) Scarab entry script does (see samples/hello-world/
  docs/README.md), even though packing itself finishes almost
- instantly - and like every sample in this repo, there's no
- programmatic "quit" primitive for a real window yet, so once "Done"
- prints under form 2, close the window (or press Esc) to actually
- exit. Form 1 (--pack) has no such wait, since no window ever opens
- for it in the first place.
+ instantly - but unlike most samples, this script closes its own
+ window automatically once packing finishes (app_quit(), sunlight
+ v0.19.0+ - see below), rather than needing a manual close/Esc. Form 1
+ (--pack) never opens a window to begin with, so it has nothing to
+ close either way.
 ]]
 
 -- app_set_name is only registered once a real window/TileMapRenderer
@@ -157,12 +157,14 @@ if not pack_close_archive( archive ) then
     error( "tools/pack.lua: failed to finalize the archive at '" .. outputZip .. "'" )
 end
 
--- app_set_name's own nil-guard above doubles as the "which form is this"
--- signal here: only form 2 (a real window) ever registers it.
-if app_set_name then
-    print( "Done - packed " .. packedCount .. " file(s) into '" .. outputZip .. "'. Close this window (or press Esc) to exit." )
-else
-    print( "Done - packed " .. packedCount .. " file(s) into '" .. outputZip .. "'." )
+print( "Done - packed " .. packedCount .. " file(s) into '" .. outputZip .. "'." )
+
+-- app_quit (sunlight v0.19.0+) closes form 2's own window automatically -
+-- guarded the same way app_set_name is above, since it's only ever
+-- registered for a real window (form 2), never headless --pack (form 1,
+-- which has no window to close in the first place).
+if app_quit then
+    app_quit()
 end
 
 function on_update( dt )
