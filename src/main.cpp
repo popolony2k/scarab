@@ -142,6 +142,26 @@ int main( int argc, char **argv ) {
     }
 
     /*
+     * SCARAB_CONTENT_KEY_IS_SHARED is only ever 1 on an official
+     * release.yml-built binary (see CMakeLists.txt's own doc comment) -
+     * printed unconditionally, every invocation (both --pack and the
+     * normal windowed path reach this same line), so the "as-is,
+     * educational only" framing in README.md's own "Content encryption"
+     * section is restated live at the point of use, not just in a doc
+     * someone could skip past. A build with no key configured, or a
+     * real private one someone set themselves, never sets this - stays
+     * silent either way.
+     */
+    if( SCARAB_CONTENT_KEY_IS_SHARED )  {
+        fprintf( stderr, "WARNING: this scarab build was compiled with a SHARED, PUBLIC content-encryption "
+            "key (SCARAB_CONTENT_KEY) - the same key every official release of this version ships with, not "
+            "a private one. Anyone can extract it from this exact binary. As-is, educational use only - never "
+            "rely on it for real content protection. Build your own copy from source with your own "
+            "SCARAB_CONTENT_KEY for production/professional use - see README.md's own \"Content encryption\" "
+            "section.\n" );
+    }
+
+    /*
      * strAppDir/strVirtualAppDir computed early (moved up from where this
      * exact GetApplicationDirectory() call used to sit, right before the
      * APP_DIR Mount() below) - --pack needs the virtual (ToVirtualPath()-
