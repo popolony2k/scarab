@@ -40,6 +40,24 @@ option(SCARAB_USE_OFFICIAL_LUA_FTP "Build Scarab with LUA provided by official F
 set(SCARAB_CONTENT_KEY "" CACHE STRING "Hex-encoded 32-byte shared secret for content encryption - see README.md's own \"Content encryption\" section")
 
 #
+# SCARAB_CONTENT_KEY_IS_SHARED: never set this yourself - release.yml
+# alone sets it ON, alongside a SCARAB_CONTENT_KEY it derives fresh per
+# release (see release.yml's own "Configure" steps for the exact
+# derivation). Decoupled entirely from SCARAB_CONTENT_KEY's own value
+# (which changes every release, and which this flag has no way to
+# inspect or compare against anyway) - purely a "was this build's key
+# baked in by our own public release pipeline, as opposed to a real
+# private key someone configured themselves" marker, checked at
+# startup (main.cpp) to print an unmissable runtime warning on every
+# invocation of an official release binary - the README's own "as-is,
+# educational only" disclosure restated live, not just in a doc
+# someone could skip past. A build configured with SCARAB_CONTENT_KEY
+# left at its own empty default, or with a real private key, always
+# leaves this OFF - only release.yml's own CI ever turns it on.
+#
+option(SCARAB_CONTENT_KEY_IS_SHARED "Internal - set only by release.yml; marks this build's SCARAB_CONTENT_KEY as the public, per-release derived key, not a private one" OFF)
+
+#
 # SCARAB_LIBSODIUM_SHARED: build libsodium as a shared/dynamic library
 # (libsodium.dylib/.so/.dll) instead of the default static one. Static
 # is the simpler deployment story (baked straight into scarab, nothing
@@ -301,7 +319,8 @@ target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CL
 target_compile_definitions(scarab PRIVATE
   SCARAB_VERSION="${PROJECT_VERSION}"
   SCARAB_SUNLIGHT_VERSION="${SCARAB_SUNLIGHT_VERSION}"
-  SCARAB_CONTENT_KEY="${SCARAB_CONTENT_KEY}")
+  SCARAB_CONTENT_KEY="${SCARAB_CONTENT_KEY}"
+  SCARAB_CONTENT_KEY_IS_SHARED=$<BOOL:${SCARAB_CONTENT_KEY_IS_SHARED}>)
 
 #
 # scarab_copy_binaries (below) flattens scarab + every one of its own runtime

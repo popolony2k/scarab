@@ -114,7 +114,19 @@ Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, th
 
 A game's own loose source directory (every Lua script and asset) can be packed into a single `.zip`, encrypted with a shared secret compiled into one specific build of `scarab` — only that same build can read it back. This is **deterrence, not unbreakable DRM**: the goal is raising the bar past "just unzip it," not defeating a determined reverse-engineer with the key-extraction tools and time to go after a native binary.
 
-**This is entirely opt-in, and off by default.** Scarab's own public releases (the `.zip`/`.tar.gz` archives on the [Releases](https://github.com/popolony2k/scarab/releases) page) are never built with a real key — there's no one universal key to bake into a generic, publicly-distributed engine build. Encryption only exists once *you* build your own private copy of `scarab` from source with your own key; a plain, unencrypted `.zip`/loose directory keeps working exactly as it always has, on any build, keyed or not.
+**This is entirely opt-in, and off by default** for anyone building from source — a plain, unencrypted `.zip`/loose directory keeps working exactly as it always has, on any build, keyed or not. Scarab's own official public releases *do* ship with a real key configured, but not a private one — see the disclosure right below before relying on this for anything real.
+
+### AS-IS: OFFICIAL RELEASE BINARIES USE A SHARED KEY, NOT A PRIVATE ONE — EDUCATIONAL USE ONLY
+
+Every official `scarab` release (the archives on the [Releases](https://github.com/popolony2k/scarab/releases) page) is built with a real `SCARAB_CONTENT_KEY` — but that key is **not private, and never will be**. It's derived fresh for each release version (see [`release.yml`](.github/workflows/release.yml) for the exact mechanism — an HMAC of a persistent, never-compiled-in salt and the release's own tag name), so it changes from version to version, and — deliberately — is identical across all 4 platform archives of the *same* version, so content packed with one platform's official release opens correctly on another platform's official release of that same version. **Anyone can extract this key from the binary itself** (`strings`, a disassembler, a few minutes of effort) — this was never meant to be secret, and no amount of cryptographic derivation changes that once a value is compiled into something publicly downloadable.
+
+This exists purely so you can try the full `--pack` → encrypt → run workflow using a downloaded binary alone, with nothing to build from source. **It provides zero real protection.** Every official release binary prints a reminder of exactly this, on every single invocation:
+
+```text
+WARNING: this scarab build was compiled with a SHARED, PUBLIC content-encryption key ...
+```
+
+**This is provided as-is, for education and experimentation only.** If you — an individual, a team, or a company — want to use Scarab's content encryption for real, for anything beyond trying the feature out, you **must build your own copy of `scarab` from source**, providing your own `SCARAB_CONTENT_KEY` kept genuinely private (a local gitignored file, your own CI's secret store, or any other method that never exposes it) — see "Generating and storing your own key" right below. This applies equally whether it's a hobby project or a commercial release; the public release key is not, and was never intended to be, a substitute for that.
 
 Quick example — build with a key, pack a game, run it:
 

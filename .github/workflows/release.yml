@@ -54,14 +54,74 @@ jobs:
         shell: pwsh
         run: vcpkg install zlib:x64-windows libiconv:x64-windows
 
+      # SCARAB_CONTENT_KEY for these PUBLIC release binaries: deliberately
+      # NOT a fixed/shared value (see README.md's own "Content encryption"
+      # section for the full "as-is, educational only" framing) - derived
+      # fresh per release as HMAC-SHA256(a persistent, never-compiled-in
+      # secret salt, this release's own tag name). Cryptographically
+      # indistinguishable from random to anyone without the salt, changes
+      # automatically every release (the tag itself changes), yet every
+      # one of this job's 4 platform matrix entries computes the exact
+      # same value independently (same salt + same tag -> same output,
+      # zero cross-job coordination needed) - so any platform's official
+      # vX.Y.Z release can read content packed by any OTHER platform's
+      # official vX.Y.Z release. HMAC-SHA256's own output is exactly 32
+      # bytes (64 hex chars) - already the exact format
+      # SCARAB_CONTENT_KEY needs, no truncation/padding required.
+      #
+      # ::add-mask:: registers the COMPUTED value for log redaction -
+      # GitHub only auto-masks the literal registered secret
+      # (SCARAB_RELEASE_KEY_SALT itself), not a value derived from it, so
+      # without this the derived key wouldn't be protected in this job's
+      # own later log output the way a raw secrets.* reference would be.
       - name: Configure (Linux/macOS)
         if: runner.os != 'Windows'
-        run: cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        env:
+          SCARAB_RELEASE_KEY_SALT: ${{ secrets.SCARAB_RELEASE_KEY_SALT }}
+        run: |
+          DERIVED_KEY=$(python3 -c "import hmac, hashlib, sys; print(hmac.new(sys.argv[1].encode(), sys.argv[2].encode(), hashlib.sha256).hexdigest())" "$SCARAB_RELEASE_KEY_SALT" "${{ github.ref_name }}")
+          echo "::add-mask::$DERIVED_KEY"
+          cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DSCARAB_CONTENT_KEY="$DERIVED_KEY" -DSCARAB_CONTENT_KEY_IS_SHARED=ON
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+        env:
+          SCARAB_RELEASE_KEY_SALT: ${{ secrets.SCARAB_RELEASE_KEY_SALT }}
+        run: |
+          # Windows GitHub-hosted runners only guarantee `python` on PATH,
+          # not `python3` (confirmed against actions/runner-images' own
+          # Windows software manifest before relying on this).
+          $derivedKey = python -c "import hmac, hashlib, sys; print(hmac.new(sys.argv[1].encode(), sys.argv[2].encode(), hashlib.sha256).hexdigest())" "$env:SCARAB_RELEASE_KEY_SALT" "${{ github.ref_name }}"
+          Write-Host "::add-mask::$derivedKey"
+          cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" "-DSCARAB_CONTENT_KEY=$derivedKey" "-DSCARAB_CONTENT_KEY_IS_SHARED=ON"
+
+      - name: Verify SCARAB_CONTENT_KEY actually configured (Linux/macOS)
+        if: runner.os != 'Windows'
+        # Same length-only check as ci.yml's own equivalent step - proves
+        # the derivation actually produced a real 64-hex-char value
+        # (rather than eg. an empty SCARAB_RELEASE_KEY_SALT silently
+        # deriving SOME value from an empty salt) without ever printing
+        # the value itself.
+        run: |
+          KEY_LEN=$(grep '^SCARAB_CONTENT_KEY:STRING=' build/CMakeCache.txt | cut -d= -f2 | tr -d '\n' | wc -c | tr -d ' ')
+          echo "SCARAB_CONTENT_KEY configured length: $KEY_LEN (expected 64)"
+          if [ "$KEY_LEN" != "64" ]; then
+            echo "::error::SCARAB_CONTENT_KEY is not a 64-hex-char value - derivation or SCARAB_RELEASE_KEY_SALT secret misconfigured?"
+            exit 1
+          fi
+
+      - name: Verify SCARAB_CONTENT_KEY actually configured (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $match = Select-String -Path build\CMakeCache.txt -Pattern '^SCARAB_CONTENT_KEY:STRING='
+          $keyLen = ($match.Line -replace '^SCARAB_CONTENT_KEY:STRING=', '').Length
+          Write-Host "SCARAB_CONTENT_KEY configured length: $keyLen (expected 64)"
+          if ($keyLen -ne 64) {
+            Write-Host "::error::SCARAB_CONTENT_KEY is not a 64-hex-char value - derivation or SCARAB_RELEASE_KEY_SALT secret misconfigured?"
+            exit 1
+          }
 
       - name: Build
         run: cmake --build build --config Release -j 4
