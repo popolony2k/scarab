@@ -91,7 +91,21 @@ int main( int argc, char **argv ) {
     // string literal concatenation joins them into one literal at compile
     // time, so this always reflects the exact sunlight tag actually fetched,
     // not a hand-copied value that could drift out of sync.
-    app.set_version_flag( "--version,-v", "scarab v" SCARAB_VERSION " (sunlight v" SCARAB_SUNLIGHT_VERSION ")" );
+    //
+    // LUA_RELEASE (eg. "Lua 5.4.7") is different - not a Scarab-owned
+    // define at all, but Lua's own compile-time macro (lua.h, transitively
+    // included via lua/luaengine.h above), read directly rather than
+    // hand-copied into a new CMake variable for exactly the same
+    // drift-avoidance reason. This matters concretely here: the default
+    // Lua backend (walterschell/Lua, GIT_TAG master) tracks whatever Lua
+    // release that fork currently packages, not a version pinned anywhere
+    // in this repo - confirmed live to actually be 5.4.7 despite the
+    // *alternate* backend (SCARAB_USE_OFFICIAL_LUA_FTP, the official FTP
+    // tarball) being hardcoded to 5.4.6 in its own URL. Reading LUA_RELEASE
+    // straight from whichever lua.h actually got compiled against means
+    // this always matches reality for either backend automatically, with
+    // no separate tracking needed for the FTP path either.
+    app.set_version_flag( "--version,-v", "scarab v" SCARAB_VERSION " (sunlight v" SCARAB_SUNLIGHT_VERSION ", " LUA_RELEASE ")" );
 
     std :: string  strEntryPath;
     std :: string  strEntryOverride;
