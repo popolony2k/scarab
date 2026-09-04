@@ -130,22 +130,39 @@ jobs:
       # sunlight, it's an executable, not an installable library, and
       # scarab_copy_binaries already assembles a complete, ready-to-run
       # bundle (the scarab executable + raylib/tmx/libxml2/sunlight's shared
-      # libs) directly next to the built executable at build time, via
-      # $<TARGET_FILE_DIR:scarab>. That target resolves to build/ itself on
-      # Linux/macOS (single-config Unix Makefiles - no per-config
-      # subdirectory), and to build/Release/ on Windows (the VS generator
-      # GitHub's windows-latest runner defaults to is multi-config) - see
-      # this repo's own CLAUDE.md "Known gotchas" for the fuller story on
-      # why that split exists. Staging just copies the executable plus
-      # whatever shared-lib files actually landed next to it, rather than
-      # naming each dependency explicitly (their exact filenames can shift
-      # with FetchContent'd versions).
+      # libs + tools/, the content-encryption packaging tool) directly next
+      # to the built executable at build time, via $<TARGET_FILE_DIR:scarab>.
+      # That target resolves to build/ itself on Linux/macOS (single-config
+      # Unix Makefiles - no per-config subdirectory), and to build/Release/
+      # on Windows (the VS generator GitHub's windows-latest runner defaults
+      # to is multi-config) - see this repo's own CLAUDE.md "Known gotchas"
+      # for the fuller story on why that split exists. Staging copies the
+      # executable, whatever shared-lib files actually landed next to it
+      # (rather than naming each dependency explicitly, since their exact
+      # filenames can shift with FetchContent'd versions), and tools/
+      # itself.
+      #
+      # tools/ is NOT optional here, unlike the shared libs (which use
+      # `|| true`/`-ErrorAction SilentlyContinue` since a platform might
+      # genuinely have none) - a real bug found live shipping v0.1.11: this
+      # step originally only ever copied the executable + shared libs,
+      # never tools/, so every published release archive silently had no
+      # tools/pack.lua in it at all - `scarab --pack` (and the whole
+      # "try the packaging workflow from a downloaded binary alone" point
+      # of the per-release shared key, see README.md's own "Content
+      # encryption" section) failed outright on every real release with
+      # `Lua error: cannot open .../tools/pack.lua`, found by Caravellius
+      # actually testing v0.1.11's binary-mode packing end-to-end. Fixed by
+      # copying tools/ explicitly in all 3 platform staging steps below,
+      # unconditionally (no `|| true` swallowing a genuine copy failure -
+      # tools/ always exists, scarab_copy_binaries always creates it).
       - name: Stage artifact (Linux)
         if: runner.os == 'Linux'
         run: |
           mkdir -p scarab-${{ github.ref_name }}-${{ matrix.platform }}
           cp build/scarab scarab-${{ github.ref_name }}-${{ matrix.platform }}/
           cp build/*.so* scarab-${{ github.ref_name }}-${{ matrix.platform }}/ 2>/dev/null || true
+          cp -r build/tools scarab-${{ github.ref_name }}-${{ matrix.platform }}/
 
       - name: Stage artifact (macOS)
         if: runner.os == 'macOS'
@@ -153,6 +170,7 @@ jobs:
           mkdir -p scarab-${{ github.ref_name }}-${{ matrix.platform }}
           cp build/scarab scarab-${{ github.ref_name }}-${{ matrix.platform }}/
           cp build/*.dylib scarab-${{ github.ref_name }}-${{ matrix.platform }}/ 2>/dev/null || true
+          cp -r build/tools scarab-${{ github.ref_name }}-${{ matrix.platform }}/
 
       - name: Stage artifact (Windows)
         if: runner.os == 'Windows'
@@ -161,6 +179,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path scarab-${{ github.ref_name }}-${{ matrix.platform }}
           Copy-Item build/Release/scarab.exe scarab-${{ github.ref_name }}-${{ matrix.platform }}/
           Copy-Item build/Release/*.dll scarab-${{ github.ref_name }}-${{ matrix.platform }}/ -ErrorAction SilentlyContinue
+          Copy-Item -Recurse build/Release/tools scarab-${{ github.ref_name }}-${{ matrix.platform }}/
 
       # Confirms the staged files actually run once relocated OUTSIDE the
       # build tree - not a redundant re-check of "Build" above, which never
@@ -174,12 +193,28 @@ jobs:
       # CMakeLists.txt; this step exists so a regression there (or an
       # equivalent problem on Linux/Windows this session couldn't test
       # locally) fails CI loudly instead of shipping silently broken again.
+      # The --pack half of each smoke test below exists specifically
+      # because --help alone (the original, only check here) gave zero
+      # signal about the missing-tools/ bug above - --help never touches
+      # tools/pack.lua at all, so it kept passing on every one of
+      # v0.1.11's first, broken release archives. Packs a tiny synthetic
+      # source directory and confirms a real .zip actually gets written,
+      # so a regression here (this fix regressing, or a future change
+      # breaking --pack some other way) fails the release loudly instead
+      # of shipping silently broken again - matching this workflow's own
+      # existing rpath-relocation smoke test philosophy.
       - name: Smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
           cp -r scarab-${{ github.ref_name }}-${{ matrix.platform }} /tmp/scarab-smoketest
           cd /tmp/scarab-smoketest
           ./scarab --help
+
+          mkdir -p /tmp/scarab-smoketest-src
+          echo 'x' > /tmp/scarab-smoketest-src/dummy.txt
+          echo '{"source_dir": "/tmp/scarab-smoketest-src", "output": "/tmp/scarab-smoketest-out.zip"}' > /tmp/scarab-smoketest-pack-config.json
+          ./scarab --pack /tmp/scarab-smoketest-pack-config.json
+          test -f /tmp/scarab-smoketest-out.zip
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
@@ -188,6 +223,13 @@ jobs:
           Copy-Item -Recurse "scarab-${{ github.ref_name }}-${{ matrix.platform }}" "$env:TEMP\scarab-smoketest"
           & "$env:TEMP\scarab-smoketest\scarab.exe" --help
           if ($LASTEXITCODE -ne 0) { throw "scarab.exe --help exited with code $LASTEXITCODE" }
+
+          New-Item -ItemType Directory -Force -Path "$env:TEMP\scarab-smoketest-src" | Out-Null
+          Set-Content -Path "$env:TEMP\scarab-smoketest-src\dummy.txt" -Value "x"
+          @{ source_dir = "$env:TEMP\scarab-smoketest-src"; output = "$env:TEMP\scarab-smoketest-out.zip" } | ConvertTo-Json | Set-Content -Path "$env:TEMP\scarab-smoketest-pack-config.json"
+          & "$env:TEMP\scarab-smoketest\scarab.exe" --pack "$env:TEMP\scarab-smoketest-pack-config.json"
+          if ($LASTEXITCODE -ne 0) { throw "scarab.exe --pack exited with code $LASTEXITCODE" }
+          if (-not (Test-Path "$env:TEMP\scarab-smoketest-out.zip")) { throw "scarab.exe --pack did not produce the expected output zip" }
 
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
