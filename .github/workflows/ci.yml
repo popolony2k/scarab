@@ -51,12 +51,50 @@ jobs:
 
       - name: Configure (Linux/macOS)
         if: runner.os != 'Windows'
-        run: cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        env:
+          SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
+        run: cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY"
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+        env:
+          SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
+        run: cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" "-DSCARAB_CONTENT_KEY=$env:SCARAB_CI_CONTENT_KEY"
+
+      - name: Verify SCARAB_CONTENT_KEY actually configured (Linux/macOS)
+        if: runner.os != 'Windows'
+        # Checks the cached value's own LENGTH only (64 hex chars expected) -
+        # never the value itself, so nothing here can leak the secret even
+        # by accident. ci.yml has no test/run step to otherwise prove the
+        # secret really flowed through (a silently-empty key would build
+        # identically to a real one - no visible difference in this log
+        # either way) - this is what actually closes that gap.
+        run: |
+          KEY_LEN=$(grep '^SCARAB_CONTENT_KEY:STRING=' build/CMakeCache.txt | cut -d= -f2 | tr -d '\n' | wc -c | tr -d ' ')
+          echo "SCARAB_CONTENT_KEY configured length: $KEY_LEN (expected 64)"
+          if [ "$KEY_LEN" != "64" ]; then
+            echo "::error::SCARAB_CONTENT_KEY is not a 64-hex-char value - SCARAB_CI_CONTENT_KEY secret missing/misconfigured?"
+            exit 1
+          fi
+
+      - name: Verify SCARAB_CONTENT_KEY actually configured (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $match = Select-String -Path build\CMakeCache.txt -Pattern '^SCARAB_CONTENT_KEY:STRING='
+          # .Line is the matched line's own raw text ("SCARAB_CONTENT_KEY:STRING=<value>") -
+          # $match itself is a MatchInfo object, and stringifying THAT directly (eg. via
+          # -replace on $match rather than $match.Line) yields PowerShell's own
+          # "<path>:<linenumber>:<line text>" representation instead, inflating the
+          # length by that prefix - a real bug caught live via this exact check
+          # (reported 134, not 64, on the very first CI run).
+          $keyLen = ($match.Line -replace '^SCARAB_CONTENT_KEY:STRING=', '').Length
+          Write-Host "SCARAB_CONTENT_KEY configured length: $keyLen (expected 64)"
+          if ($keyLen -ne 64) {
+            Write-Host "::error::SCARAB_CONTENT_KEY is not a 64-hex-char value - SCARAB_CI_CONTENT_KEY secret missing/misconfigured?"
+            exit 1
+          }
 
       - name: Build
         run: cmake --build build --config Release -j 4
