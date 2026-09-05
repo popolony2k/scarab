@@ -8,7 +8,7 @@ Licensed under the [zlib License](LICENSE), the same license `sunlight` (the eng
 
 Scarab started as a personal project with a simple goal: build a game called **Caravellius**. Months into that game's own development, the parts that had nothing to do with any specific game — the window/render loop, tile-map rendering, sprites, collision, sound, input — were split out into their own library, [**sunlight**](https://github.com/popolony2k/sunlight). About a year later, a second idea became clear: that same game-agnostic split could go one step further, into a thin host with *no* game-specific C++ left at all, where an entire game is scripted in Lua on top of sunlight instead. That idea became Scarab, split out by its author into a project of its own.
 
-Read the full story, in the author's own words: [*From a Transforming Ship to a Transforming Engine*](https://www.popolony2k.com.br/from-a-transforming-ship-to-a-transforming-engine/).
+Read the full story, in the author's own words: [*From a Transforming Ship to a Transforming Engine*](https://www.popolony2k.com.br/from-a-transforming-ship-to-a-transforming-engine/). The Scarab side of that story is its own article: [*The Beetle That Carried the Light*](https://www.popolony2k.com.br/the-beetle-that-carried-the-light/).
 
 ## Table of Contents :pushpin:
 * [Lua API reference](#lua-api-reference-book) :book:
