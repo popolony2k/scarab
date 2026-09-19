@@ -552,6 +552,47 @@ namespace Scarab  {
             }
 
             /**
+             * @luaname{app_get_time()}
+             * @luadoc
+             * Returns the real, wall-clock time in seconds (a fractional
+             * number, sub-millisecond precision) elapsed since the game
+             * window was initialized. Monotonic — never jumps backward,
+             * and unaffected by the system clock changing — and entirely
+             * independent of the per-tick `dt` passed to `on_update`,
+             * which is a fixed `1000 / 60` (truncated to `16`) rather than
+             * a measured frame time, so accumulating it drifts slow
+             * against real time, and drifts further on any machine that
+             * can't sustain the target frame rate.
+             *
+             * Use this instead of accumulating `dt` for anything that has
+             * to track *real* elapsed time at sub-second precision — a
+             * typewriter-style text reveal, a cutscene timeline meant to
+             * line up with a song. (`os.time()` is the other real-time
+             * source, but only has whole-second granularity.) Anchor off
+             * a start timestamp and compare against it each frame, rather
+             * than counting up.
+             * @luaexample
+             * -- reveal one character every 50ms of real time, regardless
+             * -- of the actual frame rate
+             * local CHAR_SECONDS = 0.05
+             * local text         = "Hello, world!"
+             * local start        = app_get_time()
+             *
+             * function on_update(dt)
+             *   local shown = math.floor( ( app_get_time() - start ) / CHAR_SECONDS )
+             *   draw_text( text:sub( 1, shown ), 16, 16, 16, 255, 255, 255, 255 )
+             * end
+             */
+            int LuaAppApi :: GetTime( lua_State *pLuaState )  {
+
+                double  fElapsed = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetElapsedTime();
+
+                lua_pushnumber( pLuaState, fElapsed );
+
+                return 1;
+            }
+
+            /**
              * @brief Register app_set_fullscreen's own optional strategy
              * argument (see @link SetFullscreen) as Lua globals, same
              * names as the underlying SunLight::Engines::IEngine enum -
@@ -616,6 +657,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "app_quit", LuaAppApi :: Quit );
                 lua_register( pLuaState, "app_set_exit_key", LuaAppApi :: SetExitKey );
                 lua_register( pLuaState, "app_get_exit_key", LuaAppApi :: GetExitKey );
+                lua_register( pLuaState, "app_get_time", LuaAppApi :: GetTime );
             }
         }
     }

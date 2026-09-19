@@ -60,6 +60,7 @@ namespace Scarab  {
                 static int Quit( lua_State *pLuaState );
                 static int SetExitKey( lua_State *pLuaState );
                 static int GetExitKey( lua_State *pLuaState );
+                static int GetTime( lua_State *pLuaState );
 
                 static void RegisterEnums( lua_State *pLuaState );
 
