@@ -81,7 +81,7 @@ The `scarab` target — the executable is engine-branded, not game-branded, sinc
 
 ### Lua backend option
 
-By default Lua is built from `walterschell/Lua` (CMake-friendly fork). Pass `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` to instead build from the official Lua 5.4.6 FTP tarball (Unix-only, requires `make`).
+By default Lua is built from `walterschell/Lua` (CMake-friendly fork). `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` selects an official-Lua-5.4.6-tarball backend instead, but **it does not currently work on any platform** (it needs a system Lua development package on top of the tarball, and has no Windows/MSVC build path, and CI never builds it) — it is kept as the starting point for a future plan to make the official Lua the only integration, working on macOS, Linux and Windows. See [docs/lua-integration.md](docs/lua-integration.md) for the verified findings and that plan.
 
 On Windows, `libxml2`/`tmx` link vcpkg's `iconv`/`zlib` dynamically, so configure with `cmake --preset windows-vcpkg` instead (needs `VCPKG_ROOT` set in the environment) — see the `CMakePresets.json` preset and `CLAUDE.md`'s Build section for details.
 

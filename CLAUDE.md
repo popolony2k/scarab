@@ -25,7 +25,7 @@ On Windows, `libxml2`/`tmx` (both fetched transitively via sunlight) link vcpkg'
 
 Debug symbols: `cmake -B build -S . -DCMAKE_C_FLAGS="-g2" -DCMAKE_CXX_FLAGS="-g2"`.
 
-Lua backend defaults to `walterschell/Lua` (CMake-friendly). `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` switches to the official Lua 5.4.6 FTP tarball build (Unix-only).
+Lua backend defaults to `walterschell/Lua` (CMake-friendly). `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` selects an official Lua 5.4.6 FTP tarball backend instead, **but it does not currently work on any platform** (verified 2026-09-19: configure fails at `find_package(Lua REQUIRED)`, which is nested inside that option's own `else()`; no Windows/MSVC build path; never built by CI) — it is deliberately kept as the starting point for a *future*, unscheduled intent to make the official Lua the only Lua integration, which when it starts must work on macOS, Linux and Windows. The readline behavior of each backend, the verified findings and the sketched plan live in [docs/lua-integration.md](docs/lua-integration.md) — read it before touching the Lua integration in `CMakeLists.txt`.
 
 The root `CMakeLists.txt` globs sources with `GLOB_RECURSE "src/*.cpp"` — re-run `cmake -B build -S .` after adding new `.cpp` files so the glob picks them up. (The pattern must be one combined `"src/*.cpp"` expression, not two separate arguments `"src" *.cpp` - the latter globs unscoped from `CMAKE_CURRENT_SOURCE_DIR`, which would silently sweep up `FetchContent`'d dependencies' own `.cpp` files from `build/_deps/` too if this ever ran from anywhere other than the repo root.)
 
