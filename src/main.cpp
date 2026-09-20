@@ -25,6 +25,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <fstream>
 #include <filesystem>
@@ -34,6 +35,7 @@
 #include "enginehost.h"
 #include "lua/luacryptoapi.h"
 #include "lua/luaengine.h"
+#include "renderer/rendererconfig.h"
 #include "renderer/tilemaprenderer.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
@@ -57,6 +59,44 @@ static void SetPackEnvVar( const char *szName, const std :: string &strValue )  
 #else
     setenv( szName, strValue.c_str(), 1 );
 #endif
+}
+
+
+/**
+ * @brief Builds the RendererConfig for the one renderer this process
+ * opens - today always the defaults in main.h, exactly the values main()
+ * used to apply to a TileMapRenderer one setter call at a time. Kept in
+ * one place so a future Lua-driven renderer setup has a single, obvious
+ * thing to override rather than a scatter of setter calls.
+ *
+ * bUseDefaultKeyHandler is off deliberately (same as before this was a
+ * config): every key a game reacts to goes through Lua's own input_*
+ * primitives, not sunlight's built-in scroll/zoom key bindings.
+ */
+static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )  {
+
+    SunLight :: Renderer :: RendererConfig  config;
+    SunLight :: TileMap :: stDimension2D    viewport;
+
+    viewport.pos.x = VIEWPORT_POS_X;
+    viewport.pos.y = VIEWPORT_POS_Y;
+    viewport.size.nWidth  = VIEWPORT_WIDTH;
+    viewport.size.nHeight = VIEWPORT_HEIGHT;
+
+    config.fWidth                = DISPLAY_W;
+    config.fHeight               = DISPLAY_H;
+    config.strTitle              = APP_NAME;
+    config.nTargetFps            = FRAMES_PER_SECOND;
+    config.bResizeable           = true;
+    config.bDrawFPS              = false;
+    config.bUseDefaultKeyHandler = false;
+    config.viewControlMode       = SunLight :: Renderer :: ViewControlMode :: VIEW_CONTROL_MODE_ACTIVE;
+    config.nScrollStepWidth      = W_SCROLL_STEP_SIZE;
+    config.nScrollStepHeight     = H_SCROLL_STEP_SIZE;
+    config.viewport              = viewport;
+    config.nZoomPos              = DEFAULT_ZOOM_SCALE_POS;
+
+    return config;
 }
 
 
@@ -355,30 +395,28 @@ int main( int argc, char **argv ) {
         return bPackOk ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
-    SunLight :: Renderer :: TileMapRenderer  renderer( DISPLAY_W,
-                                                       DISPLAY_H,
-                                                       APP_NAME,
-                                                       FRAMES_PER_SECOND,
-                                                       false );
-    Scarab :: Host :: EngineHost                engineHost( &renderer, &renderer, strEntryPath, strEntryOverride );
-    SunLight :: TileMap :: stDimension2D       viewport;
+    /*
+     * TileMapRenderer::Create is the checked form of the config
+     * constructor - a config that can't work (eg. a backend this sunlight
+     * build doesn't have) comes back as nullptr plus a message, instead of
+     * a half-built renderer. Declared before engineHost so it's destroyed
+     * after it, same order as the stack object this replaced.
+     */
+    std :: string                                                strRendererError;
+    std :: unique_ptr<SunLight :: Renderer :: TileMapRenderer>   pRenderer =
+        SunLight :: Renderer :: TileMapRenderer :: Create( MakeDefaultRendererConfig(), &strRendererError );
 
-    renderer.SetScrollStepSize( W_SCROLL_STEP_SIZE, H_SCROLL_STEP_SIZE );
-    renderer.SetViewControlMode( SunLight :: Renderer :: ViewControlMode :: VIEW_CONTROL_MODE_ACTIVE );
-    renderer.AddTileMapListener( &engineHost );
+    if( !pRenderer )  {
+        fprintf( stderr, "ERROR: cannot create the renderer: %s\n", strRendererError.c_str() );
+        return EXIT_FAILURE;
+    }
 
-    viewport.pos.x = VIEWPORT_POS_X;
-    viewport.pos.y = VIEWPORT_POS_Y;
-    viewport.size.nWidth  = VIEWPORT_WIDTH;
-    viewport.size.nHeight = VIEWPORT_HEIGHT;
+    Scarab :: Host :: EngineHost  engineHost( pRenderer.get(), pRenderer.get(), strEntryPath, strEntryOverride );
 
-    renderer.GetViewport().SetZoom( DEFAULT_ZOOM_SCALE_POS );
-    renderer.GetViewport().SetDimension2D( viewport );
-    renderer.SetDrawFPS( false );
-    renderer.SetWindowResizeable( true );
-    renderer.Start();
-    renderer.Run();
-    renderer.Stop();
+    pRenderer -> AddTileMapListener( &engineHost );
+    pRenderer -> Start();
+    pRenderer -> Run();
+    pRenderer -> Stop();
 
     return EXIT_SUCCESS;
 }

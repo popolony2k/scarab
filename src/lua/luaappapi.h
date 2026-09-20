@@ -70,7 +70,7 @@ namespace Scarab  {
                  * @brief Host platform Scarab itself was compiled for,
                  * exposed to Lua via app_get_platform() as PLATFORM_*
                  * globals (see RegisterEnums). Deliberately NOT owned by
-                 * SunLight::Engines::IEngine (unlike FullscreenStrategy) -
+                 * sunlight (unlike SunLight::Window::FullscreenStrategy) -
                  * this is a pure compile-time fact (_WIN32/__APPLE__/
                  * __linux__), resolved once by the preprocessor, with no
                  * runtime OS probing and no dependency on raylib/GLFW or
