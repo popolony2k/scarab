@@ -28,9 +28,13 @@
  (view_show_layer - the minimap hides the "clouds" layer, the main view does
  not), view_set_background_color/view_set_clear_background, and
  sprite_set_world_space: a sprite's position is normally relative to the view
- drawing it, so the SAME position lands somewhere different in every view;
- with world space on it is a MAP position and every view draws it in the right
- place. Press Space to switch it off and watch the minimap and close-up go wrong.
+ drawing it (measured from the view's corner, ignoring the view's camera), so
+ the SAME position lands somewhere different in a view whose camera is not at
+ the map origin; with world space on it is a MAP position and every view draws
+ it in the right place. Press Space to switch it off: the main view and the
+ minimap look the same either way (their camera is at the map origin, so only
+ zoom differs and both readings agree), but the close-up - whose camera follows
+ the sprite - loses it, because the raw position lands outside its rectangle.
 ]]
 
 -- sp_* command: see samples/hello-world/docs/README.md for why every entry
@@ -133,5 +137,5 @@ function on_update( dt )
     draw_text( "views sample - arrows/WASD move the sprite", 20, 20, 20, 255, 255, 255, 255 )
     draw_text( string.format( "map position %d, %d   world space: %s   views: %d",
         x, y, tostring( sprite_get_world_space( sunny ) ), renderer_get_view_count( renderer ) ), 20, 46, 18, 200, 200, 200, 255 )
-    draw_text( "M minimap   C close-up   L minimap clouds   Space world space   Esc quit", 20, __RENDER_HEIGHT - 30, 16, 180, 180, 180, 255 )
+    draw_text( "M minimap   C close-up   L minimap clouds   Space world space (close-up loses sunny when off)   Esc quit", 20, __RENDER_HEIGHT - 30, 16, 180, 180, 180, 255 )
 end
