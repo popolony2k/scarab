@@ -122,3 +122,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "headless smoke test exited with code $LASTEXITCODE (expected 0)" }
           & build/Release/scarab.exe --headless --fast --max-frames 50 scripts/headless_smoke/project.json
           if ($LASTEXITCODE -ne 3) { throw "budget-exhausted run exited with code $LASTEXITCODE (expected 3)" }
+          # pwsh steps exit with the LAST native command's code, and that last command
+          # deliberately exited 3 (asserted just above) - without this the step itself
+          # would fail with a code that means "the check passed".
+          exit 0
