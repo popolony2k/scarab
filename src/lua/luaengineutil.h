@@ -53,6 +53,16 @@ namespace Scarab  {
             };
 
             /**
+             * @brief A named real-valued constant, used to register non-integer values (eg. the
+             * zoom step and factor limits) as Lua globals - see stNamedConstant for the integer
+             * form, which is what nearly every constant group is.
+             */
+            struct stNamedRealConstant  {
+                const char  *szName;
+                double      fValue;
+            };
+
+            /**
              * @brief Shared type for LuaEngine's m_Timers member and LuaTimerApi's
              * casts of the timerMapPtr global - both need the exact same type,
              * not just structurally identical ones.
@@ -107,6 +117,7 @@ namespace Scarab  {
                 static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State *pLuaState );
                 static void AddOneParmCommandScript( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd );
                 static void RegisterConstants( lua_State *pLuaState, const stNamedConstant *pTable, size_t nCount );
+                static void RegisterRealConstants( lua_State *pLuaState, const stNamedRealConstant *pTable, size_t nCount );
             };
         }
     }

@@ -22,6 +22,7 @@
 #include "lua/luajsonapi.h"
 #include "lua/luafilesystemapi.h"
 #include "lua/luaappapi.h"
+#include "lua/luarendererapi.h"
 #include "lua/luatextapi.h"
 #include "lua/luacameraapi.h"
 #include "lua/luainputapi.h"
@@ -343,6 +344,7 @@ namespace Scarab  {
         lua_setglobal( m_pLuaState, "APP_DIR" );
 
         Engine :: Lua :: LuaAppApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaRendererApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaTextApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCameraApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaInputApi :: Register( m_pLuaState );

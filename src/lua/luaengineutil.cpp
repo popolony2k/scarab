@@ -170,6 +170,22 @@ namespace Scarab  {
                     lua_setglobal( pLuaState, pTable[nIndex].szName );
                 }
             }
+
+            /**
+             * @brief Register a table of named real-valued constants as Lua globals (see
+             * stNamedRealConstant).
+             *
+             * @param pLuaState Lua state to be used by engine call.
+             * @param pTable The constants table to register;
+             * @param nCount Number of entries in the table;
+             */
+            void LuaEngineUtil :: RegisterRealConstants( lua_State *pLuaState, const stNamedRealConstant *pTable, size_t nCount )  {
+
+                for( size_t nIndex = 0; nIndex < nCount; nIndex++ )  {
+                    lua_pushnumber( pLuaState, pTable[nIndex].fValue );
+                    lua_setglobal( pLuaState, pTable[nIndex].szName );
+                }
+            }
         }
     }
 }

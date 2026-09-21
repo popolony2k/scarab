@@ -149,10 +149,11 @@ COMMENT_LINE_RE = re.compile(r'^\s*\*\s?(.*)$')
 BRACE_TAG_RE = re.compile(r'^@lua(name|group|category|heading|constants)\{([^}]*)\}\s*$')
 BARE_TAG_RE = re.compile(r'^@lua(doc|example|outro)\s*$')
 
-# A tagged constant group: `static const stNamedConstant s_aXxx[] = {`
+# A tagged constant group: `static const stNamedConstant s_aXxx[] = {` (or stNamedRealConstant, for
+# non-integer values)
 # (always this exact shape across src/lua/*api.cpp today - see
 # LuaEngineUtil::stNamedConstant/RegisterConstants, luaengineutil.h).
-CONST_ARRAY_RE = re.compile(r'^\s*static\s+const\s+stNamedConstant\s+(\w+)\s*\[\]\s*=\s*\{')
+CONST_ARRAY_RE = re.compile(r'^\s*static\s+const\s+stNamed(?:Real)?Constant\s+(\w+)\s*\[\]\s*=\s*\{')
 
 # Each array entry is either a literal `{ "NAME", value },` pair
 # (luaappapi.cpp/luatilemapapi.cpp) or the stringifying `__CONST( NAME )`

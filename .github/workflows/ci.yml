@@ -142,3 +142,18 @@ jobs:
         run: |
           python scripts/tileset_archive_smoke.py build/Release/scarab.exe --require-encrypted
           if ($LASTEXITCODE -ne 0) { throw "tileset archive smoke test exited with code $LASTEXITCODE" }
+
+      # renderer_create / renderer_get_* / renderer_destroy: every option round-trips through
+      # renderer_get_config, every rejection returns the exact reason, the lazy default and the
+      # ordering-rule error work, and renderer-free calls create nothing. One headless run per
+      # scenario (a process gets exactly one renderer) - see the script's own header.
+      - name: Renderer API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/renderer_api_smoke.py build/scarab
+
+      - name: Renderer API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/renderer_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "renderer API smoke test exited with code $LASTEXITCODE" }

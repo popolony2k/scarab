@@ -158,24 +158,6 @@ namespace Scarab  {
             return m_pRenderer.get();
         }
 
-        /** @brief How the current renderer came to exist (ORIGIN_NONE if it doesn't yet). */
-        RendererProvider :: Origin RendererProvider :: GetOrigin( void ) const  {
-
-            return m_Origin;
-        }
-
-        /** @brief For an implicitly created renderer, the primitive that triggered it. */
-        const std :: string& RendererProvider :: GetTrigger( void ) const  {
-
-            return m_strTrigger;
-        }
-
-        /** @brief The configuration the current renderer was actually created with (after --headless). */
-        const SunLight :: Renderer :: RendererConfig& RendererProvider :: GetEffectiveConfig( void ) const  {
-
-            return m_EffectiveConfig;
-        }
-
         /** @brief What the command line asked of --headless. */
         const stHeadlessSettings& RendererProvider :: GetHeadlessSettings( void ) const  {
 
@@ -195,6 +177,59 @@ namespace Scarab  {
         SunLight :: DrawSurface :: IDrawSurface* RendererProvider :: PeekDrawSurface( void )  {
 
             return m_pRenderer.get();
+        }
+
+        /**
+         * @brief Explicitly create the renderer (renderer_create). The error for "a renderer
+         * already exists" says which of the two ways it got there, and - when it was the
+         * default, created implicitly - names the primitive that needed a window first, since
+         * that call, not this one, is what to move below renderer_create.
+         */
+        bool RendererProvider :: CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError )  {
+
+            if( m_pRenderer )  {
+                if( pError )  {
+                    if( m_Origin == ORIGIN_LAZY_DEFAULT )
+                        *pError = "renderer already created: the default renderer was created implicitly by the first "
+                                  "window-needing call, '" + m_strTrigger + "' - renderer_create must be the first "
+                                  "window-needing call in the entry script";
+                    else
+                        *pError = "renderer already created - only one renderer per process is supported";
+                }
+
+                return false;
+            }
+
+            return Create( config, ORIGIN_CREATED, "", pError );
+        }
+
+        RendererProvider :: Origin RendererProvider :: GetOrigin( void )  {
+
+            return m_Origin;
+        }
+
+        bool RendererProvider :: IsHeadless( void )  {
+
+            return m_Headless.bEnabled;
+        }
+
+        SunLight :: Renderer :: RendererConfig RendererProvider :: GetDefaultConfig( void )  {
+
+            return m_DefaultConfig;
+        }
+
+        SunLight :: Renderer :: RendererConfig RendererProvider :: GetEffectiveConfig( void )  {
+
+            return m_EffectiveConfig;
+        }
+
+        /**
+         * @brief Keep the effective configuration's title current: app_set_name changes the
+         * live window title, and sunlight has no getter for it to read back.
+         */
+        void RendererProvider :: NoteWindowTitle( const std :: string &strTitle )  {
+
+            m_EffectiveConfig.strTitle = strTitle;
         }
     }
 }

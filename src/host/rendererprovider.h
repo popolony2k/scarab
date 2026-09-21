@@ -57,14 +57,6 @@ namespace Scarab  {
 
             public:
 
-            /** @brief How the current renderer came to exist. */
-            enum Origin  {
-                ORIGIN_NONE = 0,       // no renderer yet
-                ORIGIN_CREATED,        // an explicit Create()
-                ORIGIN_LAZY_DEFAULT,   // implicitly, by the first call that needed a window
-                ORIGIN_LAST
-            };
-
             typedef std :: function<void( SunLight :: Renderer :: TileMapRenderer& )>  CreatedHook;
 
             private:
@@ -93,15 +85,18 @@ namespace Scarab  {
             void EnsureCreated( const char *szTrigger );
 
             SunLight :: Renderer :: TileMapRenderer* GetRenderer( void );
-            Origin GetOrigin( void ) const;
-            const std :: string& GetTrigger( void ) const;
-            const SunLight :: Renderer :: RendererConfig& GetEffectiveConfig( void ) const;
             const stHeadlessSettings& GetHeadlessSettings( void ) const;
 
             // Scarab::Engine::IRendererProvider
             SunLight :: TileMap :: ITileMap* GetTileMap( const char *szTrigger );
             SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char *szTrigger );
             SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void );
+            bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError );
+            Origin GetOrigin( void );
+            bool IsHeadless( void );
+            SunLight :: Renderer :: RendererConfig GetDefaultConfig( void );
+            SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void );
+            void NoteWindowTitle( const std :: string &strTitle );
         };
     }
 }
