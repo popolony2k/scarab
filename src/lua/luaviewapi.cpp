@@ -24,6 +24,7 @@
 #include "tilemap/iview.h"
 #include "base/viewport.h"
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -97,18 +98,18 @@ namespace Scarab  {
              * handle can only exist once a renderer does, so asking about one first is just an
              * unknown view.
              */
-            static SunLight :: TileMap :: IView* FindView( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+            static std :: shared_ptr<SunLight :: TileMap :: IView> FindView( lua_State *pLuaState, int nIndex, std :: string &strError )  {
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TNUMBER || !lua_isinteger( pLuaState, nIndex ) )  {
                     strError = "expected a view handle (an integer - see renderer_get_default_view)";
-                    return nullptr;
+                    return std :: shared_ptr<SunLight :: TileMap :: IView>();
                 }
 
                 lua_Integer                    nViewId   = lua_tointeger( pLuaState, nIndex );
                 Engine :: IRendererProvider   *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
 
                 if( pProvider -> GetOrigin() != Engine :: IRendererProvider :: ORIGIN_NONE )  {
-                    SunLight :: TileMap :: IView  *pView = pProvider -> GetTileMap( "view" ) -> GetView( ( int ) nViewId );
+                    std :: shared_ptr<SunLight :: TileMap :: IView>  pView = pProvider -> GetTileMap( "view" ) -> GetView( ( int ) nViewId );
 
                     if( pView )
                         return pView;
@@ -116,7 +117,7 @@ namespace Scarab  {
 
                 strError = "unknown view " + std :: to_string( nViewId );
 
-                return nullptr;
+                return std :: shared_ptr<SunLight :: TileMap :: IView>();
             }
 
             /**
@@ -195,7 +196,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewDestroy( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -225,7 +226,7 @@ namespace Scarab  {
 
                 std :: string                  strError;
                 unsigned                       nZoomPos = 0;
-                SunLight :: TileMap :: IView  *pView    = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView    = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -252,7 +253,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewGetZoom( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -276,7 +277,7 @@ namespace Scarab  {
 
                 std :: string                  strError;
                 unsigned                       nZoomPos = 0;
-                SunLight :: TileMap :: IView  *pView    = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView    = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -303,7 +304,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewGetPreferredZoom( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -331,7 +332,7 @@ namespace Scarab  {
                 std :: string                  strError;
                 unsigned                       nMinPos = 0;
                 unsigned                       nMaxPos = 0;
-                SunLight :: TileMap :: IView  *pView   = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView   = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -374,7 +375,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewGetZoomLimits( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -401,7 +402,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewSetZoomEnabled( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -421,7 +422,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewGetZoomEnabled( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -442,7 +443,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewZoomIn( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -463,7 +464,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewZoomOut( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -484,7 +485,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewZoomReset( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -514,7 +515,7 @@ namespace Scarab  {
                 std :: string                  strError;
                 lua_Integer                    aRect[4] = { 0, 0, 0, 0 };
                 static const char * const      aszNames[4] = { "x", "y", "w", "h" };
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -555,7 +556,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewGetDimension( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -588,7 +589,7 @@ namespace Scarab  {
                 std :: string                  strError;
                 lua_Integer                    nStepWidth  = 0;
                 lua_Integer                    nStepHeight = 0;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -614,7 +615,7 @@ namespace Scarab  {
                 std :: string                  strError;
                 int                            nStepWidth  = 0;
                 int                            nStepHeight = 0;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -644,7 +645,7 @@ namespace Scarab  {
                 std :: string                  strError;
                 lua_Integer                    nX = 0;
                 lua_Integer                    nY = 0;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -666,7 +667,7 @@ namespace Scarab  {
                 std :: string                  strError;
                 int                            nX = 0;
                 int                            nY = 0;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -692,7 +693,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewMoveCameraUp( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -712,7 +713,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewMoveCameraDown( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -729,7 +730,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewMoveCameraLeft( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -749,7 +750,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewMoveCameraRight( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
@@ -769,7 +770,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewResetCamera( lua_State *pLuaState )  {
 
                 std :: string                  strError;
-                SunLight :: TileMap :: IView  *pView = FindView( pLuaState, 1, strError );
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return PushError( pLuaState, strError );
