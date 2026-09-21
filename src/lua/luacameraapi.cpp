@@ -203,7 +203,18 @@ namespace Scarab  {
              * @luaname{viewport_get_dimension() -> x, y, width, height}
              * @luadoc
              * Read the viewport's current position and size (screen-space
-             * pixels).
+             * pixels). The viewport is the rectangle from `(x, y)` up to,
+             * but not including, `(x + width, y + height)` - `width` and
+             * `height` are a real size, never an edge coordinate.
+             *
+             * **Changed in Scarab `v0.1.19` (sunlight `v0.29.0`) - BREAKING
+             * for scripts that read this.** Before, sunlight treated the
+             * last two values inconsistently as the *far-edge coordinate*
+             * whenever `x`/`y` were not `0` (the default viewport, which
+             * covers the same visible area, read `10, 10, 1250, 910`); it
+             * now reads `10, 10, 1240, 900`. Code that used the old
+             * `width`/`height` as a right/bottom edge must use `x + width`
+             * / `y + height` instead.
              * @luaexample
              * local x, y, w, h = viewport_get_dimension()
              * print(("viewport: %d,%d %dx%d"):format(x, y, w, h))

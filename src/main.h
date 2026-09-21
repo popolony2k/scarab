@@ -26,10 +26,17 @@
 #define FRAMES_PER_SECOND         60
 #define H_SCROLL_STEP_SIZE        1
 #define W_SCROLL_STEP_SIZE        1
+/*
+ * The viewport is the rectangle [pos, pos + size) inside the display - size
+ * is a real WIDTH/HEIGHT (sunlight v0.29.0+; before that, size was
+ * inconsistently treated as the far-edge coordinate, so this same visible
+ * area used to be written 1250x910). 10 px margin on all four sides of the
+ * 1260x920 display: 1260 - 2*10 = 1240, 920 - 2*10 = 900.
+ */
 #define VIEWPORT_POS_X            10
 #define VIEWPORT_POS_Y            10
-#define VIEWPORT_WIDTH            1250
-#define VIEWPORT_HEIGHT           910
+#define VIEWPORT_WIDTH            1240
+#define VIEWPORT_HEIGHT           900
 #define DEFAULT_ZOOM_SCALE_POS    60
 
 /*
