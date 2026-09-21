@@ -57,6 +57,7 @@ namespace Scarab  {
                 const char  *szName = lua_tostring( pLuaState, 1 );
 
                 LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetWindowTitle( szName );
+                LuaEngineUtil :: GetRendererProvider( pLuaState ) -> NoteWindowTitle( szName );
 
                 return 0;
             }

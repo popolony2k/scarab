@@ -21,6 +21,9 @@
 #ifndef __IRENDERERPROVIDER_H__
 #define __IRENDERERPROVIDER_H__
 
+#include <string>
+#include "renderer/rendererconfig.h"
+
 namespace SunLight  {
     namespace TileMap  { class ITileMap; }
     namespace DrawSurface  { class IDrawSurface; }
@@ -46,6 +49,14 @@ namespace Scarab  {
 
             public:
 
+            /** @brief How the current renderer came to exist. */
+            enum Origin  {
+                ORIGIN_NONE = 0,       // no renderer yet
+                ORIGIN_CREATED,        // an explicit CreateRenderer (renderer_create)
+                ORIGIN_LAZY_DEFAULT,   // implicitly, by the first call that needed a window
+                ORIGIN_LAST
+            };
+
             virtual ~IRendererProvider( void ) {}
 
             /**
@@ -69,6 +80,32 @@ namespace Scarab  {
              * a window as a side effect (eg. os.time's headless override).
              */
             virtual SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void ) = 0;
+
+            /**
+             * @brief Explicitly create the process's renderer (renderer_create) and open its
+             * window. Fails - with the reason in *pError - if one already exists (naming the
+             * primitive that created the default one implicitly, when that's what happened),
+             * or if the configuration can't work.
+             */
+            virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError ) = 0;
+
+            /** @brief How the current renderer came to exist (ORIGIN_NONE if it doesn't yet). */
+            virtual Origin GetOrigin( void ) = 0;
+
+            /** @brief Whether the process runs --headless (the null backend is forced). */
+            virtual bool IsHeadless( void ) = 0;
+
+            /** @brief The configuration an implicitly created renderer gets (Scarab's defaults). */
+            virtual SunLight :: Renderer :: RendererConfig GetDefaultConfig( void ) = 0;
+
+            /**
+             * @brief The configuration the current renderer was actually created with (after
+             * --headless was applied), with the title kept current across app_set_name.
+             */
+            virtual SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void ) = 0;
+
+            /** @brief Record a window-title change, so the effective configuration stays live. */
+            virtual void NoteWindowTitle( const std :: string &strTitle ) = 0;
         };
     }
 }
