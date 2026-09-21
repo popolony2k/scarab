@@ -99,6 +99,7 @@ namespace Scarab  {
                       SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
                       SunLight :: Sound :: SoundManager *pSoundManager,
                       Engine :: SpritePool *pSpritePool );
+            void InstallVirtualClock( void );
         };
     }
 }

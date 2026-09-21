@@ -362,6 +362,20 @@ namespace Scarab  {
     }
 
     /**
+     * @brief Headless (--headless) only - make Lua's own os.time()/
+     * os.clock() follow the null renderer's virtual clock instead of real
+     * time (see LuaAppApi::InstallVirtualClock for the why and the
+     * set_timer-callback caveat). Must run after Init(), since the
+     * replacements read the draw surface Init() stashes.
+     */
+    void LuaEngine :: InstallVirtualClock( void )  {
+
+        std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
+
+        Engine :: Lua :: LuaAppApi :: InstallVirtualClock( m_pLuaState );
+    }
+
+    /**
      * @brief Return the running executable's own directory (also exposed to
      * Lua as APP_DIR by Init above) - used by EngineHost to locate the
      * bootstrap entry script on disk before any Lua exists to do so itself.

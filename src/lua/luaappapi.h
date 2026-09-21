@@ -61,6 +61,8 @@ namespace Scarab  {
                 static int SetExitKey( lua_State *pLuaState );
                 static int GetExitKey( lua_State *pLuaState );
                 static int GetTime( lua_State *pLuaState );
+                static int VirtualOsTime( lua_State *pLuaState );
+                static int VirtualOsClock( lua_State *pLuaState );
 
                 static void RegisterEnums( lua_State *pLuaState );
 
@@ -86,6 +88,7 @@ namespace Scarab  {
                 };
 
                 static void Register( lua_State *pLuaState );
+                static void InstallVirtualClock( lua_State *pLuaState );
             };
         }
     }
