@@ -62,7 +62,16 @@ namespace Scarab  {
              */
             int LuaCameraApi :: MoveCameraUp( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> MoveCameraUp();
+                SunLight :: TileMap :: ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                SunLight :: TileMap :: stMapInfo  mapInfo;
+
+                /*
+                 * Up/left bound the move by the loaded map's size and dereference it, so with no
+                 * map loaded sunlight crashed the whole process (found 2026-09-21, in the published
+                 * v0.1.20). No map means nothing to scroll over: a no-op, like down/right.
+                 */
+                if( pTileMap -> GetMapInfo( mapInfo ) )
+                    pTileMap -> MoveCameraUp();
 
                 return 0;
             }
@@ -84,7 +93,16 @@ namespace Scarab  {
              */
             int LuaCameraApi :: MoveCameraLeft( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: GetTileMap( pLuaState ) -> MoveCameraLeft();
+                SunLight :: TileMap :: ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                SunLight :: TileMap :: stMapInfo  mapInfo;
+
+                /*
+                 * Up/left bound the move by the loaded map's size and dereference it, so with no
+                 * map loaded sunlight crashed the whole process (found 2026-09-21, in the published
+                 * v0.1.20). No map means nothing to scroll over: a no-op, like down/right.
+                 */
+                if( pTileMap -> GetMapInfo( mapInfo ) )
+                    pTileMap -> MoveCameraLeft();
 
                 return 0;
             }

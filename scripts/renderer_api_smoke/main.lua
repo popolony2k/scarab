@@ -5,7 +5,7 @@
         RENDERER_SMOKE_SCENARIO=<name> scarab --headless --fast --max-frames 200 \
             scripts/renderer_api_smoke/project.json
 
-    Scenarios: defaults, create, errors, lazy, nowindow. Each records its own failures and
+    Scenarios: defaults, create, errors, lazy, nowindow, views, views_norenderer. Each records its own failures and
     the script quits ITSELF only if there were none (exit 0); otherwise it prints every
     failure and never quits, so --max-frames runs out and scarab exits 3 - a failure with
     the details in the log, not a hang.
@@ -133,6 +133,104 @@ elseif scenario == "nowindow" then
     check( r ~= nil, "renderer_create after renderer-free calls: " .. tostring( err ) )
     local _, origin = renderer_get_current()
     check( origin == "created", "origin after create: " .. tostring( origin ) )
+
+elseif scenario == "views" then
+    local r = renderer_create{ title = "views" }
+    check( r ~= nil, "renderer_create failed" )
+    local v = renderer_get_default_view( r )
+    check( v == 0, "default view is not 0" )
+
+    -- zoom: exact round trip; strict validation with the nearest valid factor named
+    check( view_set_zoom( v, 2.0625 ) == true, "view_set_zoom 2.0625 failed" )
+    check( view_get_zoom( v ) == 2.0625, "view_get_zoom after set: " .. tostring( view_get_zoom( v ) ) )
+    check( viewport_get_zoom_factor() == 2.0625, "the global viewport_get_zoom_factor disagrees with the default view" )
+    expect_error( "zoom not a multiple", "nearest valid is 3.8125", view_set_zoom( v, 3.8 ) )
+    expect_error( "zoom outside the scale", "is outside [0.0625, 16]", view_set_zoom( v, 17 ) )
+    expect_error( "zoom string", "must be a number", view_set_zoom( v, "3" ) )
+    view_zoom_in( v )
+    check( view_get_zoom( v ) == 2.125, "view_zoom_in did not step by ZOOM_STEP: " .. tostring( view_get_zoom( v ) ) )
+    view_zoom_out( v ); view_zoom_out( v )
+    check( view_get_zoom( v ) == 2.0, "view_zoom_out did not step by ZOOM_STEP: " .. tostring( view_get_zoom( v ) ) )
+
+    -- preferred zoom + reset
+    check( view_set_preferred_zoom( v, 1.5 ) == true, "view_set_preferred_zoom failed" )
+    check( view_get_preferred_zoom( v ) == 1.5, "view_get_preferred_zoom: " .. tostring( view_get_preferred_zoom( v ) ) )
+    view_zoom_reset( v )
+    check( view_get_zoom( v ) == 1.5, "view_zoom_reset did not return to the preferred zoom" )
+
+    -- zoom limits: narrow, clamp, refuse out-of-limit zoom, widen again, reject min > max
+    check( view_get_zoom_limits( v ) == ZOOM_FACTOR_MIN, "default lower limit is not ZOOM_FACTOR_MIN" )
+    check( view_set_zoom_limits( v, 2.0, 4.0 ) == true, "view_set_zoom_limits 2..4 failed" )
+    local lo, hi = view_get_zoom_limits( v )
+    check( lo == 2.0 and hi == 4.0, "view_get_zoom_limits: " .. tostring( lo ) .. ", " .. tostring( hi ) )
+    check( view_get_zoom( v ) == 2.0, "narrowing the limits did not clamp the current zoom: " .. tostring( view_get_zoom( v ) ) )
+    check( view_get_preferred_zoom( v ) == 2.0, "narrowing the limits did not clamp the preferred zoom: " .. tostring( view_get_preferred_zoom( v ) ) )
+    expect_error( "zoom below the limit", "outside this view's zoom limits [2, 4]", view_set_zoom( v, 1.0 ) )
+    expect_error( "min above max", "must not exceed", view_set_zoom_limits( v, 4.0, 2.0 ) )
+    check( view_set_zoom_limits( v, 8.0, 16.0 ) == true, "moving the limits wholly above the old max failed" )
+    lo, hi = view_get_zoom_limits( v )
+    check( lo == 8.0 and hi == 16.0, "limits after moving up: " .. tostring( lo ) .. ", " .. tostring( hi ) )
+    check( view_set_zoom_limits( v, ZOOM_FACTOR_MIN, ZOOM_FACTOR_MAX ) == true, "widening the limits again failed" )
+    check( view_set_zoom( v, 3.8125 ) == true, "view_set_zoom after widening failed" )
+
+    -- zoom enabled: stepping is locked, an exact zoom still works
+    check( view_get_zoom_enabled( v ) == true, "zoom is not enabled by default" )
+    view_set_zoom_enabled( v, false )
+    check( view_get_zoom_enabled( v ) == false, "view_set_zoom_enabled(false) did not stick" )
+    view_zoom_in( v )
+    check( view_get_zoom( v ) == 3.8125, "view_zoom_in moved the zoom while zoom was disabled" )
+    check( view_set_zoom( v, 3.75 ) == true, "view_set_zoom must still work while zoom stepping is disabled" )
+    view_set_zoom_enabled( v, true )
+    expect_error( "enabled must be boolean", "must be a boolean", view_set_zoom_enabled( v, 1 ) )
+
+    -- dimension: real width/height, must fit the render area (1260 x 920)
+    local x, y, w, h = view_get_dimension( v )
+    check( x == 10 and y == 10 and w == 1240 and h == 900, "default view dimension: " .. table.concat( { x, y, w, h }, "," ) )
+    check( view_set_dimension( v, 0, 0, 1260, 920 ) == true, "view_set_dimension to the whole render area failed" )
+    x, y, w, h = view_get_dimension( v )
+    check( x == 0 and y == 0 and w == 1260 and h == 920, "view_get_dimension after set: " .. table.concat( { x, y, w, h }, "," ) )
+    local gx, gy, gw, gh = viewport_get_dimension()
+    check( gx == 0 and gy == 0 and gw == 1260 and gh == 920, "the global viewport_get_dimension disagrees with the default view" )
+    expect_error( "viewport too wide", "must fit the render area", view_set_dimension( v, 10, 10, 1260, 900 ) )
+    expect_error( "viewport w zero", "w and h must be at least 1", view_set_dimension( v, 0, 0, 0, 10 ) )
+    expect_error( "viewport negative x", "x and y must be at least 0", view_set_dimension( v, -1, 0, 10, 10 ) )
+    expect_error( "viewport fraction", "must be an integer", view_set_dimension( v, 0, 0, 10.5, 10 ) )
+    check( view_set_dimension( v, 10, 10, 1240, 900 ) == true, "restoring the default viewport failed" )
+
+    -- scroll step + camera
+    check( view_set_scroll_step( v, 4, 5 ) == true, "view_set_scroll_step failed" )
+    local sw, sh = view_get_scroll_step( v )
+    check( sw == 4 and sh == 5, "view_get_scroll_step: " .. tostring( sw ) .. ", " .. tostring( sh ) )
+    check( renderer_get_config( r ).scroll_step.w == 4, "renderer_get_config scroll_step is not live" )
+    expect_error( "scroll step zero", "w and h must be at least 1", view_set_scroll_step( v, 0, 1 ) )
+    check( view_set_camera_position( v, 7, 9 ) == true, "view_set_camera_position failed" )
+    local cx, cy = view_get_camera_position( v )
+    check( cx == 7 and cy == 9, "view_get_camera_position: " .. tostring( cx ) .. ", " .. tostring( cy ) )
+    local gcx, gcy = camera_get_position()
+    check( gcx == 7 and gcy == 9, "the global camera_get_position disagrees with the default view" )
+    check( view_reset_camera( v ) == true, "view_reset_camera failed" )
+    cx, cy = view_get_camera_position( v )
+    check( cx == 0 and cy == 0, "view_reset_camera did not return to the origin" )
+    -- up/left need a loaded map (their limit is its size); down/right do not. With none loaded the
+    -- old globals used to crash the process (sunlight dereferenced the missing map) - now a no-op / an error.
+    expect_error( "move up, no map", "no map is loaded", view_move_camera_up( v ) )
+    expect_error( "move left, no map", "no map is loaded", view_move_camera_left( v ) )
+    check( view_move_camera_down( v ) == true and view_move_camera_right( v ) == true, "view_move_camera_down/right failed with no map" )
+    camera_move_up(); camera_move_left()   -- must survive with no map loaded
+    -- and with a real map loaded (the runner working directory is the repo root) they work
+    check( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER ), "resources/tilemap/test.tmx failed to load" )
+    check( view_move_camera_up( v ) == true and view_move_camera_left( v ) == true, "view_move_camera_up/left failed with a map loaded" )
+
+    -- extra views do not exist yet; unknown handles are reported, not raised
+    expect_error( "view_create", "only one view supported yet", view_create( r, 0, 0, 100, 100 ) )
+    expect_error( "view_destroy default", "the default view cannot be removed", view_destroy( v ) )
+    expect_error( "unknown view", "unknown view 7", view_get_zoom( 7 ) )
+    expect_error( "view handle type", "expected a view handle", view_get_zoom( "0" ) )
+
+elseif scenario == "views_norenderer" then
+    -- a view handle can only exist once a renderer does: asking first is an error and creates nothing
+    expect_error( "view before any renderer", "unknown view 0", view_get_zoom( 0 ) )
+    check( renderer_get_current() == nil, "a view call created a renderer" )
 
 else
     failures[#failures + 1] = "unknown scenario '" .. scenario .. "'"

@@ -21,6 +21,7 @@
 #include "lua/luarendererapi.h"
 #include "lua/luaengineutil.h"
 #include "base/viewport.h"
+#include "tilemap/iview.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -614,9 +615,14 @@ namespace Scarab  {
 
                 SetNumberField( pLuaState, "zoom", pTileMap -> GetViewport().GetZoomProperties().fZoomFactor );
 
+                int  nStepWidth  = 0;
+                int  nStepHeight = 0;
+
+                pTileMap -> GetDefaultView().GetScrollStepSize( nStepWidth, nStepHeight );
+
                 lua_newtable( pLuaState );
-                SetIntegerField( pLuaState, "w", config.nScrollStepWidth );
-                SetIntegerField( pLuaState, "h", config.nScrollStepHeight );
+                SetIntegerField( pLuaState, "w", nStepWidth );
+                SetIntegerField( pLuaState, "h", nStepHeight );
                 lua_setfield( pLuaState, -2, "scroll_step" );
 
                 SetIntegerField( pLuaState, "view_control_mode", config.viewControlMode );
