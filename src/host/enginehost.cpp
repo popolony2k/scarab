@@ -258,7 +258,16 @@ namespace Scarab  {
                 return false;
             }
 
-            strOutScriptPath = ( effectiveEntryPath.parent_path() / projectData["main_script"].get<std :: string>() ).string();
+            /*
+             * generic_string(), not string(): on Windows, path::operator/ joins with
+             * a backslash ("scripts/headless_smoke\\main.lua" for a relative project
+             * file in a subdirectory), but this path is read through
+             * SunLight::FileSystem (PhysFS), whose virtual paths only treat "/" as a
+             * separator - the mixed path failed with "cannot open". Found by
+             * ci.yml's own headless smoke test, the first thing to launch a project
+             * from a subdirectory on Windows. Identical to string() elsewhere.
+             */
+            strOutScriptPath = ( effectiveEntryPath.parent_path() / projectData["main_script"].get<std :: string>() ).generic_string();
 
             return true;
         }
