@@ -282,6 +282,15 @@ namespace Scarab  {
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bUseDefaultKeyHandler, strError );
                     else if( strKey == "stretch_to_fill" )
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bStretchToFill, strError );
+                    else if( strKey == "fullscreen" )
+                        bOk = ReadBoolean( pLuaState, -1, strKey, config.bFullscreen, strError );
+                    else if( strKey == "fullscreen_strategy" )  {
+                        bOk = ReadInteger( pLuaState, -1, strKey, SunLight :: Window :: FULLSCREEN_STRATEGY_REAL,
+                                           SunLight :: Window :: FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED, nValue, strError );
+
+                        if( bOk )
+                            config.fullscreenStrategy = ( SunLight :: Window :: FullscreenStrategy ) nValue;
+                    }
                     else if( strKey == "exit_key" )  {
                         bOk = ReadInteger( pLuaState, -1, strKey, 0, nIntMax, nValue, strError );
 
@@ -439,6 +448,8 @@ namespace Scarab  {
              * | `use_default_key_handler` | sunlight's built-in scroll/zoom key bindings | `false` |
              * | `exit_key` | a `KEY_*` constant; `KEY_NULL` means no exit key | `KEY_ESCAPE` |
              * | `stretch_to_fill` | stretch the render area to fill the window | `false` |
+             * | `fullscreen` | open the window already fullscreen (no windowed flash); ignored under `--headless` | `false` |
+             * | `fullscreen_strategy` | `FULLSCREEN_STRATEGY_REAL` (a real OS fullscreen space) or `FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED`; used only when `fullscreen` is `true` and accepted (and ignored) otherwise | `_REAL` |
              * | `frame_pacing` | `FRAME_PACING_REAL_TIME` or `_UNLIMITED` — null backend only | `_REAL_TIME` |
              * | `max_frames` | stop after this many frames, `0` = never — null backend only | `0` |
              *
@@ -447,6 +458,16 @@ namespace Scarab  {
              * `"zoom factor 3.8 is not a multiple of 0.0625 - nearest valid is 3.8125"`). Whole
              * JSON numbers loaded with `load_json` arrive as Lua integers, so a config file works
              * unchanged.
+             *
+             * **Fullscreen.** `fullscreen = true` creates the window fullscreen from the start, with
+             * exactly the result `app_set_fullscreen( true, strategy )` gives afterwards (the same
+             * call, applied before the window is shown). Pick the strategy per platform — this
+             * project keeps `FULLSCREEN_STRATEGY_REAL` for macOS and uses
+             * `FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED` elsewhere (see `app_get_platform`).
+             * `app_set_fullscreen` stays the way to toggle at runtime. Under `--headless` (the null
+             * backend) `fullscreen` is accepted and ignored, never an error, so one config file runs
+             * both headless and in a window; `renderer_get_config` then reports `fullscreen = false`.
+             * The render area, viewport and zoom are untouched by fullscreen.
              *
              * Under `--headless` the null backend is forced: leave `backend` out (or pass
              * `RENDERER_BACKEND_NULL`); asking for another one fails, and `--fast`/`--max-frames`
@@ -573,10 +594,12 @@ namespace Scarab  {
              * takes: `backend`, `width`, `height`, `title`, `fps`, `resizeable`, `draw_fps`,
              * `viewport` (`{ x, y, w, h }`), `zoom` (the current factor), `scroll_step`
              * (`{ w, h }`), `view_control_mode`, `use_default_key_handler`, `exit_key`,
-             * `stretch_to_fill`, `frame_pacing` and `max_frames`. It reflects the *current*
+             * `stretch_to_fill`, `fullscreen`, `fullscreen_strategy`, `frame_pacing` and `max_frames`. It reflects the *current*
              * values, not a snapshot from creation — the title after `app_set_name`, the zoom
              * after `zoom_in`, the exit key after `app_set_exit_key`. Use it at boot to assert
-             * that the configuration you passed was really applied.
+             * that the configuration you passed was really applied. `fullscreen` is the window's
+             * live state (`false` under `--headless`) and `fullscreen_strategy` the strategy in
+             * effect while fullscreen (`FULLSCREEN_STRATEGY_REAL` while windowed).
              * @luaexample
              * local config = renderer_get_config( renderer )
              * assert( config.title == "My Game" )
@@ -629,6 +652,8 @@ namespace Scarab  {
                 SetBooleanField( pLuaState, "use_default_key_handler", config.bUseDefaultKeyHandler );
                 SetIntegerField( pLuaState, "exit_key", pSurface -> GetExitKey() );
                 SetBooleanField( pLuaState, "stretch_to_fill", pSurface -> GetStretchToFill() );
+                SetBooleanField( pLuaState, "fullscreen", pSurface -> GetFullscreen() );
+                SetIntegerField( pLuaState, "fullscreen_strategy", pSurface -> GetFullscreenStrategy() );
                 SetIntegerField( pLuaState, "frame_pacing", config.framePacing );
                 SetIntegerField( pLuaState, "max_frames", config.nMaxFrames );
 
