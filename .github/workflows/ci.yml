@@ -126,3 +126,19 @@ jobs:
           # deliberately exited 3 (asserted just above) - without this the step itself
           # would fail with a code that means "the check passed".
           exit 0
+
+      # A map with EXTERNAL tilesets (.tsx) must load from a packed project with no
+      # loose copy anywhere reachable: plain .zip, then an ENCRYPTED --pack of the
+      # same project (this build has SCARAB_CONTENT_KEY configured, so --pack works).
+      # Regression test for the bug where libtmx opened .tsx straight from the OS
+      # path instead of through SunLight::FileSystem - see the script's own header.
+      - name: Tileset archive smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/tileset_archive_smoke.py build/scarab --require-encrypted
+
+      - name: Tileset archive smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/tileset_archive_smoke.py build/Release/scarab.exe --require-encrypted
+          if ($LASTEXITCODE -ne 0) { throw "tileset archive smoke test exited with code $LASTEXITCODE" }
