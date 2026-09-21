@@ -12,7 +12,11 @@ scripts/renderer_api_smoke/main.lua, selected with RENDERER_SMOKE_SCENARIO:
             does not fit, ...) returns nil + the exact reason, and a valid create still works;
   lazy      a window-needing call FIRST creates the default renderer, and a later
             renderer_create says which call did it;
-  nowindow  renderer-free calls do not create a renderer.
+  nowindow  renderer-free calls do not create a renderer;
+  views     every view_* function on the default view: exact zoom/limits/enabled/dimension/
+            scroll-step/camera round trips, every rejection, and agreement with the older
+            global camera_*/zoom_*/viewport_* functions;
+  views_norenderer  a view call before any renderer is an error and creates none.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.
@@ -24,7 +28,7 @@ import os
 import subprocess
 import sys
 
-SCENARIOS           = ["defaults", "create", "errors", "lazy", "nowindow"]
+SCENARIOS           = ["defaults", "create", "errors", "lazy", "nowindow", "views", "views_norenderer"]
 MAX_FRAMES          = 200
 RUN_TIMEOUT_SECONDS = 120
 PROJECT             = "scripts/renderer_api_smoke/project.json"
