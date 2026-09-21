@@ -36,6 +36,7 @@
 #include "lua/luacryptoapi.h"
 #include "lua/luaengine.h"
 #include "renderer/rendererconfig.h"
+#include "host/rendererprovider.h"
 #include "renderer/tilemaprenderer.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
@@ -445,37 +446,41 @@ int main( int argc, char **argv ) {
     }
 
     /*
-     * TileMapRenderer::Create is the checked form of the config
-     * constructor - a config that can't work (eg. a backend this sunlight
-     * build doesn't have) comes back as nullptr plus a message, instead of
-     * a half-built renderer. Declared before engineHost so it's destroyed
-     * after it, same order as the stack object this replaced.
+     * The renderer does not exist yet. A game's entry script may create it
+     * itself (renderer_create); if it needs a window before doing so, or
+     * finishes without one, the provider creates the default renderer
+     * (MakeDefaultRendererConfig) on the spot - and Start()s it, so its
+     * window is open as soon as it exists. TileMapRenderer::Create is the
+     * checked form of the config constructor: a config that can't work (eg. a
+     * backend this sunlight build doesn't have) is a clean error, not a
+     * half-built renderer. The provider is declared before engineHost so it
+     * (and the renderer it owns) is destroyed after it, same order as the
+     * stack renderer this replaced. --headless is applied by the provider to
+     * whichever renderer it creates.
      */
-    SunLight :: Renderer :: RendererConfig  rendererConfig = MakeDefaultRendererConfig();
+    Scarab :: Host :: stHeadlessSettings  headlessSettings;
 
-    if( bHeadless )  {
-        rendererConfig.backend     = SunLight :: Renderer :: RENDERER_BACKEND_NULL;
-        rendererConfig.framePacing = bHeadlessFast ? SunLight :: Renderer :: FRAME_PACING_UNLIMITED
-                                                   : SunLight :: Renderer :: FRAME_PACING_REAL_TIME;
-        rendererConfig.nMaxFrames  = nMaxFrames;
-    }
+    headlessSettings.bEnabled   = bHeadless;
+    headlessSettings.bFast      = bHeadlessFast;
+    headlessSettings.nMaxFrames = nMaxFrames;
 
-    std :: string                                                strRendererError;
-    std :: unique_ptr<SunLight :: Renderer :: TileMapRenderer>   pRenderer =
-        SunLight :: Renderer :: TileMapRenderer :: Create( rendererConfig, &strRendererError );
-
-    if( !pRenderer )  {
-        fprintf( stderr, "ERROR: cannot create the renderer: %s\n", strRendererError.c_str() );
-        return EXIT_FAILURE;
-    }
-
-    Scarab :: Host :: EngineHost  engineHost( pRenderer.get(), pRenderer.get(), strEntryPath, strEntryOverride );
+    Scarab :: Host :: RendererProvider  rendererProvider( MakeDefaultRendererConfig(), headlessSettings );
+    Scarab :: Host :: EngineHost        engineHost( &rendererProvider, strEntryPath, strEntryOverride );
 
     if( bHeadless )
         engineHost.UseVirtualTime();
 
-    pRenderer -> AddTileMapListener( &engineHost );
-    pRenderer -> Start();
+    /*
+     * Runs the entry script BEFORE the window exists (a fatal script error
+     * exits right here, no window ever having opened), then makes sure the
+     * loop has a renderer - the default one, if the script never created or
+     * needed one.
+     */
+    engineHost.RunEntryScript();
+    rendererProvider.EnsureCreated( "the end of the entry script" );
+
+    SunLight :: Renderer :: TileMapRenderer  *pRenderer = rendererProvider.GetRenderer();
+
     pRenderer -> Run();
 
     /*

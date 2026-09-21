@@ -288,13 +288,13 @@ namespace Scarab  {
     }
 
     /**
-     * @brief Give Lua access to the engine's ITileMap/SoundManager/SpritePool
+     * @brief Give Lua access to the renderer provider/SoundManager/SpritePool
      * and register the primitive API modules (camera, input, tilemap, sound,
      * sprite) that depend on them. Called from EngineHost's constructor
      * body (not it's member-init list) since it needs m_LuaEngine to already
-     * exist as a constructed object to call a method on it - pTileMap itself
-     * is just the constructor's own parameter, forwarded straight through
-     * (EngineHost keeps no ITileMap* member of it's own; it has no
+     * exist as a constructed object to call a method on it - the provider
+     * itself is just the constructor's own parameter, forwarded straight
+     * through (EngineHost keeps no ITileMap* member of it's own; it has no
      * remaining C++-side use for one). Also resolves and exposes
      * the running executable's own directory as the Lua global APP_DIR -
      * deciding where resources actually live relative to that (BASE_PATH)
@@ -302,16 +302,13 @@ namespace Scarab  {
      * entry script itself, which EngineHost must locate on disk before any
      * Lua exists to make that decision (see GetApplicationDirectory below).
      *
-     * @param pTileMap Pointer to the engine's tile map instance;
-     * @param pDrawSurface Pointer to the engine's screen-space drawing
-     * surface instance (sunlight v0.12.0's IDrawSurface split - text/
-     * rectangle drawing and window-state primitives that don't depend
-     * on a loaded map; see LuaEngineUtil::GetDrawSurface's own comment);
+     * @param pRendererProvider Pointer to the renderer provider every
+     * renderer-needing primitive reaches the tile map/draw surface through
+     * (the renderer itself doesn't exist yet - see IRendererProvider);
      * @param pSoundManager Pointer to the engine's sound manager instance;
      * @param pSpritePool Pointer to the engine's sprite pool instance;
      */
-    void LuaEngine :: Init( SunLight :: TileMap :: ITileMap *pTileMap,
-                           SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
+    void LuaEngine :: Init( Engine :: IRendererProvider *pRendererProvider,
                            SunLight :: Sound :: SoundManager *pSoundManager,
                            Engine :: SpritePool *pSpritePool )  {
 
@@ -333,11 +330,8 @@ namespace Scarab  {
         m_strAppDirectory = SunLight :: FileSystem :: IFileSystem :: ToVirtualPath(
                                  SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory() );
 
-        lua_pushlightuserdata( m_pLuaState, pTileMap );
-        lua_setglobal( m_pLuaState, "tileMapPtr" );
-
-        lua_pushlightuserdata( m_pLuaState, pDrawSurface );
-        lua_setglobal( m_pLuaState, "drawSurfacePtr" );
+        lua_pushlightuserdata( m_pLuaState, pRendererProvider );
+        lua_setglobal( m_pLuaState, "rendererProviderPtr" );
 
         lua_pushlightuserdata( m_pLuaState, pSoundManager );
         lua_setglobal( m_pLuaState, "soundManagerPtr" );
@@ -358,7 +352,19 @@ namespace Scarab  {
         Engine :: Lua :: LuaCollisionApi :: Register( m_pLuaState );
 
         m_pCollisionListener = new Engine :: Lua :: LuaCollisionListener( m_pLuaState );
-        pTileMap -> GetCollisionManager().AddCollisionListener( m_pCollisionListener );
+    }
+
+    /**
+     * @brief Attach the collision listener to a renderer's collision manager.
+     * Called by the renderer provider's created-hook, once per renderer - the
+     * renderer no longer exists yet when Init() runs, since a script may
+     * create it (renderer_create) or leave it to the default.
+     *
+     * @param tileMap The just-created renderer's tile map;
+     */
+    void LuaEngine :: AttachToTileMap( SunLight :: TileMap :: ITileMap &tileMap )  {
+
+        tileMap.GetCollisionManager().AddCollisionListener( m_pCollisionListener );
     }
 
     /**

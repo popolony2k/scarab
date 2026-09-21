@@ -600,6 +600,20 @@ namespace Scarab  {
             }
 
             /**
+             * @brief The virtual clock's elapsed seconds, or 0.0 if no renderer exists yet. The
+             * headless os.time()/os.clock() overrides must be readable at the very top of a
+             * script (before renderer_create) without opening a window as a side effect, so
+             * they peek at the draw surface instead of asking for one (which would create the
+             * default renderer).
+             */
+            static double GetElapsedOrZero( lua_State *pLuaState )  {
+
+                SunLight :: DrawSurface :: IDrawSurface  *pSurface = LuaEngineUtil :: GetRendererProvider( pLuaState ) -> PeekDrawSurface();
+
+                return pSurface ? pSurface -> GetElapsedTime() : 0.0;
+            }
+
+            /**
              * @brief Headless-mode replacement for Lua's own os.time - see
              * @link InstallVirtualClock. Upvalue 1 is the original os.time
              * (only ever used for its os.time(table) form, which converts a
@@ -633,7 +647,7 @@ namespace Scarab  {
                 const lua_Integer nMillisPerSecond = 1000;
 
                 lua_Integer  nAnchor       = lua_tointeger( pLuaState, lua_upvalueindex( 2 ) );
-                double       fElapsed      = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetElapsedTime();
+                double       fElapsed      = GetElapsedOrZero( pLuaState );
                 lua_Integer  nElapsedMilli = ( lua_Integer ) ( fElapsed * fMillisPerSecond + 0.5 );
 
                 lua_pushinteger( pLuaState, nAnchor + nElapsedMilli / nMillisPerSecond );
@@ -649,7 +663,7 @@ namespace Scarab  {
              */
             int LuaAppApi :: VirtualOsClock( lua_State *pLuaState )  {
 
-                lua_pushnumber( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetElapsedTime() );
+                lua_pushnumber( pLuaState, GetElapsedOrZero( pLuaState ) );
 
                 return 1;
             }
