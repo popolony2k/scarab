@@ -53,12 +53,14 @@ SOURCE_TO_DOC = {
     "luainputapi.cpp":      "input.md",
     "luajsonapi.cpp":       "json.md",
     "luapackapi.cpp":       "pack.md",
+    "luarendererapi.cpp":   "renderer.md",
     "luascriptingapi.cpp":  "scripting.md",
     "luasoundapi.cpp":      "sound.md",
     "luaspriteapi.cpp":     "sprite.md",
     "luatextapi.cpp":       "text.md",
     "luatilemapapi.cpp":    "tilemap.md",
     "luatimerapi.cpp":      "timers.md",
+    "luaviewapi.cpp":       "views.md",
 }
 
 # luaengine.cpp is the one file scanned for the REVERSE direction - Lua

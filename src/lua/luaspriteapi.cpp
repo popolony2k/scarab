@@ -380,6 +380,57 @@ namespace Scarab  {
             }
 
             /**
+             * @luaname{sprite_set_world_space(handle, world_space)}
+             * @luagroup{world_space}
+             * @luaheading{World space}
+             * @luadoc
+             * Choose what the sprite's position (`sprite_set_pos`) means. Off by default: the
+             * position is **relative to the view that draws it** — measured from the view's own
+             * top-left, scaled by its zoom, and ignoring its camera — which is what a HUD or a
+             * single-view game wants. With `world_space` on, the position is a **map position in
+             * pixels**: every view draws the sprite where it draws the map at that position, so one
+             * sprite is correct in the main view, in a minimap and in a close-up, whatever their
+             * zoom and camera. It applies to every texture sequence of the sprite, including ones
+             * configured later; `sprite_release` turns it back off, so a recycled handle never
+             * inherits it.
+             *
+             * **Collisions:** a collider uses its sprite's position as it is, so a world-space
+             * sprite collides in *map* coordinates and a screen-relative one does not — do not
+             * put both kinds in one collision rule. **Games that never call this are unchanged.**
+             * `sprite_get_world_space` reads it back (`false` for an invalid handle).
+             * @luaexample
+             * local enemy = sprite_acquire( "enemy" )
+             * sprite_configure_texture( enemy, 0, ... )
+             * sprite_set_world_space( enemy, true )
+             * sprite_set_pos( enemy, 640, 320 )   -- a MAP position: shown right in every view
+             */
+            int LuaSpriteApi :: SetWorldSpace( lua_State *pLuaState )  {
+
+                SpriteHandle  handle      = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                bool          bWorldSpace = lua_toboolean( pLuaState, 2 );
+                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+
+                if( pSprite != nullptr )
+                    pSprite -> SetWorldSpace( bWorldSpace );
+
+                return 0;
+            }
+
+            /**
+             * @luaname{sprite_get_world_space(handle) -> world_space}
+             * @luagroup{world_space}
+             */
+            int LuaSpriteApi :: GetWorldSpace( lua_State *pLuaState )  {
+
+                SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+
+                lua_pushboolean( pLuaState, ( pSprite != nullptr ) && pSprite -> IsWorldSpace() );
+
+                return 1;
+            }
+
+            /**
              * @luaname{sprite_get_pos(handle) -> x, y}
              * @luagroup{position_size}
              * @luaheading{Position and size}
@@ -606,6 +657,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "sprite_set_animation_mode", LuaSpriteApi :: SetAnimationMode );
                 lua_register( pLuaState, "sprite_set_visible", LuaSpriteApi :: SetVisible );
                 lua_register( pLuaState, "sprite_get_visible", LuaSpriteApi :: GetVisible );
+                lua_register( pLuaState, "sprite_set_world_space", LuaSpriteApi :: SetWorldSpace );
+                lua_register( pLuaState, "sprite_get_world_space", LuaSpriteApi :: GetWorldSpace );
                 lua_register( pLuaState, "sprite_get_pos", LuaSpriteApi :: GetPos );
                 lua_register( pLuaState, "sprite_set_pos", LuaSpriteApi :: SetPos );
                 lua_register( pLuaState, "sprite_get_size", LuaSpriteApi :: GetSize );

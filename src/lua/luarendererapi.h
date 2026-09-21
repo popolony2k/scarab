@@ -64,11 +64,13 @@ namespace Scarab  {
                 static int RendererGetConfig( lua_State *pLuaState );
                 static int RendererGetDefaultView( lua_State *pLuaState );
                 static int RendererGetBackend( lua_State *pLuaState );
+                static int RendererGetViewCount( lua_State *pLuaState );
 
                 static void RegisterEnums( lua_State *pLuaState );
 
                 public:
 
+                static bool CheckHandle( lua_State *pLuaState, int nIndex, std :: string &strError );
                 static bool ValidateZoomFactor( double fFactor, unsigned &nZoomPos, std :: string &strError );
                 static void Register( lua_State *pLuaState );
             };

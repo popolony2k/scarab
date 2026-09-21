@@ -29,6 +29,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [sprite](sprite/docs/README.md) — acquiring/configuring/moving an animated sprite (sunlight's own "sunny" character), built on `tilemap/`
 * [collision](collision/docs/README.md) — a keyboard-controlled sprite colliding with a fixed one, `collision_add_rule`/`collision_set_handler`, built on `sprite/`
 * [renderer](renderer/docs/README.md) — `renderer_create` (choosing your own window/render settings, strictly validated), `renderer_get_config` read back live, and the `view_*` functions driving the default view's zoom/zoom limits/camera; built on `tilemap/`
+* [views](views/docs/README.md) — several views of one world at once: a minimap and a follow-the-sprite close-up next to the main picture (`view_create`, `view_fit_to_map`, per-view layer masks, `sprite_set_world_space`); built on `renderer/` and `sprite/`
 * [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
 * [sound](sound/docs/README.md) — direct one-shot, direct looping, and queued song forms side by side, plus pause/stop/resume/volume
 * [json](json/docs/README.md) — `load_json`, walking a small nested object/array config file into an equivalent Lua table
