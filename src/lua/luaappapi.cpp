@@ -21,6 +21,7 @@
 #include "lua/luaappapi.h"
 #include "lua/luaengineutil.h"
 #include "window/iwindow.h"
+#include <ctime>
 
 extern "C"
 {
@@ -572,6 +573,11 @@ namespace Scarab  {
              * source, but only has whole-second granularity.) Anchor off
              * a start timestamp and compare against it each frame, rather
              * than counting up.
+             *
+             * Under `--headless` (the null renderer) this is a *virtual*
+             * clock instead: each frame advances it by exactly
+             * `1 / target FPS`, however fast the frames actually run, so a
+             * long timeline can be replayed in a fraction of the time.
              * @luaexample
              * -- reveal one character every 50ms of real time, regardless
              * -- of the actual frame rate
@@ -591,6 +597,103 @@ namespace Scarab  {
                 lua_pushnumber( pLuaState, fElapsed );
 
                 return 1;
+            }
+
+            /**
+             * @brief Headless-mode replacement for Lua's own os.time - see
+             * @link InstallVirtualClock. Upvalue 1 is the original os.time
+             * (only ever used for its os.time(table) form, which converts a
+             * date table and never reads any clock at all); upvalue 2 is
+             * the real epoch second the override was installed at, so
+             * os.time() keeps returning a plausible absolute time rather
+             * than a bare offset.
+             */
+            int LuaAppApi :: VirtualOsTime( lua_State *pLuaState )  {
+
+                if( !lua_isnoneornil( pLuaState, 1 ) )  {
+                    int  nArgs = lua_gettop( pLuaState );
+
+                    lua_pushvalue( pLuaState, lua_upvalueindex( 1 ) );
+                    lua_insert( pLuaState, 1 );
+                    lua_call( pLuaState, nArgs, 1 );
+
+                    return 1;
+                }
+
+                /*
+                 * The virtual clock is a frame count times 1/fps accumulated
+                 * as a double, so a timestamp that is mathematically exactly
+                 * N seconds can sit a hair under it (300 frames at 60fps
+                 * reads 4.9999999..., which a plain truncation would floor
+                 * to 4 - found live). Round to the nearest millisecond first,
+                 * the same granularity sunlight's own clock reports, then
+                 * take whole seconds.
+                 */
+                const double      fMillisPerSecond = 1000.0;
+                const lua_Integer nMillisPerSecond = 1000;
+
+                lua_Integer  nAnchor       = lua_tointeger( pLuaState, lua_upvalueindex( 2 ) );
+                double       fElapsed      = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetElapsedTime();
+                lua_Integer  nElapsedMilli = ( lua_Integer ) ( fElapsed * fMillisPerSecond + 0.5 );
+
+                lua_pushinteger( pLuaState, nAnchor + nElapsedMilli / nMillisPerSecond );
+
+                return 1;
+            }
+
+            /**
+             * @brief Headless-mode replacement for Lua's own os.clock - see
+             * @link InstallVirtualClock. Real os.clock() is CPU time, which
+             * bears no relation to the null renderer's virtual timeline;
+             * this returns that timeline's own elapsed seconds instead.
+             */
+            int LuaAppApi :: VirtualOsClock( lua_State *pLuaState )  {
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetElapsedTime() );
+
+                return 1;
+            }
+
+            /**
+             * @brief Headless (--headless) only: replace Lua's own
+             * os.time()/os.clock() with versions that read the null
+             * renderer's virtual clock (IDrawSurface::GetElapsedTime, the
+             * same source app_get_time() reads) instead of real wall/CPU
+             * time. Scarab owns the lua_State, so it can close a gap sunlight
+             * itself can't: sunlight's injectable clock only reaches its own
+             * timers/animations, never Lua's standard library, so a game
+             * that paces itself with os.time()/os.clock() (Caravellius's
+             * bgm.lua/demomode.lua/player.lua) would otherwise keep running
+             * on real time while everything else runs on virtual time.
+             *
+             * os.time() returns the real epoch second at install time plus
+             * whole virtual seconds elapsed (whole seconds, like the real
+             * one - sub-second cues belong on app_get_time()); os.time(table)
+             * is forwarded to the real os.time untouched.
+             *
+             * Caveat: both now read engine state, which the timer-callback
+             * rule (see CLAUDE.md's "set_timer callback" gotcha) forbids
+             * from a background thread - in headless mode, don't call
+             * os.time()/os.clock() inside a set_timer callback.
+             */
+            void LuaAppApi :: InstallVirtualClock( lua_State *pLuaState )  {
+
+                lua_getglobal( pLuaState, "os" );
+
+                if( !lua_istable( pLuaState, -1 ) )  {
+                    lua_pop( pLuaState, 1 );
+                    return;
+                }
+
+                lua_getfield( pLuaState, -1, "time" );
+                lua_pushinteger( pLuaState, ( lua_Integer ) time( NULL ) );
+                lua_pushcclosure( pLuaState, LuaAppApi :: VirtualOsTime, 2 );
+                lua_setfield( pLuaState, -2, "time" );
+
+                lua_pushcfunction( pLuaState, LuaAppApi :: VirtualOsClock );
+                lua_setfield( pLuaState, -2, "clock" );
+
+                lua_pop( pLuaState, 1 );
             }
 
             /**

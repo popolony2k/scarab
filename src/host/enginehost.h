@@ -104,6 +104,9 @@ namespace Scarab  {
                        std :: string strEntryOverride = std :: string() );
             virtual ~EngineHost( void );
 
+            // Headless (--headless) only - see LuaAppApi::InstallVirtualClock
+            void UseVirtualTime( void );
+
             // World listener event handler implementation
             void OnUpdate( SunLight :: TileMap :: ITileMap& tileMap );
             void OnStop( void );

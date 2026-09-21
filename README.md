@@ -19,6 +19,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
     - [Lua backend option](#lua-backend-option)
     - [VSCode setup](#vscode-setup)
 * [Running](#running-rocket) :rocket:
+    - [Headless mode](#headless-mode)
 * [Content encryption](#content-encryption-lock) :lock:
 * [Samples](#samples-video_game) :video_game:
 * [Shared resources](#shared-resources-art) :art:
@@ -109,6 +110,29 @@ A project file just names the first Lua file to run:
 A whole project can also be packaged into a single self-contained `.zip` and run the same way: `./scarab game.zip`. `--entry`/`-e <path>` names the actual entry point when it's not simply `project.json` at the archive's own root — either another `.json` project file inside the archive, or a `.lua` path to run directly with no project-file indirection at all.
 
 Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, the entry script/project-file reads themselves) routes through a mount-based filesystem abstraction (PhysFS-backed) — a loose directory or a real archive read identically, so the same project runs unchanged either way.
+
+### Headless mode
+
+`--headless` runs a game on sunlight's **null renderer**: no window, no GPU and no display needed — meant for automated runs (CI smoke tests, acceptance runs) on machines that can't open one. It takes the same entry point as a normal run:
+
+```shell
+# real-time paced (60 fps), no window
+./scarab --headless game.zip
+
+# as fast as the game logic runs, stop after 18000 frames no matter what
+./scarab --headless --fast --max-frames 18000 project.json
+```
+
+| Option | Meaning |
+|---|---|
+| `--headless` | Use the null renderer. Mutually exclusive with `--pack`. |
+| `--fast` | Don't pace frames to the target FPS — run as fast as the game logic allows. The virtual clock is unchanged, so a 300-second game timeline finishes in a few seconds of wall time. Needs `--headless`. |
+| `--max-frames N` | Stop after `N` frames — a safety net so a hung game fails the run instead of hanging CI. Needs `--headless`. |
+| `--max-frames-ok` | Treat reaching the `--max-frames` budget as success. Needs `--max-frames`. |
+
+**Exit codes.** `0` when the game ended itself with `app_quit()`; `1` on a fatal engine or Lua error, as always; `3` when the `--max-frames` budget ran out before the game called `app_quit()` (a hang, or a budget that's too short) — unless `--max-frames-ok` is given, for a plain "run N frames" smoke test.
+
+**Time is virtual.** Each frame advances the clock by exactly `1 / target FPS`. `app_get_time()`, `sp_wait`, sprite frame animation and tile animation all follow it, and so do Lua's own `os.time()` and `os.clock()` (Scarab replaces them in headless mode; `os.time()` keeps whole-second resolution, so use `app_get_time()` for sub-second cues). What does **not** follow it: `set_timer` callbacks still run on real time, and calling `os.time()`/`os.clock()` from inside one is unsafe in headless mode (they read engine state — see the `set_timer` callback rule in `CLAUDE.md`). Audio is unaffected (a real audio device is still used if one exists), and input reads as "nothing pressed" — every key/button is up and every gamepad axis is `0.0`.
 
 ## Content encryption :lock:
 

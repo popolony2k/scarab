@@ -187,6 +187,55 @@ int main( int argc, char **argv ) {
     pEntryOption->excludes( pPackOption );
     pPackOption->excludes( pEntryOption );
 
+    /*
+     * --headless runs the game on sunlight's null renderer: no window, no
+     * GPU, a frame-driven virtual clock (frames x 1/fps) that app_get_time(),
+     * sp_wait and animation timing all follow, and Lua's own os.time()/
+     * os.clock() are replaced to follow it too (see
+     * LuaAppApi::InstallVirtualClock). Real audio is untouched. It's for
+     * automated runs (CI smoke tests, acceptance runs) on machines with no
+     * display - unlike --pack, it runs a real game's entry point, so it
+     * needs the positional path and excludes --pack.
+     *
+     * The three options below only mean something with --headless:
+     *   --fast            frames as fast as the game logic runs instead of
+     *                     paced to the target FPS in real time (the virtual
+     *                     clock is unchanged, only wall time shrinks);
+     *   --max-frames N    stop after N frames - a safety net so a hung game
+     *                     fails the run instead of hanging CI. Reaching it
+     *                     is an error (EXIT_FRAME_BUDGET_EXHAUSTED) unless
+     *   --max-frames-ok   says a pure "run N frames" smoke test wants it.
+     * It's headless-only because "the budget ended the run" is only
+     * distinguishable from "the user closed the window" on the null window,
+     * which can't be closed.
+     */
+    bool      bHeadless     = false;
+    bool      bHeadlessFast = false;
+    unsigned  nMaxFrames    = 0;
+    bool      bMaxFramesOk  = false;
+
+    CLI :: Option  *pHeadlessOption = app.add_flag( "--headless", bHeadless,
+                    "Run with no window on the null renderer (virtual clock, no GPU) - for "
+                    "automated runs on machines with no display. Audio is unaffected." );
+
+    app.add_flag( "--fast", bHeadlessFast,
+                    "With --headless: run frames as fast as the game logic allows instead of "
+                    "real-time paced (the virtual clock is unchanged)." )
+       ->needs( pHeadlessOption );
+
+    CLI :: Option  *pMaxFramesOption = app.add_option( "--max-frames", nMaxFrames,
+                    "With --headless: stop after N frames. Exits with code 3 if this ends the "
+                    "run before the game called app_quit() (a safety net against hangs)." )
+       ->check( CLI :: PositiveNumber )
+       ->needs( pHeadlessOption );
+
+    app.add_flag( "--max-frames-ok", bMaxFramesOk,
+                    "With --max-frames: treat reaching the frame budget as success (exit 0)." )
+       ->needs( pMaxFramesOption );
+
+    pHeadlessOption->excludes( pPackOption );
+    pPackOption->excludes( pHeadlessOption );
+
     CLI11_PARSE( app, argc, argv );
 
     if( strEntryPath.empty() && strPackConfigPath.empty() )  {
@@ -402,9 +451,18 @@ int main( int argc, char **argv ) {
      * a half-built renderer. Declared before engineHost so it's destroyed
      * after it, same order as the stack object this replaced.
      */
+    SunLight :: Renderer :: RendererConfig  rendererConfig = MakeDefaultRendererConfig();
+
+    if( bHeadless )  {
+        rendererConfig.backend     = SunLight :: Renderer :: RENDERER_BACKEND_NULL;
+        rendererConfig.framePacing = bHeadlessFast ? SunLight :: Renderer :: FRAME_PACING_UNLIMITED
+                                                   : SunLight :: Renderer :: FRAME_PACING_REAL_TIME;
+        rendererConfig.nMaxFrames  = nMaxFrames;
+    }
+
     std :: string                                                strRendererError;
     std :: unique_ptr<SunLight :: Renderer :: TileMapRenderer>   pRenderer =
-        SunLight :: Renderer :: TileMapRenderer :: Create( MakeDefaultRendererConfig(), &strRendererError );
+        SunLight :: Renderer :: TileMapRenderer :: Create( rendererConfig, &strRendererError );
 
     if( !pRenderer )  {
         fprintf( stderr, "ERROR: cannot create the renderer: %s\n", strRendererError.c_str() );
@@ -413,10 +471,28 @@ int main( int argc, char **argv ) {
 
     Scarab :: Host :: EngineHost  engineHost( pRenderer.get(), pRenderer.get(), strEntryPath, strEntryOverride );
 
+    if( bHeadless )
+        engineHost.UseVirtualTime();
+
     pRenderer -> AddTileMapListener( &engineHost );
     pRenderer -> Start();
     pRenderer -> Run();
+
+    /*
+     * Read before Stop(). On the null window nothing but RequestExit
+     * (app_quit) or the frame budget can end Run(), and the budget leaves
+     * GetExitRequested() false - so "no exit was requested" here means the
+     * budget ran out before the game finished.
+     */
+    bool  bBudgetExhausted = bHeadless && nMaxFrames > 0 && !pRenderer -> GetExitRequested();
+
     pRenderer -> Stop();
+
+    if( bBudgetExhausted && !bMaxFramesOk )  {
+        fprintf( stderr, "scarab: --headless: the %u-frame --max-frames budget ran out before the game "
+            "called app_quit() - failing the run (add --max-frames-ok to treat this as success).\n", nMaxFrames );
+        return EXIT_FRAME_BUDGET_EXHAUSTED;
+    }
 
     return EXIT_SUCCESS;
 }

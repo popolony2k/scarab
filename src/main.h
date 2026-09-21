@@ -33,6 +33,15 @@
 #define DEFAULT_ZOOM_SCALE_POS    60
 
 /*
+ * Process exit code of a --headless run whose --max-frames budget ran out
+ * before the game ended it itself (app_quit()) - distinct from
+ * EXIT_FAILURE (a fatal engine/Lua error) so a wrapper or CI job can tell
+ * "the safety net tripped" (a hang or a too-short budget) apart from
+ * "the game broke". --max-frames-ok turns it into a normal EXIT_SUCCESS.
+ */
+#define EXIT_FRAME_BUDGET_EXHAUSTED  3
+
+/*
  * Scarab is a game-agnostic engine - it doesn't hardcode a specific
  * game's name. "Scarab" is only the initial window title, shown before
  * any Lua exists to override it; the actual game (main.lua) is expected

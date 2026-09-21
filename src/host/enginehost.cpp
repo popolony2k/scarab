@@ -26,6 +26,7 @@
 #include <filesystem>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include "general/clock.h"
 
 using namespace std :: chrono;
 namespace fs = std :: filesystem;
@@ -257,7 +258,16 @@ namespace Scarab  {
                 return false;
             }
 
-            strOutScriptPath = ( effectiveEntryPath.parent_path() / projectData["main_script"].get<std :: string>() ).string();
+            /*
+             * generic_string(), not string(): on Windows, path::operator/ joins with
+             * a backslash ("scripts/headless_smoke\\main.lua" for a relative project
+             * file in a subdirectory), but this path is read through
+             * SunLight::FileSystem (PhysFS), whose virtual paths only treat "/" as a
+             * separator - the mixed path failed with "cannot open". Found by
+             * ci.yml's own headless smoke test, the first thing to launch a project
+             * from a subdirectory on Windows. Identical to string() elsewhere.
+             */
+            strOutScriptPath = ( effectiveEntryPath.parent_path() / projectData["main_script"].get<std :: string>() ).generic_string();
 
             return true;
         }
@@ -292,7 +302,14 @@ namespace Scarab  {
          */
         void EngineHost :: CheckSpritesQueueEmpty( void )  {
 
-            uint64_t nTimeMilli = duration_cast<milliseconds>( steady_clock :: now().time_since_epoch() ).count();
+            /*
+             * sunlight's process-global clock (v0.25.0+) rather than
+             * steady_clock directly: identical to steady_clock on a real
+             * window (its default), but follows the virtual timeline under
+             * the null renderer, so this 2000ms check compresses along with
+             * sp_wait/animation timing in a fast headless run.
+             */
+            uint64_t nTimeMilli = ( uint64_t ) SunLight :: General :: Clock :: NowMilliseconds();
 
             if( nTimeMilli >= m_nClearInactiveSpriteQueueMilli )  {
                 if( m_LuaEngine.GetActiveEnemyCount() <= 0 )  {
@@ -462,6 +479,18 @@ namespace Scarab  {
              */
 
             m_ScriptProcessorMachine.AddScriptListener( this );
+        }
+
+        /**
+         * @brief Headless (--headless) only - make Lua's os.time()/
+         * os.clock() follow the null renderer's virtual clock. Called by
+         * main() right after construction, before Start() (so before any
+         * Lua script has run); a no-op for a real-window run, which never
+         * calls it.
+         */
+        void EngineHost :: UseVirtualTime( void )  {
+
+            m_LuaEngine.InstallVirtualClock();
         }
 
         /**

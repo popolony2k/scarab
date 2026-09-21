@@ -98,3 +98,31 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release -j 4
+
+      # --headless runs the game on sunlight's null renderer: no window, no
+      # GPU - so, unlike everything before this step, it can actually RUN
+      # the freshly built scarab on a display-less CI runner. The script
+      # succeeds only by quitting itself (virtual clock, os.time/os.clock
+      # overrides and null input all checked - see its own header); the
+      # second run proves a budget that's too short fails with exit code 3
+      # instead of passing.
+      - name: Headless smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          ./build/scarab --headless --fast --max-frames 1000 scripts/headless_smoke/project.json
+          rc=0
+          ./build/scarab --headless --fast --max-frames 50 scripts/headless_smoke/project.json || rc=$?
+          test "$rc" = "3"
+
+      - name: Headless smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & build/Release/scarab.exe --headless --fast --max-frames 1000 scripts/headless_smoke/project.json
+          if ($LASTEXITCODE -ne 0) { throw "headless smoke test exited with code $LASTEXITCODE (expected 0)" }
+          & build/Release/scarab.exe --headless --fast --max-frames 50 scripts/headless_smoke/project.json
+          if ($LASTEXITCODE -ne 3) { throw "budget-exhausted run exited with code $LASTEXITCODE (expected 3)" }
+          # pwsh steps exit with the LAST native command's code, and that last command
+          # deliberately exited 3 (asserted just above) - without this the step itself
+          # would fail with a code that means "the check passed".
+          exit 0
