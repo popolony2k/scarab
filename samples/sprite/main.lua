@@ -52,7 +52,8 @@ pool_register_type( "sunny", 1 )
 
 local handle = sprite_acquire( "sunny" )
 
-sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR )
+-- The last argument is the frame delay in ms: WITHOUT it (the default, -1) the frame is held and sunny never animates.
+sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
 sprite_set_active_sequence( handle, 0 )
 sprite_set_pos( handle, 100, 100 )
 

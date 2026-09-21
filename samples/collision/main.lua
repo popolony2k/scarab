@@ -51,7 +51,7 @@ pool_register_type( "sunny", 2 )
 
 local player = sprite_acquire( "sunny" )
 
-sprite_configure_texture( player, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR )
+sprite_configure_texture( player, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )   -- 100 ms per frame (the default -1 holds the frame)
 sprite_set_active_sequence( player, 0 )
 sprite_set_pos( player, 100, 90 )
 sprite_add_to_layer( player, 4 )   -- "clouds" in test.tmx - just a collider bucket here, unrelated to it's tile content
