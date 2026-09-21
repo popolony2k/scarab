@@ -5,7 +5,7 @@
         RENDERER_SMOKE_SCENARIO=<name> scarab --headless --fast --max-frames 200 \
             scripts/renderer_api_smoke/project.json
 
-    Scenarios: defaults, create, errors, lazy, nowindow, views, viewsmulti, views_norenderer. Each records its own failures and
+    Scenarios: defaults, create, fullscreen, errors, lazy, nowindow, views, viewsmulti, views_norenderer. Each records its own failures and
     the script quits ITSELF only if there were none (exit 0); otherwise it prints every
     failure and never quits, so --max-frames runs out and scarab exits 3 - a failure with
     the details in the log, not a hang.
@@ -53,7 +53,7 @@ if scenario == "defaults" then
     check_config( "defaults", renderer_get_config( r ), {
         backend = RENDERER_BACKEND_NULL, width = 1260, height = 920, title = "Scarab", fps = 60,
         resizeable = true, draw_fps = false, zoom = 3.8125, exit_key = KEY_ESCAPE,
-        stretch_to_fill = false, view_control_mode = VIEW_CONTROL_MODE_ACTIVE, use_default_key_handler = false,
+        stretch_to_fill = false, fullscreen = false, fullscreen_strategy = FULLSCREEN_STRATEGY_REAL, view_control_mode = VIEW_CONTROL_MODE_ACTIVE, use_default_key_handler = false,
         viewport = { x = 10, y = 10, w = 1240, h = 900 }, scroll_step = { w = 1, h = 1 } } )
 
 elseif scenario == "create" then
@@ -62,14 +62,17 @@ elseif scenario == "create" then
         title = "Smoke", width = 1000, height = 700, fps = 30, resizeable = false, draw_fps = true,
         viewport = { x = 20, y = 30, w = 900, h = 600 }, zoom = 2.0625, scroll_step = { w = 2, h = 3 },
         view_control_mode = VIEW_CONTROL_MODE_REACTIVE, use_default_key_handler = true,
-        exit_key = KEY_NULL, stretch_to_fill = true }
+        exit_key = KEY_NULL, stretch_to_fill = true,
+        fullscreen = true, fullscreen_strategy = FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED }
     check( r ~= nil, "renderer_create failed: " .. tostring( err ) )
     local cfg = renderer_get_config( r )
     check_config( "create", cfg, {
         backend = RENDERER_BACKEND_NULL, width = 1000, height = 700, title = "Smoke", fps = 30,
         resizeable = false, draw_fps = true, zoom = 2.0625, exit_key = KEY_NULL, stretch_to_fill = true,
         view_control_mode = VIEW_CONTROL_MODE_REACTIVE, use_default_key_handler = true,
-        viewport = { x = 20, y = 30, w = 900, h = 600 }, scroll_step = { w = 2, h = 3 } } )
+        viewport = { x = 20, y = 30, w = 900, h = 600 }, scroll_step = { w = 2, h = 3 },
+        -- fullscreen was REQUESTED, but --headless is the null window: accepted and ignored, the live state stays windowed
+        fullscreen = false, fullscreen_strategy = FULLSCREEN_STRATEGY_REAL } )
     check( renderer_get_backend( r ) == RENDERER_BACKEND_NULL, "renderer_get_backend is not NULL under --headless" )
     check( renderer_get_default_view( r ) == 0, "default view is not 0" )
     -- live: the title follows app_set_name
@@ -78,6 +81,19 @@ elseif scenario == "create" then
     -- live: the zoom follows zoom_in (one step = 0.0625)
     zoom_in()
     check( renderer_get_config( r ).zoom == 2.125, "renderer_get_config zoom did not follow zoom_in: " .. tostring( renderer_get_config( r ).zoom ) )
+
+elseif scenario == "fullscreen" then
+    -- a strategy without fullscreen is accepted and ignored (one config file can always carry both)
+    local r, err = renderer_create{ title = "fullscreen", fullscreen = false, fullscreen_strategy = FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED }
+    check( r ~= nil, "renderer_create with fullscreen=false and a strategy failed: " .. tostring( err ) )
+    check_config( "windowed", renderer_get_config( r ), { fullscreen = false, fullscreen_strategy = FULLSCREEN_STRATEGY_REAL } )
+    check( app_get_fullscreen() == false, "app_get_fullscreen is not false for a windowed renderer" )
+    -- get_config reads the LIVE state: an explicit runtime toggle (which the null window honours) shows up
+    app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
+    check_config( "toggled on", renderer_get_config( r ), { fullscreen = true, fullscreen_strategy = FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED } )
+    check( app_get_fullscreen() == true, "app_get_fullscreen disagrees with renderer_get_config" )
+    app_set_fullscreen( false )
+    check_config( "toggled off", renderer_get_config( r ), { fullscreen = false, fullscreen_strategy = FULLSCREEN_STRATEGY_REAL } )
 
 elseif scenario == "errors" then
     expect_error( "unknown option", "unknown option 'titel'", renderer_create{ titel = "x" } )
@@ -99,6 +115,12 @@ elseif scenario == "errors" then
     expect_error( "scroll_step zero", "'scroll_step.w' must be between", renderer_create{ scroll_step = { w = 0, h = 1 } } )
     expect_error( "bad view_control_mode", "'view_control_mode' must be between", renderer_create{ view_control_mode = 5 } )
     expect_error( "bad backend value", "'backend' must be between", renderer_create{ backend = 9 } )
+    expect_error( "fullscreen string", "'fullscreen' must be a boolean", renderer_create{ fullscreen = "yes" } )
+    expect_error( "fullscreen number", "'fullscreen' must be a boolean", renderer_create{ fullscreen = 1 } )
+    expect_error( "strategy string", "'fullscreen_strategy' must be an integer", renderer_create{ fullscreen_strategy = "real" } )
+    expect_error( "strategy fraction", "'fullscreen_strategy' must be an integer", renderer_create{ fullscreen_strategy = 0.5 } )
+    expect_error( "strategy out of range", "'fullscreen_strategy' must be between", renderer_create{ fullscreen_strategy = 2 } )
+    expect_error( "strategy negative", "'fullscreen_strategy' must be between", renderer_create{ fullscreen_strategy = -1 } )
     expect_error( "raylib under --headless", "--headless forces the null backend", renderer_create{ backend = RENDERER_BACKEND_RAYLIB } )
     -- handles: nothing exists yet
     expect_error( "config, no renderer", "unknown renderer 1", renderer_get_config( 1 ) )

@@ -8,6 +8,9 @@ scripts/renderer_api_smoke/main.lua, selected with RENDERER_SMOKE_SCENARIO:
   defaults  renderer_create() with no options gives exactly Scarab's defaults;
   create    every option set to a NON-default value, read back through
             renderer_get_config (plus the live title/zoom);
+  fullscreen  fullscreen/fullscreen_strategy: a strategy without fullscreen is accepted, get_config reads
+            the LIVE state (a runtime app_set_fullscreen shows up), and a fullscreen REQUEST under
+            --headless is accepted and ignored;
   errors    every rejection path (unknown option, wrong type, bad zoom, viewport that
             does not fit, ...) returns nil + the exact reason, and a valid create still works;
   lazy      a window-needing call FIRST creates the default renderer, and a later
@@ -31,7 +34,7 @@ import os
 import subprocess
 import sys
 
-SCENARIOS           = ["defaults", "create", "errors", "lazy", "nowindow", "views", "viewsmulti", "views_norenderer"]
+SCENARIOS           = ["defaults", "create", "fullscreen", "errors", "lazy", "nowindow", "views", "viewsmulti", "views_norenderer"]
 MAX_FRAMES          = 200
 RUN_TIMEOUT_SECONDS = 120
 PROJECT             = "scripts/renderer_api_smoke/project.json"
