@@ -100,13 +100,16 @@ namespace Scarab  {
              * `sequenceId` on `handle`. `path` points at a texture sheet
              * containing `framesByTexture` equal-width frames laid out
              * horizontally; `activeTileIndex` is which frame to start on.
-             * `delayMilli` (optional, defaults to `-1`) controls
-             * automatic switching to a *different* texture later added to
-             * this same sequence — pass `-1` to disable that switching
-             * entirely, which is what every sprite in Caravellius does
-             * today (each sequence holds exactly one texture). It's
-             * unrelated to the per-frame tile animation within that one
-             * texture, which `animationMode` controls.
+             * `delayMilli` (optional, defaults to `-1`) is the time, in
+             * milliseconds, between animation steps of this sequence. **`-1`
+             * means "no animation": the frame is held forever**, whatever
+             * `animationMode` says — a sprite configured without a delay
+             * shows its `activeTileIndex` frame and never steps. Pass a real
+             * delay (say `100`) for any sprite whose frames should cycle:
+             * `AUTOMATIC_CIRCULAR`/`AUTOMATIC_RIGHT_LEFT` step about once per
+             * `delayMilli`. It is also the delay between *different* textures
+             * when several are added to one sequence, which Scarab does not
+             * do — a sequence holds exactly one texture.
              *
              * Animation mode constants:
              *

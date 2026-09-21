@@ -83,7 +83,7 @@ pool_register_type( "sunny", 1 )
 
 local sunny = sprite_acquire( "sunny" )
 
-sprite_configure_texture( sunny, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR )
+sprite_configure_texture( sunny, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )   -- 100 ms per frame; the default -1 would hold the frame
 sprite_set_active_sequence( sunny, 0 )
 sprite_add_to_layer( sunny, __SPRITE_LAYER )
 
