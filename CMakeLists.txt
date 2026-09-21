@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.24)
 #
 set(SCARAB_SUNLIGHT_VERSION "0.35.0")
 
-project(scarab VERSION 0.1.21)
+project(scarab VERSION 0.1.22)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
