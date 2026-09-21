@@ -28,33 +28,77 @@ namespace Scarab  {
             std :: mutex LuaEngineUtil :: s_LuaMutex;
 
             /**
-             * @brief Fetch the engine's ITileMap instance stashed as a Lua light userdata global.
+             * @brief Fetch the renderer provider stashed as a Lua light userdata global - the
+             * one object every renderer-needing primitive reaches the renderer through, since
+             * the renderer does not exist yet when the Lua engine is built (see
+             * IRendererProvider).
+             *
+             * @param pLuaState Lua state to be used by engine call.
+             */
+            Engine :: IRendererProvider* LuaEngineUtil :: GetRendererProvider( lua_State *pLuaState )  {
+
+                lua_getglobal( pLuaState, "rendererProviderPtr" );
+
+                Engine :: IRendererProvider  *pProvider = static_cast<Engine :: IRendererProvider *>( lua_touserdata( pLuaState, -1 ) );
+
+                lua_pop( pLuaState, 1 );
+
+                return pProvider;
+            }
+
+            /**
+             * @brief Name of the Lua-callable primitive currently running (as the script called
+             * it, eg. "app_set_name") - recorded by the provider when this call is what creates
+             * the default renderer, so a later renderer_create can name the culprit.
+             */
+            static std :: string GetCallerName( lua_State *pLuaState )  {
+
+                lua_Debug  ar;
+
+                if( lua_getstack( pLuaState, 0, &ar ) && lua_getinfo( pLuaState, "n", &ar ) && ar.name )
+                    return ar.name;
+
+                return "(unknown primitive)";
+            }
+
+            /**
+             * @brief Make sure a renderer exists, creating the default one (and opening its
+             * window) if the script hasn't - for primitives that need a live window/GL context
+             * but don't go through GetTileMap()/GetDrawSurface() (eg. sprite_configure_texture,
+             * which loads a GPU texture).
+             *
+             * @param pLuaState Lua state to be used by engine call.
+             */
+            void LuaEngineUtil :: EnsureRenderer( lua_State *pLuaState )  {
+
+                GetRendererProvider( pLuaState ) -> GetTileMap( GetCallerName( pLuaState ).c_str() );
+            }
+
+            /**
+             * @brief The engine's ITileMap - creating the default renderer first if the script
+             * has not created one yet (see IRendererProvider::GetTileMap).
              *
              * @param pLuaState Lua state to be used by engine call.
              */
             SunLight :: TileMap :: ITileMap* LuaEngineUtil :: GetTileMap( lua_State *pLuaState )  {
 
-                lua_getglobal( pLuaState, "tileMapPtr" );
-
-                return static_cast<SunLight :: TileMap :: ITileMap *>( lua_touserdata( pLuaState, -1 ) );
+                return GetRendererProvider( pLuaState ) -> GetTileMap( GetCallerName( pLuaState ).c_str() );
             }
 
             /**
-             * @brief Fetch the engine's IDrawSurface instance stashed as a Lua light userdata
-             * global - screen-space text/rectangle drawing and window-state primitives (see
-             * sunlight's own IDrawSurface header comment), a separate pointer from
-             * GetTileMap()'s since sunlight v0.12.0 split those off ITileMap. Both pointers
-             * happen to address the same underlying TileMapRenderer object today (it
-             * implements both interfaces), but callers should reach for whichever interface
-             * actually matches what they're doing, not assume that always holds.
+             * @brief The engine's IDrawSurface - screen-space text/rectangle drawing and
+             * window-state primitives (see sunlight's own IDrawSurface header comment), a
+             * separate interface from GetTileMap()'s since sunlight v0.12.0 split those off
+             * ITileMap. Both address the same underlying TileMapRenderer object today (it
+             * implements both), but callers should reach for whichever interface actually
+             * matches what they're doing, not assume that always holds. Creates the default
+             * renderer first if the script has not created one yet.
              *
              * @param pLuaState Lua state to be used by engine call.
              */
             SunLight :: DrawSurface :: IDrawSurface* LuaEngineUtil :: GetDrawSurface( lua_State *pLuaState )  {
 
-                lua_getglobal( pLuaState, "drawSurfacePtr" );
-
-                return static_cast<SunLight :: DrawSurface :: IDrawSurface *>( lua_touserdata( pLuaState, -1 ) );
+                return GetRendererProvider( pLuaState ) -> GetDrawSurface( GetCallerName( pLuaState ).c_str() );
             }
 
             /**

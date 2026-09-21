@@ -31,6 +31,7 @@
 #include "sound/soundmanager.h"
 #include "lua/luaengine.h"
 #include "engine/spritepool.h"
+#include "host/rendererprovider.h"
 
 
 /*
@@ -72,6 +73,7 @@ namespace Scarab  {
             std :: string                              m_strEntryArg;
             std :: string                              m_strEntryOverride;
             std :: string                              m_strLastError;
+            bool                                       m_bEntryScriptDone;
             FunctionStateHandlers                      m_aEngineStateHandlers;
 
             // Queue management update handlers
@@ -98,11 +100,13 @@ namespace Scarab  {
 
             public:
 
-            EngineHost( SunLight :: TileMap :: ITileMap *pTileMap,
-                       SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
+            EngineHost( Scarab :: Host :: RendererProvider *pRendererProvider,
                        std :: string strEntryArg,
                        std :: string strEntryOverride = std :: string() );
             virtual ~EngineHost( void );
+
+            // Runs the entry script - before the window exists, see the definition
+            void RunEntryScript( void );
 
             // Headless (--headless) only - see LuaAppApi::InstallVirtualClock
             void UseVirtualTime( void );

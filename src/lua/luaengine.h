@@ -95,10 +95,10 @@ namespace Scarab  {
             bool TryDispatchLoadStage( uint16_t nStageId );
             int GetActiveEnemyCount( void );
             const std :: string& GetApplicationDirectory( void ) const;
-            void Init( SunLight :: TileMap :: ITileMap *pTileMap,
-                      SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
+            void Init( Engine :: IRendererProvider *pRendererProvider,
                       SunLight :: Sound :: SoundManager *pSoundManager,
                       Engine :: SpritePool *pSpritePool );
+            void AttachToTileMap( SunLight :: TileMap :: ITileMap &tileMap );
             void InstallVirtualClock( void );
         };
     }

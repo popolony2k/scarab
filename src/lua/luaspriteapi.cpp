@@ -122,6 +122,13 @@ namespace Scarab  {
              */
             int LuaSpriteApi :: ConfigureTexture( lua_State *pLuaState )  {
 
+                /*
+                 * Loading a texture needs a live window/GL context, but this primitive never
+                 * touches GetTileMap()/GetDrawSurface() itself - make sure the renderer exists
+                 * (creating the default one if the script hasn't) before anything is loaded.
+                 */
+                LuaEngineUtil :: EnsureRenderer( pLuaState );
+
                 SpriteHandle  handle           = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
                 int           nSequenceId      = ( int ) lua_tointeger( pLuaState, 2 );
                 const char    *szPath          = lua_tostring( pLuaState, 3 );

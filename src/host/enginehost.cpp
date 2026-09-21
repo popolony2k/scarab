@@ -394,22 +394,47 @@ namespace Scarab  {
         }
 
         /**
-         * @brief Initialize engine, loading all shared objects that will be used
-         * by game through all states.
+         * @brief Run the entry script (main.lua, or whatever the entry
+         * argument resolves to) - BEFORE the window exists, called by main()
+         * ahead of the frame loop. The script may create the renderer itself
+         * (renderer_create); anything that needs a window before it has done
+         * so creates the default renderer on the spot (see RendererProvider),
+         * and a script that never needs one gets the default when it
+         * finishes, so the loop always has a renderer to run on.
+         *
+         * A failure is a normal fatal error: reported and the process exits,
+         * exactly as it used to from the first frame of the loop - just
+         * without a window having flashed open first.
          */
-        void EngineHost :: InitEngineStateHandler( void )  {
+        void EngineHost :: RunEntryScript( void )  {
 
             /*
              * Config loading and stage/sound bootstrap live entirely in Lua
              * now (bootstrap.lua/spriteconfig.lua, dofile'd from main.lua),
              * as does player input handling (player.lua polls
              * input_is_key_down/input_is_gamepad_button_down every
-             * on_update frame) - this state handler just needs to run
-             * main.lua and let it take over.
+             * on_update frame) - this just needs to run main.lua and let it
+             * take over.
              */
-            bool     bSuccess = RunLuaScriptMainEntryPoint();
+            if( RunLuaScriptMainEntryPoint() )  {
+                m_bEntryScriptDone = true;
+            }
+            else  {
+                m_CurrentStateHandler = m_aEngineStateHandlers[STATE_FATAL_ERROR_HANDLING];
+                FatalErrorHandler();
+            }
+        }
 
-            if( bSuccess )
+        /**
+         * @brief First state of the frame loop. The entry script has already
+         * run (RunEntryScript) - this only hands over to the stage state,
+         * keeping the one-frame gap the old "run the script on the first
+         * frame" flow had, so frame numbering (and every virtual-clock
+         * timestamp derived from it) is unchanged.
+         */
+        void EngineHost :: InitEngineStateHandler( void )  {
+
+            if( m_bEntryScriptDone )
                 m_CurrentStateHandler = m_aEngineStateHandlers[STATE_STAGE_RUNNING];
             else
                 m_CurrentStateHandler = m_aEngineStateHandlers[STATE_FATAL_ERROR_HANDLING];
@@ -429,15 +454,15 @@ namespace Scarab  {
 
         /**
          * Constructor. Initialize all class data.
-         * @param pTileMap Pointer to the @link IWorld object
-         * that will be used by this engine;
+         * @param pRendererProvider The provider the renderer is created
+         * through (lazily - it does not exist yet); this registers itself
+         * as the tile-map listener of whatever renderer it creates;
          * @param strEntryArg The entry argument main.cpp requires on the
          * command line (a .lua script path or a .json project file) -
-         * resolved later, from InitEngineStateHandler, since a failure
+         * resolved later, from RunEntryScript, since a failure
          * there already has a normal fatal-error path to report through.
          */
-        EngineHost :: EngineHost( SunLight :: TileMap :: ITileMap *pTileMap,
-                                 SunLight :: DrawSurface :: IDrawSurface *pDrawSurface,
+        EngineHost :: EngineHost( Scarab :: Host :: RendererProvider *pRendererProvider,
                                  std :: string strEntryArg,
                                  std :: string strEntryOverride )  : m_LuaEngine( &m_ScriptProcessorMachine ) {
 
@@ -453,14 +478,25 @@ namespace Scarab  {
             /*
              * Init() resolves the executable's own directory and exposes it
              * to Lua as APP_DIR - main.lua decides where resources actually
-             * live relative to that (BASE_PATH) itself. Neither pTileMap
-             * nor pDrawSurface (sunlight v0.12.0's IDrawSurface split - see
-             * LuaEngineUtil::GetDrawSurface) is kept as a member - EngineHost
-             * has no C++-side use for either anymore now that camera auto-
-             * scroll moved to Lua (camera.lua), so both are forwarded
-             * straight through instead of stored.
+             * live relative to that (BASE_PATH) itself. EngineHost keeps no
+             * ITileMap/IDrawSurface pointer of its own - it has no C++-side
+             * use for either anymore now that camera auto-scroll moved to Lua
+             * (camera.lua); the Lua bridge reaches the renderer through the
+             * provider (see LuaEngineUtil::GetTileMap/GetDrawSurface).
              */
-            m_LuaEngine.Init( pTileMap, pDrawSurface, &m_SoundManager, &m_SpritePool );
+            m_bEntryScriptDone = false;
+
+            m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool );
+
+            /*
+             * Whatever renderer the provider creates (explicitly or the
+             * default), this host listens to its frame updates, and the Lua
+             * bridge attaches its collision listener to it.
+             */
+            pRendererProvider -> SetCreatedHook( [this]( SunLight :: Renderer :: TileMapRenderer &renderer )  {
+                renderer.AddTileMapListener( this );
+                m_LuaEngine.AttachToTileMap( renderer );
+            } );
 
             // Engine state handlers setup
             m_aEngineStateHandlers[STATE_FATAL_ERROR_HANDLING] = std :: bind( &EngineHost :: FatalErrorHandler, this );

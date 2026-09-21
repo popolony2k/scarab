@@ -37,6 +37,7 @@ extern "C"
 #include "engine/spritepool.h"
 #include "scripting/scriptprocessor.h"
 #include "concurrent/timer.h"
+#include "engine/irendererprovider.h"
 
 
 namespace Scarab  {
@@ -97,6 +98,8 @@ namespace Scarab  {
                  */
                 static std :: mutex                       s_LuaMutex;
 
+                static Engine :: IRendererProvider* GetRendererProvider( lua_State *pLuaState );
+                static void EnsureRenderer( lua_State *pLuaState );
                 static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State *pLuaState );
                 static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State *pLuaState );
                 static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State *pLuaState );
