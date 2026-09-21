@@ -40,7 +40,7 @@ BASE_PATH = APP_DIR .. "resources/"
 
 Every other Caravellius module reads `BASE_PATH`, never `APP_DIR` directly — a different game could lay its resources out completely differently and only this one line would need to change.
 
-A few other globals exist purely as internal plumbing between `LuaEngine`/the `Lua*Api` classes and are **not** meant to be read or written by game scripts directly: `scriptProcessorPtr`, `timerMapPtr`, `tileMapPtr`, `soundManagerPtr`, `spritePoolPtr` (opaque light-userdata pointers), and `__collision_handler`/`__collision_tile_handler` (the `__`-prefixed callback storage `collision_set_handler`/`collision_set_tile_handler` install). Interact with these through the documented functions, not by naming the globals themselves.
+A few other globals exist purely as internal plumbing between `LuaEngine`/the `Lua*Api` classes and are **not** meant to be read or written by game scripts directly: `scriptProcessorPtr`, `timerMapPtr`, `rendererProviderPtr`, `soundManagerPtr`, `spritePoolPtr` (opaque light-userdata pointers), and `__collision_handler`/`__collision_tile_handler` (the `__`-prefixed callback storage `collision_set_handler`/`collision_set_tile_handler` install). Interact with these through the documented functions, not by naming the globals themselves.
 
 ## Conventions used in this reference
 
