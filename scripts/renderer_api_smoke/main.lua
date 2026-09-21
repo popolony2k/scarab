@@ -5,7 +5,7 @@
         RENDERER_SMOKE_SCENARIO=<name> scarab --headless --fast --max-frames 200 \
             scripts/renderer_api_smoke/project.json
 
-    Scenarios: defaults, create, errors, lazy, nowindow, views, views_norenderer. Each records its own failures and
+    Scenarios: defaults, create, errors, lazy, nowindow, views, viewsmulti, views_norenderer. Each records its own failures and
     the script quits ITSELF only if there were none (exit 0); otherwise it prints every
     failure and never quits, so --max-frames runs out and scarab exits 3 - a failure with
     the details in the log, not a hang.
@@ -221,11 +221,148 @@ elseif scenario == "views" then
     check( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER ), "resources/tilemap/test.tmx failed to load" )
     check( view_move_camera_up( v ) == true and view_move_camera_left( v ) == true, "view_move_camera_up/left failed with a map loaded" )
 
-    -- extra views do not exist yet; unknown handles are reported, not raised
-    expect_error( "view_create", "only one view supported yet", view_create( r, 0, 0, 100, 100 ) )
+    -- the default view cannot be removed; unknown handles are reported, not raised
     expect_error( "view_destroy default", "the default view cannot be removed", view_destroy( v ) )
     expect_error( "unknown view", "unknown view 7", view_get_zoom( 7 ) )
     expect_error( "view handle type", "expected a view handle", view_get_zoom( "0" ) )
+
+elseif scenario == "viewsmulti" then
+    -- real extra views (view_create and everything that configures one). The hidden-map-layer
+    -- names/ids are those of resources/tilemap/test.tmx: 1 sky, 2 background_clouds, 3 background,
+    -- 4 clouds, 5 houses, 6 smoke, 7 monke, 8 birb.
+    local r = renderer_create{ title = "viewsmulti" }
+    check( r ~= nil, "renderer_create failed" )
+    check( renderer_get_view_count( r ) == 1, "a fresh renderer must have exactly the default view" )
+
+    -- creation: ids >= 1, counted, listed with their own rectangle and the documented defaults
+    local a, err = view_create( r, 1000, 20, 240, 240 )
+    check( a ~= nil and a >= 1, "view_create failed: " .. tostring( err ) )
+    local b = view_create( r, 20, 20, 300, 200 )
+    check( b ~= nil and b > a, "the second view's id must be greater than the first's: " .. tostring( b ) )
+    check( renderer_get_view_count( r ) == 3, "view count after two view_create: " .. tostring( renderer_get_view_count( r ) ) )
+    local x, y, w, h = view_get_dimension( a )
+    check( x == 1000 and y == 20 and w == 240 and h == 240, "new view rectangle: " .. table.concat( { x, y, w, h }, "," ) )
+    check( view_get_visible( a ) == true, "a new view must start visible" )
+    check( view_get_draw_order( a ) == a, "a new view's draw order must be its own id: " .. tostring( view_get_draw_order( a ) ) )
+    check( view_get_clear_background( a ) == true, "a new view must start with its backdrop on" )
+    check( view_get_zoom( a ) == 1.0, "a new view must start at zoom 1.0: " .. tostring( view_get_zoom( a ) ) )
+    local cx, cy = view_get_camera_position( a )
+    check( cx == 0 and cy == 0, "a new view's camera must start at the origin" )
+    check( view_get_draw_order( 0 ) == 0, "the default view's draw order must be 0" )
+
+    -- rejections: the same rules as view_set_dimension, plus the renderer handle
+    expect_error( "view_create unknown renderer", "unknown renderer 5", view_create( 5, 0, 0, 10, 10 ) )
+    expect_error( "view_create renderer type", "expected a renderer handle", view_create( "x", 0, 0, 10, 10 ) )
+    expect_error( "view_create too wide", "must fit the render area", view_create( r, 1000, 0, 300, 100 ) )
+    expect_error( "view_create w zero", "w and h must be at least 1", view_create( r, 0, 0, 0, 10 ) )
+    expect_error( "view_create negative", "x and y must be at least 0", view_create( r, -1, 0, 10, 10 ) )
+    expect_error( "view_create fraction", "must be an integer", view_create( r, 0, 0, 10.5, 10 ) )
+    expect_error( "view_create missing args", "must be an integer", view_create( r, 0, 0 ) )
+    check( renderer_get_view_count( r ) == 3, "a rejected view_create must not add a view" )
+
+    -- visible / draw order / backdrop: exact round trips + validation
+    check( view_set_visible( a, false ) == true and view_get_visible( a ) == false, "view_set_visible(false) did not stick" )
+    check( view_get_visible( b ) == true and view_get_visible( 0 ) == true, "hiding one view changed another" )
+    view_set_visible( a, true )
+    expect_error( "visible type", "must be a boolean", view_set_visible( a, 1 ) )
+    check( view_set_draw_order( a, -5 ) == true and view_get_draw_order( a ) == -5, "view_set_draw_order(-5) did not stick" )
+    expect_error( "draw order type", "must be an integer", view_set_draw_order( a, 1.5 ) )
+    expect_error( "draw order range", "out of range", view_set_draw_order( a, 1 << 40 ) )
+    check( view_set_clear_background( a, false ) == true and view_get_clear_background( a ) == false, "view_set_clear_background(false) did not stick" )
+    view_set_clear_background( a, true )
+    expect_error( "clear type", "must be a boolean", view_set_clear_background( a, "yes" ) )
+    check( view_set_background_color( a, 0, 0, 0 ) == true, "view_set_background_color r,g,b failed" )
+    check( view_set_background_color( a, 10, 20, 30, 128 ) == true, "view_set_background_color r,g,b,a failed" )
+    expect_error( "colour range", "'g' must be between 0 and 255", view_set_background_color( a, 0, 256, 0 ) )
+    expect_error( "colour negative", "'r' must be between 0 and 255", view_set_background_color( a, -1, 0, 0 ) )
+    expect_error( "colour alpha", "'a' must be between 0 and 255", view_set_background_color( a, 0, 0, 0, 300 ) )
+    expect_error( "colour type", "must be an integer", view_set_background_color( a, 0, 0, "blue" ) )
+    check( view_use_map_background_color( a ) == true, "view_use_map_background_color failed" )
+
+    -- each view has its own camera/zoom/limits, and none of it touches the default view
+    check( view_set_zoom( a, 2.0 ) == true and view_set_camera_position( a, 11, 13 ) == true, "configuring view a failed" )
+    check( view_set_zoom_limits( a, 0.5, 4.0 ) == true, "view_set_zoom_limits on an extra view failed" )
+    local lo, hi = view_get_zoom_limits( a )
+    check( lo == 0.5 and hi == 4.0, "an extra view's zoom limits: " .. tostring( lo ) .. ", " .. tostring( hi ) )
+    lo, hi = view_get_zoom_limits( b )
+    check( lo == ZOOM_FACTOR_MIN and hi == ZOOM_FACTOR_MAX, "another view's zoom limits changed: " .. tostring( lo ) .. ", " .. tostring( hi ) )
+    check( view_get_zoom( b ) == 1.0, "configuring view a changed view b's zoom" )
+    check( viewport_get_zoom_factor() == 3.8125, "configuring view a changed the default view's zoom" )
+    local gx, gy = camera_get_position()
+    check( gx == 0 and gy == 0, "configuring view a moved the default view's camera" )
+
+    -- layer mask BEFORE a map is loaded: ids work, names need a map
+    check( view_show_layer( a, 4, false ) == true, "view_show_layer by id before a map failed" )
+    check( view_is_layer_shown( a, 4 ) == false, "layer 4 must be masked out in view a" )
+    check( view_is_layer_shown( b, 4 ) == true and view_is_layer_shown( 0, 4 ) == true, "masking a layer in one view changed another view" )
+    expect_error( "layer name, no map", "no layer named 'clouds'", view_show_layer( a, "clouds", false ) )
+    expect_error( "fit, no map", "no map is loaded", view_fit_to_map( a ) )
+    view_show_all_layers( a )
+    check( view_is_layer_shown( a, 4 ) == true, "view_show_all_layers did not restore layer 4" )
+
+    check( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_TOP_LEFT ), "resources/tilemap/test.tmx failed to load" )
+
+    -- layer mask with the map loaded: by name, by id, only-list, all
+    check( view_show_layer( a, "clouds", false ) == true, "view_show_layer by name failed" )
+    check( view_is_layer_shown( a, 4 ) == false, "hiding 'clouds' by name must mask layer id 4" )
+    expect_error( "layer name, unknown", "no layer named 'nope'", view_show_layer( a, "nope", true ) )
+    check( view_show_layer( a, "clouds", true ) == true and view_is_layer_shown( a, 4 ) == true, "showing 'clouds' again failed" )
+    check( view_show_only_layers( a, { 1, 5 } ) == true, "view_show_only_layers failed" )
+    for id = 1, 8 do
+        local want = ( id == 1 or id == 5 )
+        check( view_is_layer_shown( a, id ) == want, "after show_only {1,5}: layer " .. id .. " shown=" .. tostring( view_is_layer_shown( a, id ) ) )
+        check( view_is_layer_shown( b, id ) == true, "show_only in view a changed view b's layer " .. id )
+        check( view_is_layer_shown( 0, id ) == true, "show_only in view a changed the default view's layer " .. id )
+    end
+    check( view_show_only_layers( a, {} ) == true and view_is_layer_shown( a, 1 ) == false, "an empty only-list must hide every layer" )
+    view_show_all_layers( a )
+    check( view_is_layer_shown( a, 5 ) == true, "view_show_all_layers failed" )
+    expect_error( "only-layers type", "must be a table", view_show_only_layers( a, 4 ) )
+    expect_error( "only-layers element", "layer_ids[2] must be an integer", view_show_only_layers( a, { 1, "x" } ) )
+    expect_error( "layer arg type", "layer id (an integer) or a layer name", view_show_layer( a, true, true ) )
+    expect_error( "layer show type", "must be a boolean", view_show_layer( a, 4, 1 ) )
+    expect_error( "layer_id type", "must be an integer", view_is_layer_shown( a, "4" ) )
+
+    -- fit to map: whole map inside the 240 x 240 rectangle, camera at the map's top-left
+    check( view_fit_to_map( a ) == true, "view_fit_to_map failed with a map loaded" )
+    local zoom = view_get_zoom( a )
+    cx, cy = view_get_camera_position( a )
+    check( zoom >= 0.5 and zoom <= 4.0, "fit zoom outside the view's limits: " .. tostring( zoom ) )
+    check( cx == 0 and cy == 0, "view_fit_to_map must put the camera at the map's top-left: " .. tostring( cx ) .. ", " .. tostring( cy ) )
+    local mapWidth, mapHeight = tilemap_get_map_info()
+    check( mapWidth == 20 and mapHeight == 20, "map info " .. tostring( mapWidth ) .. "x" .. tostring( mapHeight ) )
+
+    -- world-space sprites: off by default, a round trip, applies to sequences configured later,
+    -- and a released handle's recycled slot never inherits it
+    pool_register_type( "ws", 1 )
+    local sp = sprite_acquire( "ws" )
+    check( sp ~= 0, "sprite_acquire failed" )
+    check( sprite_get_world_space( sp ) == false, "a new sprite must not be world-space" )
+    sprite_set_world_space( sp, true )
+    check( sprite_get_world_space( sp ) == true, "sprite_set_world_space(true) did not stick" )
+    check( sprite_configure_texture( sp, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR ) == true, "sprite_configure_texture failed" )
+    check( sprite_get_world_space( sp ) == true, "configuring a texture changed the world-space mode" )
+    check( sprite_release( sp ) == true, "sprite_release failed" )
+    check( sprite_get_world_space( sp ) == false, "a released handle must read as not world-space" )
+    local sp2 = sprite_acquire( "ws" )
+    check( sp2 ~= 0 and sp2 ~= sp, "the recycled slot must come back under a new handle" )
+    check( sprite_get_world_space( sp2 ) == false, "a recycled slot inherited the previous owner's world-space mode" )
+    sprite_set_world_space( 0, true )   -- an invalid handle is a quiet no-op, like every other sprite_set_*
+    check( sprite_get_world_space( 0 ) == false, "an invalid handle must read as not world-space" )
+    sprite_release( sp2 )
+
+    -- destroy: counted, then unknown; ids are never reused; the default view stays
+    check( view_destroy( a ) == true, "view_destroy failed" )
+    check( renderer_get_view_count( r ) == 2, "view count after view_destroy: " .. tostring( renderer_get_view_count( r ) ) )
+    expect_error( "destroyed view", "unknown view " .. a, view_get_zoom( a ) )
+    expect_error( "destroy twice", "unknown view " .. a, view_destroy( a ) )
+    expect_error( "destroyed view visible", "unknown view " .. a, view_set_visible( a, true ) )
+    local c = view_create( r, 0, 0, 100, 100 )
+    check( c ~= nil and c > b, "a view created after a destroy must get a fresh id, not " .. tostring( c ) )
+    check( view_destroy( b ) == true and view_destroy( c ) == true, "destroying the remaining extra views failed" )
+    check( renderer_get_view_count( r ) == 1, "only the default view must remain" )
+    expect_error( "destroy default", "the default view cannot be removed", view_destroy( 0 ) )
+    check( renderer_get_view_count( r ) == 1, "the default view was removed" )
 
 elseif scenario == "views_norenderer" then
     -- a view handle can only exist once a renderer does: asking first is an error and creates nothing

@@ -398,7 +398,7 @@ namespace Scarab  {
             /**
              * @brief Check that argument nIndex names the current renderer.
              */
-            static bool CheckHandle( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+            bool LuaRendererApi :: CheckHandle( lua_State *pLuaState, int nIndex, std :: string &strError )  {
 
                 Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
 
@@ -682,6 +682,26 @@ namespace Scarab  {
             }
 
             /**
+             * @luaname{renderer_get_view_count(renderer) -> count | nil, message}
+             * @luadoc
+             * How many views the renderer has, the default view included — so at least `1`.
+             * `view_create` adds one, `view_destroy` removes one.
+             * @luaexample
+             * print( renderer_get_view_count( renderer ) )   -- 1 until view_create is used
+             */
+            int LuaRendererApi :: RendererGetViewCount( lua_State *pLuaState )  {
+
+                std :: string  strError;
+
+                if( !CheckHandle( pLuaState, 1, strError ) )
+                    return PushError( pLuaState, strError );
+
+                lua_pushinteger( pLuaState, LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetTileMap( "renderer_get_view_count" ) -> GetViewCount() );
+
+                return 1;
+            }
+
+            /**
              * @brief Register the renderer/view constants exposed to Lua.
              */
             void LuaRendererApi :: RegisterEnums( lua_State *pLuaState )  {
@@ -768,6 +788,7 @@ namespace Scarab  {
                 lua_register( pLuaState, "renderer_get_config", LuaRendererApi :: RendererGetConfig );
                 lua_register( pLuaState, "renderer_get_default_view", LuaRendererApi :: RendererGetDefaultView );
                 lua_register( pLuaState, "renderer_get_backend", LuaRendererApi :: RendererGetBackend );
+                lua_register( pLuaState, "renderer_get_view_count", LuaRendererApi :: RendererGetViewCount );
             }
         }
     }

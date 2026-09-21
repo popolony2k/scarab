@@ -704,6 +704,17 @@ def main():
                               "when this mode is actually used.")
     args = parser.parse_args()
 
+    # A src/lua/*api.cpp that registers primitives but is missing from SOURCE_TO_DOC would
+    # be silently left out of the published reference - which is exactly how every renderer_*
+    # and view_* function (v0.1.21) went undocumented for two releases while the index page
+    # already linked to pages that did not exist. Fail instead.
+    unmapped = sorted({src.name for _n, _c, _m, src, _l in find_registrations() if src.name not in SOURCE_TO_DOC})
+    if unmapped:
+        print("error: registers Lua primitives but has no SOURCE_TO_DOC mapping "
+              "(scripts/_lua_api_shared.py), so it would be missing from the published "
+              "reference: " + ", ".join(unmapped), file=sys.stderr)
+        return 1
+
     requested = set(args.source) if args.source else set(SOURCE_TO_DOC)
     for name in requested:
         if name not in SOURCE_TO_DOC:

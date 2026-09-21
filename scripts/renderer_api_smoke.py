@@ -16,6 +16,9 @@ scripts/renderer_api_smoke/main.lua, selected with RENDERER_SMOKE_SCENARIO:
   views     every view_* function on the default view: exact zoom/limits/enabled/dimension/
             scroll-step/camera round trips, every rejection, and agreement with the older
             global camera_*/zoom_*/viewport_* functions;
+  viewsmulti  real extra views: view_create/view_destroy, counts, ids never reused, visible/draw
+            order/backdrop/layer-mask round trips (by id and by name), view_fit_to_map, every
+            rejection, and that configuring one view never touches another;
   views_norenderer  a view call before any renderer is an error and creates none.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
@@ -28,7 +31,7 @@ import os
 import subprocess
 import sys
 
-SCENARIOS           = ["defaults", "create", "errors", "lazy", "nowindow", "views", "views_norenderer"]
+SCENARIOS           = ["defaults", "create", "errors", "lazy", "nowindow", "views", "viewsmulti", "views_norenderer"]
 MAX_FRAMES          = 200
 RUN_TIMEOUT_SECONDS = 120
 PROJECT             = "scripts/renderer_api_smoke/project.json"
