@@ -107,9 +107,9 @@ namespace Scarab  {
              * shows its `activeTileIndex` frame and never steps. Pass a real
              * delay (say `100`) for any sprite whose frames should cycle:
              * `AUTOMATIC_CIRCULAR`/`AUTOMATIC_RIGHT_LEFT` step about once per
-             * `delayMilli`. It is also the delay between *different* textures
-             * when several are added to one sequence, which Scarab does not
-             * do — a sequence holds exactly one texture.
+             * `delayMilli`. Configuring the same sequence again (a recycled
+             * pool slot) reloads the texture and applies the new `delayMilli`;
+             * the sequence keeps holding exactly one texture.
              *
              * Animation mode constants:
              *
@@ -191,7 +191,18 @@ namespace Scarab  {
                 pTexture -> SetTileSize( nTextureWidth );
                 pTexture -> SetAnimationMode( ( AnimationMode ) nAnimationMode );
 
-                pSprite -> AddTextureSequence( nSequenceId, pTexture, nDelayMilli );
+                /*
+                 * A recycled pool slot already holds this sequence's canvas: adding it again would
+                 * append a second entry for the same canvas (one more every recycle - memory growth,
+                 * and the entries step one after another with their own delays, so the animation pace
+                 * changed with the recycle count). Keep the entry and only apply the (possibly new)
+                 * delay; the canvas's parent, dimension and mode were set the first time round.
+                 */
+                if( pSprite -> GetTextureSequenceSize( nSequenceId ) > 0 )
+                    pSprite -> SetTextureSequenceDelay( nSequenceId, nDelayMilli );
+                else
+                    pSprite -> AddTextureSequence( nSequenceId, pTexture, nDelayMilli );
+
                 pSprite -> SetVisible( true );
 
                 lua_pushboolean( pLuaState, true );
