@@ -185,6 +185,30 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
 | S2 | Mechanical alignment pass, object-file-identical proof | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
 
+## Phase T: documentation review
+
+Done last, the same reasoning sunlight's own Phase T used: a documentation pass is only
+accurate once the features it describes are actually settled, not before.
+
+| # | Item | Status |
+|---|------|--------|
+| T1 | A full documentation pass once every other phase's changes have landed | TODO |
+| T2 | Simplify `README.md` | TODO |
+
+**T1.** Scope: `README.md`; the generated Lua API reference's own source comments
+(`@luadoc`/`@luaexample` tags in `src/lua/`); `samples/*/docs/README.md`; `CLAUDE.md`'s own
+"Known gotchas" (several will need a new entry or an update from this plan's own
+findings - the `use_default_key_handler` design (D1), the non-integer-zoom pixel-snap
+fixes (V2), `MoveCamera*`'s new boundary behavior (V1)); `doc/lua-integration.md`.
+
+**T2.** The owner's own assessment (2026-10-20): Scarab's `README.md` reads as "too much
+polluted." Measured, not assumed: it is 197 lines with 17 section headings, against
+sunlight's own `README.md` at 193 lines with 22 headings - comparable in raw size, so
+whatever makes it feel polluted is density or structure, not length alone. sunlight's
+`README.md` can be used as a base. Scope, left open: what moves out (to `CLAUDE.md`, to a
+dedicated `doc/` file, or is dropped), what stays, and the target structure - discussed in
+full when this item starts, not decided here.
+
 ## Process
 
 - **Peer impact for Caravellius**: [doc/CARAVELLIUS_BREAKAGES.md](CARAVELLIUS_BREAKAGES.md),
