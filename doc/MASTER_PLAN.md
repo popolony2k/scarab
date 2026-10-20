@@ -83,7 +83,7 @@ given `MoveCamera*`'s own null-map guards - not yet tested).
 
 | # | Item | Status |
 |---|------|--------|
-| V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46, 50) - 32 call sites | TODO |
+| V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46) - 32 call sites | TODO |
 | V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | TODO |
 | V3 | `nOpacity` 0..255 round-trip (entry 41) | TODO |
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | TODO |
@@ -93,6 +93,8 @@ given `MoveCamera*`'s own null-map guards - not yet tested).
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | TODO |
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47) | TODO |
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | TODO |
+| V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
+| V12 | A tile object resized away from its own tile's size now takes its object layer's tint (entry 45) | TODO |
 
 **V1.** Not just a rename: the scroll clamp genuinely changed (the last step can now be
 partial, reaching the map's true edge where it used to stop a step short;
@@ -121,6 +123,16 @@ stored the old number (a saved binding, a hard-coded 82).
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
 unaffected or adjusted, not assumed from the BREAKAGES table alone.
 
+**V11.** BREAKAGES' own note: "any game with a sprite in the last strip of a map, at any
+camera position" could have hit this before the fix, and "Caravellius has not hit it so far
+(the maintainer's observation, not a test)" - Scarab has made no observation of its own
+either way. Scope: check `samples/collision` and any other Scarab sample/sprite setup that
+can reach a map's last strip.
+
+**V12.** Scope: check `resources/tilemap/test.tmx` and any other Scarab map for a resized
+tile object on a tinted object layer - before this fix it drew untinted (white, with only
+its opacity); if any Scarab asset relied on that, it now looks different.
+
 ## Phase O: confirmed not applicable, recorded anyway
 
 | # | Change | BREAKAGES entry | Why |
@@ -135,16 +147,21 @@ unaffected or adjusted, not assumed from the BREAKAGES table alone.
 | O8 | TTF/OTF accented glyphs | 43 | Scarab's docs name a TTF only as an example; no live behavior to check |
 | O9 | `IEngine` gains `LoadFont`/`BeginClip`/`EndClip` | 6 | Scarab doesn't implement `IEngine` |
 | O10 | `SetWindowBackgroundColor` takes `stColor` | 10 | Nothing in Scarab calls it |
+| O11 | `doc/TODO.txt`/`FIXME.txt`/`MISSING_FEATURES.md` removed from sunlight | 3 | No link to them anywhere in Scarab |
+| O12 | `IFont` is a new interface in its own module | 9 | Only code that uses `IFont` directly; Scarab doesn't |
+| O13 | `FileSystem::Mount` sets PhysFS up itself, so it can be the first call | 12 | Scarab already calls `Init(argv[0])` first |
+| O14 | Sample fonts moved to `samples/shared/fonts` in sunlight | 13 | Samples only, no API change |
 
 ## Phase C: new capabilities, not required
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
-| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33 | Whether/when to expose any of this to Lua - a real product decision, not a breakage fix |
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | Whether/when to expose any of this to Lua - a real product decision, not a breakage fix |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
+| C6 | `TileMapRenderer::RegisterFont(family, path, bold, italic)` | 7 | A new public method; text objects draw with the registered font - expose to Lua? |
 
 ## Phase R: requisites
 
