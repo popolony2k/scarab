@@ -470,7 +470,7 @@ namespace Scarab  {
                     return 1;
                 }
 
-                SunLight :: TileMap :: stCoordinate2D&  pos = pSprite -> GetDimension2D().pos;
+                SunLight :: Base :: stCoordinate2D&  pos = pSprite -> GetDimension2D().pos;
 
                 lua_pushinteger( pLuaState, pos.x );
                 lua_pushinteger( pLuaState, pos.y );
@@ -512,7 +512,7 @@ namespace Scarab  {
                     return 1;
                 }
 
-                SunLight :: TileMap :: stSize2D&  size = pSprite -> GetDimension2D().size;
+                SunLight :: Base :: stSize2D&  size = pSprite -> GetDimension2D().size;
 
                 lua_pushinteger( pLuaState, size.nWidth );
                 lua_pushinteger( pLuaState, size.nHeight );

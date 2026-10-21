@@ -277,7 +277,7 @@ namespace Scarab  {
              */
             int LuaTilemapApi :: ToTileMatrix( lua_State *pLuaState )  {
 
-                stCoordinate2D  coord;
+                SunLight :: Base :: stCoordinate2D  coord;
 
                 coord.x = ( int ) lua_tointeger( pLuaState, 1 );
                 coord.y = ( int ) lua_tointeger( pLuaState, 2 );

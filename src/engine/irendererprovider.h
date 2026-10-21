@@ -86,8 +86,18 @@ namespace Scarab  {
              * window. Fails - with the reason in *pError - if one already exists (naming the
              * primitive that created the default one implicitly, when that's what happened),
              * or if the configuration can't work.
+             * @param bUseDefaultKeyHandler Install sunlight's own default camera/zoom key and
+             * gamepad bindings (arrow keys, PageUp/Down, Home/End, and the matching gamepad
+             * buttons) once the renderer exists - what renderer_create's own
+             * use_default_key_handler option asks for. Kept out of RendererConfig itself
+             * (which sunlight's own equivalent field was removed from, see doc/MASTER_PLAN.md
+             * item D1) since installing a preset is an action a concrete provider takes once
+             * the renderer exists, not a passive configuration value - this interface stays
+             * Lua-agnostic and sunlight-input-agnostic either way: it names no sunlight input
+             * type anywhere, only this one bool.
              */
-            virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError ) = 0;
+            virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
+                                         bool bUseDefaultKeyHandler, std :: string *pError ) = 0;
 
             /** @brief How the current renderer came to exist (ORIGIN_NONE if it doesn't yet). */
             virtual Origin GetOrigin( void ) = 0;
@@ -106,6 +116,15 @@ namespace Scarab  {
 
             /** @brief Record a window-title change, so the effective configuration stays live. */
             virtual void NoteWindowTitle( const std :: string &strTitle ) = 0;
+
+            /**
+             * @brief What CreateRenderer's own bUseDefaultKeyHandler was last given (false if
+             * no renderer exists yet, or it was created implicitly - the lazy default never
+             * requests this). renderer_get_config's own use_default_key_handler field reads
+             * this back, the same "a creation-time value, not changed later" status its other
+             * creation-only fields already have (view_control_mode, frame_pacing, max_frames).
+             */
+            virtual bool GetUseDefaultKeyHandler( void ) = 0;
         };
     }
 }

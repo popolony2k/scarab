@@ -223,7 +223,7 @@ namespace Scarab  {
              * defaults). Also reports which of the null-backend-only options were given.
              */
             static bool ParseOptions( lua_State *pLuaState, int nTable, RendererConfig &config,
-                                      bool &bNullOnlyGiven, std :: string &strError )  {
+                                      bool &bNullOnlyGiven, bool &bUseDefaultKeyHandler, std :: string &strError )  {
 
                 static const char * const  aszViewport[]   = { "x", "y", "w", "h" };
                 static const char * const  aszScrollStep[] = { "w", "h" };
@@ -279,7 +279,7 @@ namespace Scarab  {
                     else if( strKey == "draw_fps" )
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bDrawFPS, strError );
                     else if( strKey == "use_default_key_handler" )
-                        bOk = ReadBoolean( pLuaState, -1, strKey, config.bUseDefaultKeyHandler, strError );
+                        bOk = ReadBoolean( pLuaState, -1, strKey, bUseDefaultKeyHandler, strError );
                     else if( strKey == "stretch_to_fill" )
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bStretchToFill, strError );
                     else if( strKey == "fullscreen" )
@@ -325,7 +325,7 @@ namespace Scarab  {
                         bOk = ReadIntegerFields( pLuaState, -1, strKey, aszViewport, 4, 0, nIntMax, aRect, strError );
 
                         if( bOk )  {
-                            SunLight :: TileMap :: stDimension2D  viewport;
+                            SunLight :: Base :: stDimension2D  viewport;
 
                             viewport.pos.x        = ( int ) aRect[0];
                             viewport.pos.y        = ( int ) aRect[1];
@@ -385,7 +385,7 @@ namespace Scarab  {
                 }
 
                 if( config.viewport )  {
-                    const SunLight :: TileMap :: stDimension2D  &vp = *config.viewport;
+                    const SunLight :: Base :: stDimension2D  &vp = *config.viewport;
 
                     if( vp.size.nWidth < 1 || vp.size.nHeight < 1 )  {
                         strError = "option 'viewport' needs w and h of at least 1";
@@ -495,13 +495,14 @@ namespace Scarab  {
 
                 Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
                 RendererConfig                config    = pProvider -> GetDefaultConfig();
-                bool                          bNullOnlyGiven = false;
+                bool                          bNullOnlyGiven        = false;
+                bool                          bUseDefaultKeyHandler = false;
                 std :: string                 strError;
 
                 if( lua_gettop( pLuaState ) > 1 || ( lua_gettop( pLuaState ) == 1 && !lua_istable( pLuaState, 1 ) ) )
                     return PushError( pLuaState, "renderer_create expects one argument: an options table" );
 
-                if( lua_gettop( pLuaState ) == 1 && !ParseOptions( pLuaState, 1, config, bNullOnlyGiven, strError ) )
+                if( lua_gettop( pLuaState ) == 1 && !ParseOptions( pLuaState, 1, config, bNullOnlyGiven, bUseDefaultKeyHandler, strError ) )
                     return PushError( pLuaState, strError );
 
                 bool  bNullBackend = pProvider -> IsHeadless() || config.backend == RENDERER_BACKEND_NULL;
@@ -509,7 +510,7 @@ namespace Scarab  {
                 if( !ValidateConfig( config, bNullOnlyGiven, bNullBackend, strError ) )
                     return PushError( pLuaState, strError );
 
-                if( !pProvider -> CreateRenderer( config, &strError ) )
+                if( !pProvider -> CreateRenderer( config, bUseDefaultKeyHandler, &strError ) )
                     return PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, __RENDERER_HANDLE );
@@ -616,7 +617,7 @@ namespace Scarab  {
                 RendererConfig                         config    = pProvider -> GetEffectiveConfig();
                 SunLight :: DrawSurface :: IDrawSurface  *pSurface  = pProvider -> PeekDrawSurface();
                 SunLight :: TileMap :: ITileMap          *pTileMap  = pProvider -> GetTileMap( "renderer_get_config" );
-                SunLight :: TileMap :: stDimension2D    &vp        = pTileMap -> GetViewport().GetDimension2D();
+                SunLight :: Base :: stDimension2D    &vp        = pTileMap -> GetViewport().GetDimension2D();
 
                 lua_newtable( pLuaState );
 
@@ -649,7 +650,7 @@ namespace Scarab  {
                 lua_setfield( pLuaState, -2, "scroll_step" );
 
                 SetIntegerField( pLuaState, "view_control_mode", config.viewControlMode );
-                SetBooleanField( pLuaState, "use_default_key_handler", config.bUseDefaultKeyHandler );
+                SetBooleanField( pLuaState, "use_default_key_handler", pProvider -> GetUseDefaultKeyHandler() );
                 SetIntegerField( pLuaState, "exit_key", pSurface -> GetExitKey() );
                 SetBooleanField( pLuaState, "stretch_to_fill", pSurface -> GetStretchToFill() );
                 SetBooleanField( pLuaState, "fullscreen", pSurface -> GetFullscreen() );

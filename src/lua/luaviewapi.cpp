@@ -162,7 +162,7 @@ namespace Scarab  {
              * rectangle and check it against the render area - the rules view_create and
              * view_set_dimension share.
              */
-            static bool ReadViewRect( lua_State *pLuaState, int nFirst, SunLight :: TileMap :: stDimension2D &rect, std :: string &strError )  {
+            static bool ReadViewRect( lua_State *pLuaState, int nFirst, SunLight :: Base :: stDimension2D &rect, std :: string &strError )  {
 
                 lua_Integer                aRect[4]    = { 0, 0, 0, 0 };
                 static const char * const  aszNames[4] = { "x", "y", "w", "h" };
@@ -238,7 +238,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewCreate( lua_State *pLuaState )  {
 
                 std :: string                          strError;
-                SunLight :: TileMap :: stDimension2D   rect;
+                SunLight :: Base :: stDimension2D   rect;
 
                 if( !LuaRendererApi :: CheckHandle( pLuaState, 1, strError ) || !ReadViewRect( pLuaState, 2, rect, strError ) )
                     return PushError( pLuaState, strError );
@@ -584,7 +584,7 @@ namespace Scarab  {
             int LuaViewApi :: ViewSetDimension( lua_State *pLuaState )  {
 
                 std :: string                          strError;
-                SunLight :: TileMap :: stDimension2D   rect;
+                SunLight :: Base :: stDimension2D   rect;
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
@@ -610,7 +610,7 @@ namespace Scarab  {
                 if( !pView )
                     return PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: stDimension2D  &dim = pView -> GetViewport().GetDimension2D();
+                SunLight :: Base :: stDimension2D  &dim = pView -> GetViewport().GetDimension2D();
 
                 lua_pushinteger( pLuaState, dim.pos.x );
                 lua_pushinteger( pLuaState, dim.pos.y );
