@@ -29,7 +29,7 @@ pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 | # | Item | Status |
 |---|------|--------|
 | P0 | Write and get this document approved | DONE |
-| P1 | Split `SCARAB_SUNLIGHT_VERSION`'s single hardcoded-`v`-prefix mechanism into a fetch-ref variable and a display-version variable; decide `--version`'s format for a commit-pinned build | TODO |
+| P1 | Split `SCARAB_SUNLIGHT_VERSION`'s single hardcoded-`v`-prefix mechanism into a fetch-ref variable and a display-version variable; decide `--version`'s format for a commit-pinned build | DONE |
 | P2 | Pin `GIT_TAG` to `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; make the code compile against it (the `SunLight::Base` namespace move, BREAKAGES entry 14; `BaseCommand`'s new header, entry 5) | TODO |
 | P3 | Every existing Scarab check green against the pin, before any further BREAKAGES item is touched | TODO |
 
@@ -38,13 +38,29 @@ pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 chain), reviewed and approved by the owner before the `master_plan` branch held anything
 else.
 
-**P1.** `GIT_TAG v${SCARAB_SUNLIGHT_VERSION}` (`CMakeLists.txt`) and
-`"sunlight v" SCARAB_SUNLIGHT_VERSION` (`main.cpp`'s `--version` string) both hardcode a
-literal `v` in front of the variable, so it can't hold a commit hash as-is - confirmed by
-reading both call sites, not assumed. Scope: two variables instead of one - one holding the
-exact ref to fetch verbatim, one holding what `--version` prints; `--version`'s exact
-wording during this plan (candidate: `sunlight feat/master_plan@<short hash>`, from the
-brief's own suggestion).
+**P1 (DONE).** `GIT_TAG v${SCARAB_SUNLIGHT_VERSION}` (`CMakeLists.txt`) and
+`"sunlight v" SCARAB_SUNLIGHT_VERSION` (`main.cpp`'s `--version` string) both hardcoded a
+literal `v` in front of the variable, so it couldn't hold a commit hash as-is - confirmed by
+reading both call sites, not assumed. `SCARAB_SUNLIGHT_VERSION` is now two variables,
+`SCARAB_SUNLIGHT_REF` (what `GIT_TAG` fetches) and `SCARAB_SUNLIGHT_DISPLAY_VERSION` (what
+`--version` prints after `"sunlight "`), each used **verbatim** at its one call site - no
+`v` hardcoded anywhere else, so either variable can hold any ref shape (a tag, a bare commit
+hash, a `branch@shorthash`) without the other needing to change. **Decided while building
+it**, not exactly as first scoped: rather than conflating the mechanism change with the
+actual hash pin (P2), P1 keeps both variables pointing at today's real release
+(`SCARAB_SUNLIGHT_REF "v0.38.0"`, `SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.38.0"`) and proves the
+refactor is behavior-neutral; P2 is where they actually flip to the commit hash, together
+with the compile fixes that requires. `CLAUDE.md`'s own Build-section description of this
+mechanism is updated in the same change (agreed with the owner - the doc describes the exact
+mechanism being changed, not a general sweep for Phase T).
+- Test items: `scarab --version` is byte-for-byte identical to before
+  (`scarab v0.1.25 (sunlight v0.38.0, Lua 5.4.7)`), confirmed by a direct string comparison,
+  not eyeballed; `cmake -B build -S .` configures clean against `v0.38.0` through the new
+  `GIT_TAG ${SCARAB_SUNLIGHT_REF}`; a headless sample (`samples/hello-world`) still runs.
+- `--version`'s format for the commit-pinned build (P2's own concern, decided here since the
+  mechanism now exists to support it): `scarab v<version> (sunlight <branch>@<short hash>,
+  <Lua release>)`, eg. `scarab v0.1.25 (sunlight feat/master_plan@772851c, Lua 5.4.7)` -
+  matches the handoff brief's own suggested shape.
 
 **P2.** `stDimension2D`/`stSize2D`/`stCoordinate2D` move from `SunLight::TileMap` to
 `SunLight::Base`, no aliases kept (BREAKAGES entry 14) - 11 sites in Scarab (`main.cpp`,

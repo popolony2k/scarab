@@ -6,12 +6,30 @@
 cmake_minimum_required(VERSION 3.24)
 
 #
-# SCARAB_SUNLIGHT_VERSION is the one place the pinned sunlight release lives -
-# both the FetchContent GIT_TAG below and the --version/-v CLI output (see
-# main.cpp) read it from here, so bumping a sunlight dependency never means
-# updating the tag in two places that could drift out of sync.
+# These two are the only place the pinned sunlight commit/release lives - both
+# the FetchContent GIT_TAG below and the --version/-v CLI output (see main.cpp)
+# read them from here, so bumping a sunlight dependency never means updating a
+# ref in two places that could drift out of sync. Each variable is used
+# VERBATIM at its one call site - neither main.cpp nor the GIT_TAG line below
+# prepends anything to it - so either can hold any ref shape without the other
+# needing to change:
+#   - a normal tagged release: SCARAB_SUNLIGHT_REF "v0.38.0",
+#     SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.38.0" (identical strings; the
+#     leading "v" is part of the value now, not hardcoded at either site);
+#   - a commit pinned during Scarab's master_plan integration (see
+#     doc/MASTER_PLAN.md item P1): SCARAB_SUNLIGHT_REF is the full 40-character
+#     hash GIT_TAG needs, SCARAB_SUNLIGHT_DISPLAY_VERSION is a human-readable
+#     branch@shorthash for --version instead, eg.
+#     "feat/master_plan@772851c".
+# Before this split, one variable held a bare number ("0.38.0") and a literal
+# "v" was hardcoded separately at both call sites - which broke the moment
+# this project needed to pin a raw commit hash instead of a release tag (a
+# "v"-prefixed hash is not a valid ref, and "sunlight v<hash>" is not a
+# sensible version string either). See doc/MASTER_PLAN.md item P1 for the
+# full story.
 #
-set(SCARAB_SUNLIGHT_VERSION "0.38.0")
+set(SCARAB_SUNLIGHT_REF "v0.38.0")
+set(SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.38.0")
 
 project(scarab VERSION 0.1.25)
 
@@ -73,7 +91,7 @@ option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library inst
 ####################################################################
 FetchContent_Declare(sunlight
                      GIT_REPOSITORY https://github.com/popolony2k/sunlight.git
-                     GIT_TAG v${SCARAB_SUNLIGHT_VERSION})
+                     GIT_TAG ${SCARAB_SUNLIGHT_REF})
 FetchContent_MakeAvailable(sunlight)
 
 ####################################################################
@@ -312,13 +330,15 @@ target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CL
 
 #
 # Feeds --version/-v (main.cpp) - PROJECT_VERSION comes from this file's own
-# project(scarab VERSION ...) above; SCARAB_SUNLIGHT_VERSION is the same
-# variable the sunlight FetchContent_Declare's GIT_TAG already reads, so the
-# printed sunlight version always matches what was actually fetched.
+# project(scarab VERSION ...) above; SCARAB_SUNLIGHT_DISPLAY_VERSION is set
+# alongside SCARAB_SUNLIGHT_REF above (the sunlight FetchContent_Declare's own
+# GIT_TAG), so the printed sunlight version is always a human-readable account
+# of what was actually fetched, even when the fetched ref itself (a commit
+# hash) would not be.
 #
 target_compile_definitions(scarab PRIVATE
   SCARAB_VERSION="${PROJECT_VERSION}"
-  SCARAB_SUNLIGHT_VERSION="${SCARAB_SUNLIGHT_VERSION}"
+  SCARAB_SUNLIGHT_DISPLAY_VERSION="${SCARAB_SUNLIGHT_DISPLAY_VERSION}"
   SCARAB_CONTENT_KEY="${SCARAB_CONTENT_KEY}"
   SCARAB_CONTENT_KEY_IS_SHARED=$<BOOL:${SCARAB_CONTENT_KEY_IS_SHARED}>)
 
