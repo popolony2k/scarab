@@ -127,11 +127,16 @@ int main( int argc, char **argv ) {
      */
     CLI :: App  app{ "Scarab - a thin, game-agnostic 2D engine host built on sunlight" };
 
-    // SCARAB_VERSION/SCARAB_SUNLIGHT_VERSION are compiler-defined string
-    // literals (target_compile_definitions, root CMakeLists.txt) - adjacent
-    // string literal concatenation joins them into one literal at compile
-    // time, so this always reflects the exact sunlight tag actually fetched,
-    // not a hand-copied value that could drift out of sync.
+    // SCARAB_VERSION/SCARAB_SUNLIGHT_DISPLAY_VERSION are compiler-defined
+    // string literals (target_compile_definitions, root CMakeLists.txt) -
+    // adjacent string literal concatenation joins them into one literal at
+    // compile time. SCARAB_SUNLIGHT_DISPLAY_VERSION is set alongside (not
+    // derived from) the ref sunlight's own FetchContent GIT_TAG actually
+    // fetches, so bumping the pin updates both together, in one place - see
+    // the comment on SCARAB_SUNLIGHT_REF/SCARAB_SUNLIGHT_DISPLAY_VERSION in
+    // CMakeLists.txt for why they are two variables, not one, and no "v" is
+    // hardcoded here: SCARAB_SUNLIGHT_DISPLAY_VERSION supplies the whole
+    // fragment printed after "sunlight ", exactly as set.
     //
     // LUA_RELEASE (eg. "Lua 5.4.7") is different - not a Scarab-owned
     // define at all, but Lua's own compile-time macro (lua.h, transitively
@@ -146,7 +151,7 @@ int main( int argc, char **argv ) {
     // straight from whichever lua.h actually got compiled against means
     // this always matches reality for either backend automatically, with
     // no separate tracking needed for the FTP path either.
-    app.set_version_flag( "--version,-v", "scarab v" SCARAB_VERSION " (sunlight v" SCARAB_SUNLIGHT_VERSION ", " LUA_RELEASE ")" );
+    app.set_version_flag( "--version,-v", "scarab v" SCARAB_VERSION " (sunlight " SCARAB_SUNLIGHT_DISPLAY_VERSION ", " LUA_RELEASE ")" );
 
     std :: string  strEntryPath;
     std :: string  strEntryOverride;
