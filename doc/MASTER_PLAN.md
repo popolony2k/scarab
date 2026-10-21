@@ -30,8 +30,8 @@ pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 |---|------|--------|
 | P0 | Write and get this document approved | DONE |
 | P1 | Split `SCARAB_SUNLIGHT_VERSION`'s single hardcoded-`v`-prefix mechanism into a fetch-ref variable and a display-version variable; decide `--version`'s format for a commit-pinned build | DONE |
-| P2 | Pin `GIT_TAG` to `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; make the code compile against it (the `SunLight::Base` namespace move, BREAKAGES entry 14; `BaseCommand`'s new header, entry 5) | TODO |
-| P3 | Every existing Scarab check green against the pin, before any further BREAKAGES item is touched | TODO |
+| P2 | Pin `GIT_TAG` to `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; make the code compile against it (the `SunLight::Base` namespace move, BREAKAGES entry 14; `BaseCommand`'s new header, entry 5) | DONE |
+| P3 | Every existing Scarab check green against the pin, before any further BREAKAGES item is touched | DONE |
 
 **P0 (DONE).** This document and [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -62,38 +62,79 @@ mechanism being changed, not a general sweep for Phase T).
   <Lua release>)`, eg. `scarab v0.1.25 (sunlight feat/master_plan@772851c, Lua 5.4.7)` -
   matches the handoff brief's own suggested shape.
 
-**P2.** `stDimension2D`/`stSize2D`/`stCoordinate2D` move from `SunLight::TileMap` to
-`SunLight::Base`, no aliases kept (BREAKAGES entry 14) - 11 sites in Scarab (`main.cpp`,
-`src/lua/luaspriteapi.cpp`, `src/lua/luatilemapapi.cpp`, `src/lua/luarendererapi.cpp`,
-`src/lua/luaviewapi.cpp`, `src/lua/luacameraapi.cpp`), confirmed by grep. `BaseCommand`
-gaining a virtual destructor moves the command enum to a new header, `scripting/command.h`
-(entry 5) - check for any direct include of the old path. Both are flat compile errors the
-moment the pin lands, not optional follow-ups, so they land in the same PR as the pin
-itself, not after it.
+**P2 (DONE).** `stDimension2D`/`stSize2D`/`stCoordinate2D` move from `SunLight::TileMap` to
+`SunLight::Base`, no aliases kept (BREAKAGES entry 14) - **12 sites, not the 11 a first grep
+found**: `main.cpp`, `src/lua/luaspriteapi.cpp`, `src/lua/luarendererapi.cpp`,
+`src/lua/luaviewapi.cpp`, `src/lua/luacameraapi.cpp` each had the type fully qualified
+(`SunLight :: TileMap :: stDimension2D` etc., 11 sites, renamed by a scripted substitution);
+`src/lua/luatilemapapi.cpp` had a 12th, unqualified `stCoordinate2D` relying on its own
+`using namespace SunLight :: TileMap;` - **found only by actually grepping that one file
+again after the others compiled clean**, not assumed from BREAKAGES' own count, and fixed by
+qualifying that one site explicitly (`SunLight :: Base :: stCoordinate2D`) rather than adding
+a second `using namespace` line. `BaseCommand`'s new header (entry 5): no direct include of
+the old command-types path anywhere in Scarab, confirmed by grep - nothing to do.
+- **Found while building it, not in P2's original scope**: `src/lua/luarendererapi.cpp`
+  reads and writes `config.bUseDefaultKeyHandler` directly, a flat compile error of its own
+  once `RendererConfig` loses that field (BREAKAGES entry 26) - P2 could not compile without
+  resolving this too. **Owner's decision (2026-10-21): implement D1 in full here**, rather
+  than a minimal no-op stash, since D1's design was already settled and small. See D1 below
+  for what was built; it shipped in this same PR.
+- Test items: `cmake -B build -S .` configures and builds clean against the real, network-
+  fetched commit (not just the local `../sunlight` checkout used for fast iteration) -
+  confirmed separately, `git -C build/_deps/sunlight-src rev-parse HEAD` reads exactly
+  `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; `scarab --version` prints
+  `scarab v0.1.25 (sunlight feat/master_plan@772851c, Lua 5.4.7)`, matching P1's own decided
+  format exactly.
 
-**P3.** Scope: rebuild clean, run `scripts/renderer_api_smoke.py`,
-`scripts/tileset_archive_smoke.py`, the headless smoke project
-(`scripts/headless_smoke/`), and all 15 samples headless, with no behavior change expected
-at this stage.
+**P3 (DONE, folded into the same PR as P2 - its own scope was already satisfied by P2's
+verification).** `scripts/renderer_api_smoke.py` (all 9 scenarios, including `create`'s own
+`use_default_key_handler` option round-trip), `scripts/tileset_archive_smoke.py`, the
+headless smoke project, and all 15 samples headless - all green against the real pin.
+Additionally (not in P3's original scope, but the natural check for what P2 found): a
+scratch headless script confirmed `renderer_create{ use_default_key_handler = true }`
+creates the renderer without crashing *before* any map is loaded and that
+`renderer_get_config`'s readback matches, then `tilemap_load_map` still succeeds afterward -
+closing D1's own open question (`Install` is safe to call before a map is loaded). Not
+checked: the bindings' actual functional effect (do the arrow keys really pan the camera) -
+nothing exercises real input headless, and this was never checked in a real window even
+before this change (`use_default_key_handler=true` was never used by any Scarab sample,
+confirmed earlier). Available as a quick real-window check if wanted; not blocking.
 
 ## Phase D: design items
 
 | # | Item | Status |
 |---|------|--------|
-| D1 | `use_default_key_handler` (BREAKAGES entry 26) - keep the Lua shape, back it with `DefaultControllerBindings::Install` | TODO |
+| D1 | `use_default_key_handler` (BREAKAGES entry 26) - keep the Lua shape, back it with `DefaultControllerBindings::Install` | DONE |
 
-**D1 (design settled, 2026-10-19; implementation TODO).** `RendererConfig::bUseDefaultKeyHandler`
-and the classic 5-argument `TileMapRenderer` constructor are both removed in sunlight; the
-equivalent is now an explicit, one-time call,
-`SunLight::Input::DefaultControllerBindings::Install( ITileMap& map, IControllerManager& controllerManager )`
-(confirmed by reading `src/input/defaultcontrollerbindings.h` directly - stateless,
-registering twice re-registers independently, no deduplication). Option B, agreed with the
-owner: `renderer_create`'s/`renderer_get_config`'s `use_default_key_handler` keeps its
-exact name and meaning (nothing in Scarab - not one sample - sets it `true` outside the
-renderer-API smoke test's own option round-trip, confirmed by grep). Scope:
-`RendererProvider::Create` calls `Install` once, right after `Start()`, when the option was
-requested `true`; confirm `Install` is safe to call before any map is loaded (expected yes,
-given `MoveCamera*`'s own null-map guards - not yet tested).
+**D1 (DONE, 2026-10-21 - implemented inside P2, not as its own separate PR, since P2 could
+not compile without it; see P2's own write-up above).** `RendererConfig::bUseDefaultKeyHandler`
+and the classic 5-argument `TileMapRenderer` constructor are both removed in sunlight. Option
+B, as agreed: `renderer_create`'s/`renderer_get_config`'s `use_default_key_handler` keeps its
+exact name and meaning. Implementation:
+- `Scarab::Engine::IRendererProvider::CreateRenderer` gains a second parameter,
+  `bool bUseDefaultKeyHandler` - a plain bool, not a new method naming
+  `DefaultControllerBindings` anywhere in this interface, so `IRendererProvider` stays exactly
+  as Lua-agnostic *and* sunlight-input-agnostic as its own doc comment already claimed (it
+  names no sunlight input type, only one bool). A new `GetUseDefaultKeyHandler()` getter
+  mirrors `GetEffectiveConfig()`'s own "read back what creation was actually given" shape, for
+  `renderer_get_config` to use.
+- `Scarab::Host::RendererProvider` (the one, sole implementer) stores what it was given in a
+  new `m_bUseDefaultKeyHandler` member, and calls
+  `SunLight :: Input :: DefaultControllerBindings :: Install( *m_pRenderer, m_pRenderer -> GetControllerManager() )`
+  right after `Start()` inside `Create()`, exactly as planned - confirmed only one implementer
+  of `IRendererProvider` and one caller of `CreateRenderer` exist, so no other code needed
+  updating for the interface change.
+- `src/lua/luarendererapi.cpp`: `ParseOptions` gains a matching output parameter (no longer
+  writes into `RendererConfig` at all, since the field is gone there); `RendererCreate`
+  threads the parsed bool through to `CreateRenderer`; `RendererGetConfig` reads
+  `pProvider -> GetUseDefaultKeyHandler()` instead of a `RendererConfig` field.
+- `main.cpp`'s `MakeDefaultRendererConfig` no longer sets a now-nonexistent field (the
+  default renderer's own call site, `RendererProvider::GetOrCreateDefault`, never passes
+  `bUseDefaultKeyHandler=true` to `Create()`, so this is still a no-op behaviourally, exactly
+  as before).
+- The open question from this item's own design ("confirm `Install` is safe to call before
+  any map is loaded") is answered: yes, confirmed with a scratch headless script - see P3's
+  own write-up.
 
 ## Phase V: visual/behavioral re-verification
 

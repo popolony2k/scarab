@@ -63,6 +63,7 @@ namespace Scarab  {
 
             SunLight :: Renderer :: RendererConfig                        m_DefaultConfig;
             SunLight :: Renderer :: RendererConfig                        m_EffectiveConfig;
+            bool                                                           m_bUseDefaultKeyHandler;
             stHeadlessSettings                                            m_Headless;
             std :: unique_ptr<SunLight :: Renderer :: TileMapRenderer>   m_pRenderer;
             Origin                                                        m_Origin;
@@ -81,7 +82,8 @@ namespace Scarab  {
             bool Create( const SunLight :: Renderer :: RendererConfig &config,
                          Origin origin,
                          const std :: string &strTrigger,
-                         std :: string *pError );
+                         std :: string *pError,
+                         bool bUseDefaultKeyHandler = false );
             void EnsureCreated( const char *szTrigger );
 
             SunLight :: Renderer :: TileMapRenderer* GetRenderer( void );
@@ -91,12 +93,14 @@ namespace Scarab  {
             SunLight :: TileMap :: ITileMap* GetTileMap( const char *szTrigger );
             SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char *szTrigger );
             SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void );
-            bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError );
+            bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
+                                bool bUseDefaultKeyHandler, std :: string *pError );
             Origin GetOrigin( void );
             bool IsHeadless( void );
             SunLight :: Renderer :: RendererConfig GetDefaultConfig( void );
             SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void );
             void NoteWindowTitle( const std :: string &strTitle );
+            bool GetUseDefaultKeyHandler( void );
         };
     }
 }

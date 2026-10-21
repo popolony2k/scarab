@@ -239,7 +239,7 @@ namespace Scarab  {
              */
             int LuaCameraApi :: GetViewportDimension( lua_State *pLuaState )  {
 
-                SunLight :: TileMap :: stDimension2D&  dim = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetViewport().GetDimension2D();
+                SunLight :: Base :: stDimension2D&  dim = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetViewport().GetDimension2D();
 
                 lua_pushinteger( pLuaState, dim.pos.x );
                 lua_pushinteger( pLuaState, dim.pos.y );

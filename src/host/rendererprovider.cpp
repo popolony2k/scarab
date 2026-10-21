@@ -19,6 +19,7 @@
  */
 
 #include "host/rendererprovider.h"
+#include "input/defaultcontrollerbindings.h"
 #include <cstdio>
 #include <cstdlib>
 
@@ -35,10 +36,11 @@ namespace Scarab  {
         RendererProvider :: RendererProvider( const SunLight :: Renderer :: RendererConfig &defaults,
                                               const stHeadlessSettings &headless )  {
 
-            m_DefaultConfig   = defaults;
-            m_EffectiveConfig = defaults;
-            m_Headless        = headless;
-            m_Origin          = ORIGIN_NONE;
+            m_DefaultConfig          = defaults;
+            m_EffectiveConfig        = defaults;
+            m_bUseDefaultKeyHandler  = false;
+            m_Headless               = headless;
+            m_Origin                 = ORIGIN_NONE;
         }
 
         /**
@@ -71,12 +73,19 @@ namespace Scarab  {
          * @param origin How this creation came about;
          * @param strTrigger For an implicit creation, the primitive that needed a window;
          * @param pError Receives the reason on failure (may be null);
+         * @param bUseDefaultKeyHandler Install sunlight's own default camera/zoom bindings
+         * (SunLight::Input::DefaultControllerBindings::Install) once the renderer exists and
+         * is Start()ed - renderer_create's own use_default_key_handler option, threaded
+         * through CreateRenderer. Defaults to false (today's behaviour, and what the
+         * implicitly-created default renderer always gets via GetOrCreateDefault, which never
+         * passes this) so every pre-existing call site of this method keeps compiling.
          * @return true if the renderer exists now, false (with *pError set) if not;
          */
         bool RendererProvider :: Create( const SunLight :: Renderer :: RendererConfig &config,
                                          Origin origin,
                                          const std :: string &strTrigger,
-                                         std :: string *pError )  {
+                                         std :: string *pError,
+                                         bool bUseDefaultKeyHandler )  {
 
             if( m_pRenderer )  {
                 if( pError )
@@ -110,15 +119,27 @@ namespace Scarab  {
             if( !pRenderer )
                 return false;
 
-            m_pRenderer       = std :: move( pRenderer );
-            m_EffectiveConfig = effective;
-            m_Origin          = origin;
-            m_strTrigger      = strTrigger;
+            m_pRenderer             = std :: move( pRenderer );
+            m_EffectiveConfig       = effective;
+            m_bUseDefaultKeyHandler = bUseDefaultKeyHandler;
+            m_Origin                = origin;
+            m_strTrigger            = strTrigger;
 
             if( m_CreatedHook )
                 m_CreatedHook( *m_pRenderer );
 
             m_pRenderer -> Start();
+
+            /*
+             * Right after Start(), as planned (doc/MASTER_PLAN.md item D1): the renderer and
+             * its controller manager both exist by now, and no map is loaded yet at this point
+             * in the entry script's own flow (renderer_create must be the first window-needing
+             * call, so this always runs before tilemap_load_map) - Install only registers
+             * handlers that call ITileMap's camera/zoom methods, it never touches the map
+             * itself, so running before one is loaded is safe.
+             */
+            if( bUseDefaultKeyHandler )
+                SunLight :: Input :: DefaultControllerBindings :: Install( *m_pRenderer, m_pRenderer -> GetControllerManager() );
 
             return true;
         }
@@ -185,7 +206,8 @@ namespace Scarab  {
          * default, created implicitly - names the primitive that needed a window first, since
          * that call, not this one, is what to move below renderer_create.
          */
-        bool RendererProvider :: CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError )  {
+        bool RendererProvider :: CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
+                                                 bool bUseDefaultKeyHandler, std :: string *pError )  {
 
             if( m_pRenderer )  {
                 if( pError )  {
@@ -200,7 +222,7 @@ namespace Scarab  {
                 return false;
             }
 
-            return Create( config, ORIGIN_CREATED, "", pError );
+            return Create( config, ORIGIN_CREATED, "", pError, bUseDefaultKeyHandler );
         }
 
         RendererProvider :: Origin RendererProvider :: GetOrigin( void )  {
@@ -230,6 +252,12 @@ namespace Scarab  {
         void RendererProvider :: NoteWindowTitle( const std :: string &strTitle )  {
 
             m_EffectiveConfig.strTitle = strTitle;
+        }
+
+        /** @brief What CreateRenderer's own bUseDefaultKeyHandler was last given. */
+        bool RendererProvider :: GetUseDefaultKeyHandler( void )  {
+
+            return m_bUseDefaultKeyHandler;
         }
     }
 }

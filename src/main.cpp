@@ -70,14 +70,17 @@ static void SetPackEnvVar( const char *szName, const std :: string &strValue )  
  * one place so a future Lua-driven renderer setup has a single, obvious
  * thing to override rather than a scatter of setter calls.
  *
- * bUseDefaultKeyHandler is off deliberately (same as before this was a
- * config): every key a game reacts to goes through Lua's own input_*
- * primitives, not sunlight's built-in scroll/zoom key bindings.
+ * The default renderer never installs sunlight's own default camera/zoom key
+ * bindings (RendererProvider::GetOrCreateDefault never passes
+ * bUseDefaultKeyHandler=true to Create - see RendererProvider::Create):
+ * every key a game reacts to goes through Lua's own input_* primitives
+ * unless renderer_create{use_default_key_handler=true} asks for the preset
+ * explicitly (doc/MASTER_PLAN.md item D1).
  */
 static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )  {
 
     SunLight :: Renderer :: RendererConfig  config;
-    SunLight :: TileMap :: stDimension2D    viewport;
+    SunLight :: Base :: stDimension2D    viewport;
 
     viewport.pos.x = VIEWPORT_POS_X;
     viewport.pos.y = VIEWPORT_POS_Y;
@@ -90,7 +93,6 @@ static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )
     config.nTargetFps            = FRAMES_PER_SECOND;
     config.bResizeable           = true;
     config.bDrawFPS              = false;
-    config.bUseDefaultKeyHandler = false;
     config.viewControlMode       = SunLight :: Renderer :: ViewControlMode :: VIEW_CONTROL_MODE_ACTIVE;
     config.nScrollStepWidth      = W_SCROLL_STEP_SIZE;
     config.nScrollStepHeight     = H_SCROLL_STEP_SIZE;
