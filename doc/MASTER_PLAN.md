@@ -380,7 +380,7 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
 | B1 | Lua bindings, tests and a sample for sunlight's blend modes (I2, sunlight BREAKAGES entry 51) | TODO |
 
 **B1 (TODO, added 2026-10-22 at the owner's request, before Phase T so its docs are part of
-that review).** Exposes sunlight's I2 (see P5) to Lua. Names are suggestions, decided when the
+that review; done right after D2, out of phase order, by the owner's decision).** Exposes sunlight's I2 (see P5) to Lua. Names are suggestions, decided when the
 item starts:
 - A scoped mode around a script's own drawing, e.g. `draw_begin_blend(mode)` /
   `draw_end_blend()`, with the modes as constants (e.g. `BLEND_NORMAL`, `BLEND_ADD`,
