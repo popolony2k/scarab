@@ -736,8 +736,13 @@ namespace Scarab  {
              * @luadoc
              * Move a view's camera up by its scroll step, stopping at the map's edge (unlike
              * `view_set_camera_position`). Also `view_move_camera_down`, `view_move_camera_left`
-             * and `view_move_camera_right`. Up and left need a loaded map (their limit is its
-             * size): with none, they return `nil, "no map is loaded..."`.
+             * and `view_move_camera_right`. Up and left move the camera towards the map's far
+             * (bottom/right) edge — `view_get_camera_position` grows — down and right back
+             * towards `0`. Both ends are exact: when less than a step is left the last step is
+             * partial, so the camera stops on the map's real far edge (which depends on the
+             * view's size and zoom) and returns to exactly `0` — don't assume the position is a
+             * multiple of the step. Up and left need a loaded map (their limit is its size): with
+             * none, they return `nil, "no map is loaded..."`.
              * @luaexample
              * view_move_camera_up( view )
              */

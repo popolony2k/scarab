@@ -157,3 +157,17 @@ jobs:
         run: |
           python scripts/renderer_api_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "renderer API smoke test exited with code $LASTEXITCODE" }
+
+      # camera_move_* / view_move_camera_*: the camera stops exactly on the map's far edge
+      # (a partial last step) and comes back to exactly 0, at zoom 3.8125 and 1.0, on the
+      # default view and an extra view - see the script's own header.
+      - name: Camera boundary smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/camera_boundary_smoke.py build/scarab
+
+      - name: Camera boundary smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/camera_boundary_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "camera boundary smoke test exited with code $LASTEXITCODE" }
