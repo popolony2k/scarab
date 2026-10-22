@@ -105,6 +105,7 @@ confirmed earlier). Available as a quick real-window check if wanted; not blocki
 | # | Item | Status |
 |---|------|--------|
 | D1 | `use_default_key_handler` (BREAKAGES entry 26) - keep the Lua shape, back it with `DefaultControllerBindings::Install` | DONE |
+| D2 | `renderer_create{ preferred_zoom }` - a new, optional option for the zoom `zoom_reset` returns to (Scarab only, no sunlight change) | TODO |
 
 **D1 (DONE, 2026-10-21 - implemented inside P2, not as its own separate PR, since P2 could
 not compile without it; see P2's own write-up above).** `RendererConfig::bUseDefaultKeyHandler`
@@ -136,11 +137,35 @@ exact name and meaning. Implementation:
   any map is loaded") is answered: yes, confirmed with a scratch headless script - see P3's
   own write-up.
 
+**D2 (TODO - added 2026-10-22 during V1, done right after V1 by the owner's decision, out of
+phase order).** Found by the owner in V1's real-window check of `samples/camera`: Home reset
+the zoom to `1.0`, not to the `3.8125` the sample starts at. Not a bug. `zoom_reset` returns
+to the view's *preferred* zoom, which is a separate setting from the current zoom (documented
+on `view_set_zoom`/`view_zoom_reset`), and renderer creation sets only the current zoom, so the
+preferred one stays at sunlight's own default, `1.0`. `samples/camera` itself was fixed inside
+V1 with `view_set_preferred_zoom(0, viewport_get_zoom_factor())` (option (c), the owner's
+choice). Option (a), making the creation zoom the preferred zoom too, was rejected: it would
+silently break that documented contract. D2 makes the preferred zoom something a game can set
+at creation instead:
+- Lua: `renderer_create{ preferred_zoom = <factor> }`, strict like every other option,
+  validated exactly like `zoom` (`LuaRendererApi::ValidateZoomFactor`). Left out, the
+  behavior is today's (preferred zoom `1.0`), so no Caravellius breakage.
+  `renderer_get_config` returns `preferred_zoom` live (`nPreferredZoomPos`).
+- C++: sunlight's `RendererConfig` has no preferred-zoom field, so the value is applied right
+  after creation with sunlight's existing `Viewport::SetPreferredZoom`, threaded through
+  `IRendererProvider::CreateRenderer`/`RendererProvider::Create` the same way D1 threads
+  `use_default_key_handler` - grouped with it into one small Scarab-side struct rather than a
+  further parameter. A real `RendererConfig::nPreferredZoomPos` in sunlight is possible later
+  (the owner's call); the Lua shape would not change.
+- Tests: `scripts/renderer_api_smoke.py` - `defaults` (`preferred_zoom == 1.0`), `create` (a
+  non-default value read back, and `zoom_reset()` lands on it), `errors` (a bad factor, a
+  wrong type). Docs: the `renderer_create` options table and `renderer_get_config`'s doc.
+
 ## Phase V: visual/behavioral re-verification
 
 | # | Item | Status |
 |---|------|--------|
-| V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46) - 32 call sites | TODO |
+| V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46) - 8 Lua wrappers (`camera_move_*`, `view_move_camera_*`) | DONE |
 | V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | TODO |
 | V3 | `nOpacity` 0..255 round-trip (entry 41) | TODO |
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | TODO |
@@ -153,11 +178,58 @@ exact name and meaning. Implementation:
 | V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
 | V12 | A tile object resized away from its own tile's size now takes its object layer's tint (entry 45) | TODO |
 
-**V1.** Not just a rename: the scroll clamp genuinely changed (the last step can now be
+**V1 (DONE, 2026-10-22 - V1d confirmed by the owner in a real window).** Not just a rename: the scroll clamp genuinely changed (the last step can now be
 partial, reaching the map's true edge where it used to stop a step short;
 `MoveCameraDown`/`Right` can now return exactly to origin, where a `< 0` vs `<= 0` bug used
-to block the single step that would). Scope: extend the existing alignment/scroll probe
-(built for the sunlight v0.29.0 viewport semantics work) to cover this.
+to block the single step that would). ~~Scope: extend the existing alignment/scroll probe
+(built for the sunlight v0.29.0 viewport semantics work) to cover this.~~ Corrected when the
+item started: that probe was never committed to this repo, so there is nothing to extend.
+The "32 call sites" in the first draft was also wrong: Scarab has 8 Lua wrappers
+(`camera_move_up/down/left/right` in `luacameraapi.cpp`, `view_move_camera_*` in
+`luaviewapi.cpp`) and no other caller.
+
+Sub-tasks, as agreed with the owner:
+- **V1a** - a committed headless regression test, run by `ci.yml` on all 4 platforms and
+  kept after `master_plan` merges to `main` (it pins sunlight's camera contract, not a
+  one-time migration): `scripts/camera_boundary_smoke.py` + `scripts/camera_boundary_smoke/`.
+  It uses `resources/tilemap/test.tmx` (640x640) and a 7 px step that divides none of the
+  distances. It checks the default view at Scarab's default zoom (3.8125, 1240x900), through
+  both `camera_move_*` and `view_move_camera_*(0)`, and an extra view at zoom 1.0 (300x200).
+  For each axis: the camera stops exactly on `-ceil(view size / zoom - map size)` (sunlight's
+  `Camera::FarCameraLimit`, negated as Lua sees it). The travel is not a whole number of
+  steps. It takes `ceil(distance / step)` moves each way and comes back to exactly `0`.
+- **V1b** - fix the Lua docs of `camera_move_*` and `view_move_camera_*`: the step was said
+  to be "configured on the C++ renderer, not from Lua", the direction was not stated, and
+  nothing said the position may not be a multiple of the step.
+- **V1c** - the first entry in `doc/CARAVELLIUS_BREAKAGES.md`.
+- **V1d** - a real-window check of `samples/camera` by the owner.
+
+**Found while building it:**
+- The test was shown failing on the old pin first, as a one-time proof: the published Scarab
+  v0.1.25 macOS x64 release binary (sunlight v0.38.0) fails every check on both APIs and both
+  views. The old behavior was **not** "a step short of the far edge" as the first draft (and
+  sunlight's BREAKAGES 46 wording) suggested. v0.38.0's far limit had a fudge term
+  (`+ tile_height`, `+ tile_width / round(zoom)`) and was measured against the viewport's
+  far edge including its offset, so the camera went past the map's edge, in whole steps:
+  315/427 instead of 314/403 at zoom 3.8125, and 371/469 instead of 340/440 at zoom 1.0.
+  Down/right stopped one step short of the origin (at 7, not 0), which is BREAKAGES 24.
+  The new pin passes every check.
+- The camera position Lua reads is the map point at the view's top-left, the negation of
+  sunlight's internal camera (`Camera::GetPosition` returns `-m_Position`). So up/left
+  make `camera_get_position()` grow, towards the far edge.
+- Confirmed with a scratch headless script: the default view's scroll step stays at
+  Scarab's default 1 px after a map loads (only extra views default to the tile size).
+- From the owner's real-window check of `samples/camera` (V1d), three sample changes made
+  inside V1. The text is now dark, so it can be read over the light sky. sunlight's shared
+  zoom keys were added next to the sample's own: `+`/`-` zoom, `=` resets the zoom, on the main
+  keyboard and the keypad (sunlight's `samples/shared/zoomkeys.h`). And Home/`=` now reset to
+  the sample's starting zoom (`view_set_preferred_zoom`, see D2 for why that is needed).
+- Also from that check, still open: semi-transparent layers (`test.tmx`'s
+  `background_clouds`, 0.69, and `background`, 0.65) draw darker than in Tiled. It's a sunlight
+  bug, present in v0.38.0 too: the frame is drawn into a render texture whose own alpha drops
+  under every semi-transparent tile, and `TileMapRenderer::Run` then blends that texture onto a
+  black screen (about 70% brightness in those areas). Not tracked in sunlight's plan; how it
+  goes to sunlight is the owner's decision.
 
 **V2.** Three real rendering bugs sunlight found and fixed at non-integer zoom - a
 rasterization seam between adjacent tiles, a scroll-boundary gap of tens of pixels, and a

@@ -31,10 +31,16 @@ namespace Scarab  {
              * @luagroup{panning}
              * @luaheading{Panning}
              * @luadoc
-             * Each call moves the camera one fixed step in that direction
-             * (the step size is configured on the C++ renderer, not from
-             * Lua — see `TileMapRenderer::SetScrollStepSize` in
-             * `main.cpp`).
+             * Each call moves the default view's camera one scroll step
+             * (`renderer_create`'s `scroll_step` option, or
+             * `view_set_scroll_step(0, w, h)`; Scarab's default is 1 pixel).
+             * Up and left move it towards the map's far (bottom/right)
+             * edge — `camera_get_position()` grows — down and right move it
+             * back towards `0`. Both ends are exact: the last step is
+             * partial when the distance left is smaller than a step, so the
+             * camera stops on the map's real far edge, and comes back to
+             * exactly `0`. Don't assume the position is a multiple of the
+             * step. Up and left do nothing while no map is loaded.
              *
              * Caravellius drives a constant downward auto-scroll from
              * `caravellius/src/camera.lua`'s `Camera.update`, called

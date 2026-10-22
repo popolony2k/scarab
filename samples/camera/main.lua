@@ -37,13 +37,23 @@ sp_wait( 1 )
 
 tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER )
 
+-- zoom_reset (Home, =) returns to the view's PREFERRED zoom, which is separate
+-- from the current one and defaults to 1.0 - make it the zoom this sample
+-- starts at (Scarab's default, 3.8125), so a reset goes back to it.
+view_set_preferred_zoom( 0, viewport_get_zoom_factor() )
+
+-- Dark text: the map's sky behind the text is light, so white/light-grey text
+-- can't be read over it.
+local TITLE_COLOR = { r = 20, g = 20, b = 20, a = 255 }
+local INFO_COLOR  = { r = 50, g = 50, b = 70, a = 255 }
+
 function on_update( dt )
 
-    -- Panning/zoom: each camera_move_*/zoom_in/zoom_out call is one fixed
-    -- step (configured on the C++ renderer, not from Lua) - calling it
-    -- every frame the key is held gives continuous scrolling/zooming at
-    -- the engine's own step rate, the same pattern Caravellius's own
-    -- camera.lua uses for it's auto-scroll.
+    -- Panning/zoom: each camera_move_*/zoom_in/zoom_out call is one step
+    -- (the scroll step: renderer_create's scroll_step, 1 pixel by default) -
+    -- calling it every frame the key is held gives continuous
+    -- scrolling/zooming, the same pattern Caravellius's own camera.lua uses
+    -- for it's auto-scroll. Panning stops exactly on the map's edges.
     if input_is_key_down( KEY_UP ) or input_is_key_down( KEY_W ) then
         camera_move_up()
     end
@@ -60,16 +70,27 @@ function on_update( dt )
         camera_move_right()
     end
 
-    if input_is_key_down( KEY_PAGE_UP ) then
+    -- The zoom keys every sunlight/Scarab sample shares, next to this
+    -- sample's own Page Up/Page Down/Home: + zooms in, - zooms out, = resets
+    -- the zoom, on the main keyboard and on the keypad. + and = are one
+    -- physical key (+ is Shift and =), told apart by whether Shift is held.
+    local shift = input_is_key_down( KEY_LEFT_SHIFT ) or input_is_key_down( KEY_RIGHT_SHIFT )
+
+    if input_is_key_down( KEY_PAGE_UP ) or input_is_key_down( KEY_KP_ADD ) or
+       ( shift and input_is_key_down( KEY_EQUAL ) ) then
         zoom_in()
     end
 
-    if input_is_key_down( KEY_PAGE_DOWN ) then
+    if input_is_key_down( KEY_PAGE_DOWN ) or input_is_key_down( KEY_MINUS ) or input_is_key_down( KEY_KP_SUBTRACT ) then
         zoom_out()
     end
 
     if input_is_key_released( KEY_HOME ) then
         camera_reset()
+        zoom_reset()
+    end
+
+    if ( not shift and input_is_key_released( KEY_EQUAL ) ) or input_is_key_released( KEY_KP_EQUAL ) then
         zoom_reset()
     end
 
@@ -87,8 +108,8 @@ function on_update( dt )
     local vpX, vpY, vpW, vpH = viewport_get_dimension()
     local zoom = viewport_get_zoom_factor()
 
-    draw_text( "camera sample - arrows/WASD pan, PageUp/PageDown zoom, Home reset, Space jump", 20, 20, 20, 255, 255, 255, 255 )
-    draw_text( "camera_get_position: " .. camX .. ", " .. camY, 20, 50, 18, 200, 200, 200, 255 )
-    draw_text( "viewport_get_dimension: " .. vpX .. ", " .. vpY .. " " .. vpW .. "x" .. vpH, 20, 72, 18, 200, 200, 200, 255 )
-    draw_text( "viewport_get_zoom_factor: " .. string.format( "%.2f", zoom ), 20, 94, 18, 200, 200, 200, 255 )
+    draw_text( "camera sample - arrows/WASD pan, PageUp/PageDown or +/- zoom, = reset zoom, Home reset, Space jump", 20, 20, 20, TITLE_COLOR.r, TITLE_COLOR.g, TITLE_COLOR.b, TITLE_COLOR.a )
+    draw_text( "camera_get_position: " .. camX .. ", " .. camY, 20, 50, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
+    draw_text( "viewport_get_dimension: " .. vpX .. ", " .. vpY .. " " .. vpW .. "x" .. vpH, 20, 72, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
+    draw_text( "viewport_get_zoom_factor: " .. string.format( "%.2f", zoom ), 20, 94, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
 end
