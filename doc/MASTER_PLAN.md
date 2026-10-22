@@ -22,7 +22,8 @@ in shape and in working rules - see sunlight's handoff, read from
 sunlight (`../sunlight` from this repo's root), and its peer-impact list,
 [`doc/BREAKAGES.md`](../../sunlight/doc/BREAKAGES.md) (49 entries). sunlight's own commit
 pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
-`feat/master_plan` when the handoff was sent).
+`feat/master_plan` when the handoff was sent), re-pinned in P4 to
+`a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing).
 
 ## Phase P: pin & plumbing
 
@@ -32,6 +33,7 @@ pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 | P1 | Split `SCARAB_SUNLIGHT_VERSION`'s single hardcoded-`v`-prefix mechanism into a fetch-ref variable and a display-version variable; decide `--version`'s format for a commit-pinned build | DONE |
 | P2 | Pin `GIT_TAG` to `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; make the code compile against it (the `SunLight::Base` namespace move, BREAKAGES entry 14; `BaseCommand`'s new header, entry 5) | DONE |
 | P3 | Every existing Scarab check green against the pin, before any further BREAKAGES item is touched | DONE |
+| P4 | Re-pin to `a63fec6811ba28fb46a94015d05b852393016692` (sunlight's I1 fix: semi-transparent drawing no longer darker; sunlight BREAKAGES entry 50) | DONE |
 
 **P0 (DONE).** This document and [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -99,6 +101,33 @@ checked: the bindings' actual functional effect (do the arrow keys really pan th
 nothing exercises real input headless, and this was never checked in a real window even
 before this change (`use_default_key_handler=true` was never used by any Scarab sample,
 confirmed earlier). Available as a quick real-window check if wanted; not blocking.
+
+**P4 (DONE, 2026-10-22, added during V1).** Found by the owner in V1's real-window
+check of `samples/camera`: `test.tmx`'s semi-transparent layers (`background_clouds` 0.69,
+`background` 0.65) drew darker than in Tiled. A sunlight bug, present in v0.38.0 too. sunlight
+draws the frame into a render target and then blends it over a window cleared to black, and
+raylib's `BLEND_ALPHA` blended the target's own alpha channel as well (one 0.69 layer over the
+opaque sky left it at 0.79; both layers at about 0.70). Reported to the sunlight session on the
+owner's request. Fixed there on `feat/master_plan` only (sunlight #214, "I1"): in
+`RaylibEngine::BeginRenderTarget`, the alpha channel now blends with (ONE,
+ONE_MINUS_SRC_ALPHA), and colour blending is unchanged. sunlight measured a pixel on the GPU at
+167 173 175 before and 242 250 253 after, which matches Tiled. The hash is recorded in sunlight's
+`doc/SCARAB_HANDOFF.md`, section 9 "sunlight commits to pin". sunlight BREAKAGES entry 50:
+opaque drawing is unchanged, and everything semi-transparent now comes out lighter, as
+authored.
+- Pin: `SCARAB_SUNLIGHT_REF` `a63fec6811ba28fb46a94015d05b852393016692`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@a63fec6`. Verified in the local sunlight
+  checkout: the commit is on `origin/feat/master_plan` and descends directly from `772851c`
+  (2 commits, one `src` file changed). No Scarab code change was needed.
+- Verified with a real fetch (not `FETCHCONTENT_SOURCE_DIR_SUNLIGHT`): the fetched checkout is
+  exactly `a63fec6`, and `scarab --version` prints
+  `scarab v0.1.25 (sunlight feat/master_plan@a63fec6, Lua 5.4.7)`. The camera boundary,
+  renderer API, tileset archive (plain + encrypted) and headless smoke tests (incl. the
+  frame-budget exit 3) pass, the Lua API docs generator passes, and all 15 samples run headless.
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 2.
+- The real check is by eye only, since nothing headless can see colour. The owner ran
+  `samples/camera` in a real window (screenshot, 2026-10-22 02:50): `background_clouds` and
+  `background` now show light blue and white like Tiled, not grey.
 
 ## Phase D: design items
 
