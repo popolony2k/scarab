@@ -23,7 +23,8 @@ sunlight (`../sunlight` from this repo's root), and its peer-impact list,
 [`doc/BREAKAGES.md`](../../sunlight/doc/BREAKAGES.md) (49 entries). sunlight's own commit
 pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 `feat/master_plan` when the handoff was sent), re-pinned in P4 to
-`a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing).
+`a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing), then in
+P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes).
 
 ## Phase P: pin & plumbing
 
@@ -34,6 +35,7 @@ pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 | P2 | Pin `GIT_TAG` to `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; make the code compile against it (the `SunLight::Base` namespace move, BREAKAGES entry 14; `BaseCommand`'s new header, entry 5) | DONE |
 | P3 | Every existing Scarab check green against the pin, before any further BREAKAGES item is touched | DONE |
 | P4 | Re-pin to `a63fec6811ba28fb46a94015d05b852393016692` (sunlight's I1 fix: semi-transparent drawing no longer darker; sunlight BREAKAGES entry 50) | DONE |
+| P5 | Re-pin to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's I2: blend modes; sunlight BREAKAGES entry 51) | DONE |
 
 **P0 (DONE).** This document and [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -128,6 +130,34 @@ authored.
 - The real check is by eye only, since nothing headless can see colour. The owner ran
   `samples/camera` in a real window (screenshot, 2026-10-22 02:50): `background_clouds` and
   `background` now show light blue and white like Tiled, not grey.
+
+**P5 (DONE, 2026-10-22).** sunlight added blend modes on `feat/master_plan` (sunlight #216,
+"I2", on top of I1), at the owner's request, and sent the new pin. The owner asked for Scarab's
+Lua side as a new item, B1 (below). This item is only the re-pin. In sunlight:
+- Four modes, `SunLight::Base::BlendMode`: `BLEND_MODE_NORMAL` (the default), `_ADD`,
+  `_MULTIPLY` and `_SUBTRACT`.
+- A scoped mode for a game's own drawing, `IDrawSurface::BeginBlendMode`/`EndBlendMode`.
+  The calls do not nest.
+- A per-sprite mode, `Sprite::SetBlendMode`/`ClearBlendMode`/`HasBlendMode`/`GetBlendMode`.
+- Every frame starts in normal and the screen fade always runs in normal. A frame that uses no
+  mode makes no blend call at all.
+- sunlight BREAKAGES entry 51: only classes that implement `IEngine`/`IDrawSurface` must
+  change.
+- Pin: `SCARAB_SUNLIGHT_REF` `bfce5983370fa0661c18701164a10f7e18f1e7a1`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@bfce598`. Verified in the local sunlight
+  checkout: it is on `origin/feat/master_plan` and descends directly from `a63fec6` (2 commits,
+  11 `src` files changed).
+- No Scarab code change. Scarab implements neither interface, and no file in `src/`
+  includes `raylib.h` or names `BlendMode`, so raylib's own global `BlendMode` (the same trap as
+  `KeyboardKey`) cannot bite yet. B1 must write `SunLight :: Base :: BlendMode` in full.
+- Verified with a real fetch: the fetched checkout is exactly `bfce598`, the build has zero
+  warnings, and `--version` prints
+  `scarab v0.1.25 (sunlight feat/master_plan@bfce598, Lua 5.4.7)`. The camera boundary,
+  renderer API, tileset archive (plain + encrypted) and headless smoke tests (incl. exit 3 on
+  the frame budget) pass, the Lua API docs generator passes, and all 15 samples run headless.
+- No CARAVELLIUS_BREAKAGES entry: nothing changes for a game that uses no blend mode, and
+  Caravellius cannot use one before B1 exists. No real-window check either, for the same
+  reason.
 
 ## Phase D: design items
 
@@ -342,6 +372,35 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
 | S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts | TODO |
 | S2 | Mechanical alignment pass, object-file-identical proof | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
+
+## Phase B: blend modes
+
+| # | Item | Status |
+|---|------|--------|
+| B1 | Lua bindings, tests and a sample for sunlight's blend modes (I2, sunlight BREAKAGES entry 51) | TODO |
+
+**B1 (TODO, added 2026-10-22 at the owner's request, before Phase T so its docs are part of
+that review).** Exposes sunlight's I2 (see P5) to Lua. Names are suggestions, decided when the
+item starts:
+- A scoped mode around a script's own drawing, e.g. `draw_begin_blend(mode)` /
+  `draw_end_blend()`, with the modes as constants (e.g. `BLEND_NORMAL`, `BLEND_ADD`,
+  `BLEND_MULTIPLY`, `BLEND_SUBTRACT`) tagged `@luaconstants`.
+- A sprite's own mode, e.g. `sprite_set_blend_mode(sprite, mode)`,
+  `sprite_clear_blend_mode(sprite)`, and a getter.
+- Tests now, as the owner decided, not waiting for R2's doctest suite: a headless Lua smoke
+  scenario covering argument checks, unknown mode values, round trips through the getters, and
+  that a recycled sprite slot does not inherit its previous owner's mode (`SpritePool`, like
+  `sprite_set_world_space`; sunlight's `Unload()` keeps the mode). A headless run cannot see
+  colour, so what each mode looks like is checked by eye.
+- A new `samples/blend`, modelled on sunlight's `samples/blend` (a glow sprite whose mode keys
+  choose, a soft shadow that always multiplies, panels drawn per mode), for the owner's
+  real-window check.
+- The generated Lua API pages (the `@luaname`/`@luadoc` tags), and a mapping in
+  `scripts/_lua_api_shared.py`'s `SOURCE_TO_DOC` if a new `src/lua/*api.cpp` file is added.
+- Any file that includes `raylib.h` must write `SunLight :: Base :: BlendMode` in full.
+
+Reference in sunlight: `doc/MASTER_PLAN.md` "Integration follow-ups" I2,
+`samples/blend/docs/README.md`, `CHANGELOG.md` [Unreleased].
 
 ## Phase T: documentation review
 
