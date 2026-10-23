@@ -36,6 +36,7 @@
 #include "lua/luatimerapi.h"
 #include "lua/luacryptoapi.h"
 #include "lua/luapackapi.h"
+#include "lua/luablendapi.h"
 #include "tilemap/itilemap.h"
 #include "sound/soundmanager.h"
 #include "engine/spritepool.h"
@@ -69,6 +70,7 @@ namespace Scarab  {
         Engine :: Lua :: LuaJsonApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCryptoApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaPackApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaBlendApi :: Register( m_pLuaState );   // renderer-free until a draw function is called
 
         // Overrides Lua's own built-in dofile() - must run after
         // luaL_openlibs() (guaranteed, since RegisterCalls() itself is

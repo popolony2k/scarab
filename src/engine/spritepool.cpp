@@ -188,6 +188,7 @@ namespace Scarab  {
             slot.bInUse = false;
             slot.sprite.SetVisible( false );
             slot.sprite.SetWorldSpace( false );   // a recycled handle must not inherit the previous owner's coordinate space
+            slot.sprite.ClearBlendMode();         // ... nor its blend mode (doc/MASTER_PLAN.md item B1)
             slot.nGeneration++;
 
             m_FreeListsByType[slot.strTypeTag].push_back( ( uint32_t ) nIndex );

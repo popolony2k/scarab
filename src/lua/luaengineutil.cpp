@@ -157,6 +157,27 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Push `nil, message` and return the count - the failure convention of the
+             * Lua primitives that report errors (doc/MASTER_PLAN.md items B1, D3): a script reads
+             * it with `local ok, err = f( ... )`, and it never raises a Lua error.
+             */
+            int LuaEngineUtil :: PushError( lua_State *pLuaState, const std :: string &strMessage )  {
+
+                lua_pushnil( pLuaState );
+                lua_pushstring( pLuaState, strMessage.c_str() );
+
+                return 2;
+            }
+
+            /** @brief Push `true` - the success value that goes with @link PushError. */
+            int LuaEngineUtil :: PushTrue( lua_State *pLuaState )  {
+
+                lua_pushboolean( pLuaState, 1 );
+
+                return 1;
+            }
+
+            /**
              * @brief Register a table of named integer constants as Lua globals.
              *
              * @param pLuaState Lua state to be used by engine call.

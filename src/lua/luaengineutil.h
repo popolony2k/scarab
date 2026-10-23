@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <map>
 #include <mutex>
+#include <string>
 
 extern "C"
 {
@@ -118,6 +119,8 @@ namespace Scarab  {
                 static void AddOneParmCommandScript( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd );
                 static void RegisterConstants( lua_State *pLuaState, const stNamedConstant *pTable, size_t nCount );
                 static void RegisterRealConstants( lua_State *pLuaState, const stNamedRealConstant *pTable, size_t nCount );
+                static int PushError( lua_State *pLuaState, const std :: string &strMessage );
+                static int PushTrue( lua_State *pLuaState );
             };
         }
     }

@@ -100,6 +100,9 @@ namespace Scarab  {
                 static int GetPos( lua_State *pLuaState );
                 static int SetWorldSpace( lua_State *pLuaState );
                 static int GetWorldSpace( lua_State *pLuaState );
+                static int SetBlendMode( lua_State *pLuaState );
+                static int ClearBlendMode( lua_State *pLuaState );
+                static int GetBlendMode( lua_State *pLuaState );
                 static int SetPos( lua_State *pLuaState );
                 static int GetSize( lua_State *pLuaState );
                 static int SetCollisionInset( lua_State *pLuaState );

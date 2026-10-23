@@ -20,6 +20,7 @@
 
 #include "lua/luaspriteapi.h"
 #include "lua/luaengineutil.h"
+#include "lua/luablendapi.h"
 #include "engine/spritehandle.h"
 #include <cstdint>
 
@@ -445,6 +446,112 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Resolve a sprite handle argument strictly, for the functions that report
+             * failures as `nil, message` (doc/MASTER_PLAN.md items B1, D3): a non-integer or a
+             * handle that is not live (never acquired, or already released) is an error.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param nIndex Stack index of the handle;
+             * @param strError Receives the reason on failure;
+             * @return The sprite, or nullptr (with strError set);
+             */
+            static SunLight :: Sprite :: Sprite* ResolveHandleArg( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+
+                SunLight :: Sprite :: Sprite  *pSprite = nullptr;
+
+                if( lua_isinteger( pLuaState, nIndex ) )
+                    pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( ( SpriteHandle ) lua_tointeger( pLuaState, nIndex ) );
+
+                if( pSprite == nullptr )
+                    strError = "invalid sprite handle";
+
+                return pSprite;
+            }
+
+            /**
+             * @luaname{sprite_set_blend_mode(handle, mode) -> true | nil, message}
+             * @luagroup{sprite_blend}
+             * @luaheading{Blend mode}
+             * @luadoc
+             * Give the sprite its own blend mode (a `BLEND_MODE_*` constant, see the Blend modes
+             * page): it draws by that mode in every view and the mode in effect is restored
+             * right after, so it affects that sprite alone — a glow in `BLEND_MODE_ADD`, a soft
+             * shadow in `BLEND_MODE_MULTIPLY`. It stays until `sprite_clear_blend_mode`;
+             * `sprite_release` clears it, so a recycled handle never inherits it.
+             *
+             * `sprite_get_blend_mode` returns the sprite's mode, or `nil` when it has none of its
+             * own. That is different from `BLEND_MODE_NORMAL`: a sprite with no mode draws by
+             * whatever mode is in effect, one set to `BLEND_MODE_NORMAL` always draws normally.
+             * A sprite is drawn before `on_update`, so `draw_begin_blend_mode` never reaches it.
+             *
+             * Unlike the older sprite functions, these three report a failure as
+             * `nil, "message"`: `"invalid sprite handle"`, `"unknown blend mode N"` or
+             * `"expected a BLEND_MODE_* constant"`. **Games that never call them are unchanged.**
+             * @luaexample
+             * local glow = sprite_acquire( "glow" )
+             * sprite_configure_texture( glow, ... )
+             * assert( sprite_set_blend_mode( glow, BLEND_MODE_ADD ) )   -- always drawn as a light
+             * assert( sprite_get_blend_mode( glow ) == BLEND_MODE_ADD )
+             * sprite_clear_blend_mode( glow )
+             * assert( sprite_get_blend_mode( glow ) == nil )             -- no mode of its own
+             */
+            int LuaSpriteApi :: SetBlendMode( lua_State *pLuaState )  {
+
+                std :: string                  strError;
+                SunLight :: Base :: BlendMode  mode    = SunLight :: Base :: BLEND_MODE_NORMAL;
+                SunLight :: Sprite :: Sprite   *pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !LuaBlendApi :: ReadBlendMode( pLuaState, 2, mode, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetBlendMode( mode );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_clear_blend_mode(handle) -> true | nil, message}
+             * @luagroup{sprite_blend}
+             */
+            int LuaSpriteApi :: ClearBlendMode( lua_State *pLuaState )  {
+
+                std :: string                  strError;
+                SunLight :: Sprite :: Sprite   *pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> ClearBlendMode();
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_get_blend_mode(handle) -> mode | nil | nil, message}
+             * @luagroup{sprite_blend}
+             */
+            int LuaSpriteApi :: GetBlendMode( lua_State *pLuaState )  {
+
+                std :: string                  strError;
+                SunLight :: Sprite :: Sprite   *pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pSprite -> HasBlendMode() )  {
+                    lua_pushnil( pLuaState );
+                    return 1;
+                }
+
+                lua_pushinteger( pLuaState, pSprite -> GetBlendMode() );
+
+                return 1;
+            }
+
+            /**
              * @luaname{sprite_get_pos(handle) -> x, y}
              * @luagroup{position_size}
              * @luaheading{Position and size}
@@ -673,6 +780,9 @@ namespace Scarab  {
                 lua_register( pLuaState, "sprite_get_visible", LuaSpriteApi :: GetVisible );
                 lua_register( pLuaState, "sprite_set_world_space", LuaSpriteApi :: SetWorldSpace );
                 lua_register( pLuaState, "sprite_get_world_space", LuaSpriteApi :: GetWorldSpace );
+                lua_register( pLuaState, "sprite_set_blend_mode", LuaSpriteApi :: SetBlendMode );
+                lua_register( pLuaState, "sprite_clear_blend_mode", LuaSpriteApi :: ClearBlendMode );
+                lua_register( pLuaState, "sprite_get_blend_mode", LuaSpriteApi :: GetBlendMode );
                 lua_register( pLuaState, "sprite_get_pos", LuaSpriteApi :: GetPos );
                 lua_register( pLuaState, "sprite_set_pos", LuaSpriteApi :: SetPos );
                 lua_register( pLuaState, "sprite_get_size", LuaSpriteApi :: GetSize );
