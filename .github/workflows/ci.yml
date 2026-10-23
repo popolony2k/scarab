@@ -171,3 +171,17 @@ jobs:
         run: |
           python scripts/camera_boundary_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "camera boundary smoke test exited with code $LASTEXITCODE" }
+
+      # BLEND_MODE_*, draw_begin/end_blend_mode, sprite_set/clear/get_blend_mode: values, round
+      # trips, every error, a recycled sprite never inheriting a mode, and a begin with no end
+      # being harmless across frames - see the script's own header.
+      - name: Blend API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/blend_api_smoke.py build/scarab
+
+      - name: Blend API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/blend_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "blend API smoke test exited with code $LASTEXITCODE" }

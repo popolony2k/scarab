@@ -165,6 +165,7 @@ Lua side as a new item, B1 (below). This item is only the re-pin. In sunlight:
 |---|------|--------|
 | D1 | `use_default_key_handler` (BREAKAGES entry 26) - keep the Lua shape, back it with `DefaultControllerBindings::Install` | DONE |
 | D2 | `renderer_create{ preferred_zoom }` - a new, optional option for the zoom `zoom_reset` returns to (Scarab only, no sunlight change) | DONE |
+| D3 | Consistent error reporting: every Lua function that can fail returns `nil, "message"` instead of silently ignoring bad input | TODO |
 
 **D1 (DONE, 2026-10-21 - implemented inside P2, not as its own separate PR, since P2 could
 not compile without it; see P2's own write-up above).** `RendererConfig::bUseDefaultKeyHandler`
@@ -247,6 +248,21 @@ at creation instead:
 - No CARAVELLIUS_BREAKAGES entry: the option is opt-in, and leaving it out keeps today's
   behavior exactly. No real-window check is needed: nothing is drawn differently, and the
   headless scenarios cover all of it.
+
+**D3 (TODO, added 2026-10-23 at the owner's request during B1, done in plan order).**
+Consistent error reporting. Only the newer `renderer_*`/`view_*` functions (and B1's) report a
+failure as `nil, "message"`. The other 116 registered Lua functions across 14 `src/lua/*api.cpp`
+files report nothing. For example, 13 `sprite_*` functions silently do nothing with a bad
+handle, and some getters return a "safe" value instead (`sprite_get_world_space` returns
+`false`). Scope:
+- Audit each of those functions and classify what bad input means for it: an invalid sprite
+  handle, an unknown sound/layer/timer id, a wrong argument type, or nothing that can fail.
+- Every function that can fail returns `nil, "message"` (using `LuaEngineUtil::PushError` from
+  B1), never silently, and never as a Lua error.
+- Extend the headless smoke tests, prove each new error path by mutation, and update every
+  `@luadoc`.
+- A CARAVELLIUS_BREAKAGES entry. It's mostly harmless, since `nil, msg` never raises, but a
+  script that reads a getter's old "safe" value sees `nil` instead.
 
 ## Phase V: visual/behavioral re-verification
 
@@ -422,9 +438,9 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
 
 | # | Item | Status |
 |---|------|--------|
-| B1 | Lua bindings, tests and a sample for sunlight's blend modes (I2, sunlight BREAKAGES entry 51) | TODO |
+| B1 | Lua bindings, tests and a sample for sunlight's blend modes (I2, sunlight BREAKAGES entry 51) | DONE |
 
-**B1 (TODO, added 2026-10-22 at the owner's request, before Phase T so its docs are part of
+**B1 (DONE, 2026-10-23 - samples tested in a real window and code reviewed and approved by the owner; added 2026-10-22 at the owner's request, before Phase T so its docs are part of
 that review; done right after D2, out of phase order, by the owner's decision).** Exposes sunlight's I2 (see P5) to Lua. Names are suggestions, decided when the
 item starts:
 - A scoped mode around a script's own drawing, e.g. `draw_begin_blend(mode)` /
@@ -446,6 +462,55 @@ item starts:
 
 Reference in sunlight: `doc/MASTER_PLAN.md` "Integration follow-ups" I2,
 `samples/blend/docs/README.md`, `CHANGELOG.md` [Unreleased].
+
+**Decided with the owner (2026-10-23):**
+- Names in Scarab's own style, not sunlight's shorter suggestions: `draw_begin_blend_mode` /
+  `draw_end_blend_mode`, `sprite_set_blend_mode` / `sprite_clear_blend_mode` /
+  `sprite_get_blend_mode`, and the constants `BLEND_MODE_*`, which mirror sunlight's enum one to
+  one like every other Scarab constant set.
+- Every new function reports a failure as `nil, "message"` (like `renderer_*`/`view_*`), never
+  silently. The owner also asked for item D3, which brings the older functions in line.
+- The sample follows sunlight's: keys `1` (no mode of its own) and `2`-`5` (normal, add (the
+  default), multiply, subtract), and sunlight's `glow.png`/`shadow.png` copied into
+  `resources/sprites/`.
+
+**Built (2026-10-23):**
+- `src/lua/luablendapi.{h,cpp}` (new page "Blend modes", `blend.md` in `SOURCE_TO_DOC`, linked
+  from `docs/lua-api/README.md`). It holds the four `BLEND_MODE_*` constants (`@luaconstants`),
+  `draw_begin_blend_mode(mode)` / `draw_end_blend_mode()` (pass-throughs to
+  `IDrawSurface::BeginBlendMode`/`EndBlendMode`), and `LuaBlendApi::ReadBlendMode`, the strict
+  mode reader shared with the sprite functions. It is registered with the renderer-free modules,
+  so the constants exist before any window. The draw functions reach the renderer only when
+  called.
+- `src/lua/luaspriteapi.cpp`: `sprite_set_blend_mode`, `sprite_clear_blend_mode` and
+  `sprite_get_blend_mode` (the mode, or `nil` when the sprite has none of its own, which differs
+  from `BLEND_MODE_NORMAL`), with a strict handle reader (`"invalid sprite handle"`).
+- `SpritePool::Release` calls `ClearBlendMode()` next to `SetWorldSpace( false )`, so a recycled
+  handle never inherits a mode (sunlight's `Unload()` keeps it on purpose).
+- `LuaEngineUtil::PushError`/`PushTrue`: the shared `nil, "message"` / `true` helpers, for D3 to
+  reuse. The renderer and view files keep their own copies until D3 (or S).
+- Test: `scripts/blend_api_smoke.py` + `scripts/blend_api_smoke/`, in `ci.yml` on all 4
+  platforms. It checks the constants' values, set/get/clear round trips for every mode, every
+  error (unknown mode, negative, string, fraction, missing, bad, string and released handles),
+  that a rejected call changes nothing, the recycled slot, that no sprite call creates the
+  renderer, the scoped pair around real drawing for every mode, that a second begin replaces the
+  first, an end with no begin, and a begin with no end over the next 5 frames. Mutation check:
+  without the `ClearBlendMode()` line in `Release`, the test fails with "a recycled sprite
+  inherited blend mode 1", and it passes again once the line is restored. (A first rerun after
+  restoring still failed: the restored file had the same mtime second as the mutated build, so
+  make skipped it. A `touch` fixed it. Worth knowing for every mutation check here.)
+- `samples/blend` (+ `docs/README.md`, listed in `samples/README.md`), modelled on sunlight's:
+  Sunny with a glow under it (keys `1`-`5`), a shadow that always multiplies, and four panels
+  (red/green/blue squares, alpha 200) drawn with `draw_filled_rectangle` between begin and end,
+  each over its own backdrop (sky; night for add). It uses `renderer_create{ zoom = 1.0,
+  preferred_zoom = 1.0 }` so the map and the 128x128 glow fit next to the panels.
+- `resources/sprites/glow.png` and `shadow.png` come from sunlight's `samples/blend`
+  (`bfce598`), unmodified, with provenance in `resources/sprites/README.md`.
+- `docs/vscode/.vscode/launch.json` (the tracked VSCode template; the root `.vscode/` is
+  git-ignored): the "Launch sample" picker had fallen behind `samples/`. It now lists all 16,
+  adding `blend` plus the `renderer`, `views` and `crypto` samples that earlier work never
+  added. The owner's local copy was updated the same way.
+- No CARAVELLIUS_BREAKAGES entry: nothing changes for a game that uses no mode.
 
 ## Phase T: documentation review
 

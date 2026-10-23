@@ -45,6 +45,7 @@ DOCS_DIR = REPO_ROOT / "docs" / "lua-api"
 # here explicitly when a new src/lua/*api.cpp file is added.
 SOURCE_TO_DOC = {
     "luaappapi.cpp":        "app.md",
+    "luablendapi.cpp":      "blend.md",
     "luacameraapi.cpp":     "camera.md",
     "luacollisionapi.cpp":  "collision.md",
     "luacryptoapi.cpp":     "crypto.md",

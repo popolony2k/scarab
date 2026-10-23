@@ -21,6 +21,7 @@ Generated straight from `@luaname`/`@luadoc`/`@luaexample` tags on each primitiv
 | [Input](https://popolony2k.github.io/scarab/lua-api/input.html) | Keyboard and gamepad polling — `input_*`, plus the `KEY_*`/`GAMEPAD_BUTTON_*`/`GAMEPAD_AXIS_*`/`CONTROLLER_*` constants |
 | [Tile map](https://popolony2k.github.io/scarab/lua-api/tilemap.html) | Loading maps and reading/writing layers and tiles — `tilemap_*`, plus `MAP_ALIGNMENT_*` |
 | [Sprites](https://popolony2k.github.io/scarab/lua-api/sprite.html) | The sprite handle pool — `pool_register_type`, `sprite_*`, plus `TEXTURE_ANIMATION_MODE_*` |
+| [Blend modes](https://popolony2k.github.io/scarab/lua-api/blend.html) | How what is drawn next combines with what is already drawn (lights, glows, shadows, tints) — `draw_begin_blend_mode`/`draw_end_blend_mode` around a script's own drawing, plus the `BLEND_MODE_*` constants; a sprite's own mode is `sprite_set_blend_mode` on the Sprites page |
 | [Collision](https://popolony2k.github.io/scarab/lua-api/collision.html) | Collision rules and handlers — `collision_*` |
 | [JSON](https://popolony2k.github.io/scarab/lua-api/json.html) | `load_json` — the generic JSON→Lua config bridge |
 | [Engine callbacks](https://popolony2k.github.io/scarab/lua-api/callbacks.html) | The Lua-side hooks the engine calls **into** — `on_update`, `on_move_sprites_to_screen`, `on_load_stage`, `get_active_enemy_count` |

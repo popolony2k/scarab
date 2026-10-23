@@ -34,9 +34,13 @@
                 "samples/camera/project.json",
                 "samples/sprite/project.json",
                 "samples/collision/project.json",
+                "samples/renderer/project.json",
+                "samples/views/project.json",
+                "samples/blend/project.json",
                 "samples/scripting/project.json",
                 "samples/sound/project.json",
-                "samples/json/project.json"
+                "samples/json/project.json",
+                "samples/crypto/project.json"
             ],
             "default": "samples/hello-world/project.json"
         }
