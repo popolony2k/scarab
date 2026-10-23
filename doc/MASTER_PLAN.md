@@ -401,6 +401,16 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
 | S2 | Mechanical alignment pass, object-file-identical proof | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
 
+**Rules the owner has already decided (S1 records them, S3 writes them into `CLAUDE.md`):**
+- **Forward declarations use a C++17 nested namespace definition**, one line per class, with
+  the project's space-padded `::`: `namespace SunLight :: TileMap  { class ITileMap; }`, never
+  nested `namespace SunLight { namespace TileMap { ... } }` blocks (decided 2026-10-22). This
+  applies to forward declarations ONLY, meaning a bare `class X;` naming a type defined
+  elsewhere. Namespace blocks that define Scarab's own code keep today's nested style. A
+  qualified name alone (`class SunLight :: TileMap :: ITileMap;`) is not valid C++ (it cannot
+  introduce a class), so the namespace definition is required. Already applied to the only two
+  headers that had one, `src/engine/irendererprovider.h` and `src/lua/luaengine.h`.
+
 ## Phase B: blend modes
 
 | # | Item | Status |

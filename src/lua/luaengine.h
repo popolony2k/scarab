@@ -33,18 +33,11 @@ extern "C"
 #include <string>
 #include <cstdint>
 
-namespace SunLight  {
-    namespace TileMap  { class ITileMap; }
-    namespace Sound  { class SoundManager; }
-}
+namespace SunLight :: TileMap  { class ITileMap; }
+namespace SunLight :: Sound  { class SoundManager; }
 
-namespace Scarab  {
-    namespace Engine  {
-        class SpritePool;
-
-        namespace Lua  { class LuaCollisionListener; }
-    }
-}
+namespace Scarab :: Engine  { class SpritePool; }
+namespace Scarab :: Engine :: Lua  { class LuaCollisionListener; }
 
 namespace Scarab  {
     namespace Lua {
