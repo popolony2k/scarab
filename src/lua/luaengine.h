@@ -29,12 +29,11 @@ extern "C"
 }
 
 #include "scripting/scriptprocessor.h"
+#include "tilemap/itilemap.h"
+#include "sound/soundmanager.h"
 #include "lua/luaengineutil.h"
 #include <string>
 #include <cstdint>
-
-namespace SunLight :: TileMap  { class ITileMap; }
-namespace SunLight :: Sound  { class SoundManager; }
 
 namespace Scarab :: Engine  { class SpritePool; }
 namespace Scarab :: Engine :: Lua  { class LuaCollisionListener; }
