@@ -24,11 +24,8 @@
 #include <optional>
 #include <string>
 #include "renderer/rendererconfig.h"
-
-namespace SunLight  {
-    namespace TileMap  { class ITileMap; }
-    namespace DrawSurface  { class IDrawSurface; }
-}
+#include "tilemap/itilemap.h"
+#include "drawsurface/idrawsurface.h"
 
 namespace Scarab  {
     namespace Engine  {

@@ -401,6 +401,23 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
 | S2 | Mechanical alignment pass, object-file-identical proof | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
 
+**Rules the owner has already decided (S1 records them, S3 writes them into `CLAUDE.md`):**
+- **A class from sunlight (or any other external library) is never forward-declared: include
+  its header** (decided 2026-10-22). The header is then the only place that says where the
+  class lives, so a namespace move on sunlight's side (like P2's `TileMap` to `Base`) can't leave
+  a stale declaration in Scarab that silently declares a phantom class. After a move, the
+  build fails cleanly at each line that still names the old path, or not at all. Applied to the
+  only two headers that had any: `src/engine/irendererprovider.h` (`ITileMap`,
+  `IDrawSurface`) and `src/lua/luaengine.h` (`ITileMap`, `SoundManager`).
+- **A forward declaration of Scarab's own classes uses a C++17 nested namespace definition**,
+  one line per class, with the project's space-padded `::`:
+  `namespace Scarab :: Engine :: Lua  { class LuaCollisionListener; }`, never nested
+  `namespace Scarab { namespace Engine { ... } }` blocks (decided 2026-10-22). This applies to
+  forward declarations ONLY. Namespace blocks that define Scarab's own code keep today's nested
+  style. A qualified name alone (`class Scarab :: Engine :: SpritePool;`) is not valid C++ (it
+  cannot introduce a class), so the namespace definition is required. Applied in
+  `src/lua/luaengine.h`.
+
 ## Phase B: blend modes
 
 | # | Item | Status |
