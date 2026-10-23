@@ -116,6 +116,12 @@ namespace Scarab  {
                 return true;
             }
 
+            /** @brief factor(p) = (p + 1) x ZOOM_STEP - see sunlight's ZOOM_* constants. */
+            double LuaRendererApi :: FactorOfPosition( unsigned nZoomPos )  {
+
+                return ( ( double ) nZoomPos + 1.0 ) * SunLight :: Base :: ZOOM_STEP;
+            }
+
             /**
              * @brief Read an integer option: a Lua number with an exact integer value (a JSON
              * `1260` arrives as an integer, `1260.0` is accepted too; `1260.5` and strings are not).
@@ -223,7 +229,7 @@ namespace Scarab  {
              * defaults). Also reports which of the null-backend-only options were given.
              */
             static bool ParseOptions( lua_State *pLuaState, int nTable, RendererConfig &config,
-                                      bool &bNullOnlyGiven, bool &bUseDefaultKeyHandler, std :: string &strError )  {
+                                      bool &bNullOnlyGiven, Engine :: stRendererCreateExtras &extras, std :: string &strError )  {
 
                 static const char * const  aszViewport[]   = { "x", "y", "w", "h" };
                 static const char * const  aszScrollStep[] = { "w", "h" };
@@ -279,7 +285,7 @@ namespace Scarab  {
                     else if( strKey == "draw_fps" )
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bDrawFPS, strError );
                     else if( strKey == "use_default_key_handler" )
-                        bOk = ReadBoolean( pLuaState, -1, strKey, bUseDefaultKeyHandler, strError );
+                        bOk = ReadBoolean( pLuaState, -1, strKey, extras.bUseDefaultKeyHandler, strError );
                     else if( strKey == "stretch_to_fill" )
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bStretchToFill, strError );
                     else if( strKey == "fullscreen" )
@@ -317,6 +323,22 @@ namespace Scarab  {
                                 config.nZoomPos = nZoomPos;
                             else
                                 strError = "option 'zoom': " + strError;
+                        }
+                    }
+                    else if( strKey == "preferred_zoom" )  {
+                        if( lua_type( pLuaState, -1 ) != LUA_TNUMBER )  {
+                            strError = "option 'preferred_zoom' must be a number (a zoom factor, eg. 3.8125)";
+                            bOk = false;
+                        }
+                        else  {
+                            unsigned  nZoomPos = 0;
+
+                            bOk = LuaRendererApi :: ValidateZoomFactor( lua_tonumber( pLuaState, -1 ), nZoomPos, strError );
+
+                            if( bOk )
+                                extras.nPreferredZoomPos = nZoomPos;
+                            else
+                                strError = "option 'preferred_zoom': " + strError;
                         }
                     }
                     else if( strKey == "viewport" )  {
@@ -443,6 +465,7 @@ namespace Scarab  {
              * | `draw_fps` | draw the FPS counter | `false` |
              * | `viewport` | `{ x =, y =, w =, h = }` — the visible rectangle, which must fit the render area | `{ x = 10, y = 10, w = 1240, h = 900 }` |
              * | `zoom` | the starting zoom **factor** (a multiple of `ZOOM_STEP`, within `ZOOM_FACTOR_MIN..ZOOM_FACTOR_MAX`) | `3.8125` |
+             * | `preferred_zoom` | the zoom **factor** `zoom_reset` / `view_zoom_reset(0)` return to (validated like `zoom`); see below | `1.0` |
              * | `scroll_step` | `{ w =, h = }` — how far one `camera_move_*` call moves | `{ w = 1, h = 1 }` |
              * | `view_control_mode` | `VIEW_CONTROL_MODE_ACTIVE` or `_REACTIVE` | `_ACTIVE` |
              * | `use_default_key_handler` | sunlight's built-in scroll/zoom key bindings | `false` |
@@ -458,6 +481,13 @@ namespace Scarab  {
              * `"zoom factor 3.8 is not a multiple of 0.0625 - nearest valid is 3.8125"`). Whole
              * JSON numbers loaded with `load_json` arrive as Lua integers, so a config file works
              * unchanged.
+             *
+             * **Preferred zoom.** The default view has two zoom settings: the *current* zoom
+             * (`zoom`, where the game starts) and the *preferred* zoom (`preferred_zoom`, where
+             * `zoom_reset` goes back to). They are separate, and setting `zoom` does not change
+             * the preferred one. Pass both with the same value to make a reset return to the
+             * starting zoom. Left out, the preferred zoom is sunlight's own default, `1.0`.
+             * `view_set_preferred_zoom` changes it later.
              *
              * **Fullscreen.** `fullscreen = true` creates the window fullscreen from the start, with
              * exactly the result `app_set_fullscreen( true, strategy )` gives afterwards (the same
@@ -483,6 +513,7 @@ namespace Scarab  {
              *     height     = config.height,
              *     viewport   = { x = 10, y = 10, w = 1240, h = 900 },
              *     zoom       = 3.8125,
+             *     preferred_zoom = 3.8125,   -- zoom_reset returns here, not to 1.0
              *     resizeable = false,
              *     exit_key   = KEY_NULL,
              * }
@@ -496,13 +527,13 @@ namespace Scarab  {
                 Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
                 RendererConfig                config    = pProvider -> GetDefaultConfig();
                 bool                          bNullOnlyGiven        = false;
-                bool                          bUseDefaultKeyHandler = false;
+                Engine :: stRendererCreateExtras  extras;
                 std :: string                 strError;
 
                 if( lua_gettop( pLuaState ) > 1 || ( lua_gettop( pLuaState ) == 1 && !lua_istable( pLuaState, 1 ) ) )
                     return PushError( pLuaState, "renderer_create expects one argument: an options table" );
 
-                if( lua_gettop( pLuaState ) == 1 && !ParseOptions( pLuaState, 1, config, bNullOnlyGiven, bUseDefaultKeyHandler, strError ) )
+                if( lua_gettop( pLuaState ) == 1 && !ParseOptions( pLuaState, 1, config, bNullOnlyGiven, extras, strError ) )
                     return PushError( pLuaState, strError );
 
                 bool  bNullBackend = pProvider -> IsHeadless() || config.backend == RENDERER_BACKEND_NULL;
@@ -510,7 +541,7 @@ namespace Scarab  {
                 if( !ValidateConfig( config, bNullOnlyGiven, bNullBackend, strError ) )
                     return PushError( pLuaState, strError );
 
-                if( !pProvider -> CreateRenderer( config, bUseDefaultKeyHandler, &strError ) )
+                if( !pProvider -> CreateRenderer( config, extras, &strError ) )
                     return PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, __RENDERER_HANDLE );
@@ -593,7 +624,8 @@ namespace Scarab  {
              * @luadoc
              * The renderer's effective settings as a table with the same names `renderer_create`
              * takes: `backend`, `width`, `height`, `title`, `fps`, `resizeable`, `draw_fps`,
-             * `viewport` (`{ x, y, w, h }`), `zoom` (the current factor), `scroll_step`
+             * `viewport` (`{ x, y, w, h }`), `zoom` (the current factor), `preferred_zoom` (the
+             * factor `zoom_reset` returns to), `scroll_step`
              * (`{ w, h }`), `view_control_mode`, `use_default_key_handler`, `exit_key`,
              * `stretch_to_fill`, `fullscreen`, `fullscreen_strategy`, `frame_pacing` and `max_frames`. It reflects the *current*
              * values, not a snapshot from creation — the title after `app_set_name`, the zoom
@@ -638,6 +670,7 @@ namespace Scarab  {
                 lua_setfield( pLuaState, -2, "viewport" );
 
                 SetNumberField( pLuaState, "zoom", pTileMap -> GetViewport().GetZoomProperties().fZoomFactor );
+                SetNumberField( pLuaState, "preferred_zoom", FactorOfPosition( pTileMap -> GetViewport().GetZoomProperties().nPreferredZoomPos ) );
 
                 int  nStepWidth  = 0;
                 int  nStepHeight = 0;

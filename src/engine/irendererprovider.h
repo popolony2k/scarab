@@ -21,6 +21,7 @@
 #ifndef __IRENDERERPROVIDER_H__
 #define __IRENDERERPROVIDER_H__
 
+#include <optional>
 #include <string>
 #include "renderer/rendererconfig.h"
 
@@ -31,6 +32,31 @@ namespace SunLight  {
 
 namespace Scarab  {
     namespace Engine  {
+
+        /**
+         * @brief What renderer_create asks for beyond sunlight's RendererConfig itself:
+         * things a provider applies once the renderer exists, not passive configuration
+         * values. Plain values only, so IRendererProvider stays Lua-agnostic and names no
+         * sunlight input type.
+         */
+        struct stRendererCreateExtras  {
+            /*
+             * Install sunlight's own default camera/zoom key and gamepad bindings (arrow
+             * keys, PageUp/Down, Home/End, and the matching gamepad buttons) -
+             * renderer_create's use_default_key_handler. Out of RendererConfig because
+             * sunlight removed its own equivalent field (doc/MASTER_PLAN.md item D1):
+             * installing a preset is an action, not a setting.
+             */
+            bool                         bUseDefaultKeyHandler = false;
+
+            /*
+             * The default view's preferred zoom POSITION - what zoom_reset returns to,
+             * renderer_create's preferred_zoom (doc/MASTER_PLAN.md item D2). Empty (left
+             * out) keeps sunlight's own default. RendererConfig has a current zoom
+             * (nZoomPos) but no preferred one.
+             */
+            std :: optional<unsigned>    nPreferredZoomPos;
+        };
 
         /**
          * @brief Where the Lua bridge gets the renderer from.
@@ -86,18 +112,11 @@ namespace Scarab  {
              * window. Fails - with the reason in *pError - if one already exists (naming the
              * primitive that created the default one implicitly, when that's what happened),
              * or if the configuration can't work.
-             * @param bUseDefaultKeyHandler Install sunlight's own default camera/zoom key and
-             * gamepad bindings (arrow keys, PageUp/Down, Home/End, and the matching gamepad
-             * buttons) once the renderer exists - what renderer_create's own
-             * use_default_key_handler option asks for. Kept out of RendererConfig itself
-             * (which sunlight's own equivalent field was removed from, see doc/MASTER_PLAN.md
-             * item D1) since installing a preset is an action a concrete provider takes once
-             * the renderer exists, not a passive configuration value - this interface stays
-             * Lua-agnostic and sunlight-input-agnostic either way: it names no sunlight input
-             * type anywhere, only this one bool.
+             * @param extras What renderer_create asks for beyond RendererConfig itself, applied
+             * once the renderer exists - see stRendererCreateExtras;
              */
             virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
-                                         bool bUseDefaultKeyHandler, std :: string *pError ) = 0;
+                                         const stRendererCreateExtras &extras, std :: string *pError ) = 0;
 
             /** @brief How the current renderer came to exist (ORIGIN_NONE if it doesn't yet). */
             virtual Origin GetOrigin( void ) = 0;
@@ -118,7 +137,7 @@ namespace Scarab  {
             virtual void NoteWindowTitle( const std :: string &strTitle ) = 0;
 
             /**
-             * @brief What CreateRenderer's own bUseDefaultKeyHandler was last given (false if
+             * @brief What CreateRenderer's extras.bUseDefaultKeyHandler was last given (false if
              * no renderer exists yet, or it was created implicitly - the lazy default never
              * requests this). renderer_get_config's own use_default_key_handler field reads
              * this back, the same "a creation-time value, not changed later" status its other

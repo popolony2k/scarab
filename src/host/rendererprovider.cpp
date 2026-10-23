@@ -73,19 +73,18 @@ namespace Scarab  {
          * @param origin How this creation came about;
          * @param strTrigger For an implicit creation, the primitive that needed a window;
          * @param pError Receives the reason on failure (may be null);
-         * @param bUseDefaultKeyHandler Install sunlight's own default camera/zoom bindings
-         * (SunLight::Input::DefaultControllerBindings::Install) once the renderer exists and
-         * is Start()ed - renderer_create's own use_default_key_handler option, threaded
-         * through CreateRenderer. Defaults to false (today's behaviour, and what the
-         * implicitly-created default renderer always gets via GetOrCreateDefault, which never
-         * passes this) so every pre-existing call site of this method keeps compiling.
+         * @param extras What renderer_create asks for beyond the configuration, applied once
+         * the renderer exists and is Start()ed (stRendererCreateExtras): sunlight's default
+         * camera/zoom bindings, and the default view's preferred zoom. Defaults to none of
+         * them - what the implicitly-created default renderer always gets, since
+         * GetOrCreateDefault never passes this.
          * @return true if the renderer exists now, false (with *pError set) if not;
          */
         bool RendererProvider :: Create( const SunLight :: Renderer :: RendererConfig &config,
                                          Origin origin,
                                          const std :: string &strTrigger,
                                          std :: string *pError,
-                                         bool bUseDefaultKeyHandler )  {
+                                         const Scarab :: Engine :: stRendererCreateExtras &extras )  {
 
             if( m_pRenderer )  {
                 if( pError )
@@ -121,7 +120,7 @@ namespace Scarab  {
 
             m_pRenderer             = std :: move( pRenderer );
             m_EffectiveConfig       = effective;
-            m_bUseDefaultKeyHandler = bUseDefaultKeyHandler;
+            m_bUseDefaultKeyHandler = extras.bUseDefaultKeyHandler;
             m_Origin                = origin;
             m_strTrigger            = strTrigger;
 
@@ -138,8 +137,13 @@ namespace Scarab  {
              * handlers that call ITileMap's camera/zoom methods, it never touches the map
              * itself, so running before one is loaded is safe.
              */
-            if( bUseDefaultKeyHandler )
+            if( extras.bUseDefaultKeyHandler )
                 SunLight :: Input :: DefaultControllerBindings :: Install( *m_pRenderer, m_pRenderer -> GetControllerManager() );
+
+            // Already validated by renderer_create (a valid position, and a fresh renderer's
+            // zoom limits are the whole scale), so sunlight's own silent refusal can't happen.
+            if( extras.nPreferredZoomPos )
+                m_pRenderer -> GetViewport().SetPreferredZoom( *extras.nPreferredZoomPos );
 
             return true;
         }
@@ -207,7 +211,7 @@ namespace Scarab  {
          * that call, not this one, is what to move below renderer_create.
          */
         bool RendererProvider :: CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
-                                                 bool bUseDefaultKeyHandler, std :: string *pError )  {
+                                                 const Scarab :: Engine :: stRendererCreateExtras &extras, std :: string *pError )  {
 
             if( m_pRenderer )  {
                 if( pError )  {
@@ -222,7 +226,7 @@ namespace Scarab  {
                 return false;
             }
 
-            return Create( config, ORIGIN_CREATED, "", pError, bUseDefaultKeyHandler );
+            return Create( config, ORIGIN_CREATED, "", pError, extras );
         }
 
         RendererProvider :: Origin RendererProvider :: GetOrigin( void )  {
@@ -254,7 +258,7 @@ namespace Scarab  {
             m_EffectiveConfig.strTitle = strTitle;
         }
 
-        /** @brief What CreateRenderer's own bUseDefaultKeyHandler was last given. */
+        /** @brief What CreateRenderer's extras.bUseDefaultKeyHandler was last given. */
         bool RendererProvider :: GetUseDefaultKeyHandler( void )  {
 
             return m_bUseDefaultKeyHandler;

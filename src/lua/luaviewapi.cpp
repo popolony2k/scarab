@@ -70,12 +70,6 @@ namespace Scarab  {
                 return std :: make_pair( nMinPos, nMaxPos );
             }
 
-            /** @brief factor(p) = (p + 1) x ZOOM_STEP - see sunlight's ZOOM_* constants. */
-            static double FactorOfPosition( unsigned nZoomPos )  {
-
-                return ( ( double ) nZoomPos + 1.0 ) * SunLight :: Base :: ZOOM_STEP;
-            }
-
             /**
              * @brief Format a number the way a user would write it (3.8125, 16).
              */
@@ -311,8 +305,8 @@ namespace Scarab  {
 
                 if( nZoomPos < limits.first || nZoomPos > limits.second )
                     return PushError( pLuaState, "zoom factor " + FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
-                        " is outside this view's zoom limits [" + FormatNumber( FactorOfPosition( limits.first ) ) + ", " +
-                        FormatNumber( FactorOfPosition( limits.second ) ) + "]" );
+                        " is outside this view's zoom limits [" + FormatNumber( LuaRendererApi :: FactorOfPosition( limits.first ) ) + ", " +
+                        FormatNumber( LuaRendererApi :: FactorOfPosition( limits.second ) ) + "]" );
 
                 pView -> GetViewport().SetZoom( nZoomPos );
 
@@ -362,8 +356,8 @@ namespace Scarab  {
 
                 if( nZoomPos < limits.first || nZoomPos > limits.second )
                     return PushError( pLuaState, "zoom factor " + FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
-                        " is outside this view's zoom limits [" + FormatNumber( FactorOfPosition( limits.first ) ) + ", " +
-                        FormatNumber( FactorOfPosition( limits.second ) ) + "]" );
+                        " is outside this view's zoom limits [" + FormatNumber( LuaRendererApi :: FactorOfPosition( limits.first ) ) + ", " +
+                        FormatNumber( LuaRendererApi :: FactorOfPosition( limits.second ) ) + "]" );
 
                 pView -> GetViewport().SetPreferredZoom( nZoomPos );
 
@@ -382,7 +376,7 @@ namespace Scarab  {
                 if( !pView )
                     return PushError( pLuaState, strError );
 
-                lua_pushnumber( pLuaState, FactorOfPosition( pView -> GetViewport().GetZoomProperties().nPreferredZoomPos ) );
+                lua_pushnumber( pLuaState, LuaRendererApi :: FactorOfPosition( pView -> GetViewport().GetZoomProperties().nPreferredZoomPos ) );
 
                 return 1;
             }
@@ -453,8 +447,8 @@ namespace Scarab  {
 
                 std :: pair<unsigned, unsigned>  limits = GetZoomLimitsOf( *pView );
 
-                lua_pushnumber( pLuaState, FactorOfPosition( limits.first ) );
-                lua_pushnumber( pLuaState, FactorOfPosition( limits.second ) );
+                lua_pushnumber( pLuaState, LuaRendererApi :: FactorOfPosition( limits.first ) );
+                lua_pushnumber( pLuaState, LuaRendererApi :: FactorOfPosition( limits.second ) );
 
                 return 2;
             }

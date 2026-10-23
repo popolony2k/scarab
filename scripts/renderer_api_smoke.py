@@ -22,6 +22,8 @@ scripts/renderer_api_smoke/main.lua, selected with RENDERER_SMOKE_SCENARIO:
   viewsmulti  real extra views: view_create/view_destroy, counts, ids never reused, visible/draw
             order/backdrop/layer-mask round trips (by id and by name), view_fit_to_map, every
             rejection, and that configuring one view never touches another;
+  preferredzoom  preferred_zoom is separate from zoom: zoom_reset returns to it, it is read back
+            live (a later view_set_preferred_zoom shows up), and ZOOM_FACTOR_MAX is accepted;
   views_norenderer  a view call before any renderer is an error and creates none.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
@@ -34,7 +36,7 @@ import os
 import subprocess
 import sys
 
-SCENARIOS           = ["defaults", "create", "fullscreen", "errors", "lazy", "nowindow", "views", "viewsmulti", "views_norenderer"]
+SCENARIOS           = ["defaults", "create", "fullscreen", "errors", "lazy", "nowindow", "views", "viewsmulti", "preferredzoom", "views_norenderer"]
 MAX_FRAMES          = 200
 RUN_TIMEOUT_SECONDS = 120
 PROJECT             = "scripts/renderer_api_smoke/project.json"
