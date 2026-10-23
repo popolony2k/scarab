@@ -83,7 +83,7 @@ namespace Scarab  {
                          Origin origin,
                          const std :: string &strTrigger,
                          std :: string *pError,
-                         bool bUseDefaultKeyHandler = false );
+                         const Scarab :: Engine :: stRendererCreateExtras &extras = Scarab :: Engine :: stRendererCreateExtras() );
             void EnsureCreated( const char *szTrigger );
 
             SunLight :: Renderer :: TileMapRenderer* GetRenderer( void );
@@ -94,7 +94,7 @@ namespace Scarab  {
             SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char *szTrigger );
             SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void );
             bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
-                                bool bUseDefaultKeyHandler, std :: string *pError );
+                                const Scarab :: Engine :: stRendererCreateExtras &extras, std :: string *pError );
             Origin GetOrigin( void );
             bool IsHeadless( void );
             SunLight :: Renderer :: RendererConfig GetDefaultConfig( void );

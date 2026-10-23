@@ -164,7 +164,7 @@ Lua side as a new item, B1 (below). This item is only the re-pin. In sunlight:
 | # | Item | Status |
 |---|------|--------|
 | D1 | `use_default_key_handler` (BREAKAGES entry 26) - keep the Lua shape, back it with `DefaultControllerBindings::Install` | DONE |
-| D2 | `renderer_create{ preferred_zoom }` - a new, optional option for the zoom `zoom_reset` returns to (Scarab only, no sunlight change) | TODO |
+| D2 | `renderer_create{ preferred_zoom }` - a new, optional option for the zoom `zoom_reset` returns to (Scarab only, no sunlight change) | DONE |
 
 **D1 (DONE, 2026-10-21 - implemented inside P2, not as its own separate PR, since P2 could
 not compile without it; see P2's own write-up above).** `RendererConfig::bUseDefaultKeyHandler`
@@ -196,7 +196,7 @@ exact name and meaning. Implementation:
   any map is loaded") is answered: yes, confirmed with a scratch headless script - see P3's
   own write-up.
 
-**D2 (TODO - added 2026-10-22 during V1, done right after V1 by the owner's decision, out of
+**D2 (DONE, 2026-10-22, reviewed and approved by the owner - added 2026-10-22 during V1, done right after V1 by the owner's decision, out of
 phase order).** Found by the owner in V1's real-window check of `samples/camera`: Home reset
 the zoom to `1.0`, not to the `3.8125` the sample starts at. Not a bug. `zoom_reset` returns
 to the view's *preferred* zoom, which is a separate setting from the current zoom (documented
@@ -219,6 +219,34 @@ at creation instead:
 - Tests: `scripts/renderer_api_smoke.py` - `defaults` (`preferred_zoom == 1.0`), `create` (a
   non-default value read back, and `zoom_reset()` lands on it), `errors` (a bad factor, a
   wrong type). Docs: the `renderer_create` options table and `renderer_get_config`'s doc.
+
+**Built (2026-10-22):**
+- `Scarab::Engine::stRendererCreateExtras` (`src/engine/irendererprovider.h`) holds
+  `bUseDefaultKeyHandler` (D1) and `std::optional<unsigned> nPreferredZoomPos`.
+  `IRendererProvider::CreateRenderer` and `RendererProvider::Create` take it in place of D1's
+  bool. `Create` applies the preferred zoom right after `Start()` with
+  `GetViewport().SetPreferredZoom`. The lazy default renderer passes no extras, so it keeps
+  sunlight's `1.0`.
+- `renderer_create{ preferred_zoom }` is parsed like `zoom` (`ValidateZoomFactor`, errors
+  prefixed `option 'preferred_zoom': `). `renderer_get_config` returns `preferred_zoom` live
+  from `nPreferredZoomPos`. `FactorOfPosition` moved from `luaviewapi.cpp` to
+  `LuaRendererApi`, so both files share it.
+- Found while building it: sunlight keeps the upper zoom limit as an exclusive bound internally
+  (`SetMaxZoom` stores `max + 1`), so `SetPreferredZoom( ZOOM_POS_MAX )` is accepted. The new
+  `preferredzoom` scenario pins it with `ZOOM_FACTOR_MAX`.
+- Tests (`scripts/renderer_api_smoke.py`): `defaults` (`preferred_zoom == 1.0`), `create`
+  (`2.5`, distinct from `zoom = 2.0625`), `errors` (a string, `3.8` with the nearest valid
+  factor named, `20` outside the scale), `lazy` (the implicit default renderer keeps `1.0`), and a
+  new `preferredzoom` scenario (`zoom_reset` lands on `preferred_zoom`, `ZOOM_FACTOR_MAX` is
+  accepted, and a later `view_set_preferred_zoom` shows up live in `renderer_get_config` and is
+  followed by `zoom_reset`). Mutation check: with the `SetPreferredZoom` call removed, `create`
+  and `preferredzoom` fail with the exact reasons, and they pass again once it is restored.
+- All other checks pass: camera boundary, tileset archive (plain + encrypted), headless smoke,
+  the Lua API docs generator (the renderer page shows the new row, section and example), and
+  all 15 samples headless.
+- No CARAVELLIUS_BREAKAGES entry: the option is opt-in, and leaving it out keeps today's
+  behavior exactly. No real-window check is needed: nothing is drawn differently, and the
+  headless scenarios cover all of it.
 
 ## Phase V: visual/behavioral re-verification
 

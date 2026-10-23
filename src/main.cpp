@@ -72,7 +72,7 @@ static void SetPackEnvVar( const char *szName, const std :: string &strValue )  
  *
  * The default renderer never installs sunlight's own default camera/zoom key
  * bindings (RendererProvider::GetOrCreateDefault never passes
- * bUseDefaultKeyHandler=true to Create - see RendererProvider::Create):
+ * any stRendererCreateExtras to Create - see RendererProvider::Create):
  * every key a game reacts to goes through Lua's own input_* primitives
  * unless renderer_create{use_default_key_handler=true} asks for the preset
  * explicitly (doc/MASTER_PLAN.md item D1).

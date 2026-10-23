@@ -72,6 +72,7 @@ namespace Scarab  {
 
                 static bool CheckHandle( lua_State *pLuaState, int nIndex, std :: string &strError );
                 static bool ValidateZoomFactor( double fFactor, unsigned &nZoomPos, std :: string &strError );
+                static double FactorOfPosition( unsigned nZoomPos );
                 static void Register( lua_State *pLuaState );
             };
         }
