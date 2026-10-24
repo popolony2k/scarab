@@ -272,7 +272,7 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
 | V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | DONE |
 | V3 | `nOpacity` 0..255 round-trip (entry 41) | DONE |
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | DONE |
-| V5 | Tile/text/point objects now drawn where they were invisible before (entries 8, 11, 17) | TODO |
+| V5 | Tile/text/point objects now drawn where they were invisible before (entries 8, 11, 17) | DONE |
 | V6 | Rotated shape/tile/text objects (entries 18-20) | TODO |
 | V7 | Shape/text object opacity now respects layer opacity (entry 36) | TODO |
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | TODO |
@@ -470,7 +470,7 @@ expected. Scope: a real-window check of the animated tiles (Lua cannot read a ti
 frame, so no headless test can see it), and a CARAVELLIUS_BREAKAGES entry. Sub-tasks detailed
 when the item starts.
 
-**V5 (TODO - fully planned 2026-10-23, open questions settled 2026-10-24; starts after C6).** sunlight entries 8, 11
+**V5 (DONE, 2026-10-24 - checked by the owner in a real window and approved; fully planned 2026-10-23, open questions settled 2026-10-24, started 2026-10-24 after C6).** sunlight entries 8, 11
 and 17: **text**, **tile** (`OT_TILE`, drawn at their own size or stretched into their box,
 clipped to the viewport, animated) and **point** objects (a filled square, `point_size`
 property, default one map unit, scaled by zoom) are now drawn. Up to v0.38.0 all three were
@@ -501,7 +501,7 @@ camera goes) can't be told from the map alone. That goes in V5c below.
 - **V5a:** record the audit above (done in this text).
 - **V5b, a new `samples/objects` sample**, asked for by the owner so V5 has something to see
   by eye. It is built from sunlight's own object samples, read from the local sunlight repo at
-  the pinned commit (`git -C ../sunlight show bfce598:samples/...`), from the vendored
+  the pinned commit (`git -C ../sunlight show 9c8c6bf:samples/...`), from the vendored
   `build/_deps/sunlight-src`, or by asking the sunlight session:
   - `samples/objects/resources/map/objects.tmx` (60x40, 32 px): 6 **tile** objects, one row
     per case (own size, stretched to a 64 px box, cut by the left viewport edge, animated,
@@ -517,10 +517,10 @@ camera goes) can't be told from the map alone. That goes in V5c below.
   - The three open questions, settled with the owner (2026-10-24):
     1. **Font:** text objects draw only with a registered font, otherwise `??????`, so the
        owner promoted C6 (fonts by handle, incl. `register_font`), done right before V5. The
-       sample loads `resources/fonts/caravellius8x8.fnt` once with `font_load`, registers it
+       sample loads `resources/fonts/caravellius8x8.fnt` once with `load_font`, registers it
        as "Sans", and can use the same handle for its HUD text.
     2. **Location:** a new `resources/tilemap/objects/` with its own README and provenance
-       (from sunlight's `samples/objects` at `bfce598`), reusing the house tileset already in
+       (from sunlight's `samples/objects` at `9c8c6bf`), reusing the house tileset already in
        `resources/tilemap/`.
     3. **Zoom:** start at 1.0 (sunlight's sample does too), so all six cases and labels fit,
        with the shared zoom keys to look closer. Adjust after the owner's eye test.
@@ -532,6 +532,36 @@ camera goes) can't be told from the map alone. That goes in V5c below.
   rectangle or sit on a hidden layer), and its 3 rectangle trigger markers, probably already
   drawn, now have zoom-scaled outlines (O3). Check they are hidden or harmless.
 - **V5d:** the plan write-up, CI green, then DONE.
+
+**Built (2026-10-24):**
+- **Point objects decided (the owner):** V5 keeps to `objects.tmx`, tile and text objects, so
+  it stays close to a sample sunlight has tested. Point objects (only in sunlight's
+  `thick.tmx`) come with V6/V7's shape maps.
+- `resources/tilemap/objects/objects.tmx`: sunlight's `samples/objects` map at `9c8c6bf`. The
+  only change is its tileset path, `../tileset_house.tsx`, because sunlight's copy of the house
+  tileset and its image are **byte-identical** to Scarab's in `resources/tilemap/`. A comment in
+  the map and the folder's new README say so. Checked headless: the map loads (60x40, 32 px),
+  `tilemap_get_object_by_name( "viewport" )` gives (100, 100, 1000, 800), and "Sans" registers.
+- `samples/objects` (+ `docs/README.md`, listed in `samples/README.md` and in both VSCode
+  `launch.json` pickers): the layout of sunlight's own sample (render 1260x920, viewport
+  1000x800 at (40, 40), zoom 1.0 with `preferred_zoom` 1.0, map `TOP_LEFT`, camera at (100, 100),
+  scroll step 4). `load_font` loads Caravellius 8x8 once, `register_font( "Sans", ... )` gives it
+  to the map's text objects, and the same handle draws the HUD. Shared controls (arrows/WASD pan
+  in the same direction as `samples/camera`; Page Up/Down or `+`/`-` zoom; `=`; Home resets zoom
+  and camera).
+- **The owner's real-window check (2026-10-24, screenshots at zoom ~0.75, 1.0, 1.44, 1.69,
+  panned):** every label is drawn from the map's text objects in Caravellius 8x8, with no
+  `??????`, and the title in its own yellow. Case 1 is at own size, 2 stretched, 3 cut by the left
+  edge (whole once panned left), 5 identical to 1, 6 cut by the bottom edge. Case 4 animates: its
+  tile showed a different frame in each screenshot. Long labels are clipped cleanly at the
+  viewport's right edge, and everything scales together when zooming. Expected, not a bug: the
+  green frame's top and left lines lie on the viewport's clip border at the start (the frame is
+  the viewport's own edges), and its right and bottom lines move inside when zoomed out. The
+  first HUD's second line overflowed the window; it was split into two shorter lines, re-checked.
+- No headless test: drawing can't be seen headless, and nothing in Lua reads an object's drawn
+  pixels. The map loading and font registering are covered by the checks above and by C6's font
+  test.
+- V5c: `doc/CARAVELLIUS_BREAKAGES.md` entry 7.
 
 **V6-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
