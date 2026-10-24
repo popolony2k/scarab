@@ -311,10 +311,12 @@ namespace Scarab  {
      * (the renderer itself doesn't exist yet - see IRendererProvider);
      * @param pSoundManager Pointer to the engine's sound manager instance;
      * @param pSpritePool Pointer to the engine's sprite pool instance;
+     * @param pFontPool Pointer to the engine's font pool (load_font's handles);
      */
     void LuaEngine :: Init( Engine :: IRendererProvider *pRendererProvider,
                            SunLight :: Sound :: SoundManager *pSoundManager,
-                           Engine :: SpritePool *pSpritePool )  {
+                           Engine :: SpritePool *pSpritePool,
+                           Engine :: FontPool *pFontPool )  {
 
         std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
 
@@ -342,6 +344,9 @@ namespace Scarab  {
 
         lua_pushlightuserdata( m_pLuaState, pSpritePool );
         lua_setglobal( m_pLuaState, "spritePoolPtr" );
+
+        lua_pushlightuserdata( m_pLuaState, pFontPool );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaTextApi :: FONT_POOL_GLOBAL );
 
         lua_pushstring( m_pLuaState, m_strAppDirectory.c_str() );
         lua_setglobal( m_pLuaState, "APP_DIR" );

@@ -101,6 +101,10 @@ namespace Scarab  {
             SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void );
             void NoteWindowTitle( const std :: string &strTitle );
             bool GetUseDefaultKeyHandler( void );
+            bool RegisterFont( const char *szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
+                               bool bBold, bool bItalic, const char *szTrigger );
+            bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont> &pFont );
+            bool UnregisterFont( const char *szFamily, bool bBold, bool bItalic );
         };
     }
 }

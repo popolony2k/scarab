@@ -56,6 +56,8 @@ namespace Scarab  {
                 static int SetStretchToFill( lua_State *pLuaState );
                 static int GetStretchToFill( lua_State *pLuaState );
                 static int DrawFilledRectangle( lua_State *pLuaState );
+                static int GetScreenWidth( lua_State *pLuaState );
+                static int GetScreenHeight( lua_State *pLuaState );
                 static int GetPlatform( lua_State *pLuaState );
                 static int Quit( lua_State *pLuaState );
                 static int SetExitKey( lua_State *pLuaState );

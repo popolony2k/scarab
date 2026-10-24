@@ -585,9 +585,9 @@ that.
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
-| C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): TODO, done right before V5** - see below |
+| C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 
-**C6 (TODO - promoted by the owner 2026-10-24, done right before V5, out of phase order;
+**C6 (DONE, 2026-10-24 - tested by the owner in a real window, reviewed and approved; promoted by the owner 2026-10-24, done right before V5, out of phase order;
 reshaped the same day into "fonts by handle").**
 
 *How it got here.* C6 began as "expose `RegisterFont( family, path, bold, italic )`". Without a
@@ -690,6 +690,70 @@ Every map V5 (and V6/V7) would use (`objects.tmx`, `thick.tmx`, `rotation.tmx`, 
 uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed only for sunlight's
 `text.tmx` ("Mono").
 
+**Built (2026-10-24):**
+- **Names confirmed by the owner:** `load_font`, `release_font`, `set_font`, `register_font`,
+  `unregister_font`, `draw_text`, `measure_text`. The owner noted that a category prefix (like
+  `sprite_*`) fits sprites, but not fonts, because `set_font` already exists. `get_font` is left
+  out for now: a font selected by path has no Lua handle, and nothing needs to read the active
+  font back.
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `9c8c6bf421a1147d1e8c099e698dfbe7c1885af2`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@9c8c6bf`. Real fetch verified. Against
+  the new pin, exactly one compile error, as expected: `set_font` passing a path to the old
+  `SetFont`.
+- `src/engine/fontpool.{h,cpp}`: `Scarab::Engine::FontPool`, Lua-agnostic like `SpritePool`.
+  Each slot holds one `shared_ptr<IFont>`, and `FontHandle`s use the same generation packing as
+  `SpriteHandle`, so a released handle never resolves to the font that reuses its slot.
+  `EngineHost` owns it and clears it in `OnStop()`, before the window closes, like
+  `SpritePool`. `LuaEngine::Init` stashes it as `fontPoolPtr`, read by
+  `LuaEngineUtil::GetFontPool`.
+- `IRendererProvider` gained `RegisterFont( family, font, bold, italic, trigger )` and the two
+  `UnregisterFont` forms, because sunlight has them only on the concrete `TileMapRenderer`.
+  `RegisterFont` creates the default renderer first, like `GetTileMap`. The unregister forms
+  create none and report false without one. `LoadFont`/`SetFont` come from `IDrawSurface`.
+- `src/lua/luatextapi.cpp`: the bindings. `set_font` tells a string, an integer handle and
+  `nil` apart. `draw_text`/`measure_text` draw or measure through the given `IFont` directly.
+  Every error is `nil, "message"`.
+- **Found while building it:** the first probe showed `register_font( "Sans", f )` failing with
+  "'bold' must be a boolean". `LuaEngineUtil::GetFontPool` left the pool pointer pushed on the
+  Lua stack, so an omitted 3rd argument read as that pointer. `GetFontPool` now pops it, like
+  `GetRendererProvider`. `GetSoundManager`, `GetSpritePool` and `GetScriptProcessor` have the
+  same leak but are harmless today, because their callers read every argument first. **Record
+  for D3**: make them pop too.
+- **Test:** `scripts/font_api_smoke.py` + `scripts/font_api_smoke/`, in `ci.yml` on all 4
+  platforms. It checks `load_font` handles and errors, `set_font`'s three forms and every error,
+  `draw_text`/`measure_text`'s font argument, `register_font`/`unregister_font` by slot and by
+  handle with every error, that releasing a handle keeps a font that is active or registered
+  working, slot reuse with a stale handle rejected, and drawing with a handle inside a frame.
+  **Mutation checks:** without the generation bump, it fails with "a reused slot gave back the
+  released handle" and "stale handle after reuse". Without the stack pop, every
+  `register_font` with an omitted flag fails. (Restoring needed the object files deleted, not
+  just `touch`ed, before make rebuilt them; worth remembering for every mutation check.)
+- `samples/text`: moved to the new API. It loads three fonts once (caravellius8x8 regular and
+  bold, Press Start 2P), draws a line in each at the same time through `draw_text`'s font
+  argument, keys `1`-`3`/`0` select the active font by handle or the built-in one, it shows a
+  Portuguese/Spanish accented line in the TTF, and it shows `set_font`'s error for a bad path.
+  README updated.
+- Docs: the Text page has "Fonts" and "Fonts for the map's text objects" sections, and the
+  `docs/lua-api/README.md` index row was updated. `doc/CARAVELLIUS_BREAKAGES.md` entry 6.
+- **Two review changes (the owner, 2026-10-24):**
+  - `screen_get_width`/`screen_get_height` moved from `LuaTextApi` to `LuaAppApi`: they return
+    the fixed render-area size every screen-space call uses, and have nothing to do with
+    text. Their C++ names changed from `GetWindowWidth`/`GetWindowHeight`, which misleadingly
+    said "Window" for something that is deliberately not the window size, to `GetScreenWidth`/
+    `GetScreenHeight`, matching their Lua names. **The Lua names are unchanged**, since 8
+    sample uses and 9 Caravellius files call them. Their docs moved from the Text page to the
+    App page. `LuaTextApi`'s outdated class comment ("a thin wrapper over `ITileMap::SetFont`")
+    now describes the font API.
+  - The forward declarations in `luaengine.h` were removed (see Phase S, "Forward
+    declarations: sunlight's rule").
+  - The owner noticed `LuaEngineUtil` mixes shared and category-specific helpers. This became
+    a new item, **S4**. `GetFontPool`, brand new in C6, moved right away (the owner's call): it
+    is now a file-local function in `luatextapi.cpp`, the only file that uses it, and pops what
+    it pushes. Its global's name is defined once, as the public
+    `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
+    S4 follows for the others.
+- Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
 ## Phase R: requisites
 
 | # | Item | Status |
@@ -711,6 +775,38 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
 | S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts | TODO |
 | S2 | Mechanical alignment pass, object-file-identical proof | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
+| S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | TODO |
+
+**S4 (TODO, added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
+mixes helpers every Lua module shares with ones only one category uses. Each new engine object
+got another "fetch the light-userdata global" getter there (C6's `GetFontPool` too), so
+`luaengineutil.h` includes the sound, sprite-pool, font-pool, script-processor and timer headers,
+and a change to any of them recompiles all 16 `src/lua/*api.cpp` files. Usage today (2026-10-24):
+
+| Member | Used by | Where it belongs |
+|---|---|---|
+| `GetRendererProvider`, `GetTileMap`, `GetDrawSurface`, `EnsureRenderer` | renderer, view, app, text, tilemap, camera, input, sprite, collision, blend | stays (shared renderer access) |
+| `RegisterConstants` + `stNamedConstant`, `RegisterRealConstants` + `stNamedRealConstant` | input, tilemap, sprite, renderer, app, blend (the real-valued one renderer only, but generic in kind) | stays |
+| `PushError` / `PushTrue` | sprite, text, blend (every module after D3) | stays |
+| `s_LuaMutex` | `LuaEngine`, timer | stays |
+| `GetSoundManager` | sound only | `LuaSoundApi` |
+| `GetSpritePool` | sprite only | `LuaSpriteApi` |
+| `GetFontPool` | text only | **done in C6**: a file-local function in `luatextapi.cpp`, global name `LuaTextApi::FONT_POOL_GLOBAL` |
+| `GetScriptProcessor`, `AddOneParmCommandScript` | scripting, sound (queued song commands) | `LuaScriptingApi`; sound calls it there |
+| `TimerMap` typedef | timer (and `LuaEngine`, which owns the timers) | `luatimerapi.h` |
+
+Scope:
+- A single shared `LuaEngineUtil::GetGlobalPointer( lua_State*, const char* name )` that always
+  pops what it pushed. Today each getter repeats `lua_getglobal` + `lua_touserdata`, and
+  `GetSoundManager`, `GetSpritePool` and `GetScriptProcessor` leave the value on the stack (the
+  leak C6 hit through `GetFontPool`, which was fixed there). Each category getter then becomes
+  one line in its own module, with its global's name defined once next to where `LuaEngine::Init`
+  sets it.
+- Move the category-specific members as in the table. `luaengineutil.h` then includes only
+  what the shared helpers need.
+- Behavior unchanged: a pure refactor, proven the way S2 plans (object-file-identical where the
+  code didn't move, otherwise every smoke test and sample unchanged). It is deliberately kept out
+  of D3, so every PR is either a refactor or a behavior change, never both.
 
 **Rules the owner has already decided (S1 records them, S3 writes them into `CLAUDE.md`):**
 - **A class from sunlight (or any other external library) is never forward-declared: include
@@ -720,14 +816,25 @@ touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module
   build fails cleanly at each line that still names the old path, or not at all. Applied to the
   only two headers that had any: `src/engine/irendererprovider.h` (`ITileMap`,
   `IDrawSurface`) and `src/lua/luaengine.h` (`ITileMap`, `SoundManager`).
-- **A forward declaration of Scarab's own classes uses a C++17 nested namespace definition**,
-  one line per class, with the project's space-padded `::`:
-  `namespace Scarab :: Engine :: Lua  { class LuaCollisionListener; }`, never nested
-  `namespace Scarab { namespace Engine { ... } }` blocks (decided 2026-10-22). This applies to
-  forward declarations ONLY. Namespace blocks that define Scarab's own code keep today's nested
-  style. A qualified name alone (`class Scarab :: Engine :: SpritePool;`) is not valid C++ (it
-  cannot introduce a class), so the namespace definition is required. Applied in
-  `src/lua/luaengine.h`.
+- **Forward declarations: sunlight's rule** (decided by the owner in the sunlight session,
+  2026-10-24, and drafted for sunlight's `doc/CODE_STYLE.md` on its branch
+  `doc/code-style-forward-declarations`, not on `feat/master_plan` yet). This **replaces** the
+  one-line C++17 form Scarab adopted on 2026-10-22, which sunlight's guide and code never use.
+  - The form is nested and indented, one level each, like every namespace. A class in the
+    header's own namespace is declared inside that namespace's existing block. A class from
+    another namespace gets its own nested block (sunlight's `NullBackend` in
+    `tilemaprenderer.h`).
+  - When: forward-declare only the project's own classes, only where the header needs just the
+    name (a pointer, a reference, a smart pointer, a friend), and only to break an include cycle
+    (sunlight's `View` <-> `TileMapRenderer`) or to keep a backend out of a public header
+    (`NullBackend`). Everything else is included, and so is every external library's class.
+  - Applied in C6: `src/lua/luaengine.h`'s three forward declarations were all unnecessary
+    (`SpritePool`/`FontPool` are already included through `luaengineutil.h`;
+    `LuaCollisionListener` has no cycle and is no backend), so they were removed and
+    `lua/luacollisionlistener.h` is included. Scarab now has no forward declarations at all.
+- **Also for S1's audit:** sunlight's guide forbids `using namespace` in a project's own code,
+  and Scarab has 5 (`luainputapi.cpp`, `luaspriteapi.cpp`, `luarendererapi.cpp`,
+  `luatilemapapi.cpp`, `enginehost.cpp`).
 
 ## Phase B: blend modes
 

@@ -32,11 +32,10 @@ extern "C"
 #include "tilemap/itilemap.h"
 #include "sound/soundmanager.h"
 #include "lua/luaengineutil.h"
+#include "lua/luacollisionlistener.h"
+#include "engine/fontpool.h"
 #include <string>
 #include <cstdint>
-
-namespace Scarab :: Engine  { class SpritePool; }
-namespace Scarab :: Engine :: Lua  { class LuaCollisionListener; }
 
 namespace Scarab  {
     namespace Lua {
@@ -89,7 +88,8 @@ namespace Scarab  {
             const std :: string& GetApplicationDirectory( void ) const;
             void Init( Engine :: IRendererProvider *pRendererProvider,
                       SunLight :: Sound :: SoundManager *pSoundManager,
-                      Engine :: SpritePool *pSpritePool );
+                      Engine :: SpritePool *pSpritePool,
+                      Engine :: FontPool *pFontPool );
             void AttachToTileMap( SunLight :: TileMap :: ITileMap &tileMap );
             void InstallVirtualClock( void );
         };

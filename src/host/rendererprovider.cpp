@@ -263,5 +263,21 @@ namespace Scarab  {
 
             return m_bUseDefaultKeyHandler;
         }
+
+        bool RendererProvider :: RegisterFont( const char *szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
+                                               bool bBold, bool bItalic, const char *szTrigger )  {
+
+            return GetOrCreateDefault( szTrigger ) -> RegisterFont( szFamily, std :: move( pFont ), bBold, bItalic );
+        }
+
+        bool RendererProvider :: UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont> &pFont )  {
+
+            return m_pRenderer ? m_pRenderer -> UnregisterFont( pFont ) : false;
+        }
+
+        bool RendererProvider :: UnregisterFont( const char *szFamily, bool bBold, bool bItalic )  {
+
+            return m_pRenderer ? m_pRenderer -> UnregisterFont( szFamily, bBold, bItalic ) : false;
+        }
     }
 }

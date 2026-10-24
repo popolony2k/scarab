@@ -20,6 +20,8 @@
 
 #include "lua/luatextapi.h"
 #include "lua/luaengineutil.h"
+#include <memory>
+#include <string>
 
 
 namespace Scarab  {
@@ -27,56 +29,317 @@ namespace Scarab  {
         namespace Lua  {
 
             /**
-             * @brief Load (or replace) the font used by @link DrawText.
-             * Accepts any font file raylib itself supports (TrueType/
-             * OpenType, or an AngelCode BMFont ".fnt" atlas, told apart by
-             * the file's own extension - see IDrawSurface::SetFont). Until
-             * this is called, DrawText uses the engine's own built-in
-             * default font.
-             *
-             * @luaname{set_font(path) -> success}
-             * @luadoc
-             * Load (or replace) the font used by `draw_text`/
-             * `measure_text`, from a font file on disk. The format is
-             * auto-detected purely by the file's own extension —
-             * TrueType/OpenType (`.ttf`/`.otf`) and an AngelCode BMFont
-             * atlas (`.fnt`) are both supported without this API (or the
-             * caller) needing to know which — `draw_text`'s own code has
-             * no format-specific logic at all.
-             *
-             * Until this is called for the first time (or if every call
-             * so far has failed), `draw_text`/`measure_text` use the
-             * engine's own built-in default font, so text can be drawn
-             * with zero setup. A bad/missing path returns `false` and
-             * leaves whatever font was previously active untouched — it
-             * does not error or crash.
-             * @luaexample
-             * -- main.lua, early in bootstrap
-             * set_font( BASE_PATH .. "fonts/msx-screen0.ttf" )
+             * @brief The engine's FontPool, stashed by LuaEngine::Init as the light userdata global
+             * FONT_POOL_GLOBAL. Pops what it pushed: the font functions read optional arguments
+             * after resolving a handle, and a leftover value would sit in their place (found in C6).
              */
-            int LuaTextApi :: SetFont( lua_State *pLuaState )  {
+            static Engine :: FontPool* GetFontPool( lua_State *pLuaState )  {
 
-                const char  *szFilePath = lua_tostring( pLuaState, 1 );
-                bool        bResult     = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetFont( szFilePath );
+                lua_getglobal( pLuaState, LuaTextApi :: FONT_POOL_GLOBAL );
 
-                lua_pushboolean( pLuaState, bResult );
+                Engine :: FontPool  *pFontPool = static_cast<Engine :: FontPool *>( lua_touserdata( pLuaState, -1 ) );
+
+                lua_pop( pLuaState, 1 );
+
+                return pFontPool;
+            }
+
+            /**
+             * @brief Resolve an optional font-handle argument (draw_text/measure_text's last one):
+             * none or nil means "the active font", which is reported as a null pFont and true.
+             * @return false (with strError set) for anything else that is not a live handle;
+             */
+            static bool ReadOptionalFontArg( lua_State *pLuaState, int nIndex,
+                                             std :: shared_ptr<SunLight :: Font :: IFont> &pFont, std :: string &strError )  {
+
+                pFont.reset();
+
+                if( lua_isnoneornil( pLuaState, nIndex ) )
+                    return true;
+
+                if( lua_isinteger( pLuaState, nIndex ) )
+                    pFont = GetFontPool( pLuaState ) -> Resolve( ( FontHandle ) lua_tointeger( pLuaState, nIndex ) );
+
+                if( !pFont )  {
+                    strError = "invalid font handle";
+                    return false;
+                }
+
+                return true;
+            }
+
+            /**
+             * @brief A required font-handle argument: a live handle from load_font.
+             * @return The font, or nullptr (with strError set);
+             */
+            static std :: shared_ptr<SunLight :: Font :: IFont> ReadFontArg( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+
+                std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
+
+                if( lua_isinteger( pLuaState, nIndex ) )
+                    pFont = GetFontPool( pLuaState ) -> Resolve( ( FontHandle ) lua_tointeger( pLuaState, nIndex ) );
+
+                if( !pFont )
+                    strError = "invalid font handle";
+
+                return pFont;
+            }
+
+            /**
+             * @brief An optional boolean argument (register_font/unregister_font's bold and
+             * italic): none or nil is false.
+             * @return false (with strError set) for anything that is not a boolean;
+             */
+            static bool ReadOptionalBoolean( lua_State *pLuaState, int nIndex, const char *szName, bool &bValue, std :: string &strError )  {
+
+                bValue = false;
+
+                if( lua_isnoneornil( pLuaState, nIndex ) )
+                    return true;
+
+                if( !lua_isboolean( pLuaState, nIndex ) )  {
+                    strError = std :: string( "'" ) + szName + "' must be a boolean";
+                    return false;
+                }
+
+                bValue = lua_toboolean( pLuaState, nIndex );
+
+                return true;
+            }
+
+            /**
+             * @brief A required, non-empty family name (register_font/unregister_font).
+             * @return The name, or nullptr (with strError set);
+             */
+            static const char* ReadFamilyArg( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+
+                if( lua_type( pLuaState, nIndex ) != LUA_TSTRING || lua_rawlen( pLuaState, nIndex ) == 0 )  {
+                    strError = "the family must be a non-empty string (as Tiled's fontfamily spells it)";
+                    return nullptr;
+                }
+
+                return lua_tostring( pLuaState, nIndex );
+            }
+
+            /**
+             * @luaname{load_font(path) -> font | nil, message}
+             * @luagroup{font_handles}
+             * @luaheading{Fonts}
+             * @luadoc
+             * Load a font file once and get a **font handle** for it (an opaque integer). The same
+             * handle can then be the font `draw_text`/`measure_text` use (`set_font( font )`), be
+             * registered for any number of the map's Tiled text-object families
+             * (`register_font`), and be passed to `draw_text`/`measure_text` directly (their
+             * optional last argument) — one file, one load. TrueType/OpenType (`.ttf`/`.otf`,
+             * with Latin accents) and AngelCode BMFont (`.fnt`) are told apart by the extension.
+             * Anchor the path on `APP_DIR` (see the BMFont note in `CLAUDE.md`).
+             *
+             * It needs a window, so the `renderer_create`-first rule applies (calling it first
+             * creates the default renderer). A file that can't be loaded returns
+             * `nil, "cannot load font '<path>'"`. `release_font` lets go of the handle when the
+             * script no longer needs it; a font that is still active or registered keeps working.
+             * @luaexample
+             * local sans = assert( load_font( APP_DIR .. "resources/fonts/caravellius8x8.fnt" ) )
+             * set_font( sans )                -- draw_text uses it ...
+             * register_font( "Sans", sans )   -- ... and so do the map's "Sans" text objects
+             */
+            int LuaTextApi :: LoadFont( lua_State *pLuaState )  {
+
+                if( lua_type( pLuaState, 1 ) != LUA_TSTRING )
+                    return LuaEngineUtil :: PushError( pLuaState, "load_font expects a path" );
+
+                const char                                    *szPath = lua_tostring( pLuaState, 1 );
+                std :: shared_ptr<SunLight :: Font :: IFont>  pFont   = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> LoadFont( szPath );
+
+                if( !pFont )
+                    return LuaEngineUtil :: PushError( pLuaState, std :: string( "cannot load font '" ) + szPath + "'" );
+
+                FontHandle  handle = GetFontPool( pLuaState ) -> Add( std :: move( pFont ) );
+
+                if( handle == INVALID_FONT_HANDLE )
+                    return LuaEngineUtil :: PushError( pLuaState, "too many fonts loaded - release_font the ones no longer needed" );
+
+                lua_pushinteger( pLuaState, ( lua_Integer ) handle );
 
                 return 1;
             }
 
             /**
-             * @brief Draw a line of text on screen, in screen space, using
-             * whichever font is currently active (see @link SetFont).
+             * @luaname{release_font(font) -> true | nil, message}
+             * @luagroup{font_handles}
+             */
+            int LuaTextApi :: ReleaseFont( lua_State *pLuaState )  {
+
+                if( !lua_isinteger( pLuaState, 1 ) ||
+                    !GetFontPool( pLuaState ) -> Release( ( FontHandle ) lua_tointeger( pLuaState, 1 ) ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "invalid font handle" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Select the font DrawText/MeasureText use: a path (load and select), a font
+             * handle, or nil (the built-in font).
              *
-             * @luaname{draw_text(text, x, y, size, r, g, b, a)}
+             * @luaname{set_font(path | font | nil) -> true | nil, message}
+             * @luadoc
+             * Choose the font `draw_text`/`measure_text` use when they are not given one:
+             * - a **font handle** from `load_font` — the same loaded font can also serve the map's
+             *   text objects (`register_font`);
+             * - a **path** — loads the file and selects it in one step, as before. That font
+             *   belongs to the engine alone, and is freed when another font replaces it, so use
+             *   `load_font` to share one font with text objects;
+             * - **`nil`** — the engine's built-in font, which is also what is used until a first
+             *   `set_font` succeeds.
+             *
+             * A failure leaves the active font as it was and returns `nil` and the reason:
+             * `"cannot load font '<path>'"`, `"invalid font handle"`, or
+             * `"set_font expects a path, a font or nil"`. It needs a window, like `load_font`.
+             * @luaexample
+             * set_font( APP_DIR .. "resources/fonts/pressstart2p-regular.ttf" )   -- load + select
+             * local sans = load_font( APP_DIR .. "resources/fonts/caravellius8x8.fnt" )
+             * set_font( sans )                                                    -- select a loaded font
+             * set_font( nil )                                                     -- back to the built-in font
+             */
+            int LuaTextApi :: SetFont( lua_State *pLuaState )  {
+
+                std :: string                                 strError;
+                std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
+                SunLight :: DrawSurface :: IDrawSurface       *pSurface = LuaEngineUtil :: GetDrawSurface( pLuaState );
+
+                if( lua_type( pLuaState, 1 ) == LUA_TSTRING )  {
+                    const char  *szPath = lua_tostring( pLuaState, 1 );
+
+                    pFont = pSurface -> LoadFont( szPath );
+
+                    if( !pFont )
+                        return LuaEngineUtil :: PushError( pLuaState, std :: string( "cannot load font '" ) + szPath + "'" );
+                }
+                else if( lua_isinteger( pLuaState, 1 ) )  {
+                    pFont = ReadFontArg( pLuaState, 1, strError );
+
+                    if( !pFont )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
+                }
+                else if( !( lua_gettop( pLuaState ) >= 1 && lua_isnil( pLuaState, 1 ) ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "set_font expects a path, a font or nil" );
+
+                // pFont is null here only for an explicit nil: the built-in font.
+                if( !pSurface -> SetFont( pFont ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the engine refused the font (invalid, or loaded by another backend)" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{register_font(family, font, bold, italic) -> true | nil, message}
+             * @luagroup{text_object_fonts}
+             * @luaheading{Fonts for the map's text objects}
+             * @luadoc
+             * Make the map's **Tiled text objects** of one family and style draw with a loaded font.
+             * A text object whose `fontfamily` (as Tiled spells it, eg. `"Sans"`) and bold/italic
+             * flags match draws with `font`. `bold` and `italic` are optional booleans, default
+             * `false`. A text object with no matching font draws `??????` instead (sunlight warns
+             * once per family on stderr), so register every family a map uses.
+             *
+             * The font is shared, not copied: one loaded font can serve several families and
+             * styles (eg. the regular file standing in for "Sans bold" too) and be the active font
+             * at the same time. Registering the same family and style again replaces its font.
+             * `unregister_font` undoes it. Errors return `nil` and the reason (a bad family, an
+             * invalid font handle, a non-boolean flag).
+             * @luaexample
+             * local sans = assert( load_font( APP_DIR .. "resources/fonts/caravellius8x8.fnt" ) )
+             * local bold = assert( load_font( APP_DIR .. "resources/fonts/caravellius8x8_bold.fnt" ) )
+             * register_font( "Sans", sans )         -- "Sans" regular
+             * register_font( "Sans", bold, true )   -- "Sans" bold
+             */
+            int LuaTextApi :: RegisterFont( lua_State *pLuaState )  {
+
+                std :: string  strError;
+                bool           bBold   = false;
+                bool           bItalic = false;
+                const char     *szFamily = ReadFamilyArg( pLuaState, 1, strError );
+
+                if( szFamily == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: Font :: IFont>  pFont = ReadFontArg( pLuaState, 2, strError );
+
+                if( !pFont )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !ReadOptionalBoolean( pLuaState, 3, "bold", bBold, strError ) ||
+                    !ReadOptionalBoolean( pLuaState, 4, "italic", bItalic, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !LuaEngineUtil :: GetRendererProvider( pLuaState ) -> RegisterFont( szFamily, pFont, bBold, bItalic, "register_font" ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the engine refused the font (invalid, or loaded by another backend)" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{unregister_font(font | family, bold, italic) -> true | nil, message}
+             * @luagroup{text_object_fonts}
+             * @luadoc
+             * Undo `register_font`. Given a **font handle**, it removes that font from every family
+             * and style it serves. Given a **family** (and optional `bold`/`italic`, default
+             * `false`), it removes that one slot only. Text objects of a family left with no font
+             * draw `??????` again. Returns `nil, "not registered"` if there was nothing to remove.
+             * @luaexample
+             * unregister_font( sans )                    -- every slot "sans" fills
+             * unregister_font( "Sans", true, false )     -- only "Sans" bold
+             */
+            int LuaTextApi :: UnregisterFont( lua_State *pLuaState )  {
+
+                std :: string                 strError;
+                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                bool                          bRemoved  = false;
+
+                if( lua_type( pLuaState, 1 ) == LUA_TSTRING )  {
+                    bool        bBold    = false;
+                    bool        bItalic  = false;
+                    const char  *szFamily = ReadFamilyArg( pLuaState, 1, strError );
+
+                    if( szFamily == nullptr ||
+                        !ReadOptionalBoolean( pLuaState, 2, "bold", bBold, strError ) ||
+                        !ReadOptionalBoolean( pLuaState, 3, "italic", bItalic, strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                    bRemoved = pProvider -> UnregisterFont( szFamily, bBold, bItalic );
+                }
+                else  {
+                    std :: shared_ptr<SunLight :: Font :: IFont>  pFont = ReadFontArg( pLuaState, 1, strError );
+
+                    if( !pFont )
+                        return LuaEngineUtil :: PushError( pLuaState, "unregister_font expects a font or a family" );
+
+                    bRemoved = pProvider -> UnregisterFont( pFont );
+                }
+
+                if( !bRemoved )
+                    return LuaEngineUtil :: PushError( pLuaState, "not registered" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Draw a line of text on screen, in screen space, with the active font (see
+             * @link SetFont) or a given font handle.
+             *
+             * @luaname{draw_text(text, x, y, size, r, g, b, a, font)}
              * @luadoc
              * Draw a line of text on screen, in screen space — no
              * camera/viewport transform of its own, same as the FPS
-             * counter — using whichever font is currently active (see
-             * `set_font`). `r`/`g`/`b`/`a` are each `0`-`255`.
+             * counter. `r`/`g`/`b`/`a` are each `0`-`255`. It uses the
+             * active font (`set_font`), or `font` — an optional last
+             * argument, a handle from `load_font` — so a HUD can mix
+             * several fonts without switching the active one. An invalid
+             * `font` draws nothing and returns `nil, "invalid font handle"`.
              *
              * ```lua
              * draw_text( "Lives: 5", 20, 20, 24, 255, 255, 255, 255 )
+             * draw_text( "Score", 20, 50, 24, 255, 220, 120, 255, titleFont )
              * ```
              *
              * Meant to be called every frame from a normal
@@ -89,6 +352,8 @@ namespace Scarab  {
              */
             int LuaTextApi :: DrawText( lua_State *pLuaState )  {
 
+                std :: string                                 strError;
+                std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
                 const char     *szText  = lua_tostring( pLuaState, 1 );
                 int            nPosX    = ( int ) lua_tointeger( pLuaState, 2 );
                 int            nPosY    = ( int ) lua_tointeger( pLuaState, 3 );
@@ -98,8 +363,14 @@ namespace Scarab  {
                 unsigned char  nBlue    = ( unsigned char ) lua_tointeger( pLuaState, 7 );
                 unsigned char  nAlpha   = ( unsigned char ) lua_tointeger( pLuaState, 8 );
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawText( szText, nPosX, nPosY, nSize,
-                                                                       nRed, nGreen, nBlue, nAlpha );
+                if( !ReadOptionalFontArg( pLuaState, 9, pFont, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( pFont )
+                    pFont -> DrawText( szText, nPosX, nPosY, nSize, SunLight :: Base :: stColor { nRed, nGreen, nBlue, nAlpha } );
+                else
+                    LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawText( szText, nPosX, nPosY, nSize,
+                                                                           nRed, nGreen, nBlue, nAlpha );
 
                 return 0;
             }
@@ -108,17 +379,18 @@ namespace Scarab  {
              * @brief Measure how wide a line of text would render, in
              * pixels, at a given font size - meant for HUD layout (e.g.
              * right-aligning a score/lives readout against @link
-             * GetWindowWidth), using whichever font @link DrawText itself
-             * would use.
+             * GetWindowWidth), with the active font or a given font handle.
              *
-             * @luaname{measure_text(text, size) -> width}
+             * @luaname{measure_text(text, size, font) -> width | nil, message}
              * @luadoc
              * Measure how wide a line of text would render, in pixels, at
-             * a given font size — using the same font `draw_text` itself
-             * would use. Meant for HUD layout (e.g. right-aligning a
-             * score/lives readout against `screen_get_width()`) without
-             * hardcoding assumed widths, since digit/character count can
-             * change over a playthrough.
+             * a given font size — with the font `draw_text` would use:
+             * the active font, or `font`, an optional last argument (a
+             * handle from `load_font`). Meant for HUD layout (e.g.
+             * right-aligning a score/lives readout against
+             * `screen_get_width()`) without hardcoding assumed widths,
+             * since digit/character count can change over a playthrough.
+             * An invalid `font` returns `nil, "invalid font handle"`.
              * @luaexample
              * local text  = "Lives: " .. tostring( Lives.count )
              * local width = measure_text( text, 24 )
@@ -126,55 +398,18 @@ namespace Scarab  {
              */
             int LuaTextApi :: MeasureText( lua_State *pLuaState )  {
 
+                std :: string                                 strError;
+                std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
                 const char  *szText = lua_tostring( pLuaState, 1 );
                 int         nSize   = ( int ) lua_tointeger( pLuaState, 2 );
-                int         nWidth  = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> MeasureText( szText, nSize );
+
+                if( !ReadOptionalFontArg( pLuaState, 3, pFont, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                int  nWidth = pFont ? pFont -> MeasureText( szText, nSize )
+                                    : LuaEngineUtil :: GetDrawSurface( pLuaState ) -> MeasureText( szText, nSize );
 
                 lua_pushinteger( pLuaState, nWidth );
-
-                return 1;
-            }
-
-            /**
-             * @brief The engine's own fixed design/render resolution
-             * width, in pixels - the coordinate space @link DrawText
-             * itself draws in. Constant for the app's whole lifetime,
-             * deliberately not the live/resizeable OS window size (see
-             * IDrawSurface::GetWindowWidth).
-             *
-             * @luaname{screen_get_width() -> width}
-             * @luagroup{screen_dimensions}
-             * @luadoc
-             * The engine's own fixed design/render resolution, in pixels
-             * (`DISPLAY_W`/`DISPLAY_H` in `main.h` — `1260x920` today) —
-             * the coordinate space `draw_text` and every other
-             * screen-space draw call operate in. Constant for the app's
-             * whole lifetime, set once at construction.
-             *
-             * **Deliberately not the same as the live OS window size** —
-             * the engine always letterbox-scales this fixed resolution to
-             * fit whatever the real window size ends up being (whether
-             * from `app_set_fullscreen` or the player manually resizing
-             * the window, see [app.md](app.md)). HUD layout should always measure
-             * against these, not against anything that varies with the
-             * actual window.
-             */
-            int LuaTextApi :: GetWindowWidth( lua_State *pLuaState )  {
-
-                lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowWidth() );
-
-                return 1;
-            }
-
-            /**
-             * @brief Same as @link GetWindowWidth, for height.
-             *
-             * @luaname{screen_get_height() -> height}
-             * @luagroup{screen_dimensions}
-             */
-            int LuaTextApi :: GetWindowHeight( lua_State *pLuaState )  {
-
-                lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowHeight() );
 
                 return 1;
             }
@@ -184,11 +419,13 @@ namespace Scarab  {
              */
             void LuaTextApi :: Register( lua_State *pLuaState )  {
 
+                lua_register( pLuaState, "load_font", LuaTextApi :: LoadFont );
+                lua_register( pLuaState, "release_font", LuaTextApi :: ReleaseFont );
                 lua_register( pLuaState, "set_font", LuaTextApi :: SetFont );
+                lua_register( pLuaState, "register_font", LuaTextApi :: RegisterFont );
+                lua_register( pLuaState, "unregister_font", LuaTextApi :: UnregisterFont );
                 lua_register( pLuaState, "draw_text", LuaTextApi :: DrawText );
                 lua_register( pLuaState, "measure_text", LuaTextApi :: MeasureText );
-                lua_register( pLuaState, "screen_get_width", LuaTextApi :: GetWindowWidth );
-                lua_register( pLuaState, "screen_get_height", LuaTextApi :: GetWindowHeight );
             }
         }
     }

@@ -486,7 +486,7 @@ namespace Scarab  {
              */
             m_bEntryScriptDone = false;
 
-            m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool );
+            m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool, &m_FontPool );
 
             /*
              * Whatever renderer the provider creates (explicitly or the
@@ -557,6 +557,7 @@ namespace Scarab  {
          */
         void EngineHost :: OnStop( void )  {
             m_SpritePool.Clear();
+            m_FontPool.Clear();      // Lua's font handles, the same rule (doc/MASTER_PLAN.md item C6)
         }
 
         /**
