@@ -102,6 +102,8 @@ namespace Scarab  {
             ~SpritePool( void );
 
             bool RegisterType( const std :: string &strTypeTag, uint32_t nCapacity );
+            bool HasType( const std :: string &strTypeTag ) const;
+            uint32_t GetSlotCount( void ) const;
             SpriteHandle Acquire( const std :: string &strTypeTag );
             bool Release( SpriteHandle handle );
             SunLight :: Sprite :: Sprite* Resolve( SpriteHandle handle );

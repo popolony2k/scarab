@@ -27,7 +27,7 @@ namespace Scarab  {
         namespace Lua  {
 
             /**
-             * @luaname{camera_move_up()}
+             * @luaname{camera_move_up() -> true | nil, message}
              * @luagroup{panning}
              * @luaheading{Panning}
              * @luadoc
@@ -40,7 +40,13 @@ namespace Scarab  {
              * partial when the distance left is smaller than a step, so the
              * camera stops on the map's real far edge, and comes back to
              * exactly `0`. Don't assume the position is a multiple of the
-             * step. Up and left do nothing while no map is loaded.
+             * step.
+             *
+             * Every camera, zoom and viewport function returns `true` (or
+             * its values) and reports a failure as `nil, "message"`, never as
+             * a Lua error: up and left fail with `"no map is loaded: ..."`
+             * while no map is loaded (they're bounded by the map's edge), and
+             * `camera_set_position` needs two integers.
              *
              * Caravellius drives a constant downward auto-scroll from
              * `caravellius/src/camera.lua`'s `Camera.update`, called
@@ -74,27 +80,29 @@ namespace Scarab  {
                 /*
                  * Up/left bound the move by the loaded map's size and dereference it, so with no
                  * map loaded sunlight crashed the whole process (found 2026-09-21, in the published
-                 * v0.1.20). No map means nothing to scroll over: a no-op, like down/right.
+                 * v0.1.20). No map means nothing to scroll over: an error, like view_move_camera_up.
                  */
-                if( pTileMap -> GetMapInfo( mapInfo ) )
-                    pTileMap -> MoveCameraUp();
+                if( !pTileMap -> GetMapInfo( mapInfo ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "no map is loaded: camera_move_up needs one (its limit is the map's edge)" );
 
-                return 0;
+                pTileMap -> MoveCameraUp();
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{camera_move_down()}
+             * @luaname{camera_move_down() -> true}
              * @luagroup{panning}
              */
             int LuaCameraApi :: MoveCameraDown( lua_State *pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> MoveCameraDown();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{camera_move_left()}
+             * @luaname{camera_move_left() -> true | nil, message}
              * @luagroup{panning}
              */
             int LuaCameraApi :: MoveCameraLeft( lua_State *pLuaState )  {
@@ -105,27 +113,29 @@ namespace Scarab  {
                 /*
                  * Up/left bound the move by the loaded map's size and dereference it, so with no
                  * map loaded sunlight crashed the whole process (found 2026-09-21, in the published
-                 * v0.1.20). No map means nothing to scroll over: a no-op, like down/right.
+                 * v0.1.20). No map means nothing to scroll over: an error, like view_move_camera_left.
                  */
-                if( pTileMap -> GetMapInfo( mapInfo ) )
-                    pTileMap -> MoveCameraLeft();
+                if( !pTileMap -> GetMapInfo( mapInfo ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "no map is loaded: camera_move_left needs one (its limit is the map's edge)" );
 
-                return 0;
+                pTileMap -> MoveCameraLeft();
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{camera_move_right()}
+             * @luaname{camera_move_right() -> true}
              * @luagroup{panning}
              */
             int LuaCameraApi :: MoveCameraRight( lua_State *pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> MoveCameraRight();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{camera_reset()}
+             * @luaname{camera_reset() -> true}
              * @luadoc
              * Reset the camera to the map's default position.
              */
@@ -133,11 +143,11 @@ namespace Scarab  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ResetCamera();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{camera_set_position(x, y)}
+             * @luaname{camera_set_position(x, y) -> true | nil, message}
              * @luadoc
              * Jump the camera so the given world-space coordinate
              * (pixels) is shown at the top-left of the viewport — an
@@ -153,12 +163,17 @@ namespace Scarab  {
              */
             int LuaCameraApi :: SetCameraPosition( lua_State *pLuaState )  {
 
-                int  nX = ( int ) lua_tointeger( pLuaState, 1 );
-                int  nY = ( int ) lua_tointeger( pLuaState, 2 );
+                std :: string  strError;
+                int            nX = 0;
+                int            nY = 0;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "x", nX, strError ) ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "y", nY, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> SetCameraPosition( nX, nY );
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -186,7 +201,7 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{zoom_in()}
+             * @luaname{zoom_in() -> true}
              * @luagroup{zoom}
              * @luaheading{Zoom}
              * @luaexample
@@ -198,29 +213,29 @@ namespace Scarab  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ZoomIn();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{zoom_out()}
+             * @luaname{zoom_out() -> true}
              * @luagroup{zoom}
              */
             int LuaCameraApi :: ZoomOut( lua_State *pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ZoomOut();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{zoom_reset()}
+             * @luaname{zoom_reset() -> true}
              * @luagroup{zoom}
              */
             int LuaCameraApi :: ResetZoom( lua_State *pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ResetZoom();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**

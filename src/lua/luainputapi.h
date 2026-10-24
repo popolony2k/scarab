@@ -21,10 +21,14 @@
 #ifndef __LUAINPUTAPI_H__
 #define __LUAINPUTAPI_H__
 
+#include <string>
+
 extern "C"
 {
   #include "lua.h"
 }
+
+#include "input/iinputhandler.h"
 
 
 namespace Scarab  {
@@ -62,6 +66,8 @@ namespace Scarab  {
                 public:
 
                 static void Register( lua_State *pLuaState );
+                static bool ReadKeyArg( lua_State *pLuaState, int nIndex, const char *szName,
+                                        SunLight :: Input :: KeyboardKey &key, std :: string &strError );
             };
         }
     }

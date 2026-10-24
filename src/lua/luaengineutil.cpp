@@ -19,6 +19,8 @@
  */
 
 #include "lua/luaengineutil.h"
+#include <climits>
+#include <cstdio>
 
 
 namespace Scarab  {
@@ -110,7 +112,11 @@ namespace Scarab  {
 
                 lua_getglobal( pLuaState, "soundManagerPtr" );
 
-                return static_cast<SunLight :: Sound :: SoundManager *>( lua_touserdata( pLuaState, -1 ) );
+                SunLight :: Sound :: SoundManager  *pObject = static_cast<SunLight :: Sound :: SoundManager *>( lua_touserdata( pLuaState, -1 ) );
+
+                lua_pop( pLuaState, 1 );
+
+                return pObject;
             }
 
             /**
@@ -122,7 +128,11 @@ namespace Scarab  {
 
                 lua_getglobal( pLuaState, "spritePoolPtr" );
 
-                return static_cast<Engine :: SpritePool *>( lua_touserdata( pLuaState, -1 ) );
+                Engine :: SpritePool  *pObject = static_cast<Engine :: SpritePool *>( lua_touserdata( pLuaState, -1 ) );
+
+                lua_pop( pLuaState, 1 );
+
+                return pObject;
             }
 
             /**
@@ -134,7 +144,11 @@ namespace Scarab  {
 
                 lua_getglobal( pLuaState, "scriptProcessorPtr" );
 
-                return static_cast<SunLight :: Scripting :: ScriptProcessor *>( lua_touserdata( pLuaState, -1 ) );
+                SunLight :: Scripting :: ScriptProcessor  *pObject = static_cast<SunLight :: Scripting :: ScriptProcessor *>( lua_touserdata( pLuaState, -1 ) );
+
+                lua_pop( pLuaState, 1 );
+
+                return pObject;
             }
 
             /**
@@ -143,17 +157,26 @@ namespace Scarab  {
              * acting immediately (sp_wait, sp_move_sprites_to_screen,
              * sp_play_song, ...).
              *
+             * The parameter is the first argument, an integer the command's 16 bit slot can hold
+             * (0..65535) - anything else is an error and nothing is queued.
+             *
              * @param pLuaState Lua state to be used by engine call.
              * @param cmd The command to add to queue;
+             * @param szName The parameter's name, for the error message;
+             * @param strError Receives the reason on failure;
+             * @return true if the command was queued;
              */
-            void LuaEngineUtil :: AddOneParmCommandScript( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd )  {
+            bool LuaEngineUtil :: AddOneParmCommandScript( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd,
+                                                           const char *szName, std :: string &strError )  {
 
-                if( lua_gettop( pLuaState ) == 1 )  {
+                lua_Integer  nParm = 0;
 
-                    lua_Integer nParm = lua_tonumber( pLuaState, 1 );
+                if( !ReadIntegerArgInRange( pLuaState, 1, szName, 0, UINT16_MAX, nParm, strError ) )
+                    return false;
 
-                    GetScriptProcessor( pLuaState ) -> AddOneParmCmd( cmd, ( uint16_t ) nParm );
-                }
+                GetScriptProcessor( pLuaState ) -> AddOneParmCmd( cmd, ( uint16_t ) nParm );
+
+                return true;
             }
 
             /**
@@ -175,6 +198,196 @@ namespace Scarab  {
                 lua_pushboolean( pLuaState, 1 );
 
                 return 1;
+            }
+
+            /**
+             * @brief Format a number the way a user would write it (3.8125, 16) - for error
+             * messages that quote a value or a limit.
+             */
+            std :: string LuaEngineUtil :: FormatNumber( double fValue )  {
+
+                char  szBuffer[64];
+
+                snprintf( szBuffer, sizeof( szBuffer ), "%g", fValue );
+
+                return szBuffer;
+            }
+
+            /*
+             * The argument readers below are the strict argument checks of every Lua primitive
+             * (doc/MASTER_PLAN.md item D3): each reads one argument, and on a wrong type or value
+             * returns false with the reason in strError, which the caller reports as
+             * `nil, message` through PushError - never as a Lua error. The messages all start
+             * "argument '<name>'", so a script sees which argument was wrong.
+             */
+
+            /**
+             * @brief Read a required integer argument: a number with an exact integer value (3 and
+             * 3.0 are accepted; 3.5, a string or a missing argument are not).
+             */
+            bool LuaEngineUtil :: ReadIntegerArg( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer &nOut, std :: string &strError )  {
+
+                int  bIsInteger = 0;
+
+                if( lua_type( pLuaState, nIndex ) == LUA_TNUMBER )
+                    nOut = lua_tointegerx( pLuaState, nIndex, &bIsInteger );
+
+                if( !bIsInteger )
+                    strError = std :: string( "argument '" ) + szName + "' must be an integer";
+
+                return bIsInteger != 0;
+            }
+
+            /** @brief Read a required integer argument that must lie in [nMin, nMax]. */
+            bool LuaEngineUtil :: ReadIntegerArgInRange( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer nMin, lua_Integer nMax,
+                                                         lua_Integer &nOut, std :: string &strError )  {
+
+                if( !ReadIntegerArg( pLuaState, nIndex, szName, nOut, strError ) )
+                    return false;
+
+                if( nOut < nMin || nOut > nMax )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be between " + std :: to_string( nMin ) +
+                        " and " + std :: to_string( nMax ) + ", got " + std :: to_string( nOut );
+                    return false;
+                }
+
+                return true;
+            }
+
+            /** @brief Read a required integer argument that must fit a C++ int. */
+            bool LuaEngineUtil :: ReadIntArg( lua_State *pLuaState, int nIndex, const char *szName, int &nOut, std :: string &strError )  {
+
+                lua_Integer  nValue = 0;
+
+                if( !ReadIntegerArgInRange( pLuaState, nIndex, szName, INT_MIN, INT_MAX, nValue, strError ) )
+                    return false;
+
+                nOut = ( int ) nValue;
+
+                return true;
+            }
+
+            /** @brief Read an optional integer argument: none or nil gives nDefault. */
+            bool LuaEngineUtil :: ReadOptionalIntegerArg( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer nDefault,
+                                                          lua_Integer &nOut, std :: string &strError )  {
+
+                if( lua_isnoneornil( pLuaState, nIndex ) )  {
+                    nOut = nDefault;
+                    return true;
+                }
+
+                return ReadIntegerArg( pLuaState, nIndex, szName, nOut, strError );
+            }
+
+            /** @brief Read a required number argument (an integer or a real). */
+            bool LuaEngineUtil :: ReadNumberArg( lua_State *pLuaState, int nIndex, const char *szName, double &fOut, std :: string &strError )  {
+
+                if( lua_type( pLuaState, nIndex ) != LUA_TNUMBER )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be a number";
+                    return false;
+                }
+
+                fOut = lua_tonumber( pLuaState, nIndex );
+
+                return true;
+            }
+
+            /** @brief Read a required number argument that must lie in [fMin, fMax]. */
+            bool LuaEngineUtil :: ReadNumberArgInRange( lua_State *pLuaState, int nIndex, const char *szName, double fMin, double fMax,
+                                                        double &fOut, std :: string &strError )  {
+
+                if( !ReadNumberArg( pLuaState, nIndex, szName, fOut, strError ) )
+                    return false;
+
+                if( !( fOut >= fMin && fOut <= fMax ) )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be between " + FormatNumber( fMin ) +
+                        " and " + FormatNumber( fMax ) + ", got " + FormatNumber( fOut );
+                    return false;
+                }
+
+                return true;
+            }
+
+            /** @brief Read a required boolean argument (true or false - not nil, not 0/1). */
+            bool LuaEngineUtil :: ReadBooleanArg( lua_State *pLuaState, int nIndex, const char *szName, bool &bOut, std :: string &strError )  {
+
+                if( lua_type( pLuaState, nIndex ) != LUA_TBOOLEAN )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be a boolean";
+                    return false;
+                }
+
+                bOut = lua_toboolean( pLuaState, nIndex );
+
+                return true;
+            }
+
+            /** @brief Read an optional boolean argument: none or nil gives bDefault. */
+            bool LuaEngineUtil :: ReadOptionalBooleanArg( lua_State *pLuaState, int nIndex, const char *szName, bool bDefault,
+                                                          bool &bOut, std :: string &strError )  {
+
+                if( lua_isnoneornil( pLuaState, nIndex ) )  {
+                    bOut = bDefault;
+                    return true;
+                }
+
+                return ReadBooleanArg( pLuaState, nIndex, szName, bOut, strError );
+            }
+
+            /** @brief Read a required string argument (a real string - a number is not converted). */
+            bool LuaEngineUtil :: ReadStringArg( lua_State *pLuaState, int nIndex, const char *szName, std :: string &strOut, std :: string &strError )  {
+
+                if( lua_type( pLuaState, nIndex ) != LUA_TSTRING )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be a string";
+                    return false;
+                }
+
+                size_t       nLength = 0;
+                const char  *szValue = lua_tolstring( pLuaState, nIndex, &nLength );
+
+                strOut.assign( szValue, nLength );
+
+                return true;
+            }
+
+            /** @brief Check that a required argument is a function. */
+            bool LuaEngineUtil :: CheckFunctionArg( lua_State *pLuaState, int nIndex, const char *szName, std :: string &strError )  {
+
+                if( !lua_isfunction( pLuaState, nIndex ) )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be a function";
+                    return false;
+                }
+
+                return true;
+            }
+
+            /**
+             * @brief Read a required argument that must be one of a constant group's values (eg. a
+             * KEY_* or a MAP_ALIGNMENT_* constant), checked against the same table that registers
+             * the group's Lua globals.
+             *
+             * @param pTable, nCount The group's constants;
+             * @param szGroup The group's name pattern for the message (eg. "KEY_*");
+             */
+            bool LuaEngineUtil :: ReadConstantArg( lua_State *pLuaState, int nIndex, const char *szName, const stNamedConstant *pTable,
+                                                   size_t nCount, const char *szGroup, int &nOut, std :: string &strError )  {
+
+                lua_Integer  nValue = 0;
+
+                if( !ReadIntegerArg( pLuaState, nIndex, szName, nValue, strError ) )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be a " + szGroup + " constant";
+                    return false;
+                }
+
+                for( size_t nItem = 0; nItem < nCount; nItem++ )  {
+                    if( pTable[nItem].nValue == nValue )  {
+                        nOut = ( int ) nValue;
+                        return true;
+                    }
+                }
+
+                strError = std :: string( "argument '" ) + szName + "': unknown " + szGroup + " value " + std :: to_string( nValue );
+
+                return false;
             }
 
             /**

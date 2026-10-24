@@ -20,6 +20,7 @@
 
 #include "lua/luajsonapi.h"
 #include "lua/luacryptoapi.h"
+#include "lua/luaengineutil.h"
 #include "filesystem/filesystemfactory.h"
 #include <nlohmann/json.hpp>
 
@@ -88,14 +89,15 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number of return data (if any - required by lua engine)
              *
-             * @luaname{load_json(path) -> table}
+             * @luaname{load_json(path) -> table | nil, message}
              * @luadoc
              * Read a JSON file and return its content as an equivalent Lua
              * table — this is the engine's only config-file bridge;
              * everything else under `resources/configs/` is read this
              * way rather than through any Caravellius-specific loader.
-             * Returns `nil` (and logs an error to stderr) if the file
-             * can't be opened or fails to parse.
+             * Returns `nil, "message"` (never a Lua error) if the file
+             * can't be opened (`"cannot open '<path>'"`) or fails to parse
+             * (`"cannot parse '<path>': <reason>"`).
              *
              * JSON objects become Lua tables keyed by string; JSON arrays
              * become Lua tables with sequential integer keys (`1`-based,
@@ -135,22 +137,15 @@ namespace Scarab  {
              */
             int LuaJsonApi :: LoadJson( lua_State *pLuaState )  {
 
-                if( lua_gettop( pLuaState ) != 1 )  {
-                    fprintf( stderr, "Invalid number of arguments on load_json call.\n" );
-                    lua_pushnil( pLuaState );
-
-                    return 1;
-                }
-
-                const char                     *szFileName = lua_tostring( pLuaState, 1 );
+                std :: string                 strError;
+                std :: string                 strPath;
                 std :: vector<unsigned char>  data;
 
-                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( szFileName, data ) )  {
-                    fprintf( stderr, "load_json: Unable to open file [%s].\n", szFileName );
-                    lua_pushnil( pLuaState );
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                    return 1;
-                }
+                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strPath, data ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot open '" + strPath + "'" );
 
                 // Transparent content-encryption support (see the root
                 // README.md's own "Content encryption" section) - see
@@ -168,8 +163,7 @@ namespace Scarab  {
                     PushJsonValue( pLuaState, jsonData );
                 }
                 catch( const nlohmann :: json :: parse_error &ex )  {
-                    fprintf( stderr, "load_json: Parse error on file [%s]: %s\n", szFileName, ex.what() );
-                    lua_pushnil( pLuaState );
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot parse '" + strPath + "': " + ex.what() );
                 }
 
                 return 1;

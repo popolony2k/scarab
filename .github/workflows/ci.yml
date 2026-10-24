@@ -229,3 +229,18 @@ jobs:
         run: |
           python scripts/font_api_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "font API smoke test exited with code $LASTEXITCODE" }
+
+      # Every Lua function that can fail returns nil + the reason (never a Lua error, never a
+      # silent no-op), a function with nothing else to return returns true, and arguments are
+      # checked strictly - one check per kind of failure of every module (doc/MASTER_PLAN.md
+      # item D3) - see the script's own header.
+      - name: Error reporting smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/error_reporting_smoke.py build/scarab
+
+      - name: Error reporting smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/error_reporting_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "error reporting smoke test exited with code $LASTEXITCODE" }

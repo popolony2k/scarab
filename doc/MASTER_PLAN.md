@@ -167,7 +167,7 @@ Lua side as a new item, B1 (below). This item is only the re-pin. In sunlight:
 |---|------|--------|
 | D1 | `use_default_key_handler` (BREAKAGES entry 26) - keep the Lua shape, back it with `DefaultControllerBindings::Install` | DONE |
 | D2 | `renderer_create{ preferred_zoom }` - a new, optional option for the zoom `zoom_reset` returns to (Scarab only, no sunlight change) | DONE |
-| D3 | Consistent error reporting: every Lua function that can fail returns `nil, "message"` instead of silently ignoring bad input | TODO |
+| D3 | Consistent error reporting: every Lua function that can fail returns `nil, "message"` instead of silently ignoring bad input | DONE |
 
 **D1 (DONE, 2026-10-21 - implemented inside P2, not as its own separate PR, since P2 could
 not compile without it; see P2's own write-up above).** `RendererConfig::bUseDefaultKeyHandler`
@@ -251,7 +251,8 @@ at creation instead:
   behavior exactly. No real-window check is needed: nothing is drawn differently, and the
   headless scenarios cover all of it.
 
-**D3 (TODO, added 2026-10-23 at the owner's request during B1, done in plan order).**
+**D3 (DONE, added 2026-10-23 at the owner's request during B1; pulled forward by the owner
+on 2026-10-24, right after V6, then back to the natural order with V7).**
 Consistent error reporting. Only the newer `renderer_*`/`view_*` functions (and B1's) report a
 failure as `nil, "message"`. The other 116 registered Lua functions across 14 `src/lua/*api.cpp`
 files report nothing. For example, 13 `sprite_*` functions silently do nothing with a bad
@@ -265,6 +266,65 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
   `@luadoc`.
 - A CARAVELLIUS_BREAKAGES entry. It's mostly harmless, since `nil, msg` never raises, but a
   script that reads a getter's old "safe" value sees `nil` instead.
+
+**D3 decisions (the owner, 2026-10-24):** (1) setters that returned nothing return `true` or
+`nil, "message"`, like `view_*`; (2) functions that returned `false` (or `0`) return
+`nil, "message"`; (3) a wrong argument type is `nil, "argument 'x' must be ..."`, with shared
+helpers in `LuaEngineUtil`; (4) a fractional number where an integer is expected is REJECTED
+(`3.0` accepted), not rounded down; (5) exceptions: `dofile` keeps raising like standard Lua, and
+functions with nothing to report (`input_is_*`, `app_get_*`, `screen_get_*`) only gain the
+argument checks; (6) one PR, reviewed "by average".
+
+**D3 as built:**
+- **Shared readers** in `LuaEngineUtil`: `ReadIntegerArg`, `ReadIntArg`, `ReadIntegerArgInRange`,
+  `ReadOptionalIntegerArg`, `ReadNumberArg`, `ReadNumberArgInRange`, `ReadBooleanArg`,
+  `ReadOptionalBooleanArg`, `ReadStringArg`, `CheckFunctionArg`, `ReadConstantArg` (checked
+  against the same `stNamedConstant` table that registers the group's globals, so a constant group
+  can't drift from its check), plus `FormatNumber`. `luaviewapi.cpp`, `luarendererapi.cpp` and
+  `luatextapi.cpp` dropped their private copies of `PushError`/`PushTrue`/`FormatNumber`/
+  `ReadIntegerArg`/`ReadBooleanArg`/`ReadOptionalBoolean` for them. Messages start
+  `"argument '<name>'"`. Arguments are checked before the first `GetTileMap`/`GetDrawSurface`/
+  `EnsureRenderer`, so a refused call never creates the default renderer (tested).
+- **The 3 old getters** (`GetSoundManager`, `GetSpritePool`, `GetScriptProcessor`) now pop what
+  they push.
+- **Every module converted** (about 130 functions in 13 files): sprite and pool, the `sp_*`
+  queue, sound and songs, tilemap, camera and zoom, collision, app, input, timers, json, crypto,
+  pack, and `draw_text`/`measure_text`. Notable rules: a queued command's parameter is `0..65535`
+  (it is kept in 16 bits and used to wrap silently); `sprite_acquire` fails with `nil, "message"`
+  for an unknown or full pool (it returned `0`); a sound id is tracked as loaded on the Scarab side
+  (`SoundManager` can't be asked), so an id never loaded is `"sound N is not loaded"` and a second
+  `sound_load` of an id is refused (sunlight silently kept the first sound); `screen_fade`,
+  `sound_set_volume` and `sprite_set_collision_inset` take `0..1`; colours `0..255`; layer ids for
+  sprites and collision rules `0..254` (sunlight's fixed `MAX_COLLIDER_LAYERS` array);
+  `sprite_add_to_layer` with no map loaded still accepts any id (V8); `draw_text`/`measure_text`
+  accept a number as the text, as Lua converts one wherever it expects a string; the `KEY_*`,
+  `GAMEPAD_BUTTON_*`, `GAMEPAD_AXIS_*`, `MAP_ALIGNMENT_*`, `FULLSCREEN_STRATEGY_*` and
+  `TEXTURE_ANIMATION_MODE_*` arguments must be one of their constants (a misspelt constant name
+  is `nil` in Lua and is now reported); tilemap layer opacity keeps V3's clamping. `tools/pack.lua`
+  reads the new results. `set_timer`'s background callback now prints and pops its Lua error.
+- **Found on the way: a sunlight bug** (not reported yet, the owner decides): in
+  `CollisionManager::AddColliderToColliderRule` (`collisionmanager.cpp`), the `find_if` lambda
+  indexes `m_ColliderLayerList[id]` (a `std::array` of `MAX_COLLIDER_LAYERS` = 255) BEFORE any
+  bounds check, and the check that follows tests the FIRST id twice and never the second, so
+  `collision_add_rule(1, 300)` read and stored past the array's end. Scarab now range-checks both
+  ids first.
+- **Old pin (published v0.1.25 macOS x64):** the new test can't pass there; the old binary
+  segfaults on several of its calls (an unknown `MAP_ALIGNMENT_*` value, `tilemap_get_tile` far
+  outside the map, `load_json(nil)`), all of which now return `nil, "message"`.
+- **Regression test:** `scripts/error_reporting_smoke.py` (+ `scripts/error_reporting_smoke/`,
+  ci.yml on all 4 platforms): one check per kind of failure of every module, that no check raises
+  a Lua error, that successes return `true`, and that refused calls create no renderer.
+  Mutation-checked: fractions truncated instead of refused (10 failures), a double `sound_load`
+  accepted (2), setters returning nothing (28), `nil` accepted as a boolean (4).
+- **Existing tests updated** for the new results: `renderer_api_smoke` (`sprite_*_world_space` on
+  an invalid handle), `tilemap_layer_smoke` (an unknown layer), `font_api_smoke` (`draw_text`
+  returns `true`).
+- **Checked against Caravellius** (local checkout `22bbaaf`, a temporary trace printing every
+  `nil, "message"`, not committed): its headless acceptance passes (`ACCEPT RESULT PASS`) and its
+  state fingerprint is the reference (`hash=33897632 maxScore=3000`); the only error it meets is
+  `sprite_remove_from_layer` on a sprite not on the layer, which returned `false` before. A grep
+  found the real break: 23 `if handle == 0 then` pool-exhausted checks in 18 files (entry 9).
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 9; `CLAUDE.md` gained the rule for new primitives.
 
 ## Phase V: visual/behavioral re-verification
 

@@ -20,6 +20,7 @@
 
 #include "lua/luatextapi.h"
 #include "lua/luaengineutil.h"
+#include <climits>
 #include <memory>
 #include <string>
 
@@ -85,27 +86,6 @@ namespace Scarab  {
                 return pFont;
             }
 
-            /**
-             * @brief An optional boolean argument (register_font/unregister_font's bold and
-             * italic): none or nil is false.
-             * @return false (with strError set) for anything that is not a boolean;
-             */
-            static bool ReadOptionalBoolean( lua_State *pLuaState, int nIndex, const char *szName, bool &bValue, std :: string &strError )  {
-
-                bValue = false;
-
-                if( lua_isnoneornil( pLuaState, nIndex ) )
-                    return true;
-
-                if( !lua_isboolean( pLuaState, nIndex ) )  {
-                    strError = std :: string( "'" ) + szName + "' must be a boolean";
-                    return false;
-                }
-
-                bValue = lua_toboolean( pLuaState, nIndex );
-
-                return true;
-            }
 
             /**
              * @brief A required, non-empty family name (register_font/unregister_font).
@@ -268,8 +248,8 @@ namespace Scarab  {
                 if( !pFont )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadOptionalBoolean( pLuaState, 3, "bold", bBold, strError ) ||
-                    !ReadOptionalBoolean( pLuaState, 4, "italic", bItalic, strError ) )
+                if( !LuaEngineUtil :: ReadOptionalBooleanArg( pLuaState, 3, "bold", false, bBold, strError ) ||
+                    !LuaEngineUtil :: ReadOptionalBooleanArg( pLuaState, 4, "italic", false, bItalic, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !LuaEngineUtil :: GetRendererProvider( pLuaState ) -> RegisterFont( szFamily, pFont, bBold, bItalic, "register_font" ) )
@@ -302,8 +282,8 @@ namespace Scarab  {
                     const char  *szFamily = ReadFamilyArg( pLuaState, 1, strError );
 
                     if( szFamily == nullptr ||
-                        !ReadOptionalBoolean( pLuaState, 2, "bold", bBold, strError ) ||
-                        !ReadOptionalBoolean( pLuaState, 3, "italic", bItalic, strError ) )
+                        !LuaEngineUtil :: ReadOptionalBooleanArg( pLuaState, 2, "bold", false, bBold, strError ) ||
+                        !LuaEngineUtil :: ReadOptionalBooleanArg( pLuaState, 3, "italic", false, bItalic, strError ) )
                         return LuaEngineUtil :: PushError( pLuaState, strError );
 
                     bRemoved = pProvider -> UnregisterFont( szFamily, bBold, bItalic );
@@ -324,10 +304,39 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Read draw_text/measure_text's text and size (arguments 1 and 2 of measure_text,
+             * 1 and 4 of draw_text): the text is a string, or a number (converted the way Lua
+             * converts one wherever it expects a string, so `draw_text( score, ... )` works), and
+             * the size a whole number of pixels, at least 1.
+             */
+            static bool ReadTextArgs( lua_State *pLuaState, int nTextIndex, int nSizeIndex, std :: string &strText, int &nSize, std :: string &strError )  {
+
+                lua_Integer  nValue = 0;
+
+                if( lua_type( pLuaState, nTextIndex ) != LUA_TSTRING && lua_type( pLuaState, nTextIndex ) != LUA_TNUMBER )  {
+                    strError = "argument 'text' must be a string";
+                    return false;
+                }
+
+                // lua_tolstring converts a number argument in place; it is a copy of the caller's value
+                size_t       nLength = 0;
+                const char  *szText  = lua_tolstring( pLuaState, nTextIndex, &nLength );
+
+                strText.assign( szText, nLength );
+
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, nSizeIndex, "size", 1, INT_MAX, nValue, strError ) )
+                    return false;
+
+                nSize = ( int ) nValue;
+
+                return true;
+            }
+
+            /**
              * @brief Draw a line of text on screen, in screen space, with the active font (see
              * @link SetFont) or a given font handle.
              *
-             * @luaname{draw_text(text, x, y, size, r, g, b, a, font)}
+             * @luaname{draw_text(text, x, y, size, r, g, b, a, font) -> true | nil, message}
              * @luadoc
              * Draw a line of text on screen, in screen space — no
              * camera/viewport transform of its own, same as the FPS
@@ -335,7 +344,10 @@ namespace Scarab  {
              * active font (`set_font`), or `font` — an optional last
              * argument, a handle from `load_font` — so a HUD can mix
              * several fonts without switching the active one. An invalid
-             * `font` draws nothing and returns `nil, "invalid font handle"`.
+             * `font` draws nothing and returns `nil, "invalid font handle"`;
+             * so does any other wrong argument (`text` must be a string or a
+             * number, `x`/`y` integers, `size` at least `1`). It returns
+             * `true` when it draws.
              *
              * ```lua
              * draw_text( "Lives: 5", 20, 20, 24, 255, 255, 255, 255 )
@@ -352,27 +364,40 @@ namespace Scarab  {
              */
             int LuaTextApi :: DrawText( lua_State *pLuaState )  {
 
+                static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
+
                 std :: string                                 strError;
                 std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
-                const char     *szText  = lua_tostring( pLuaState, 1 );
-                int            nPosX    = ( int ) lua_tointeger( pLuaState, 2 );
-                int            nPosY    = ( int ) lua_tointeger( pLuaState, 3 );
-                int            nSize    = ( int ) lua_tointeger( pLuaState, 4 );
-                unsigned char  nRed     = ( unsigned char ) lua_tointeger( pLuaState, 5 );
-                unsigned char  nGreen   = ( unsigned char ) lua_tointeger( pLuaState, 6 );
-                unsigned char  nBlue    = ( unsigned char ) lua_tointeger( pLuaState, 7 );
-                unsigned char  nAlpha   = ( unsigned char ) lua_tointeger( pLuaState, 8 );
+                std :: string                                 strText;
+                int                                           nSize        = 0;
+                int                                           nPosX        = 0;
+                int                                           nPosY        = 0;
+                lua_Integer                                   anChannel[4] = { 0, 0, 0, 0 };
+
+                if( !ReadTextArgs( pLuaState, 1, 4, strText, nSize, strError ) ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "x", nPosX, strError ) ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 3, "y", nPosY, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                for( int nArg = 0; nArg < 4; nArg++ )
+                    if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 5 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !ReadOptionalFontArg( pLuaState, 9, pFont, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
+                unsigned char  nRed   = ( unsigned char ) anChannel[0];
+                unsigned char  nGreen = ( unsigned char ) anChannel[1];
+                unsigned char  nBlue  = ( unsigned char ) anChannel[2];
+                unsigned char  nAlpha = ( unsigned char ) anChannel[3];
+
                 if( pFont )
-                    pFont -> DrawText( szText, nPosX, nPosY, nSize, SunLight :: Base :: stColor { nRed, nGreen, nBlue, nAlpha } );
+                    pFont -> DrawText( strText.c_str(), nPosX, nPosY, nSize, SunLight :: Base :: stColor { nRed, nGreen, nBlue, nAlpha } );
                 else
-                    LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawText( szText, nPosX, nPosY, nSize,
+                    LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawText( strText.c_str(), nPosX, nPosY, nSize,
                                                                            nRed, nGreen, nBlue, nAlpha );
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -390,7 +415,8 @@ namespace Scarab  {
              * right-aligning a score/lives readout against
              * `screen_get_width()`) without hardcoding assumed widths,
              * since digit/character count can change over a playthrough.
-             * An invalid `font` returns `nil, "invalid font handle"`.
+             * An invalid `font` returns `nil, "invalid font handle"`, and a
+             * wrong `text`/`size` is `nil, "message"` too.
              * @luaexample
              * local text  = "Lives: " .. tostring( Lives.count )
              * local width = measure_text( text, 24 )
@@ -400,14 +426,14 @@ namespace Scarab  {
 
                 std :: string                                 strError;
                 std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
-                const char  *szText = lua_tostring( pLuaState, 1 );
-                int         nSize   = ( int ) lua_tointeger( pLuaState, 2 );
+                std :: string                                 strText;
+                int                                           nSize = 0;
 
-                if( !ReadOptionalFontArg( pLuaState, 3, pFont, strError ) )
+                if( !ReadTextArgs( pLuaState, 1, 2, strText, nSize, strError ) || !ReadOptionalFontArg( pLuaState, 3, pFont, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                int  nWidth = pFont ? pFont -> MeasureText( szText, nSize )
-                                    : LuaEngineUtil :: GetDrawSurface( pLuaState ) -> MeasureText( szText, nSize );
+                int  nWidth = pFont ? pFont -> MeasureText( strText.c_str(), nSize )
+                                    : LuaEngineUtil :: GetDrawSurface( pLuaState ) -> MeasureText( strText.c_str(), nSize );
 
                 lua_pushinteger( pLuaState, nWidth );
 

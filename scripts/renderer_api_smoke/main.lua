@@ -369,12 +369,12 @@ elseif scenario == "viewsmulti" then
     check( sprite_configure_texture( sp, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR ) == true, "sprite_configure_texture failed" )
     check( sprite_get_world_space( sp ) == true, "configuring a texture changed the world-space mode" )
     check( sprite_release( sp ) == true, "sprite_release failed" )
-    check( sprite_get_world_space( sp ) == false, "a released handle must read as not world-space" )
+    check( sprite_get_world_space( sp ) == nil, "a released handle must read as an invalid handle" )
     local sp2 = sprite_acquire( "ws" )
     check( sp2 ~= 0 and sp2 ~= sp, "the recycled slot must come back under a new handle" )
     check( sprite_get_world_space( sp2 ) == false, "a recycled slot inherited the previous owner's world-space mode" )
-    sprite_set_world_space( 0, true )   -- an invalid handle is a quiet no-op, like every other sprite_set_*
-    check( sprite_get_world_space( 0 ) == false, "an invalid handle must read as not world-space" )
+    expect_error( "world space, invalid handle", "invalid sprite handle", sprite_set_world_space( 0, true ) )
+    expect_error( "world space read, invalid handle", "invalid sprite handle", sprite_get_world_space( 0 ) )
     sprite_release( sp2 )
 
     -- destroy: counted, then unknown; ids are never reused; the default view stays

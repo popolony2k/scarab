@@ -47,28 +47,7 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
-            /**
-             * @brief Push `nil, message` - the failure convention of every function in this file.
-             */
-            static int PushError( lua_State *pLuaState, const std :: string &strMessage )  {
 
-                lua_pushnil( pLuaState );
-                lua_pushstring( pLuaState, strMessage.c_str() );
-
-                return 2;
-            }
-
-            /**
-             * @brief Format a number the way a user would write it in a config file (3.8125, 16).
-             */
-            static std :: string FormatNumber( double fValue )  {
-
-                char  szBuffer[64];
-
-                snprintf( szBuffer, sizeof( szBuffer ), "%g", fValue );
-
-                return szBuffer;
-            }
 
             /**
              * @brief Check a zoom FACTOR and convert it to sunlight's zoom position.
@@ -100,14 +79,14 @@ namespace Scarab  {
                 double  fNearest      = fNearestSteps * SunLight :: Base :: ZOOM_STEP;
 
                 if( std :: fabs( fSteps - fWhole ) > __ZOOM_EXACT_TOLERANCE )  {
-                    strError = "zoom factor " + FormatNumber( fFactor ) + " is not a multiple of " +
-                               FormatNumber( SunLight :: Base :: ZOOM_STEP ) + " - nearest valid is " + FormatNumber( fNearest );
+                    strError = "zoom factor " + LuaEngineUtil :: FormatNumber( fFactor ) + " is not a multiple of " +
+                               LuaEngineUtil :: FormatNumber( SunLight :: Base :: ZOOM_STEP ) + " - nearest valid is " + LuaEngineUtil :: FormatNumber( fNearest );
                     return false;
                 }
 
                 if( fWhole < 1.0 || fWhole > ( double ) SunLight :: Base :: ZOOM_POS_COUNT )  {
-                    strError = "zoom factor " + FormatNumber( fFactor ) + " is outside [" + FormatNumber( fMin ) + ", " +
-                               FormatNumber( fMax ) + "] - nearest valid is " + FormatNumber( fNearest );
+                    strError = "zoom factor " + LuaEngineUtil :: FormatNumber( fFactor ) + " is outside [" + LuaEngineUtil :: FormatNumber( fMin ) + ", " +
+                               LuaEngineUtil :: FormatNumber( fMax ) + "] - nearest valid is " + LuaEngineUtil :: FormatNumber( fNearest );
                     return false;
                 }
 
@@ -531,18 +510,18 @@ namespace Scarab  {
                 std :: string                 strError;
 
                 if( lua_gettop( pLuaState ) > 1 || ( lua_gettop( pLuaState ) == 1 && !lua_istable( pLuaState, 1 ) ) )
-                    return PushError( pLuaState, "renderer_create expects one argument: an options table" );
+                    return LuaEngineUtil :: PushError( pLuaState, "renderer_create expects one argument: an options table" );
 
                 if( lua_gettop( pLuaState ) == 1 && !ParseOptions( pLuaState, 1, config, bNullOnlyGiven, extras, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 bool  bNullBackend = pProvider -> IsHeadless() || config.backend == RENDERER_BACKEND_NULL;
 
                 if( !ValidateConfig( config, bNullOnlyGiven, bNullBackend, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !pProvider -> CreateRenderer( config, extras, &strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, __RENDERER_HANDLE );
 
@@ -564,7 +543,7 @@ namespace Scarab  {
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 LuaEngineUtil :: GetRendererProvider( pLuaState ) -> PeekDrawSurface() -> RequestExit();
 
@@ -643,7 +622,7 @@ namespace Scarab  {
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 Engine :: IRendererProvider           *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
                 RendererConfig                         config    = pProvider -> GetEffectiveConfig();
@@ -707,7 +686,7 @@ namespace Scarab  {
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, __DEFAULT_VIEW_ID );
 
@@ -731,7 +710,7 @@ namespace Scarab  {
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 RendererConfig  config = LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetEffectiveConfig();
 
@@ -753,7 +732,7 @@ namespace Scarab  {
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetTileMap( "renderer_get_view_count" ) -> GetViewCount() );
 
