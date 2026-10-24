@@ -516,8 +516,9 @@ camera goes) can't be told from the map alone. That goes in V5c below.
     the maps with those items in mind: one Scarab map per item, or one shared objects map.
   - The three open questions, settled with the owner (2026-10-24):
     1. **Font:** text objects draw only with a registered font, otherwise `??????`, so the
-       owner promoted C6 (`register_font`), done right before V5. The sample registers "Sans"
-       = `resources/fonts/caravellius8x8.fnt`, the project's own font, already shipped.
+       owner promoted C6 (fonts by handle, incl. `register_font`), done right before V5. The
+       sample loads `resources/fonts/caravellius8x8.fnt` once with `font_load`, registers it
+       as "Sans", and can use the same handle for its HUD text.
     2. **Location:** a new `resources/tilemap/objects/` with its own README and provenance
        (from sunlight's `samples/objects` at `bfce598`), reusing the house tileset already in
        `resources/tilemap/`.
@@ -584,39 +585,100 @@ that.
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
-| C6 | `TileMapRenderer::RegisterFont(family, path, bold, italic)` | 7 | **Promoted by the owner (2026-10-24): TODO, done right before V5** - see below |
+| C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): TODO, done right before V5** - see below |
 
-**C6 (TODO - promoted by the owner 2026-10-24, done right before V5, out of phase order).**
-Why now: without a registered font, sunlight draws **every Tiled text object as `??????`**
-(`textobjectrenderer.cpp`, `__MISSING_FONT_PLACEHOLDER`, plus a warning logged once per
-family/style). V5's `samples/objects` labels each case with a text object, so it would show
-nothing but placeholders. The same goes for any game map with a text object.
+**C6 (TODO - promoted by the owner 2026-10-24, done right before V5, out of phase order;
+reshaped the same day into "fonts by handle").**
 
-What sunlight has (`bfce598`): `TileMapRenderer::RegisterFont( const char* szFamily, const char*
-szFilePath, bool bBold, bool bItalic )`. A text object whose `fontfamily` and bold/italic match
-draws with it. Registering the same family and style again replaces the earlier font. It needs a
-started renderer (a font needs the window's render context). Fonts are released with the window
-(`ReleaseRegisteredFonts`). It lives only on the concrete `TileMapRenderer`, not on
-`ITileMap`/`IDrawSurface`, which are the interfaces Scarab's Lua bridge sees.
+*How it got here.* C6 began as "expose `RegisterFont( family, path, bold, italic )`". Without a
+registered font, sunlight draws every Tiled text object as `??????` (`textobjectrenderer.cpp`,
+`__MISSING_FONT_PLACEHOLDER`), and V5's `samples/objects` labels every case with text objects.
+Planning it showed that `set_font` (for `draw_text`) and text objects would each load their own
+copy of the same file, because sunlight's `FontRegistry` took only a path and owned a
+`unique_ptr<IFont>`. The owner re-planned font handling with sunlight (as its 2026-10-04 Phase B
+discussion had started), and sunlight shipped **I3, "fonts by handle"** (PR #218, pin
+`9c8c6bf421a1147d1e8c099e698dfbe7c1885af2`, on top of `bfce598`; sunlight BREAKAGES entry 52,
+**deliberately breaking**: the owner chose to break compatibility).
 
-Planned design (to confirm with the owner when the item starts):
-- Lua: `register_font( family, path, bold, italic ) -> true | nil, message`, next to
-  `set_font`/`draw_text` in `src/lua/luatextapi.cpp` (the Text page). `bold`/`italic` are
-  optional booleans, default `false`. Strict, `nil, "message"` errors like B1/D3: a missing or
-  unloadable file, a wrong type, an empty family. It is a window-needing call, so the
-  `renderer_create`-first ordering rule applies. The path is anchored on `APP_DIR` in examples,
-  per the BMFont gotcha in `CLAUDE.md`.
-- C++: a narrow `RegisterFont` on `Scarab::Engine::IRendererProvider` (Lua-agnostic; names no
-  concrete renderer), implemented by `RendererProvider` on the renderer it owns, creating the
-  default one first like `GetTileMap`.
-- Tests: a headless smoke scenario. sunlight's null backend has `LoadFont`, so registering
-  `resources/fonts/caravellius8x8.fnt` must succeed, and every error path must fail with its
-  message. Prove each by mutation. Glyphs can't be seen headless; V5's sample is the eye check.
-- Docs: the `@luadoc` explains what a family/style match means, the `??????` placeholder, and
-  the ordering rule.
+*sunlight's model at `9c8c6bf`: load once, then use the handle.* A font is loaded once into a
+`std::shared_ptr<SunLight::Font::IFont>`. The same handle can be the active font for
+`DrawText`/`MeasureText`, be registered for any number of text-object families and styles, and be
+drawn with directly. One file means one load and one GPU copy.
+- `IDrawSurface::LoadFont( path )`: new. It returns the handle, or `nullptr` if the file can't load
+  or the renderer isn't started. It reads TTF/OTF (with Latin accents) or BMFont `.fnt`, through
+  the filesystem mounts.
+- `IDrawSurface::SetFont( font )`: takes a handle now, not a path. `nullptr` selects the built-in
+  font. It returns `false`, keeping the active font, for a font another backend loaded or an
+  invalid one. `IDrawSurface::GetFont()`: new, the active font or `nullptr`.
+- `TileMapRenderer::RegisterFont( family, font, bold, italic )`: takes a handle, not a path. It is
+  on the concrete renderer only, not on `IDrawSurface`. Registering a key again replaces its font,
+  and one font may fill several keys. `UnregisterFont( font )` (every slot that font serves) and
+  `UnregisterFont( family, bold, italic )` (one slot) are new. An unregistered family draws
+  `??????` again, with a warning once.
+- `IFont`: `IsValid`, `MeasureText( text, size )`, `DrawText( text, x, y, size, color )`,
+  `DrawTextRotated(...)`. These are screen space and honour the clip and blend modes (I2).
+- Ownership is shared: the game's handle, the engine while the font is active, and each registry
+  slot. The last owner releases it. `Stop()` lets go of every registered font and selects the
+  built-in font again while the window is open. When the window closes, every live font becomes
+  invalid (calls do nothing, nothing dangles).
+- References in sunlight: `doc/BREAKAGES.md` entry 52, `doc/MASTER_PLAN.md` "Integration
+  follow-ups" I3, `src/drawsurface/idrawsurface.h`, `src/font/ifont.h`, `samples/text` (each face
+  loaded once and registered; the Mono face also selected for a HUD line),
+  `tests/test_textobjects.cpp`, `tests/test_objectrenderers.cpp`.
 
-Fonts (the owner's point: our own fonts, or open-license ones compatible with ours). sunlight's
-samples register:
+*Why the re-pin and the Lua API are one item.* Scarab's `set_font` calls
+`IDrawSurface::SetFont( szFilePath )` (`src/lua/luatextapi.cpp`), which no longer exists, so the
+re-pin alone does not compile.
+
+*Decisions (the owner, 2026-10-24):*
+1. **`set_font` takes a path, a handle, or `nil`**, told apart by the argument's Lua type. A
+   string loads and selects in one step, like today; that font is owned only by the engine, so it
+   is freed when another font replaces it. A handle (from `font_load`) selects that font. `nil`
+   selects the built-in font. Errors are `nil, "message"` (B1/D3), where today's `set_font`
+   returns `false`.
+2. **A font in Lua is an opaque integer handle with an explicit release**, like `sprite_*`/`view_*`.
+   A Scarab-side pool holds the `shared_ptr<IFont>` per handle. Releasing a handle drops only the
+   pool's reference, so a font that is still active or registered keeps working.
+3. **`draw_text` and `measure_text` get an optional last font argument**. Left out, they use the
+   active font, exactly as today. Given, they draw or measure with that font through `IFont`
+   directly.
+4. **One item**, done right before V5.
+
+*Planned Lua API (names to confirm when the item starts):*
+```lua
+local sans, err = font_load( APP_DIR .. "resources/fonts/caravellius8x8.fnt" )  --> handle | nil, message
+set_font( sans )                      -- draw_text/measure_text use it
+set_font( APP_DIR .. "x.ttf" )        -- or load + select in one step, as before
+set_font( nil )                       -- the built-in font
+register_font( "Sans", sans )         -- map text objects of family "Sans" use the SAME loaded font
+register_font( "Sans", sans, true )   -- it may also stand in for "Sans bold"
+unregister_font( sans )               -- every slot it serves; or unregister_font( "Sans", false, false )
+draw_text( "Hi", 20, 20, 24, 255, 255, 255, 255, sans )   -- optional last argument
+local w = measure_text( "Hi", 24, sans )
+font_release( sans )                  -- the handle is no longer needed
+```
+
+*C++ (to detail when the item starts):* a Lua-agnostic font pool in `src/engine/`, like
+`SpritePool`, holding `shared_ptr<IFont>` per handle, with generation-checked handles so a released
+handle is never reused by mistake. `RegisterFont`/`UnregisterFont` reach the concrete renderer
+through narrow methods on `IRendererProvider`. `LoadFont` needs a started renderer: a window-needing
+call under the `renderer_create`-first rule. Every font is released before the window closes (the
+same shutdown-order rule as `SpritePool::Clear` in `EngineHost::OnStop`).
+
+*Tests:* headless smoke scenarios (sunlight's null backend loads a font iff the file exists):
+load/select/register/unregister/release round trips, every error path, a released handle being
+rejected, a handle still drawing after release while active or registered, and `set_font`'s three
+forms, each proven by mutation. Re-pin checks as in P4/P5 (real fetch, `--version`, every smoke
+test). `samples/text` and `samples/hello-world`/`samples/renderer` move to the new API where it
+helps, and the owner checks text by eye. V5's `samples/objects` is the eye check for text objects.
+
+*Breakages:* a `doc/CARAVELLIUS_BREAKAGES.md` entry. Caravellius' `Text.set_font`
+(`src/core/text.lua`, called from `src/main.lua` with `caravellius8x8_bold.fnt`) keeps working
+through the path form, but now gets `nil, "message"` instead of `false` on a bad path. The handle
+form lets it load each font once. Per the owner (2026-10-24): try not to break Caravellius, but
+prefer the best design even if it does, and log every break for the integration conversation.
+
+*Fonts available* (the owner's point: our own, or open-license ones compatible with ours):
 
 | Family | File | In Scarab's `resources/fonts/`? | License |
 |---|---|---|---|
@@ -624,9 +686,9 @@ samples register:
 | "Pixel" | `pressstart2p-regular.ttf` | yes | SIL OFL 1.1 |
 | "Mono" | `AnonymousPro-Regular/Bold/Italic/BoldItalic.ttf` | no | SIL OFL 1.1 (compatible; copy with `OFL-anonymouspro.txt`) |
 
-Every map V5 (and V6/V7) would use (`objects.tmx`, `thick.tmx`, `rotation.tmx`,
-`opacity.tmx`) uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed
-only for sunlight's `text.tmx` ("Mono"), so copy it only if a sample uses that map.
+Every map V5 (and V6/V7) would use (`objects.tmx`, `thick.tmx`, `rotation.tmx`, `opacity.tmx`)
+uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed only for sunlight's
+`text.tmx` ("Mono").
 
 ## Phase R: requisites
 
