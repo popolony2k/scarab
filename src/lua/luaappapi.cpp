@@ -20,7 +20,9 @@
 
 #include "lua/luaappapi.h"
 #include "lua/luaengineutil.h"
+#include "lua/luainputapi.h"
 #include "window/iwindow.h"
+#include <climits>
 #include <ctime>
 
 extern "C"
@@ -34,14 +36,33 @@ namespace Scarab  {
         namespace Lua  {
 
             /**
+             * @luaconstants{Fullscreen strategies}
+             * @luadoc
+             * The `strategy` argument `app_set_fullscreen` optionally
+             * takes — see that primitive's own doc for what each one
+             * actually does and why `FULLSCREEN_STRATEGY_REAL` is
+             * kept macOS-only project-wide.
+             */
+            static const stNamedConstant  s_aFullscreenStrategies[] = {
+                { "FULLSCREEN_STRATEGY_REAL", SunLight :: Window :: FULLSCREEN_STRATEGY_REAL },
+                { "FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED", SunLight :: Window :: FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED },
+            };
+
+            /**
              * @brief Set the application window's title. Scarab (the engine)
              * has no opinion on what a game should call itself - the window
              * is created with a generic default title (APP_NAME, "Scarab")
              * before any Lua exists, and the game's own main.lua is expected
              * to call this with its real name once it starts running.
              *
-             * @luaname{app_set_name(name)}
+             * @luaname{app_set_name(name) -> true | nil, message}
+             * @luaheading{Error reporting}
              * @luadoc
+             * Every app and screen function reports a wrong argument as
+             * `nil, "message"` and never raises a Lua error; a setter returns
+             * `true` on success. Booleans must be `true`/`false` (not `nil`,
+             * not `0`/`1`), and integers must be whole numbers.
+             *
              * Set the application window's title. Scarab (the engine) has no
              * opinion on what a game calls itself — the window opens with a
              * generic default title (`"Scarab"`, `main.h`'s `APP_NAME`)
@@ -54,12 +75,16 @@ namespace Scarab  {
              */
             int LuaAppApi :: SetAppName( lua_State *pLuaState )  {
 
-                const char  *szName = lua_tostring( pLuaState, 1 );
+                std :: string  strError;
+                std :: string  strName;
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetWindowTitle( szName );
-                LuaEngineUtil :: GetRendererProvider( pLuaState ) -> NoteWindowTitle( szName );
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "name", strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetWindowTitle( strName.c_str() );
+                LuaEngineUtil :: GetRendererProvider( pLuaState ) -> NoteWindowTitle( strName.c_str() );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -67,7 +92,7 @@ namespace Scarab  {
              * other rendered element - used for stage-start/stage-end (and
              * game-over) transitions, not any single sprite/texture effect.
              *
-             * @luaname{screen_fade(alpha)}
+             * @luaname{screen_fade(alpha) -> true | nil, message}
              * @luadoc
              * Set a whole-screen fade overlay, drawn on top of every other
              * rendered element (tilemap, sprites, everything) — not a
@@ -90,11 +115,15 @@ namespace Scarab  {
              */
             int LuaAppApi :: ScreenFade( lua_State *pLuaState )  {
 
-                float  fAlpha = ( float ) lua_tonumber( pLuaState, 1 );
+                std :: string  strError;
+                double         fAlpha = 0.0;
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetScreenFade( fAlpha );
+                if( !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 1, "alpha", 0.0, 1.0, fAlpha, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetScreenFade( ( float ) fAlpha );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -125,7 +154,7 @@ namespace Scarab  {
              * app_set_fullscreen(false) first, then re-enter fullscreen
              * with the new strategy.
              *
-             * @luaname{app_set_fullscreen(fullscreen, strategy)}
+             * @luaname{app_set_fullscreen(fullscreen, strategy) -> true | nil, message}
              * @luagroup{fullscreen}
              * @luadoc
              * Enter/leave fullscreen, or query the current state. The game
@@ -165,13 +194,23 @@ namespace Scarab  {
              */
             int LuaAppApi :: SetFullscreen( lua_State *pLuaState )  {
 
-                bool  bFullscreen = lua_toboolean( pLuaState, 1 );
-                int   nStrategy   = ( int ) luaL_optinteger( pLuaState, 2, SunLight :: Window :: FULLSCREEN_STRATEGY_REAL );
+                std :: string  strError;
+                bool           bFullscreen = false;
+                int            nStrategy   = SunLight :: Window :: FULLSCREEN_STRATEGY_REAL;
+
+                if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 1, "fullscreen", bFullscreen, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !lua_isnoneornil( pLuaState, 2 ) &&
+                    !LuaEngineUtil :: ReadConstantArg( pLuaState, 2, "strategy", s_aFullscreenStrategies,
+                                                       sizeof( s_aFullscreenStrategies ) / sizeof( s_aFullscreenStrategies[0] ),
+                                                       "FULLSCREEN_STRATEGY_*", nStrategy, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetFullscreen( bFullscreen,
                     ( SunLight :: Window :: FullscreenStrategy ) nStrategy );
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -197,7 +236,7 @@ namespace Scarab  {
              * on-screen counter, which shows the latter). Safe to call at
              * any time - a live change takes effect immediately.
              *
-             * @luaname{app_set_target_fps(fps)}
+             * @luaname{app_set_target_fps(fps) -> true | nil, message}
              * @luagroup{target_fps}
              * @luadoc
              * Set (or query) the renderer's own target frame rate — the cap
@@ -206,18 +245,24 @@ namespace Scarab  {
              * counter, right below, for that). Scarab's own default is
              * `main.h`'s `FRAMES_PER_SECOND` (`60` today), applied once at
              * boot; this primitive is a genuine live change, taking effect
-             * immediately, in either direction:
+             * immediately, in either direction. `fps` is an integer, at least
+             * `1` (a fraction like `app_get_target_fps() / 2` on an odd rate is
+             * an error — use `//`):
              * @luaexample
              * -- halve the target frame rate at runtime
-             * app_set_target_fps( app_get_target_fps() / 2 )
+             * app_set_target_fps( app_get_target_fps() // 2 )
              */
             int LuaAppApi :: SetTargetFps( lua_State *pLuaState )  {
 
-                int  nTargetFps = ( int ) lua_tointeger( pLuaState, 1 );
+                std :: string  strError;
+                lua_Integer    nTargetFps = 0;
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetTargetFPS( nTargetFps );
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 1, "fps", 1, INT_MAX, nTargetFps, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetTargetFPS( ( int ) nTargetFps );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -239,7 +284,7 @@ namespace Scarab  {
             /**
              * @brief Show or hide the on-screen FPS counter.
              *
-             * @luaname{app_set_draw_fps(draw_fps)}
+             * @luaname{app_set_draw_fps(draw_fps) -> true | nil, message}
              * @luagroup{draw_fps}
              * @luadoc
              * Show or hide the on-screen FPS counter (raylib's own, drawn
@@ -253,11 +298,15 @@ namespace Scarab  {
              */
             int LuaAppApi :: SetDrawFps( lua_State *pLuaState )  {
 
-                bool  bDrawFPS = lua_toboolean( pLuaState, 1 );
+                std :: string  strError;
+                bool           bValue = false;
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetDrawFPS( bDrawFPS );
+                if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 1, "draw_fps", bValue, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetDrawFPS( bValue );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -283,7 +332,7 @@ namespace Scarab  {
              * -only mechanism, while it's already running too (a genuine
              * live toggle, in either direction).
              *
-             * @luaname{app_set_window_resizeable(resizeable)}
+             * @luaname{app_set_window_resizeable(resizeable) -> true | nil, message}
              * @luagroup{window_resizeable}
              * @luadoc
              * Allow or disallow the user resizing the window by dragging
@@ -301,11 +350,15 @@ namespace Scarab  {
              */
             int LuaAppApi :: SetWindowResizeable( lua_State *pLuaState )  {
 
-                bool  bResizeable = lua_toboolean( pLuaState, 1 );
+                std :: string  strError;
+                bool           bValue = false;
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetWindowResizeable( bResizeable );
+                if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 1, "resizeable", bValue, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetWindowResizeable( bValue );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -330,7 +383,7 @@ namespace Scarab  {
              * sizes differ - see IDrawSurface::SetStretchToFill's own doc
              * comment for the full behavior (letterbox vs. stretch-fill).
              *
-             * @luaname{app_set_stretch_to_fill(stretchToFill)}
+             * @luaname{app_set_stretch_to_fill(stretchToFill) -> true | nil, message}
              * @luagroup{stretch_to_fill}
              * @luadoc
              * Choose how the engine's fixed internal render resolution
@@ -355,11 +408,15 @@ namespace Scarab  {
              */
             int LuaAppApi :: SetStretchToFill( lua_State *pLuaState )  {
 
-                bool  bStretchToFill = lua_toboolean( pLuaState, 1 );
+                std :: string  strError;
+                bool           bValue = false;
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetStretchToFill( bStretchToFill );
+                if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 1, "stretchToFill", bValue, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetStretchToFill( bValue );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -387,7 +444,7 @@ namespace Scarab  {
              * independent of the live window size/fullscreen/stretch-to-
              * fill state, same as every other screen-space draw call.
              *
-             * @luaname{draw_filled_rectangle(x, y, width, height, r, g, b, a)}
+             * @luaname{draw_filled_rectangle(x, y, width, height, r, g, b, a) -> true | nil, message}
              * @luadoc
              * Draw a filled, solid-color rectangle in screen space — same
              * coordinate system as `draw_text`/`screen_get_width` (the
@@ -410,19 +467,26 @@ namespace Scarab  {
              */
             int LuaAppApi :: DrawFilledRectangle( lua_State *pLuaState )  {
 
-                int            nPosX  = ( int ) lua_tointeger( pLuaState, 1 );
-                int            nPosY  = ( int ) lua_tointeger( pLuaState, 2 );
-                int            nWidth  = ( int ) lua_tointeger( pLuaState, 3 );
-                int            nHeight = ( int ) lua_tointeger( pLuaState, 4 );
-                unsigned char  nRed    = ( unsigned char ) lua_tointeger( pLuaState, 5 );
-                unsigned char  nGreen  = ( unsigned char ) lua_tointeger( pLuaState, 6 );
-                unsigned char  nBlue   = ( unsigned char ) lua_tointeger( pLuaState, 7 );
-                unsigned char  nAlpha  = ( unsigned char ) lua_tointeger( pLuaState, 8 );
+                static const char * const  aszRect[4]    = { "x", "y", "width", "height" };
+                static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawFilledRectangle( nPosX, nPosY, nWidth, nHeight,
-                                                                                  nRed, nGreen, nBlue, nAlpha );
+                std :: string  strError;
+                int            anRect[4]    = { 0, 0, 0, 0 };
+                lua_Integer    anChannel[4] = { 0, 0, 0, 0 };
 
-                return 0;
+                for( int nArg = 0; nArg < 4; nArg++ )
+                    if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1 + nArg, aszRect[nArg], anRect[nArg], strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                for( int nArg = 0; nArg < 4; nArg++ )
+                    if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 5 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> DrawFilledRectangle( anRect[0], anRect[1], anRect[2], anRect[3],
+                                                                                  ( unsigned char ) anChannel[0], ( unsigned char ) anChannel[1],
+                                                                                  ( unsigned char ) anChannel[2], ( unsigned char ) anChannel[3] );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -525,7 +589,7 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{app_quit()}
+             * @luaname{app_quit() -> true}
              * @luadoc
              * Requests the game close, the programmatic equivalent of the
              * player pressing the configured exit key (`ESC` by default)
@@ -549,11 +613,11 @@ namespace Scarab  {
 
                 LuaEngineUtil :: GetDrawSurface( pLuaState ) -> RequestExit();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{app_set_exit_key(key)}
+             * @luaname{app_set_exit_key(key) -> true | nil, message}
              * @luagroup{exit_key}
              * @luadoc
              * Sets which key, when pressed, triggers the default
@@ -575,11 +639,15 @@ namespace Scarab  {
              */
             int LuaAppApi :: SetExitKey( lua_State *pLuaState )  {
 
-                int  nKey = ( int ) lua_tointeger( pLuaState, 1 );
+                std :: string                     strError;
+                SunLight :: Input :: KeyboardKey  key = SunLight :: Input :: KeyboardKey :: KEY_NULL;
 
-                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetExitKey( ( SunLight :: Input :: KeyboardKey ) nKey );
+                if( !LuaInputApi :: ReadKeyArg( pLuaState, 1, "key", key, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                LuaEngineUtil :: GetDrawSurface( pLuaState ) -> SetExitKey( key );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -764,18 +832,6 @@ namespace Scarab  {
              */
             void LuaAppApi :: RegisterEnums( lua_State *pLuaState )  {
 
-                /**
-                 * @luaconstants{Fullscreen strategies}
-                 * @luadoc
-                 * The `strategy` argument `app_set_fullscreen` optionally
-                 * takes — see that primitive's own doc for what each one
-                 * actually does and why `FULLSCREEN_STRATEGY_REAL` is
-                 * kept macOS-only project-wide.
-                 */
-                static const stNamedConstant  s_aFullscreenStrategies[] = {
-                    { "FULLSCREEN_STRATEGY_REAL", SunLight :: Window :: FULLSCREEN_STRATEGY_REAL },
-                    { "FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED", SunLight :: Window :: FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED },
-                };
 
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aFullscreenStrategies,
                     sizeof( s_aFullscreenStrategies ) / sizeof( s_aFullscreenStrategies[0] ) );

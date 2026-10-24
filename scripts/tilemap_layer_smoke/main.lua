@@ -98,9 +98,11 @@ check( tilemap_set_layer( SKY.id, false, 128, 7, -3 ), "tilemap_set_layer( false
 local v, o, x, y = tilemap_get_layer( SKY.id )
 check( v == false and o == 128 and x == 7 and y == -3, "fields read back as " .. tostring( v ) .. " " .. tostring( o ) .. " " .. tostring( x ) .. " " .. tostring( y ) )
 
--- an unknown layer: today's behavior (nil from a get, false from a set) - item D3 may change it
-check( tilemap_get_layer( NO_SUCH_LAYER ) == nil, "an unknown layer id must read nil" )
-check( tilemap_set_layer( NO_SUCH_LAYER, true, OPAQUE, 0, 0 ) == false, "writing an unknown layer id must return false" )
+-- an unknown layer: nil, "message" from both a get and a set (item D3)
+local unknownGet, unknownGetErr = tilemap_get_layer( NO_SUCH_LAYER )
+local unknownSet, unknownSetErr = tilemap_set_layer( NO_SUCH_LAYER, true, OPAQUE, 0, 0 )
+check( unknownGet == nil and tostring( unknownGetErr ):find( "no layer", 1, true ), "an unknown layer id must read nil, \"no layer ...\"" )
+check( unknownSet == nil and tostring( unknownSetErr ):find( "no layer", 1, true ), "writing an unknown layer id must return nil, \"no layer ...\"" )
 
 local frames = 0
 function on_update( dt )

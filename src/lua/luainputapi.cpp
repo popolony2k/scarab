@@ -176,9 +176,63 @@ namespace Scarab  {
             };
 
             /**
-             * @luaname{input_is_key_down(key) -> down}
+             * @brief Read a key argument (a KEY_* constant) - shared with app_set_exit_key.
+             */
+            bool LuaInputApi :: ReadKeyArg( lua_State *pLuaState, int nIndex, const char *szName,
+                                            SunLight :: Input :: KeyboardKey &key, std :: string &strError )  {
+
+                int  nKey = 0;
+
+                if( !LuaEngineUtil :: ReadConstantArg( pLuaState, nIndex, szName, s_aKeyboardKeys,
+                                                       sizeof( s_aKeyboardKeys ) / sizeof( s_aKeyboardKeys[0] ), "KEY_*", nKey, strError ) )
+                    return false;
+
+                key = ( SunLight :: Input :: KeyboardKey ) nKey;
+
+                return true;
+            }
+
+            /** @brief Read a gamepad id argument: 0 to MAX_GAMEPAD_COUNT - 1. */
+            static bool ReadGamepadIdArg( lua_State *pLuaState, int nIndex, int &nGamePadId, std :: string &strError )  {
+
+                lua_Integer  nValue = 0;
+
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, nIndex, "gamepadId", 0, MAX_GAMEPAD_COUNT - 1, nValue, strError ) )
+                    return false;
+
+                nGamePadId = ( int ) nValue;
+
+                return true;
+            }
+
+            /** @brief Read a gamepad id and a GAMEPAD_BUTTON_* constant (arguments 1 and 2). */
+            static bool ReadGamepadButtonArgs( lua_State *pLuaState, int &nGamePadId, GamepadButton &button, std :: string &strError )  {
+
+                int  nButton = 0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) ||
+                    !LuaEngineUtil :: ReadConstantArg( pLuaState, 2, "button", s_aGamepadButtons,
+                                                       sizeof( s_aGamepadButtons ) / sizeof( s_aGamepadButtons[0] ),
+                                                       "GAMEPAD_BUTTON_*", nButton, strError ) )
+                    return false;
+
+                button = ( GamepadButton ) nButton;
+
+                return true;
+            }
+
+            /**
+             * @luaname{input_is_key_down(key) -> down | nil, message}
              * @luagroup{keyboard}
              * @luaheading{Keyboard}
+             * @luadoc
+             * `key` must be one of the `KEY_*` constants: anything else
+             * (a number no key has, a string, `nil` — eg. a misspelt
+             * constant name, which Lua reads as `nil`) returns
+             * `nil, "message"` instead of quietly reading "not pressed".
+             * The gamepad functions check their arguments the same way:
+             * `gamepadId` is `0` to `9`, and `button`/`axis` must be
+             * `GAMEPAD_BUTTON_*`/`GAMEPAD_AXIS_*` constants.
              * @luaexample
              * input_is_key_down(key) -> down       -- true every frame the key is held
              * input_is_key_up(key) -> up           -- true every frame the key is NOT held
@@ -192,44 +246,53 @@ namespace Scarab  {
              */
             int LuaInputApi :: IsKeyDown( lua_State *pLuaState )  {
 
-                KeyboardKey  key     = ( KeyboardKey ) lua_tointeger( pLuaState, 1 );
-                bool         bResult = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsKeyDown( key );
+                std :: string  strError;
+                KeyboardKey    key = KeyboardKey :: KEY_NULL;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadKeyArg( pLuaState, 1, "key", key, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsKeyDown( key ) );
 
                 return 1;
             }
 
             /**
-             * @luaname{input_is_key_up(key) -> up}
+             * @luaname{input_is_key_up(key) -> up | nil, message}
              * @luagroup{keyboard}
              */
             int LuaInputApi :: IsKeyUp( lua_State *pLuaState )  {
 
-                KeyboardKey  key     = ( KeyboardKey ) lua_tointeger( pLuaState, 1 );
-                bool         bResult = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsKeyUp( key );
+                std :: string  strError;
+                KeyboardKey    key = KeyboardKey :: KEY_NULL;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadKeyArg( pLuaState, 1, "key", key, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsKeyUp( key ) );
 
                 return 1;
             }
 
             /**
-             * @luaname{input_is_key_released(key) -> released}
+             * @luaname{input_is_key_released(key) -> released | nil, message}
              * @luagroup{keyboard}
              */
             int LuaInputApi :: IsKeyReleased( lua_State *pLuaState )  {
 
-                KeyboardKey  key     = ( KeyboardKey ) lua_tointeger( pLuaState, 1 );
-                bool         bResult = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsKeyReleased( key );
+                std :: string  strError;
+                KeyboardKey    key = KeyboardKey :: KEY_NULL;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadKeyArg( pLuaState, 1, "key", key, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsKeyReleased( key ) );
 
                 return 1;
             }
 
             /**
-             * @luaname{input_is_gamepad_button_down(gamepadId, button) -> down}
+             * @luaname{input_is_gamepad_button_down(gamepadId, button) -> down | nil, message}
              * @luagroup{gamepad}
              * @luaheading{Gamepad}
              * @luadoc
@@ -260,41 +323,52 @@ namespace Scarab  {
              */
             int LuaInputApi :: IsGamepadButtonDown( lua_State *pLuaState )  {
 
-                int            nGamePadId = ( int ) lua_tointeger( pLuaState, 1 );
-                GamepadButton  button     = ( GamepadButton ) lua_tointeger( pLuaState, 2 );
-                bool           bResult    = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsGamepadButtonDown( nGamePadId, button );
+                std :: string   strError;
+                int             nGamePadId = 0;
+                GamepadButton   button     = ( GamepadButton ) 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadGamepadButtonArgs( pLuaState, nGamePadId, button, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsGamepadButtonDown( nGamePadId, button ) );
 
                 return 1;
             }
 
             /**
-             * @luaname{input_is_gamepad_button_up(gamepadId, button) -> up}
+             * @luaname{input_is_gamepad_button_up(gamepadId, button) -> up | nil, message}
              * @luagroup{gamepad}
              */
             int LuaInputApi :: IsGamepadButtonUp( lua_State *pLuaState )  {
 
-                int            nGamePadId = ( int ) lua_tointeger( pLuaState, 1 );
-                GamepadButton  button     = ( GamepadButton ) lua_tointeger( pLuaState, 2 );
-                bool           bResult    = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsGamepadButtonUp( nGamePadId, button );
+                std :: string   strError;
+                int             nGamePadId = 0;
+                GamepadButton   button     = ( GamepadButton ) 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadGamepadButtonArgs( pLuaState, nGamePadId, button, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsGamepadButtonUp( nGamePadId, button ) );
 
                 return 1;
             }
 
             /**
-             * @luaname{input_get_gamepad_axis(gamepadId, axis) -> value}
+             * @luaname{input_get_gamepad_axis(gamepadId, axis) -> value | nil, message}
              * @luagroup{gamepad}
              */
             int LuaInputApi :: GetGamepadAxisMovement( lua_State *pLuaState )  {
 
-                int         nGamePadId = ( int ) lua_tointeger( pLuaState, 1 );
-                GamepadAxis axis       = ( GamepadAxis ) lua_tointeger( pLuaState, 2 );
-                float       fMovement  = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().GetGamepadAxisMovement( nGamePadId, axis );
+                std :: string  strError;
+                int            nGamePadId = 0;
+                int            nAxis      = 0;
 
-                lua_pushnumber( pLuaState, fMovement );
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) ||
+                    !LuaEngineUtil :: ReadConstantArg( pLuaState, 2, "axis", s_aGamepadAxis, sizeof( s_aGamepadAxis ) / sizeof( s_aGamepadAxis[0] ),
+                                                       "GAMEPAD_AXIS_*", nAxis, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().GetGamepadAxisMovement( nGamePadId, ( GamepadAxis ) nAxis ) );
 
                 return 1;
             }
@@ -303,16 +377,20 @@ namespace Scarab  {
              * @brief Register a gamepad id with the tile map so it's polled for
              * button/axis state - mirrors the old EngineHost::InitializeGamePads.
              *
-             * @luaname{input_add_gamepad(gamepadId)}
+             * @luaname{input_add_gamepad(gamepadId) -> true | nil, message}
              * @luagroup{gamepad}
              */
             int LuaInputApi :: AddGamepad( lua_State *pLuaState )  {
 
-                int  nGamePadId = ( int ) lua_tointeger( pLuaState, 1 );
+                std :: string  strError;
+                int            nGamePadId = 0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> AddGamePad( nGamePadId );
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             void LuaInputApi :: RegisterEnums( lua_State *pLuaState )  {

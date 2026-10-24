@@ -39,23 +39,7 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
-            /**
-             * @brief Push `nil, message` - the failure convention of every function in this file.
-             */
-            static int PushError( lua_State *pLuaState, const std :: string &strMessage )  {
 
-                lua_pushnil( pLuaState );
-                lua_pushstring( pLuaState, strMessage.c_str() );
-
-                return 2;
-            }
-
-            static int PushTrue( lua_State *pLuaState )  {
-
-                lua_pushboolean( pLuaState, 1 );
-
-                return 1;
-            }
 
             /**
              * @brief The zoom limits (inclusive positions) of a view, read straight from its viewport.
@@ -70,17 +54,6 @@ namespace Scarab  {
                 return std :: make_pair( nMinPos, nMaxPos );
             }
 
-            /**
-             * @brief Format a number the way a user would write it (3.8125, 16).
-             */
-            static std :: string FormatNumber( double fValue )  {
-
-                char  szBuffer[64];
-
-                snprintf( szBuffer, sizeof( szBuffer ), "%g", fValue );
-
-                return szBuffer;
-            }
 
             /**
              * @brief Resolve argument nIndex to a view, without ever creating a renderer: a view
@@ -121,19 +94,6 @@ namespace Scarab  {
                 return LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetTileMap( "view" ) -> GetMapInfo( mapInfo );
             }
 
-            /** @brief Read a required integer argument (a number with an exact integer value). */
-            static bool ReadIntegerArg( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer &nOut, std :: string &strError )  {
-
-                int  bIsInteger = 0;
-
-                if( lua_type( pLuaState, nIndex ) == LUA_TNUMBER )
-                    nOut = lua_tointegerx( pLuaState, nIndex, &bIsInteger );
-
-                if( !bIsInteger )
-                    strError = std :: string( "argument '" ) + szName + "' must be an integer";
-
-                return bIsInteger != 0;
-            }
 
             /** @brief Read a zoom factor argument and convert it to a zoom position. */
             static bool ReadZoomArg( lua_State *pLuaState, int nIndex, const char *szName, unsigned &nZoomPos, std :: string &strError )  {
@@ -162,7 +122,7 @@ namespace Scarab  {
                 static const char * const  aszNames[4] = { "x", "y", "w", "h" };
 
                 for( int nArg = 0; nArg < 4; nArg++ )
-                    if( !ReadIntegerArg( pLuaState, nFirst + nArg, aszNames[nArg], aRect[nArg], strError ) )
+                    if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, nFirst + nArg, aszNames[nArg], aRect[nArg], strError ) )
                         return false;
 
                 if( aRect[0] < 0 || aRect[1] < 0 )  {
@@ -192,18 +152,6 @@ namespace Scarab  {
                 return true;
             }
 
-            /** @brief Read a required boolean argument. */
-            static bool ReadBooleanArg( lua_State *pLuaState, int nIndex, const char *szName, bool &bOut, std :: string &strError )  {
-
-                if( lua_type( pLuaState, nIndex ) != LUA_TBOOLEAN )  {
-                    strError = std :: string( "argument '" ) + szName + "' must be a boolean";
-                    return false;
-                }
-
-                bOut = lua_toboolean( pLuaState, nIndex ) != 0;
-
-                return true;
-            }
 
             /**
              * @luaname{view_create(renderer, x, y, w, h) -> view | nil, message}
@@ -235,12 +183,12 @@ namespace Scarab  {
                 SunLight :: Base :: stDimension2D   rect;
 
                 if( !LuaRendererApi :: CheckHandle( pLuaState, 1, strError ) || !ReadViewRect( pLuaState, 2, rect, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetTileMap( "view_create" ) -> CreateView( rect );
 
                 if( !pView )
-                    return PushError( pLuaState, "this renderer's backend could not create the view" );
+                    return LuaEngineUtil :: PushError( pLuaState, "this renderer's backend could not create the view" );
 
                 lua_pushinteger( pLuaState, pView -> GetId() );
 
@@ -263,15 +211,15 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( pView -> GetId() == 0 )
-                    return PushError( pLuaState, "the default view cannot be removed" );
+                    return LuaEngineUtil :: PushError( pLuaState, "the default view cannot be removed" );
 
                 if( !LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetTileMap( "view_destroy" ) -> RemoveView( pView ) )
-                    return PushError( pLuaState, "unknown view " + std :: to_string( pView -> GetId() ) );
+                    return LuaEngineUtil :: PushError( pLuaState, "unknown view " + std :: to_string( pView -> GetId() ) );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -296,21 +244,21 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView    = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !ReadZoomArg( pLuaState, 2, "factor", nZoomPos, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 std :: pair<unsigned, unsigned>  limits = GetZoomLimitsOf( *pView );
 
                 if( nZoomPos < limits.first || nZoomPos > limits.second )
-                    return PushError( pLuaState, "zoom factor " + FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
-                        " is outside this view's zoom limits [" + FormatNumber( LuaRendererApi :: FactorOfPosition( limits.first ) ) + ", " +
-                        FormatNumber( LuaRendererApi :: FactorOfPosition( limits.second ) ) + "]" );
+                    return LuaEngineUtil :: PushError( pLuaState, "zoom factor " + LuaEngineUtil :: FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
+                        " is outside this view's zoom limits [" + LuaEngineUtil :: FormatNumber( LuaRendererApi :: FactorOfPosition( limits.first ) ) + ", " +
+                        LuaEngineUtil :: FormatNumber( LuaRendererApi :: FactorOfPosition( limits.second ) ) + "]" );
 
                 pView -> GetViewport().SetZoom( nZoomPos );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -323,7 +271,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushnumber( pLuaState, pView -> GetViewport().GetZoomProperties().fZoomFactor );
 
@@ -347,21 +295,21 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView    = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !ReadZoomArg( pLuaState, 2, "factor", nZoomPos, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 std :: pair<unsigned, unsigned>  limits = GetZoomLimitsOf( *pView );
 
                 if( nZoomPos < limits.first || nZoomPos > limits.second )
-                    return PushError( pLuaState, "zoom factor " + FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
-                        " is outside this view's zoom limits [" + FormatNumber( LuaRendererApi :: FactorOfPosition( limits.first ) ) + ", " +
-                        FormatNumber( LuaRendererApi :: FactorOfPosition( limits.second ) ) + "]" );
+                    return LuaEngineUtil :: PushError( pLuaState, "zoom factor " + LuaEngineUtil :: FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
+                        " is outside this view's zoom limits [" + LuaEngineUtil :: FormatNumber( LuaRendererApi :: FactorOfPosition( limits.first ) ) + ", " +
+                        LuaEngineUtil :: FormatNumber( LuaRendererApi :: FactorOfPosition( limits.second ) ) + "]" );
 
                 pView -> GetViewport().SetPreferredZoom( nZoomPos );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -374,7 +322,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushnumber( pLuaState, LuaRendererApi :: FactorOfPosition( pView -> GetViewport().GetZoomProperties().nPreferredZoomPos ) );
 
@@ -402,15 +350,15 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView   = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !ReadZoomArg( pLuaState, 2, "min_factor", nMinPos, strError ) ||
                     !ReadZoomArg( pLuaState, 3, "max_factor", nMaxPos, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( nMinPos > nMaxPos )
-                    return PushError( pLuaState, "min_factor " + FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
-                        " must not exceed max_factor " + FormatNumber( lua_tonumber( pLuaState, 3 ) ) );
+                    return LuaEngineUtil :: PushError( pLuaState, "min_factor " + LuaEngineUtil :: FormatNumber( lua_tonumber( pLuaState, 2 ) ) +
+                        " must not exceed max_factor " + LuaEngineUtil :: FormatNumber( lua_tonumber( pLuaState, 3 ) ) );
 
                 /*
                  * sunlight rejects a limit that would cross the other one, so the order matters:
@@ -430,7 +378,7 @@ namespace Scarab  {
                     viewport.SetMaxZoom( nMaxPos );
                 }
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -443,7 +391,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 std :: pair<unsigned, unsigned>  limits = GetZoomLimitsOf( *pView );
 
@@ -470,14 +418,14 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( lua_type( pLuaState, 2 ) != LUA_TBOOLEAN )
-                    return PushError( pLuaState, "argument 'enabled' must be a boolean" );
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'enabled' must be a boolean" );
 
                 pView -> GetViewport().SetEnableUserZoom( lua_toboolean( pLuaState, 2 ) != 0 );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -490,7 +438,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushboolean( pLuaState, pView -> GetViewport().GetEnableUserZoom() ? 1 : 0 );
 
@@ -511,11 +459,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> ZoomIn();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -532,11 +480,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> ZoomOut();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -553,11 +501,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> ResetZoom();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -582,14 +530,14 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !ReadViewRect( pLuaState, 2, rect, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> GetViewport().SetDimension2D( rect );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -602,7 +550,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 SunLight :: Base :: stDimension2D  &dim = pView -> GetViewport().GetDimension2D();
 
@@ -635,18 +583,18 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadIntegerArg( pLuaState, 2, "w", nStepWidth, strError ) ||
-                    !ReadIntegerArg( pLuaState, 3, "h", nStepHeight, strError ) )
-                    return PushError( pLuaState, strError );
+                if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, 2, "w", nStepWidth, strError ) ||
+                    !LuaEngineUtil :: ReadIntegerArg( pLuaState, 3, "h", nStepHeight, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( nStepWidth < 1 || nStepHeight < 1 )
-                    return PushError( pLuaState, "w and h must be at least 1" );
+                    return LuaEngineUtil :: PushError( pLuaState, "w and h must be at least 1" );
 
                 pView -> SetScrollStepSize( ( int ) nStepWidth, ( int ) nStepHeight );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -661,7 +609,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> GetScrollStepSize( nStepWidth, nStepHeight );
 
@@ -691,14 +639,14 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadIntegerArg( pLuaState, 2, "x", nX, strError ) || !ReadIntegerArg( pLuaState, 3, "y", nY, strError ) )
-                    return PushError( pLuaState, strError );
+                if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, 2, "x", nX, strError ) || !LuaEngineUtil :: ReadIntegerArg( pLuaState, 3, "y", nY, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> SetCameraPosition( ( int ) nX, ( int ) nY );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -713,7 +661,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> GetCameraPosition( nX, nY );
 
@@ -746,14 +694,14 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !IsMapLoaded( pLuaState ) )
-                    return PushError( pLuaState, "no map is loaded: view_move_camera_up needs one (its limit is the map's edge)" );
+                    return LuaEngineUtil :: PushError( pLuaState, "no map is loaded: view_move_camera_up needs one (its limit is the map's edge)" );
 
                 pView -> MoveCameraUp();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -766,11 +714,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> MoveCameraDown();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -783,14 +731,14 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !IsMapLoaded( pLuaState ) )
-                    return PushError( pLuaState, "no map is loaded: view_move_camera_left needs one (its limit is the map's edge)" );
+                    return LuaEngineUtil :: PushError( pLuaState, "no map is loaded: view_move_camera_left needs one (its limit is the map's edge)" );
 
                 pView -> MoveCameraLeft();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -803,11 +751,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> MoveCameraRight();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -823,11 +771,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> ResetCamera();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -849,14 +797,14 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadBooleanArg( pLuaState, 2, "visible", bVisible, strError ) )
-                    return PushError( pLuaState, strError );
+                if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 2, "visible", bVisible, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> SetVisible( bVisible );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -869,7 +817,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushboolean( pLuaState, pView -> GetVisible() ? 1 : 0 );
 
@@ -896,17 +844,17 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadIntegerArg( pLuaState, 2, "order", nOrder, strError ) )
-                    return PushError( pLuaState, strError );
+                if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, 2, "order", nOrder, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( nOrder < INT_MIN || nOrder > INT_MAX )
-                    return PushError( pLuaState, "argument 'order' is out of range" );
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'order' is out of range" );
 
                 pView -> SetDrawOrder( ( int ) nOrder );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -919,7 +867,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, pView -> GetDrawOrder() );
 
@@ -946,14 +894,14 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadBooleanArg( pLuaState, 2, "clear", bClear, strError ) )
-                    return PushError( pLuaState, strError );
+                if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 2, "clear", bClear, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> SetClearBackground( bClear );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -966,7 +914,7 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushboolean( pLuaState, pView -> GetClearBackground() ? 1 : 0 );
 
@@ -992,16 +940,16 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 int  nChannels = lua_isnoneornil( pLuaState, 5 ) ? 3 : 4;
 
                 for( int nChannel = 0; nChannel < nChannels; nChannel++ )  {
-                    if( !ReadIntegerArg( pLuaState, 2 + nChannel, aszNames[nChannel], aChannel[nChannel], strError ) )
-                        return PushError( pLuaState, strError );
+                    if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, 2 + nChannel, aszNames[nChannel], aChannel[nChannel], strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
 
                     if( aChannel[nChannel] < 0 || aChannel[nChannel] > UCHAR_MAX )
-                        return PushError( pLuaState, std :: string( "argument '" ) + aszNames[nChannel] + "' must be between 0 and " + std :: to_string( UCHAR_MAX ) );
+                        return LuaEngineUtil :: PushError( pLuaState, std :: string( "argument '" ) + aszNames[nChannel] + "' must be between 0 and " + std :: to_string( UCHAR_MAX ) );
                 }
 
                 SunLight :: Base :: stColor  color;
@@ -1013,7 +961,7 @@ namespace Scarab  {
 
                 pView -> SetBackgroundColor( color );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -1030,11 +978,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> UseMapBackgroundColor();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -1061,28 +1009,28 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadBooleanArg( pLuaState, 3, "show", bShow, strError ) )
-                    return PushError( pLuaState, strError );
+                if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 3, "show", bShow, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( lua_type( pLuaState, 2 ) == LUA_TSTRING )  {
                     const char  *szName = lua_tostring( pLuaState, 2 );
 
                     if( !pView -> ShowLayer( szName, bShow ) )
-                        return PushError( pLuaState, std :: string( "no layer named '" ) + szName + "' (a name needs a loaded map that has it; a layer id works without one)" );
+                        return LuaEngineUtil :: PushError( pLuaState, std :: string( "no layer named '" ) + szName + "' (a name needs a loaded map that has it; a layer id works without one)" );
 
-                    return PushTrue( pLuaState );
+                    return LuaEngineUtil :: PushTrue( pLuaState );
                 }
 
                 lua_Integer  nLayerId = 0;
 
-                if( lua_type( pLuaState, 2 ) != LUA_TNUMBER || !ReadIntegerArg( pLuaState, 2, "layer", nLayerId, strError ) )
-                    return PushError( pLuaState, "argument 'layer' must be a layer id (an integer) or a layer name (a string)" );
+                if( lua_type( pLuaState, 2 ) != LUA_TNUMBER || !LuaEngineUtil :: ReadIntegerArg( pLuaState, 2, "layer", nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'layer' must be a layer id (an integer) or a layer name (a string)" );
 
                 pView -> ShowLayer( ( int ) nLayerId, bShow );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -1103,10 +1051,10 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( lua_type( pLuaState, 2 ) != LUA_TTABLE )
-                    return PushError( pLuaState, "argument 'layer_ids' must be a table of layer ids" );
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'layer_ids' must be a table of layer ids" );
 
                 lua_Integer  nCount = ( lua_Integer ) luaL_len( pLuaState, 2 );
 
@@ -1122,14 +1070,14 @@ namespace Scarab  {
                     lua_pop( pLuaState, 1 );
 
                     if( !bIsInteger )
-                        return PushError( pLuaState, "layer_ids[" + std :: to_string( nIndex ) + "] must be an integer layer id" );
+                        return LuaEngineUtil :: PushError( pLuaState, "layer_ids[" + std :: to_string( nIndex ) + "] must be an integer layer id" );
 
                     layerIds.push_back( ( int ) nLayerId );
                 }
 
                 pView -> ShowOnlyLayers( layerIds );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -1145,11 +1093,11 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 pView -> ShowAllLayers();
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -1168,10 +1116,10 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !ReadIntegerArg( pLuaState, 2, "layer_id", nLayerId, strError ) )
-                    return PushError( pLuaState, strError );
+                if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, 2, "layer_id", nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushboolean( pLuaState, pView -> IsLayerShown( ( int ) nLayerId ) ? 1 : 0 );
 
@@ -1196,12 +1144,12 @@ namespace Scarab  {
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 if( !pView -> FitToMap() )
-                    return PushError( pLuaState, "no map is loaded" );
+                    return LuaEngineUtil :: PushError( pLuaState, "no map is loaded" );
 
-                return PushTrue( pLuaState );
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**

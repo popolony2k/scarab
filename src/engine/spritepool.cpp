@@ -41,14 +41,15 @@ namespace Scarab  {
         /**
          * @brief Reserve nCapacity fixed slots for the given type tag. Must be
          * called before Acquire() is used for that tag; a second call for a tag
-         * already registered is a no-op returning false.
+         * already registered, or a capacity that would take the pool past
+         * MAX_SPRITE_SLOTS in all, is a no-op returning false.
          *
          * @param strTypeTag The caller-defined type tag (opaque to the pool);
          * @param nCapacity Fixed number of slots to reserve for this type;
          */
         bool SpritePool :: RegisterType( const std :: string &strTypeTag, uint32_t nCapacity )  {
 
-            if( m_FreeListsByType.find( strTypeTag ) != m_FreeListsByType.end() )
+            if( HasType( strTypeTag ) || ( nCapacity > MAX_SPRITE_SLOTS - GetSlotCount() ) )
                 return false;
 
             __FreeList  freeList;
@@ -74,6 +75,22 @@ namespace Scarab  {
             m_FreeListsByType.insert( std :: make_pair( strTypeTag, freeList ) );
 
             return true;
+        }
+
+        /**
+         * @brief Whether a type tag has been registered.
+         */
+        bool SpritePool :: HasType( const std :: string &strTypeTag ) const  {
+
+            return m_FreeListsByType.find( strTypeTag ) != m_FreeListsByType.end();
+        }
+
+        /**
+         * @brief The number of slots registered, over every type tag (at most MAX_SPRITE_SLOTS).
+         */
+        uint32_t SpritePool :: GetSlotCount( void ) const  {
+
+            return ( uint32_t ) m_Slots.size();
         }
 
         /**

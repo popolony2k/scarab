@@ -20,16 +20,51 @@
 
 #include "lua/luasoundapi.h"
 #include "lua/luaengineutil.h"
-#include <cstdio>
+#include <cstdint>
+#include <set>
 
 
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
+            /*
+             * The ids loaded through sound_load and not unloaded since. SoundManager can't be asked
+             * whether an id is loaded (every call just returns false for one that isn't), and the
+             * Lua side is the only place sounds are loaded, so this mirrors its map to tell
+             * "not loaded" from other failures and to refuse loading an id twice (SoundManager kept
+             * the first sound and still reported success).
+             */
+            static std :: set<int>  s_LoadedSounds;
+
+            /** @brief Sound id 0 means "no audio" to the song commands: a deliberate no-op. */
+            static const int  NO_AUDIO_SOUND_ID = 0;
+
             /**
-             * @luaname{sound_load(id, path) -> success}
+             * @brief Read a sound id argument that must be loaded.
+             */
+            static bool ReadLoadedSoundArg( lua_State *pLuaState, int nIndex, int &nSoundId, std :: string &strError )  {
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, nIndex, "id", nSoundId, strError ) )
+                    return false;
+
+                if( s_LoadedSounds.find( nSoundId ) == s_LoadedSounds.end() )  {
+                    strError = "sound " + std :: to_string( nSoundId ) + " is not loaded (see sound_load)";
+                    return false;
+                }
+
+                return true;
+            }
+
+            /**
+             * @luaname{sound_load(id, path) -> true | nil, message}
+             * @luaheading{Error reporting}
              * @luadoc
+             * Every sound and song function reports a failure as
+             * `nil, "message"` and never raises a Lua error; one with nothing
+             * else to return returns `true`. Ids are integers; an id that was
+             * never loaded is `"sound N is not loaded (see sound_load)"`.
+             *
              * These are unconditional, immediate calls — no queue
              * involved, and they don't distinguish "background music"
              * from "sound effect." Use these for anything you want to
@@ -37,38 +72,56 @@ namespace Scarab  {
              *
              * Load a sound file and associate it with `id`. Must be
              * called once before any other `sound_*`/`*_song` call for
-             * that id.
+             * that id. Fails for a file that can't be loaded
+             * (`"cannot load sound '<path>'"`) and for an id already loaded
+             * (`sound_unload` it first — before, the second load was
+             * silently ignored). The song functions only reach ids `0` to
+             * `65535`.
              * @luaexample
              * sound_load(1, BASE_PATH .. "audio/global/caravellius-shot.wav")
              */
             int LuaSoundApi :: Load( lua_State *pLuaState )  {
 
-                int         nSoundId   = ( int ) lua_tointeger( pLuaState, 1 );
-                const char  *szFileName = lua_tostring( pLuaState, 2 );
-                bool        bResult    = LuaEngineUtil :: GetSoundManager( pLuaState ) -> Load( nSoundId, szFileName );
+                std :: string  strError;
+                std :: string  strPath;
+                int            nSoundId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "id", nSoundId, strError ) ||
+                    !LuaEngineUtil :: ReadStringArg( pLuaState, 2, "path", strPath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                if( s_LoadedSounds.find( nSoundId ) != s_LoadedSounds.end() )
+                    return LuaEngineUtil :: PushError( pLuaState, "sound " + std :: to_string( nSoundId ) + " is already loaded (sound_unload it first)" );
+
+                if( !LuaEngineUtil :: GetSoundManager( pLuaState ) -> Load( nSoundId, strPath ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot load sound '" + strPath + "'" );
+
+                s_LoadedSounds.insert( nSoundId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sound_unload(id) -> success}
+             * @luaname{sound_unload(id) -> true | nil, message}
              * @luadoc
              * Free the sound previously loaded for `id`.
              */
             int LuaSoundApi :: Unload( lua_State *pLuaState )  {
 
-                int   nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
-                bool  bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> Unload( nSoundId );
+                std :: string  strError;
+                int            nSoundId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Unload( nSoundId );
+                s_LoadedSounds.erase( nSoundId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sound_play(id) -> success}
+             * @luaname{sound_play(id) -> true | nil, message}
              * @luadoc
              * Start playing `id` from the beginning (or resume if
              * already loaded and stopped).
@@ -77,61 +130,73 @@ namespace Scarab  {
              */
             int LuaSoundApi :: Play( lua_State *pLuaState )  {
 
-                int   nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
-                bool  bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> Play( nSoundId );
+                std :: string  strError;
+                int            nSoundId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Play( nSoundId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sound_stop(id) -> success}
+             * @luaname{sound_stop(id) -> true | nil, message}
              * @luadoc
              * Stop `id` if it's currently playing.
              */
             int LuaSoundApi :: Stop( lua_State *pLuaState )  {
 
-                int   nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
-                bool  bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> Stop( nSoundId );
+                std :: string  strError;
+                int            nSoundId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Stop( nSoundId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sound_pause(id) -> success}
+             * @luaname{sound_pause(id) -> true | nil, message}
              * @luadoc
              * Pause `id` without resetting its playback position.
              */
             int LuaSoundApi :: Pause( lua_State *pLuaState )  {
 
-                int   nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
-                bool  bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> Pause( nSoundId );
+                std :: string  strError;
+                int            nSoundId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Pause( nSoundId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sound_resume(id) -> success}
+             * @luaname{sound_resume(id) -> true | nil, message}
              * @luadoc
              * Resume a previously paused `id`.
              */
             int LuaSoundApi :: Resume( lua_State *pLuaState )  {
 
-                int   nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
-                bool  bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> Resume( nSoundId );
+                std :: string  strError;
+                int            nSoundId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Resume( nSoundId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sound_is_playing(id) -> playing}
+             * @luaname{sound_is_playing(id) -> playing | nil, message}
              * @luaexample
              * if sound_is_playing(1) then
              *   print("still playing")
@@ -139,55 +204,68 @@ namespace Scarab  {
              */
             int LuaSoundApi :: IsPlaying( lua_State *pLuaState )  {
 
-                int   nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
-                bool  bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> IsPlaying( nSoundId );
+                std :: string  strError;
+                int            nSoundId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, LuaEngineUtil :: GetSoundManager( pLuaState ) -> IsPlaying( nSoundId ) );
 
                 return 1;
             }
 
             /**
-             * @luaname{sound_set_volume(id, volume) -> success}
+             * @luaname{sound_set_volume(id, volume) -> true | nil, message}
              * @luadoc
              * Set `id`'s playback volume, independently of every other
              * loaded sound — `0.0` (silent) to `1.0` (max). Intended for
              * crossfading between two songs (e.g. fading a stage's BGM
              * out while a boss's BGM fades in): ramp each song's volume
              * in opposite directions over several frames from
-             * `on_update`.
+             * `on_update`. A volume outside `0.0`-`1.0` is an error.
              * @luaexample
              * sound_set_volume(ID_DESTRUCTION_ALIENS_ATTACK_BGM, 0.5)
              */
             int LuaSoundApi :: SetVolume( lua_State *pLuaState )  {
 
-                int    nSoundId = ( int ) lua_tointeger( pLuaState, 1 );
-                float  fVolume  = ( float ) lua_tonumber( pLuaState, 2 );
-                bool   bResult  = LuaEngineUtil :: GetSoundManager( pLuaState ) -> SetVolume( nSoundId, fVolume );
+                std :: string  strError;
+                int            nSoundId = 0;
+                double         fVolume  = 0.0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) ||
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2, "volume", 0.0, 1.0, fVolume, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                LuaEngineUtil :: GetSoundManager( pLuaState ) -> SetVolume( nSoundId, ( float ) fVolume );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
              * @brief Call a player routine using direct mode;
              *
+             * The id must be 0 (no audio - a deliberate no-op) or a loaded sound in 1..65535 (the
+             * command keeps it in 16 bits); the result is pushed as `true` or `nil, message`.
+             *
              * @param pLuaState Lua state to be used by engine call.
-             * @param cmd The command to add to queue;
+             * @param cmd The command to dispatch;
+             * @return int number of return values pushed;
              */
-            void LuaSoundApi :: CallPlayCommandDirect( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd )  {
+            int LuaSoundApi :: CallPlayCommandDirect( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd )  {
 
-                if( lua_gettop( pLuaState ) == 1 )  {
+                std :: string  strError;
+                lua_Integer    nSoundId = 0;
 
-                    lua_Integer nParm = lua_tonumber( pLuaState, 1 );
-                    SunLight :: Scripting :: IScriptListener *pScriptListener = LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> GetScriptListener();
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 1, "id", 0, UINT16_MAX, nSoundId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                    pScriptListener -> OnCommand( cmd, nParm );
-                }
-                else  {
-                    fprintf( stderr, "Invalid number of arguments on song player call.\n" );
-                }
+                if( nSoundId != NO_AUDIO_SOUND_ID && s_LoadedSounds.find( ( int ) nSoundId ) == s_LoadedSounds.end() )
+                    return LuaEngineUtil :: PushError( pLuaState, "sound " + std :: to_string( nSoundId ) + " is not loaded (see sound_load)" );
+
+                LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> GetScriptListener() -> OnCommand( cmd, ( uint16_t ) nSoundId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -196,7 +274,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{play_song(id)}
+             * @luaname{play_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              * @luaheading{Song commands — queued vs. direct}
              * @luadoc
@@ -236,14 +314,15 @@ namespace Scarab  {
              * via `sp_play_song` or `play_song_looping`, so
              * `pause_song`/`stop_song`/`resume_song` cover both.
              *
-             * None of the 9 song functions return a value — check
+             * Each of the 9 song functions returns `true`, or `nil, "message"`
+             * for an id outside `0`-`65535` or (the direct forms) a sound never
+             * loaded; id `0` means "no audio" and is always accepted. A queued
+             * form only checks its id when called, since it runs later. Check
              * `sound_is_playing(id)` if you need to know playback state.
              */
             int LuaSoundApi :: PlaySong( lua_State *pLuaState )  {
 
-                CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_DIRECT_CMD );
-
-                return 0;
+                return CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_DIRECT_CMD );
             }
 
             /**
@@ -270,14 +349,12 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{play_song_looping(id)}
+             * @luaname{play_song_looping(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: PlaySongLooping( lua_State *pLuaState )  {
 
-                CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_CMD );
-
-                return 0;
+                return CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_CMD );
             }
 
             /**
@@ -286,14 +363,12 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{pause_song(id)}
+             * @luaname{pause_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: PauseSong( lua_State *pLuaState )  {
 
-                CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: PAUSE_SONG_DIRECT_CMD );
-
-                return 0;
+                return CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: PAUSE_SONG_DIRECT_CMD );
             }
 
             /**
@@ -302,14 +377,12 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{stop_song(id)}
+             * @luaname{stop_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: StopSong( lua_State *pLuaState )  {
 
-                CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: STOP_SONG_DIRECT_CMD );
-
-                return 0;
+                return CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: STOP_SONG_DIRECT_CMD );
             }
 
             /**
@@ -318,14 +391,12 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{resume_song(id)}
+             * @luaname{resume_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: ResumeSong( lua_State *pLuaState )  {
 
-                CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: RESUME_SONG_DIRECT_CMD );
-
-                return 0;
+                return CallPlayCommandDirect( pLuaState, SunLight :: Scripting :: Commands :: RESUME_SONG_DIRECT_CMD );
             }
 
             /**
@@ -334,14 +405,17 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_play_song(id)}
+             * @luaname{sp_play_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: QueuePlaySong( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_CMD, "id", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -350,14 +424,17 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_pause_song(id)}
+             * @luaname{sp_pause_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: QueuePauseSong( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PAUSE_SONG_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PAUSE_SONG_CMD, "id", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -366,14 +443,17 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_stop_song(id)}
+             * @luaname{sp_stop_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: QueueStopSong( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: STOP_SONG_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: STOP_SONG_CMD, "id", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -382,14 +462,17 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_resume_song(id)}
+             * @luaname{sp_resume_song(id) -> true | nil, message}
              * @luagroup{song_commands}
              */
             int LuaSoundApi :: QueueResumeSong( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: RESUME_SONG_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: RESUME_SONG_CMD, "id", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**

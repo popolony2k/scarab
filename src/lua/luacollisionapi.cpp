@@ -20,6 +20,7 @@
 
 #include "lua/luacollisionapi.h"
 #include "lua/luaengineutil.h"
+#include "collision/collisionmanager.h"
 
 
 namespace Scarab  {
@@ -27,8 +28,29 @@ namespace Scarab  {
         namespace Lua  {
 
             /**
-             * @luaname{collision_add_rule(layerA, layerB) -> success}
+             * @brief Read a collision layer id: sunlight keeps one collider list per id in a fixed
+             * array of MAX_COLLIDER_LAYERS, and indexes it before checking the id, so an id
+             * outside it must never reach CollisionManager.
+             */
+            static bool ReadCollisionLayerArg( lua_State *pLuaState, int nIndex, const char *szName, int &nLayerId, std :: string &strError )  {
+
+                lua_Integer  nValue = 0;
+
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, nIndex, szName, 0, MAX_COLLIDER_LAYERS - 1, nValue, strError ) )
+                    return false;
+
+                nLayerId = ( int ) nValue;
+
+                return true;
+            }
+
+            /**
+             * @luaname{collision_add_rule(layerA, layerB) -> true | nil, message}
              * @luadoc
+             * Every collision function reports a failure as `nil, "message"`
+             * and never raises a Lua error. Layer ids are integers from `0` to
+             * `254`.
+             *
              * Declare that sprites on `layerA` should be checked against
              * sprites on `layerB` every frame. Order doesn't matter for
              * the check itself, but your handler always receives the two
@@ -39,38 +61,51 @@ namespace Scarab  {
              * Declaring `collision_add_rule(x, x)` with both arguments the
              * same layer causes every collider on that layer to "collide
              * with itself" every frame (trivially, at distance 0) —
-             * always use two distinct layers.
+             * always use two distinct layers. Declaring the same rule twice is
+             * an error.
              * @luaexample
              * collision_add_rule(LAYER_PLAYER_SHIP, LAYER_ENEMIES_SHIPS)
              * collision_add_rule(LAYER_PLAYER_SHIP_BULLETS, LAYER_ENEMIES_SHIPS)
              */
             int LuaCollisionApi :: AddRule( lua_State *pLuaState )  {
 
-                int   nLayerA  = ( int ) lua_tointeger( pLuaState, 1 );
-                int   nLayerB  = ( int ) lua_tointeger( pLuaState, 2 );
-                bool  bResult  = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetCollisionManager().AddColliderToColliderRule( nLayerA, nLayerB );
+                std :: string  strError;
+                int            nLayerA = 0;
+                int            nLayerB = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadCollisionLayerArg( pLuaState, 1, "layerA", nLayerA, strError ) ||
+                    !ReadCollisionLayerArg( pLuaState, 2, "layerB", nLayerB, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                if( !LuaEngineUtil :: GetTileMap( pLuaState ) -> GetCollisionManager().AddColliderToColliderRule( nLayerA, nLayerB ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the rule for layers " + std :: to_string( nLayerA ) + " and " +
+                                                       std :: to_string( nLayerB ) + " is already declared" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{collision_add_tile_rule(layerId, tileLayerId) -> success}
+             * @luaname{collision_add_tile_rule(layerId, tileLayerId) -> true | nil, message}
              * @luadoc
              * Declare that sprites on `layerId` should be checked against
              * the static tiles of `tileLayerId` (e.g. terrain collision,
-             * as opposed to sprite-vs-sprite).
+             * as opposed to sprite-vs-sprite). `tileLayerId` must be a layer
+             * of the loaded map, so declare it after `tilemap_load_map`.
              */
             int LuaCollisionApi :: AddTileRule( lua_State *pLuaState )  {
 
-                int   nLayerId     = ( int ) lua_tointeger( pLuaState, 1 );
-                int   nTileLayerId = ( int ) lua_tointeger( pLuaState, 2 );
-                bool  bResult      = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetCollisionManager().AddColliderToTileRule( nLayerId, nTileLayerId );
+                std :: string  strError;
+                int            nLayerId     = 0;
+                int            nTileLayerId = 0;
 
-                lua_pushboolean( pLuaState, bResult );
+                if( !ReadCollisionLayerArg( pLuaState, 1, "layerId", nLayerId, strError ) ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "tileLayerId", nTileLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                if( !LuaEngineUtil :: GetTileMap( pLuaState ) -> GetCollisionManager().AddColliderToTileRule( nLayerId, nTileLayerId ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "layer " + std :: to_string( nTileLayerId ) + " is not a layer of the loaded map" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -81,7 +116,7 @@ namespace Scarab  {
              * own comment for the defensive (non-Lua-owned-side) check this
              * still guards against.
              *
-             * @luaname{collision_set_handler(fn)}
+             * @luaname{collision_set_handler(fn) -> true | nil, message}
              * @luadoc
              * Register the single global function called whenever two
              * sprites on a ruled pair of layers collide:
@@ -111,23 +146,22 @@ namespace Scarab  {
              */
             int LuaCollisionApi :: SetHandler( lua_State *pLuaState )  {
 
-                if( !lua_isfunction( pLuaState, 1 ) )  {
-                    fprintf( stderr, "collision_set_handler: argument must be a function.\n" );
+                std :: string  strError;
 
-                    return 0;
-                }
+                if( !LuaEngineUtil :: CheckFunctionArg( pLuaState, 1, "fn", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushvalue( pLuaState, 1 );
                 lua_setglobal( pLuaState, "__collision_handler" );
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
              * @brief Register the Lua function to call whenever a Lua-owned
              * collider hits a tile - fn(handle, gid, x, y, width, height).
              *
-             * @luaname{collision_set_tile_handler(fn)}
+             * @luaname{collision_set_tile_handler(fn) -> true | nil, message}
              * @luadoc
              * Register the handler for sprite-vs-tile collisions (from
              * `collision_add_tile_rule`):
@@ -141,16 +175,15 @@ namespace Scarab  {
              */
             int LuaCollisionApi :: SetTileHandler( lua_State *pLuaState )  {
 
-                if( !lua_isfunction( pLuaState, 1 ) )  {
-                    fprintf( stderr, "collision_set_tile_handler: argument must be a function.\n" );
+                std :: string  strError;
 
-                    return 0;
-                }
+                if( !LuaEngineUtil :: CheckFunctionArg( pLuaState, 1, "fn", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushvalue( pLuaState, 1 );
                 lua_setglobal( pLuaState, "__collision_tile_handler" );
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**

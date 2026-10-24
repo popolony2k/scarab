@@ -136,7 +136,7 @@ function on_update( dt )
     if frames == 1 then
         -- drawing with a font handle inside a real frame
         local font = load_font( REGULAR )
-        check( font ~= nil and draw_text( "frame", 10, 10, SIZE, 255, 255, 255, 255, font ) == nil,
+        check( font ~= nil and draw_text( "frame", 10, 10, SIZE, 255, 255, 255, 255, font ) == true,
                "draw_text with a font failed inside a frame" )
         release_font( font )
 

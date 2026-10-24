@@ -38,6 +38,9 @@ namespace Scarab  {
 
         const SpriteHandle INVALID_SPRITE_HANDLE = 0;
 
+        /** A handle keeps a slot's index + 1 in 16 bits, so the pool holds at most this many slots in all. */
+        const uint32_t MAX_SPRITE_SLOTS = 0xFFFF;
+
         inline SpriteHandle MakeSpriteHandle( uint32_t nIndex, uint16_t nGeneration )  {
 
             return ( ( ( SpriteHandle ) nGeneration ) << 16 ) | ( ( nIndex + 1 ) & 0xFFFF );

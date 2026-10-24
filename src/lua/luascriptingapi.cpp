@@ -32,19 +32,29 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_wait(milliseconds)}
+             * @luaname{sp_wait(milliseconds) -> true | nil, message}
              * @luadoc
              * Pause queue processing for `milliseconds` before the next
              * queued command runs. Purely queue-side — rendering,
              * physics, and every other per-frame system keep running.
+             *
+             * **Every queued (`sp_*`) command's parameter is an integer from
+             * `0` to `65535`** (the queue keeps it in 16 bits): anything else —
+             * a fraction, a string, a missing or a larger value, which used to
+             * wrap around silently — is `nil, "message"` and nothing is
+             * queued. Each command returns `true` once queued; a command
+             * fails only on its parameter, since it runs later.
              * @luaexample
              * sp_wait(2000)  -- 2 second pause, non-blocking
              */
             int LuaScriptingApi :: Wait( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: WAIT_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: WAIT_CMD, "milliseconds", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -53,7 +63,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_clear()}
+             * @luaname{sp_clear() -> true}
              * @luadoc
              * Empty the entire command queue immediately, discarding
              * everything not yet processed. Used once at startup
@@ -67,7 +77,7 @@ namespace Scarab  {
 
                 LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> Clear();
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -76,7 +86,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_wait_queue_empty()}
+             * @luaname{sp_wait_queue_empty() -> true}
              * @luadoc
              * Queue a command that blocks all *later* queued commands
              * until the engine reports the screen is clear of active
@@ -93,7 +103,7 @@ namespace Scarab  {
 
                 LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> AddNoParmCmd( SunLight :: Scripting :: Commands :: WAIT_SPRITES_QUEUE_EMPTY );
 
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -102,7 +112,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_move_sprites_to_screen(stateId)}
+             * @luaname{sp_move_sprites_to_screen(stateId) -> true | nil, message}
              * @luadoc
              * Queue a wave-spawn command. `stateId` is an opaque
              * integer — Caravellius defines its own meaningful names for
@@ -117,9 +127,12 @@ namespace Scarab  {
              */
             int LuaScriptingApi :: MoveSpritesToScreen( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: MOVE_SPRITES_TO_SCREEN_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: MOVE_SPRITES_TO_SCREEN_CMD, "stateId", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -128,7 +141,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_add_label(id)}
+             * @luaname{sp_add_label(id) -> true | nil, message}
              * @luagroup{labels}
              * @luadoc
              * Mark a position in the queue (`sp_add_label`) and later
@@ -147,9 +160,12 @@ namespace Scarab  {
              */
             int LuaScriptingApi :: AddLabel( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LABEL_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LABEL_CMD, "id", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -158,14 +174,17 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_goto_label(id)}
+             * @luaname{sp_goto_label(id) -> true | nil, message}
              * @luagroup{labels}
              */
             int LuaScriptingApi :: GotoLabel( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: GOTO_LABEL_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: GOTO_LABEL_CMD, "id", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -174,7 +193,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call.
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{sp_load_stage(stageId)}
+             * @luaname{sp_load_stage(stageId) -> true | nil, message}
              * @luadoc
              * Queue a stage load. `stageId` is opaque to the engine the
              * same way wave-spawn ids are — Caravellius defines
@@ -190,9 +209,12 @@ namespace Scarab  {
              */
             int LuaScriptingApi :: LoadStage( lua_State *pLuaState )  {
 
-                LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LOAD_STAGE_CMD );
+                std :: string  strError;
 
-                return 0;
+                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LOAD_STAGE_CMD, "stageId", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
