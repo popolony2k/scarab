@@ -6,4 +6,6 @@ Shared Tiled map assets — part of `resources/` at the repo root, the general-p
 
 Used in [samples/tilemap](../../samples/tilemap/docs/README.md) (loaded via `tilemap_load_map`), and reused as-is by [samples/camera](../../samples/camera/docs/README.md)/[samples/sprite](../../samples/sprite/docs/README.md)/[samples/collision](../../samples/collision/docs/README.md), the same way sunlight's own samples build on one shared map rather than duplicating it per-sample.
 
+[shapes/](shapes/README.md) holds `shapes.tmx`, `rotation.tmx` and `thick.tmx`, maps made for shape, rotated and point objects (from sunlight's own `shapes` sample). Used in [samples/shapes](../../samples/shapes/docs/README.md).
+
 [objects/](objects/README.md) holds `objects.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).

@@ -23,8 +23,10 @@ sunlight (`../sunlight` from this repo's root), and its peer-impact list,
 [`doc/BREAKAGES.md`](../../sunlight/doc/BREAKAGES.md) (49 entries). sunlight's own commit
 pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 `feat/master_plan` when the handoff was sent), re-pinned in P4 to
-`a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing), then in
-P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes).
+`a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing), in
+P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6 to
+`9c8c6bf421a1147d1e8c099e698dfbe7c1885af2` (fonts by handle), and in V6 to
+`f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path).
 
 ## Phase P: pin & plumbing
 
@@ -273,7 +275,7 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
 | V3 | `nOpacity` 0..255 round-trip (entry 41) | DONE |
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | DONE |
 | V5 | Tile/text/point objects now drawn where they were invisible before (entries 8, 11, 17) | DONE |
-| V6 | Rotated shape/tile/text objects (entries 18-20) | TODO |
+| V6 | Rotated shape/tile/text objects (entries 18-20) | DONE |
 | V7 | Shape/text object opacity now respects layer opacity (entry 36) | TODO |
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | TODO |
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47) | TODO |
@@ -563,7 +565,47 @@ camera goes) can't be told from the map alone. That goes in V5c below.
   test.
 - V5c: `doc/CARAVELLIUS_BREAKAGES.md` entry 7.
 
-**V6-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
+**V6 (DONE, 2026-10-24).** sunlight entries 18-20: rectangles, polylines, polygons
+(D1a), ellipses (D1b), tile objects and text objects (D1d) with a Tiled rotation are drawn turned
+clockwise about their stored point; before, the rotation was ignored. The new `IEngine`/`IFont`
+methods only concern implementers, and Scarab implements neither.
+- **Audit:** no map in either project has a rotated object, a tinted object layer or a
+  per-object opacity (Scarab's `test.tmx` and `objects/objects.tmx`; Caravellius' `corsair.tmx`
+  and `cover.tmx`), so nothing changes on screen. That also answers the map side of V7 and V12.
+- **Decisions (the owner):** one `samples/shapes` with keys `1`/`2`/`3` switching maps at runtime
+  (which also exercises V10, `LoadMap` over a loaded map); no `stress.tmx` (a benchmark, and
+  Scarab has no stress tests); V7's map is decided when V7 starts.
+- **Found while building it: a sunlight bug.** `rotation.tmx`'s embedded tileset image, pointed at
+  Scarab's byte-identical `../../sprites/sunny_idle_down.png`, made `tilemap_load_map` refuse the
+  map ("an error occured in the delegated image loading function"). The same path without `..`
+  loaded. The cause, in sunlight's `TextureLoaderCallback` (`mapdata.cpp`): `..` was collapsed
+  only for external tilesets' images, and PhysFS rejects `..`. Reported to sunlight on the
+  owner's request. The owner chose to wait for the fix rather than copy the image (V6 on hold).
+  sunlight fixed it (I4, PR #221, BREAKAGES 53; every image path now goes through
+  `ExternalResources::JoinVirtualPath`, with tests incl. from a scrambled `.zip`).
+- **Re-pin (inside V6, the owner's choice):** `SCARAB_SUNLIGHT_REF`
+  `f651accc2291a2ea9020dad3bfc2f1245e76858f`, `SCARAB_SUNLIGHT_DISPLAY_VERSION`
+  `feat/master_plan@f651acc`. Verified: on `origin/feat/master_plan`, descends from `9c8c6bf`
+  (3 commits: the handoff record, `CODE_STYLE.md`'s forward-declaration rules, the fix; 1 `src`
+  file). Real fetch exact, clean build, `--version` shows `feat/master_plan@f651acc`, every
+  smoke test, the docs generator and all 17 samples pass, and `rotation.tmx` now loads.
+- **Built:** `resources/tilemap/shapes/` (`shapes.tmx`, `rotation.tmx`, `thick.tmx` from
+  sunlight's `samples/shapes` at `9c8c6bf`; only `rotation.tmx`'s image path changed; README
+  with provenance, linked from `resources/tilemap/README.md`). `samples/shapes`: sunlight's
+  layout (viewport 1000x800 at (40, 40), zoom 1.0, camera at the origin, scroll step 4),
+  Caravellius 8x8 loaded once and registered as "Sans" (it survives every map switch, since the
+  registration is the renderer's), shared controls, a three-line HUD that fits. Listed in
+  `samples/README.md` and both VSCode pickers.
+- **The owner's real-window check (2026-10-24, screenshots):** map 1's shapes are clipped
+  cleanly at the viewport, also at zoom 1.75 and 0.38. In map 2, every object is turned about
+  its pivot: rectangle, polyline and polygon at 90 and 45, the ellipse at 45, Sunny's tile objects
+  at 90 and 45, "turned text" vertical, "text 45" diagonal. In map 3, line widths 1/2/3/5 are
+  distinct, the point objects are filled squares, and both scale at zoom 1.25 and 1.50.
+  Switching maps was clean, with no `??????`.
+- **The point objects V5 deferred** are covered by map 3.
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 8.
+
+**V7-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
 unaffected or adjusted, not assumed from the BREAKAGES table alone.
 
