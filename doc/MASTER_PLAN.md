@@ -270,7 +270,7 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
 |---|------|--------|
 | V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46) - 8 Lua wrappers (`camera_move_*`, `view_move_camera_*`) | DONE |
 | V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | DONE |
-| V3 | `nOpacity` 0..255 round-trip (entry 41) | TODO |
+| V3 | `nOpacity` 0..255 round-trip (entry 41) | DONE |
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | TODO |
 | V5 | Tile/text/point objects now drawn where they were invisible before (entries 1, 8, 11, 17) | TODO |
 | V6 | Rotated shape/tile/text objects (entries 18-20) | TODO |
@@ -389,6 +389,36 @@ own default zoom).
 Lua - self-correcting now that both directions are 0..255 (an opaque layer used to read
 back as 256), but its own `@luaexample` doc comment ("fade a layer out") names a specific
 number that should be checked still reads right.
+
+**V3 (DONE, 2026-10-23 - the owner's window check passed and the change was approved).** Scarab passes the value straight through
+(`tilemap_get_layer`/`tilemap_set_layer` and their `_by_name` forms), so no code changed. This
+one *is* testable headless, because it is numbers, not pixels. Sub-tasks, as agreed with the
+owner:
+- **V3a:** `scripts/tilemap_layer_smoke.py` + `scripts/tilemap_layer_smoke/`, in `ci.yml` on
+  all 4 platforms, on `resources/tilemap/test.tmx`. An opaque layer reads 255, and the
+  authored 0.69/0.65 layers read 176/166 (`lround(x * 255)`). By id and by name agree.
+  Writing a layer's own values back changes nothing. 0, 1, 128, 254 and 255 round-trip exactly,
+  by id and by name. Writing 255 keeps the layer visible. 300 and -5 clamp to 255 and 0. The
+  other fields round-trip with the opacity. An unknown layer gives `nil`/`false` (today's
+  behavior; D3 may change it). **Shown failing on the old pin first** (the published Scarab
+  v0.1.25, sunlight v0.38.0), with 15 failures: opaque 256, 0.69/0.65 both 255, write-back
+  256 -> 254, 0/1/128/254 read back 510/509/382/256, and 300/-5 read back 210/515 (no
+  clamping). One check passed on the old pin: "writing 255 keeps it visible". Old sunlight
+  stored 0.0 for 255 (an invisible layer), but its read formula turned 0.0 back into 255, so
+  that bug can't be seen from Lua. The check's comment says so; the other checks catch the
+  old pin.
+- **V3b:** the docs. `tilemap_get_layer` documents the 0..255 range, 255 = opaque and the
+  rounding (0.69 reads 176). `tilemap_set_layer` gained a `@luadoc` covering the range, the
+  clamping, `false` for an unknown layer, and that it writes all four values, so read first,
+  with hiding a layer also hiding its sprites. The example now fades to 128 while keeping
+  the other values.
+- **V3c, the owner's real-window check:** `samples/tilemap` changes the *clouds* layer's
+  opacity, with the value read back on screen. At first `O` cycled 255/128/0 (screenshots
+  confirm each step matches its number, and the round trip restores it exactly). The owner
+  then asked for ↑/↓ in steps of 15 (which divides 255, so both ends are exact). Screenshots
+  at 15, 120, 135, 195 and 255 show a smooth fade that matches the numbers. The sample's text
+  is on dark plates, like `views`/`renderer`, and its README has a controls table.
+- **V3d:** `doc/CARAVELLIUS_BREAKAGES.md` entry 4.
 
 **V4.** `src/lua/luainputapi.cpp` exposes `KEY_MENU` to Lua *by value* - the value itself
 (82 to 5) is what a script sees, not just an internal rename. Scope: check whether anything
