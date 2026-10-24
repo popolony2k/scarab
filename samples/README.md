@@ -32,6 +32,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [views](views/docs/README.md) — several views of one world at once: a minimap and a follow-the-sprite close-up next to the main picture (`view_create`, `view_fit_to_map`, per-view layer masks, `sprite_set_world_space`); built on `renderer/` and `sprite/`
 * [blend](blend/docs/README.md) — blend modes: a glow sprite whose mode the number keys choose, a soft shadow that always multiplies, and four panels drawn per mode with `draw_begin_blend_mode`/`draw_end_blend_mode`; built on `renderer/` and `sprite/`
 * [objects](objects/docs/README.md) — Tiled tile objects (own size, stretched, clipped, animated, flip bits) and text objects drawn from a map, with one font loaded once and registered for the map's text objects; built on `renderer/` and `text/`
+* [shapes](shapes/docs/README.md) — Tiled shape objects and how the viewport clips them, objects turned by a Tiled rotation about their pivot, and line widths and point objects scaled by zoom, on three maps switched with keys 1-3; built on `objects/`
 * [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
 * [sound](sound/docs/README.md) — direct one-shot, direct looping, and queued song forms side by side, plus pause/stop/resume/volume
 * [json](json/docs/README.md) — `load_json`, walking a small nested object/array config file into an equivalent Lua table
