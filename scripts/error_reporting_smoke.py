@@ -38,6 +38,9 @@ def main():
     print(f"[{'PASS' if ok else 'FAIL'}] error reporting: exit={result.returncode}")
 
     if not ok:
+        failures = [line for line in output.splitlines() if "SMOKE FAIL" in line or "SMOKE NOTE" in line]
+        print("---- failed checks ----")
+        print("\n".join(failures) if failures else "(none printed)")
         print("---- scarab output (last 60 lines) ----")
         print("\n".join(output.splitlines()[-60:]))
         print("---------------------------------------")
