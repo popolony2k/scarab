@@ -185,3 +185,17 @@ jobs:
         run: |
           python scripts/blend_api_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "blend API smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_get_layer / tilemap_set_layer: a layer's opacity is 0..255 (255 = opaque), the
+      # authored 0.69/0.65 layers read 176/166, exact round trips, clamping, and a write-back
+      # that changes nothing - see the script's own header.
+      - name: Tilemap layer smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/tilemap_layer_smoke.py build/scarab
+
+      - name: Tilemap layer smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/tilemap_layer_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "tilemap layer smoke test exited with code $LASTEXITCODE" }

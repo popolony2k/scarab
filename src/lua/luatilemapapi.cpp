@@ -114,6 +114,13 @@ namespace Scarab  {
              * editor, not something the engine invents (Caravellius
              * keeps its own names for them in
              * `caravellius/src/layerids.lua`).
+             *
+             * Returns the layer's `visible` flag, its `opacity` and its
+             * pixel offset, or `nil` if there is no such layer. `opacity`
+             * is an integer **0..255**, where `255` is fully opaque and
+             * `0` fully transparent: the layer's Tiled opacity (0.0–1.0)
+             * times 255, rounded, so a layer authored at `0.69` reads
+             * `176`.
              * @luaexample
              * local visible, opacity, offX, offY = tilemap_get_layer(2)
              */
@@ -164,9 +171,20 @@ namespace Scarab  {
             /**
              * @luaname{tilemap_set_layer(layerId, visible, opacity, offsetX, offsetY) -> success}
              * @luagroup{set_layer}
+             * @luadoc
+             * Write a layer's `visible` flag, `opacity` (an integer
+             * **0..255**, `255` = fully opaque, as `tilemap_get_layer`
+             * reads it; a value outside 0..255 is clamped) and pixel
+             * offset. Returns `false` if there is no such layer.
+             *
+             * It writes **all four** values, so to change one, read the
+             * layer first and pass the others back unchanged — writing a
+             * layer's own values back changes nothing. Hiding a layer this
+             * way hides every sprite added to it too.
              * @luaexample
-             * -- fade a layer out
-             * tilemap_set_layer(2, true, 128, 0, 0)
+             * -- fade layer 2 to about half (128 of 255), keeping the rest as it is
+             * local visible, _, offX, offY = tilemap_get_layer(2)
+             * tilemap_set_layer(2, visible, 128, offX, offY)
              */
             int LuaTilemapApi :: SetLayer( lua_State *pLuaState )  {
 
