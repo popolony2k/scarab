@@ -470,7 +470,7 @@ expected. Scope: a real-window check of the animated tiles (Lua cannot read a ti
 frame, so no headless test can see it), and a CARAVELLIUS_BREAKAGES entry. Sub-tasks detailed
 when the item starts.
 
-**V5 (TODO - fully planned 2026-10-23, to start the next session).** sunlight entries 8, 11
+**V5 (TODO - fully planned 2026-10-23, open questions settled 2026-10-24; starts after C6).** sunlight entries 8, 11
 and 17: **text**, **tile** (`OT_TILE`, drawn at their own size or stretched into their box,
 clipped to the viewport, animated) and **point** objects (a filled square, `point_size`
 property, default one map unit, scaled by zoom) are now drawn. Up to v0.38.0 all three were
@@ -514,11 +514,15 @@ camera goes) can't be told from the map alone. That goes in V5c below.
   - Shape (`rotation.tmx`, `shapes.tmx`, `stress.tmx`) and opacity maps (`opacity.tmx`,
     13 text + 7 tile objects) exist too. They cover V6 (rotation) and V7 (opacity), so pick
     the maps with those items in mind: one Scarab map per item, or one shared objects map.
-  - Open questions for the start: whether text objects draw with the font `set_font` loads
-    or sunlight's default (sunlight's samples register a font, `RegisterFont`, which is C6 and
-    not exposed to Lua); where the map lives (a new `resources/tilemap/objects/` with its own
-    README and provenance, per the shared-resources rules); and the zoom (the house tiles are
-    32 px, and Scarab's default zoom 3.8125 would show little of a 60x40 map).
+  - The three open questions, settled with the owner (2026-10-24):
+    1. **Font:** text objects draw only with a registered font, otherwise `??????`, so the
+       owner promoted C6 (`register_font`), done right before V5. The sample registers "Sans"
+       = `resources/fonts/caravellius8x8.fnt`, the project's own font, already shipped.
+    2. **Location:** a new `resources/tilemap/objects/` with its own README and provenance
+       (from sunlight's `samples/objects` at `bfce598`), reusing the house tileset already in
+       `resources/tilemap/`.
+    3. **Zoom:** start at 1.0 (sunlight's sample does too), so all six cases and labels fit,
+       with the shared zoom keys to look closer. Adjust after the owner's eye test.
   - Controls follow the shared scheme (arrows pan, Page Up/Down or `+`/`-` zoom, `=` reset
     zoom, Home reset), with the text on dark plates. The owner checks it in a real window.
     Add it to `samples/README.md` and to the VSCode template `launch.json` picker.
@@ -580,7 +584,49 @@ that.
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
-| C6 | `TileMapRenderer::RegisterFont(family, path, bold, italic)` | 7 | A new public method; text objects draw with the registered font - expose to Lua? |
+| C6 | `TileMapRenderer::RegisterFont(family, path, bold, italic)` | 7 | **Promoted by the owner (2026-10-24): TODO, done right before V5** - see below |
+
+**C6 (TODO - promoted by the owner 2026-10-24, done right before V5, out of phase order).**
+Why now: without a registered font, sunlight draws **every Tiled text object as `??????`**
+(`textobjectrenderer.cpp`, `__MISSING_FONT_PLACEHOLDER`, plus a warning logged once per
+family/style). V5's `samples/objects` labels each case with a text object, so it would show
+nothing but placeholders. The same goes for any game map with a text object.
+
+What sunlight has (`bfce598`): `TileMapRenderer::RegisterFont( const char* szFamily, const char*
+szFilePath, bool bBold, bool bItalic )`. A text object whose `fontfamily` and bold/italic match
+draws with it. Registering the same family and style again replaces the earlier font. It needs a
+started renderer (a font needs the window's render context). Fonts are released with the window
+(`ReleaseRegisteredFonts`). It lives only on the concrete `TileMapRenderer`, not on
+`ITileMap`/`IDrawSurface`, which are the interfaces Scarab's Lua bridge sees.
+
+Planned design (to confirm with the owner when the item starts):
+- Lua: `register_font( family, path, bold, italic ) -> true | nil, message`, next to
+  `set_font`/`draw_text` in `src/lua/luatextapi.cpp` (the Text page). `bold`/`italic` are
+  optional booleans, default `false`. Strict, `nil, "message"` errors like B1/D3: a missing or
+  unloadable file, a wrong type, an empty family. It is a window-needing call, so the
+  `renderer_create`-first ordering rule applies. The path is anchored on `APP_DIR` in examples,
+  per the BMFont gotcha in `CLAUDE.md`.
+- C++: a narrow `RegisterFont` on `Scarab::Engine::IRendererProvider` (Lua-agnostic; names no
+  concrete renderer), implemented by `RendererProvider` on the renderer it owns, creating the
+  default one first like `GetTileMap`.
+- Tests: a headless smoke scenario. sunlight's null backend has `LoadFont`, so registering
+  `resources/fonts/caravellius8x8.fnt` must succeed, and every error path must fail with its
+  message. Prove each by mutation. Glyphs can't be seen headless; V5's sample is the eye check.
+- Docs: the `@luadoc` explains what a family/style match means, the `??????` placeholder, and
+  the ordering rule.
+
+Fonts (the owner's point: our own fonts, or open-license ones compatible with ours). sunlight's
+samples register:
+
+| Family | File | In Scarab's `resources/fonts/`? | License |
+|---|---|---|---|
+| "Sans" | `caravellius8x8.fnt` (+ `_bold`) | yes | the project's own (zlib; sunlight also lists SIL OFL 1.1) |
+| "Pixel" | `pressstart2p-regular.ttf` | yes | SIL OFL 1.1 |
+| "Mono" | `AnonymousPro-Regular/Bold/Italic/BoldItalic.ttf` | no | SIL OFL 1.1 (compatible; copy with `OFL-anonymouspro.txt`) |
+
+Every map V5 (and V6/V7) would use (`objects.tmx`, `thick.tmx`, `rotation.tmx`,
+`opacity.tmx`) uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed
+only for sunlight's `text.tmx` ("Mono"), so copy it only if a sample uses that map.
 
 ## Phase R: requisites
 
