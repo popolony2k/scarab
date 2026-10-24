@@ -49,6 +49,15 @@ local __CLOSEUP_ZOOM   = 2.0
 local __CLOUDS_LAYER   = 4     -- "clouds" in resources/tilemap/test.tmx
 local __SPRITE_LAYER   = 5     -- "houses": a layer the minimap keeps
 local __SPEED          = 3     -- map pixels per frame
+local __PLATE_PADDING  = 4     -- pixels around a line of text on its plate
+local __PLATE_ALPHA    = 170   -- the plate's opacity, 0..255
+
+-- A line of text on a dark translucent plate, readable over any background.
+local function draw_text_plate( text, x, y, size, r, g, b )
+    draw_filled_rectangle( x - __PLATE_PADDING, y - __PLATE_PADDING,
+        measure_text( text, size ) + 2 * __PLATE_PADDING, size + 2 * __PLATE_PADDING, 0, 0, 0, __PLATE_ALPHA )
+    draw_text( text, x, y, size, r, g, b, 255 )
+end
 
 -- FIRST window-needing call (see samples/renderer for why it must be first).
 local renderer, err = renderer_create{
@@ -134,8 +143,10 @@ function on_update( dt )
         sprite_set_world_space( sunny, worldSpace )
     end
 
-    draw_text( "views sample - arrows/WASD move the sprite", 20, 20, 20, 255, 255, 255, 255 )
-    draw_text( string.format( "map position %d, %d   world space: %s   views: %d",
-        x, y, tostring( sprite_get_world_space( sunny ) ), renderer_get_view_count( renderer ) ), 20, 46, 18, 200, 200, 200, 255 )
-    draw_text( "M minimap   C close-up   L minimap clouds   Space world space (close-up loses sunny when off)   Esc quit", 20, __RENDER_HEIGHT - 30, 16, 180, 180, 180, 255 )
+    -- Each line sits on a dark translucent plate: the text crosses white clouds and the
+    -- black area outside the map, and no single text colour reads over both.
+    draw_text_plate( "views sample - arrows/WASD move the sprite", 20, 20, 20, 255, 255, 255 )
+    draw_text_plate( string.format( "map position %d, %d   world space: %s   views: %d",
+        x, y, tostring( sprite_get_world_space( sunny ) ), renderer_get_view_count( renderer ) ), 20, 46, 18, 220, 220, 220 )
+    draw_text_plate( "M minimap   C close-up   L minimap clouds   Space world space (close-up loses sunny when off)   Esc quit", 20, __RENDER_HEIGHT - 30, 16, 220, 220, 220 )
 end
