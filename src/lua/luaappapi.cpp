@@ -426,6 +426,50 @@ namespace Scarab  {
             }
 
             /**
+             * @brief The engine's own fixed design/render resolution
+             * width, in pixels - the coordinate space @link DrawText
+             * itself draws in. Constant for the app's whole lifetime,
+             * deliberately not the live/resizeable OS window size (see
+             * IDrawSurface::GetWindowWidth).
+             *
+             * @luaname{screen_get_width() -> width}
+             * @luagroup{screen_dimensions}
+             * @luadoc
+             * The engine's own fixed design/render resolution, in pixels
+             * (`DISPLAY_W`/`DISPLAY_H` in `main.h` — `1260x920` today) —
+             * the coordinate space `draw_text` and every other
+             * screen-space draw call operate in. Constant for the app's
+             * whole lifetime, set once at construction.
+             *
+             * **Deliberately not the same as the live OS window size** —
+             * the engine always letterbox-scales this fixed resolution to
+             * fit whatever the real window size ends up being (whether
+             * from `app_set_fullscreen` or the player manually resizing
+             * the window, see `app_set_window_resizeable`). HUD layout should always measure
+             * against these, not against anything that varies with the
+             * actual window.
+             */
+            int LuaAppApi :: GetScreenWidth( lua_State *pLuaState )  {
+
+                lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowWidth() );
+
+                return 1;
+            }
+
+            /**
+             * @brief Same as @link GetScreenWidth, for height.
+             *
+             * @luaname{screen_get_height() -> height}
+             * @luagroup{screen_dimensions}
+             */
+            int LuaAppApi :: GetScreenHeight( lua_State *pLuaState )  {
+
+                lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowHeight() );
+
+                return 1;
+            }
+
+            /**
              * @brief Query which host platform Scarab was compiled for
              * (see LuaAppApi::Platform) - a pure compile-time fact, not a
              * runtime probe, so this never changes for the lifetime of a
@@ -772,6 +816,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "app_set_stretch_to_fill", LuaAppApi :: SetStretchToFill );
                 lua_register( pLuaState, "app_get_stretch_to_fill", LuaAppApi :: GetStretchToFill );
                 lua_register( pLuaState, "draw_filled_rectangle", LuaAppApi :: DrawFilledRectangle );
+                lua_register( pLuaState, "screen_get_width", LuaAppApi :: GetScreenWidth );
+                lua_register( pLuaState, "screen_get_height", LuaAppApi :: GetScreenHeight );
                 lua_register( pLuaState, "app_get_platform", LuaAppApi :: GetPlatform );
                 lua_register( pLuaState, "app_quit", LuaAppApi :: Quit );
                 lua_register( pLuaState, "app_set_exit_key", LuaAppApi :: SetExitKey );

@@ -31,6 +31,7 @@
 #include "sound/soundmanager.h"
 #include "lua/luaengine.h"
 #include "engine/spritepool.h"
+#include "engine/fontpool.h"
 #include "host/rendererprovider.h"
 
 
@@ -69,6 +70,7 @@ namespace Scarab  {
             SunLight :: Sound :: SoundManager          m_SoundManager;
             Scarab :: Lua :: LuaEngine                 m_LuaEngine;
             Engine :: SpritePool                       m_SpritePool;
+            Engine :: FontPool                         m_FontPool;
 
             std :: string                              m_strEntryArg;
             std :: string                              m_strEntryOverride;

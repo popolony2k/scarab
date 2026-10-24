@@ -214,3 +214,18 @@ jobs:
         run: |
           python scripts/input_constants_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "input constants smoke test exited with code $LASTEXITCODE" }
+
+      # load_font / release_font / set_font (path, handle, nil) / register_font / unregister_font
+      # and draw_text / measure_text's optional font: every round trip and every error, a released
+      # handle never breaking a font still in use, and no stale handle after slot reuse - see the
+      # script's own header.
+      - name: Font API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/font_api_smoke.py build/scarab
+
+      - name: Font API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/font_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "font API smoke test exited with code $LASTEXITCODE" }

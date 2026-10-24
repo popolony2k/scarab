@@ -21,11 +21,13 @@
 #ifndef __IRENDERERPROVIDER_H__
 #define __IRENDERERPROVIDER_H__
 
+#include <memory>
 #include <optional>
 #include <string>
 #include "renderer/rendererconfig.h"
 #include "tilemap/itilemap.h"
 #include "drawsurface/idrawsurface.h"
+#include "font/ifont.h"
 
 namespace Scarab  {
     namespace Engine  {
@@ -141,6 +143,32 @@ namespace Scarab  {
              * creation-only fields already have (view_control_mode, frame_pacing, max_frames).
              */
             virtual bool GetUseDefaultKeyHandler( void ) = 0;
+
+            /**
+             * @brief Register a loaded font for the map's Tiled text objects: a text object whose
+             * fontfamily and bold/italic flags match draws with it (sunlight I3,
+             * TileMapRenderer::RegisterFont - on the concrete renderer only, not on ITileMap or
+             * IDrawSurface, hence here). The font is shared, not copied: the same font can also be
+             * the active font or serve other families. Creates the default renderer first if none
+             * exists yet, like GetTileMap.
+             * @return false for no family, no font, or an invalid font;
+             */
+            virtual bool RegisterFont( const char *szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
+                                       bool bBold, bool bItalic, const char *szTrigger ) = 0;
+
+            /**
+             * @brief Unregister a font from every family and style it serves.
+             * @return true if it was registered for at least one; false if no renderer exists yet
+             * (nothing can have been registered, and none is created for this);
+             */
+            virtual bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont> &pFont ) = 0;
+
+            /**
+             * @brief Unregister the font of one family and style, leaving its others.
+             * @return true if a font was registered for exactly that family and style; false if no
+             * renderer exists yet (none is created for this);
+             */
+            virtual bool UnregisterFont( const char *szFamily, bool bBold, bool bItalic ) = 0;
         };
     }
 }
