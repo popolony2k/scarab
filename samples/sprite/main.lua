@@ -55,6 +55,10 @@ local handle = sprite_acquire( "sunny" )
 -- The last argument is the frame delay in ms: WITHOUT it (the default, -1) the frame is held and sunny never animates.
 sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
 sprite_set_active_sequence( handle, 0 )
+-- World space: sunny's position is a MAP position in pixels, so the camera
+-- can follow it across the whole map (by default a sprite's position is
+-- relative to the view, and it would stay put on screen while the map moves).
+sprite_set_world_space( handle, true )
 sprite_set_pos( handle, 100, 100 )
 
 -- Layer 4 ("clouds" in test.tmx) is visible by default (no visible="0")
@@ -63,6 +67,36 @@ sprite_set_pos( handle, 100, 100 )
 sprite_add_to_layer( handle, 4 )
 
 local __SPEED = 3  -- pixels/frame, fine for a short demo - see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
+
+-- Dark text: the map behind the text is mostly white clouds and light sky,
+-- so white/light-grey text can't be read over it.
+local TITLE_COLOR = { r = 20, g = 20, b = 20, a = 255 }
+local INFO_COLOR  = { r = 50, g = 50, b = 70, a = 255 }
+
+local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
+local mapPixelWidth  = mapWidth * tileWidth
+local mapPixelHeight = mapHeight * tileHeight
+
+local function clamp( value, low, high )
+    return math.max( low, math.min( value, high ) )
+end
+
+-- The camera follows sunny: it keeps sunny centred in the view, clamped so it
+-- never shows anything past the map's edges (camera_set_position itself does
+-- not clamp). The camera position is the map point shown at the view's
+-- top-left; the view shows viewport size / zoom map pixels.
+local function follow( x, y, width, height )
+    local _, _, viewportWidth, viewportHeight = viewport_get_dimension()
+    local zoom          = viewport_get_zoom_factor()
+    local visibleWidth  = viewportWidth / zoom
+    local visibleHeight = viewportHeight / zoom
+    local cameraX = clamp( math.floor( x + width / 2 - visibleWidth / 2 ), 0, math.max( 0, math.floor( mapPixelWidth - visibleWidth ) ) )
+    local cameraY = clamp( math.floor( y + height / 2 - visibleHeight / 2 ), 0, math.max( 0, math.floor( mapPixelHeight - visibleHeight ) ) )
+
+    camera_set_position( cameraX, cameraY )
+
+    return cameraX, cameraY
+end
 
 function on_update( dt )
 
@@ -84,11 +118,19 @@ function on_update( dt )
         y = y + __SPEED
     end
 
-    sprite_set_pos( handle, x, y )
-
     local width, height = sprite_get_size( handle )
 
-    draw_text( "sprite sample - arrows/WASD to move", 20, 20, 20, 255, 255, 255, 255 )
+    -- sunny stays on the map
+    x = clamp( x, 0, mapPixelWidth - width )
+    y = clamp( y, 0, mapPixelHeight - height )
+
+    sprite_set_pos( handle, x, y )
+
+    local cameraX, cameraY = follow( x, y, width, height )
+
+    draw_text( "sprite sample - arrows/WASD to move, the camera follows", 20, 20, 20, TITLE_COLOR.r, TITLE_COLOR.g, TITLE_COLOR.b, TITLE_COLOR.a )
     draw_text( "sprite_get_pos: " .. x .. ", " .. y .. "   sprite_get_size: " .. width .. "x" .. height,
-        20, 50, 18, 200, 200, 200, 255 )
+        20, 50, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
+    draw_text( "camera_get_position: " .. cameraX .. ", " .. cameraY,
+        20, 72, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
 end

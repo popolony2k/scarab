@@ -269,7 +269,7 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
 | # | Item | Status |
 |---|------|--------|
 | V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46) - 8 Lua wrappers (`camera_move_*`, `view_move_camera_*`) | DONE |
-| V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | TODO |
+| V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | DONE |
 | V3 | `nOpacity` 0..255 round-trip (entry 41) | TODO |
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | TODO |
 | V5 | Tile/text/point objects now drawn where they were invisible before (entries 1, 8, 11, 17) | TODO |
@@ -341,6 +341,49 @@ checking at Scarab's own actual default (zoom position 60, factor 3.8125), not o
 1.0** - every game using Scarab's unmodified defaults runs at exactly the kind of
 non-integer zoom where sunlight's own three bugs were found live (`samples/sprite`, at its
 own default zoom).
+
+**V2 (DONE, 2026-10-23 - every real-window test passed and the change was approved by the owner).** Sub-tasks, as agreed with the owner:
+- **V2a, scope check:** no Scarab C++ code does its own pixel snapping. The only
+  `std::round` in `src/` validates zoom factors (`LuaRendererApi::ValidateZoomFactor`), and
+  Scarab draws no tiles itself (`draw_text`/`draw_filled_rectangle` are screen space,
+  unzoomed). Samples at a non-integer zoom: `camera`, `sprite`, `collision` and `tilemap` at
+  the default 3.8125, the `views` minimap at 0.375 (`view_fit_to_map`, 240/640; its main
+  view is 1.0 and its close-up 2.0, both whole), and `renderer` after one zoom step (0.0625
+  each).
+- **Bug 2 (the scroll limit) was in effect verified by V1:** `scripts/camera_boundary_smoke.py`
+  showed the old pin scrolling past the far edge, and it pins the exact edge on all 4
+  platforms. Nothing more is needed here.
+- **No headless test for bugs 1 and 3:** they are about which screen pixel a tile lands on.
+  The null backend draws nothing, and no Lua function reads pixels back, so no Scarab test
+  can see a seam. sunlight covers this on its side with its own tests and GPU measurements;
+  Scarab's check is by eye.
+- **V2b, the owner's real-window check (2026-10-23), every sample launched one at a time,
+  all passed:**
+  1. `samples/camera`: slow scrolls, the edges, and zooms 3.81, 5.06, 5.38 and 16.00
+     (screenshots), with no seams. Home goes back to 3.81 (V1's preferred-zoom fix).
+  2. `samples/sprite` at 3.8125: no jitter and no seams. The camera did not follow Sunny,
+     so Sunny left the view at the border (found by the owner). The sample was changed in
+     V2 to follow it (below). Screenshots confirm: mid-scroll camera 20,313 with no seams,
+     the right edge exactly at camera x **314** (V1's pinned edge), and camera 313 when
+     centring Sunny at y 416 (⌊416 + 16 − 118.03⌋).
+  3. `samples/views`: the minimap at 0.375 had no seams, with Sunny moving across it,
+     and both with the clouds layer hidden (the default: that layer also holds the grass
+     islands, `tileset_cloud_soil`, so they look missing until `L`) and shown (screenshot).
+  4. `samples/renderer`: zoom steps above and below 1.0 while panning, with no seams.
+- **Sample changes made inside V2, from the owner's check:**
+  - `samples/sprite`: the camera follows Sunny. Sunny is in world space
+    (`sprite_set_world_space`) and is kept on the map. `follow` centres the camera with
+    `camera_set_position`, clamped to the map's edges, because `camera_set_position` doesn't
+    clamp. Dark text, as in `samples/camera`, plus a camera-position line. The README was
+    updated.
+  - `samples/renderer`: its zoom keys now match `samples/camera`'s (asked for by the owner),
+    the zoom keys every sunlight/Scarab sample shares. Page Up/Page Down or `+`/`-` (main
+    keyboard and keypad) zoom, `=` resets the zoom, and Home resets the zoom and the camera.
+    These replace `Z`/`X`/`R`; Space still asks for the invalid zoom.
+  - `samples/views` and `samples/renderer`: each text line is drawn on a dark translucent
+    plate (`draw_text_plate`, sized with `measure_text`). The text crosses both white clouds
+    and black areas, where neither light nor dark text alone reads.
+- **V2c:** `doc/CARAVELLIUS_BREAKAGES.md` entry 3.
 
 **V3.** `src/lua/luatilemapapi.cpp`'s `GetLayer`/`SetLayer` pass `nOpacity` straight to
 Lua - self-correcting now that both directions are 0..255 (an opaque layer used to read

@@ -20,9 +20,10 @@ Also works headless (no window, no display needed) — it just draws nothing:
 
 | Key | Action |
 | --- | --- |
-| `Z` / `X` (held) | Zoom in/out (`view_zoom_in`/`view_zoom_out`) — one `ZOOM_STEP` (`0.0625`) per frame, within the limits `0.5 … 4.0` |
+| `Page Up` / `Page Down`, or `+` / `-` (held, main keyboard or keypad) | Zoom in/out (`view_zoom_in`/`view_zoom_out`) — one `ZOOM_STEP` (`0.0625`) per frame, within the limits `0.5 … 4.0`. The zoom keys every sunlight/Scarab sample shares (see [camera](../../camera/docs/README.md)) |
 | `Arrow keys` (held) | Pan the view's camera (`view_move_camera_*`) |
-| `R` | Reset the zoom to the preferred zoom and the camera to the origin (`view_zoom_reset`/`view_reset_camera`) |
+| `=` (main keyboard or keypad) | Reset the zoom only, to the preferred zoom (`view_zoom_reset`) — `1.0`, the zoom this sample starts at |
+| `Home` | Reset the zoom and the camera to the origin (`view_zoom_reset`/`view_reset_camera`) |
 | `Space` | Ask for an invalid zoom (`3.8`) and show the exact error `view_set_zoom` returns |
 
 ## What it shows
