@@ -271,7 +271,7 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
 | V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46) - 8 Lua wrappers (`camera_move_*`, `view_move_camera_*`) | DONE |
 | V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | DONE |
 | V3 | `nOpacity` 0..255 round-trip (entry 41) | DONE |
-| V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | TODO |
+| V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | DONE |
 | V5 | Tile/text/point objects now drawn where they were invisible before (entries 1, 8, 11, 17) | TODO |
 | V6 | Rotated shape/tile/text objects (entries 18-20) | TODO |
 | V7 | Shape/text object opacity now respects layer opacity (entry 36) | TODO |
@@ -423,6 +423,39 @@ owner:
 **V4.** `src/lua/luainputapi.cpp` exposes `KEY_MENU` to Lua *by value* - the value itself
 (82 to 5) is what a script sees, not just an internal rename. Scope: check whether anything
 stored the old number (a saved binding, a hard-coded 82).
+
+**V4 (DONE, 2026-10-23 - approved by the owner, merged once CI was green).** Found when the item started: the old 82 was **also `KEY_R`**.
+sunlight v0.38.0's `iinputhandler.h` had `KEY_R = 82` and `KEY_MENU = 82`, and its backend
+passed the number straight to raylib (`::IsKeyDown( key )`). So in Lua `KEY_MENU == KEY_R`,
+and `input_is_key_down( KEY_MENU )` fired on R. Now `KEY_MENU` is 5, raylib's own (Android's
+menu button), and sunlight translates by name. No Scarab code changed: the constants table
+takes sunlight's values. Nothing in `samples/`, `scripts/`, `docs/` or `resources/` uses
+`KEY_MENU`. The only `82`s are y positions in three samples. Scarab has no saved bindings
+(there is no Lua action map yet; that's C1). Sub-tasks, as agreed with the owner:
+- **V4a:** `scripts/input_constants_smoke.py` + `scripts/input_constants_smoke/`, in
+  `ci.yml` on all 4 platforms. The Python driver reads the expected names straight from
+  `luainputapi.cpp`'s arrays (110 `KEY_*`, 18 `GAMEPAD_BUTTON_*`, 6 `GAMEPAD_AXIS_*`), so the
+  list can't drift. The Lua side checks `KEY_MENU == 5`, `KEY_BACK == 4`, `KEY_R == 82`,
+  `KEY_MENU ~= KEY_R`, that every constant exists as an integer, and that **no two in a
+  group share a value**. That last check catches the whole class of bug, and the owner chose
+  to cover the gamepad groups too. It passes on the new pin, so none of the 134 has a
+  legitimate duplicate. **Coverage, added at the owner's request:** the driver also reads
+  sunlight's own enums (`KeyboardKey`, `GamepadButton`, `GamepadAxis`, `ControllerType` in the
+  fetched checkout's `src/input/iinputhandler.h`, `build/_deps/sunlight-src` or
+  `--sunlight-src DIR`) and fails if Scarab's matching array misses one or holds one sunlight
+  doesn't have. So a key sunlight adds later and Scarab forgets fails CI. A missing checkout
+  fails too, never skips. Today all four match one to one (110/18/6/5), and the
+  `CONTROLLER_*` group joined the value checks. Checked by mutation: with `KEY_MENU` removed
+  from `s_aKeyboardKeys`, it fails naming `KEY_MENU`. sunlight's other two input enums,
+  `InputDispatchMode` and `ActionBindingType`, are deliberately not exposed: they belong to the
+  controller manager/action map, which is C1, an open decision. **Shown failing on the old pin first** (the published Scarab v0.1.25):
+  "KEY_MENU is 82" and "KEY_MENU and KEY_R are the same number (82)", from both the direct
+  check and the no-duplicates check.
+- **V4b:** the "Keyboard keys" constants doc now says the values are raylib's own, and that
+  `KEY_BACK`/`KEY_MENU`/`KEY_VOLUME_UP`/`KEY_VOLUME_DOWN` are Android buttons a desktop
+  keyboard never sends.
+- **V4c:** `doc/CARAVELLIUS_BREAKAGES.md` entry 5.
+- No real-window check: the change is purely constant values, which the test pins directly.
 
 **V5-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
@@ -594,6 +627,7 @@ accurate once the features it describes are actually settled, not before.
 |---|------|--------|
 | T1 | A full documentation pass once every other phase's changes have landed | TODO |
 | T2 | Simplify `README.md` | TODO |
+| T3 | Every source file and script carries the project's copyright/license notice | TODO |
 
 **T1.** Scope: `README.md`; the generated Lua API reference's own source comments
 (`@luadoc`/`@luaexample` tags in `src/lua/`); `samples/*/docs/README.md`; `CLAUDE.md`'s own
@@ -608,6 +642,32 @@ whatever makes it feel polluted is density or structure, not length alone. sunli
 `README.md` can be used as a base. Scope, left open: what moves out (to `CLAUDE.md`, to a
 dedicated `doc/` file, or is dropped), what stays, and the target structure - discussed in
 full when this item starts, not decided here.
+
+**T3 (TODO, added 2026-10-23 at the owner's request).** The owner noticed that some scripts,
+and maybe some source code, don't carry the project's copyright/license notice
+(`docs/HEADER.txt`, zlib). `CLAUDE.md` already requires it for every `.cpp`/`.h` under `src/`
+("a copyright/licensing requirement, not a style nicety"), but says nothing about other
+files. A first count over the tracked files (2026-10-23, grepping for the notice's first line):
+- `.cpp`/`.h`: all 50 have it. The root `CMakeLists.txt` has it.
+- `.lua`: 5 of 22 don't, all under `scripts/` (the smoke-test projects: `headless_smoke`,
+  `renderer_api_smoke`, `camera_boundary_smoke`, `blend_api_smoke`, `tilemap_layer_smoke`).
+  Every `samples/` script has it.
+- `.py`: 5 of 7 don't (`renderer_api_smoke.py`, `tileset_archive_smoke.py`,
+  `camera_boundary_smoke.py`, `blend_api_smoke.py`, `tilemap_layer_smoke.py`). The two docs
+  scripts have it.
+- `.github/workflows/*.yml`: none of the 3 have it.
+- V4's new `input_constants_smoke.py` and `main.lua` got it when they were written, so the
+  list did not grow.
+
+Scope, to settle when the item starts:
+- Which file kinds need it. Code and scripts surely. Probably workflows and other config
+  (`Doxyfile`, `CMakePresets.json` - JSON has no comments). Docs (`.md`) and assets probably
+  not; `resources/` keeps its own per-folder license READMEs.
+- The exact comment style per language (C++ `/* */`, Lua `--[[ ]]`, Python/YAML/CMake `#`),
+  matching what already exists.
+- Whether to add a CI check, like the `lua-api-docs` hard fail, so a new file without the
+  notice fails CI instead of being found by eye again.
+- Write the rule into `CLAUDE.md` for every file kind it covers, not only `src/`.
 
 ## Process
 

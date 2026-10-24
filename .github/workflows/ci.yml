@@ -199,3 +199,18 @@ jobs:
         run: |
           python scripts/tilemap_layer_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "tilemap layer smoke test exited with code $LASTEXITCODE" }
+
+      # KEY_* / GAMEPAD_BUTTON_* / GAMEPAD_AXIS_* / CONTROLLER_*: every constant of sunlight's
+      # input enums (read from the fetched build/_deps/sunlight-src) is registered by
+      # luainputapi.cpp and nothing else, no two in a group share a value, and KEY_MENU is 5
+      # (it used to be 82, KEY_R's own number) - see the script's own header.
+      - name: Input constants smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/input_constants_smoke.py build/scarab
+
+      - name: Input constants smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/input_constants_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "input constants smoke test exited with code $LASTEXITCODE" }

@@ -36,7 +36,9 @@ namespace Scarab  {
              * @luadoc
              * The `key` argument `input_is_key_down`/`input_is_key_up`/
              * `input_is_key_released` take - every one raylib itself
-             * supports.
+             * supports, with raylib's own values. `KEY_BACK`, `KEY_MENU`,
+             * `KEY_VOLUME_UP` and `KEY_VOLUME_DOWN` are Android buttons: a
+             * desktop keyboard never sends them.
              */
             static const stNamedConstant  s_aKeyboardKeys[] = {
                 __CONST( KEY_NULL ),
