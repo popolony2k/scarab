@@ -37,6 +37,7 @@
                 "samples/renderer/project.json",
                 "samples/views/project.json",
                 "samples/blend/project.json",
+                "samples/objects/project.json",
                 "samples/scripting/project.json",
                 "samples/sound/project.json",
                 "samples/json/project.json",
