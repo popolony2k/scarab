@@ -272,7 +272,7 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
 | V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | DONE |
 | V3 | `nOpacity` 0..255 round-trip (entry 41) | DONE |
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | DONE |
-| V5 | Tile/text/point objects now drawn where they were invisible before (entries 1, 8, 11, 17) | TODO |
+| V5 | Tile/text/point objects now drawn where they were invisible before (entries 8, 11, 17) | TODO |
 | V6 | Rotated shape/tile/text objects (entries 18-20) | TODO |
 | V7 | Shape/text object opacity now respects layer opacity (entry 36) | TODO |
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | TODO |
@@ -280,6 +280,7 @@ handle, and some getters return a "safe" value instead (`sprite_get_world_space`
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | TODO |
 | V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
 | V12 | A tile object resized away from its own tile's size now takes its object layer's tint (entry 45) | TODO |
+| V13 | Tiled tile animations show each frame once per cycle (entry 44; moved here from O4) | TODO |
 
 **V1 (DONE, 2026-10-22 - V1d confirmed by the owner in a real window).** Not just a rename: the scroll clamp genuinely changed (the last step can now be
 partial, reaching the map's true edge where it used to stop a step short;
@@ -457,7 +458,77 @@ takes sunlight's values. Nothing in `samples/`, `scripts/`, `docs/` or `resource
 - **V4c:** `doc/CARAVELLIUS_BREAKAGES.md` entry 5.
 - No real-window check: the change is purely constant values, which the test pins directly.
 
-**V5-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
+**V13 (TODO, added 2026-10-23, moved here from O4).** O4 said "no animated tiles in any Scarab
+map", and so did sunlight's BREAKAGES entry 44 ("no Caravellius or Scarab map has animated
+tiles (owner, 2026-10-14)"). Both were wrong for Scarab: `resources/tilemap/test.tmx`'s
+tilesets have animated tiles (`tileset_house.tsx` 1, `tileset_house_var1.tsx` 2,
+`tileset_monke_variants.tsx` 4), and every sample that loads it shows them. The Caravellius
+half of that sentence has not been re-checked. sunlight's fix: each frame shows once per
+cycle for its own Tiled duration. Before, the first frame showed twice in a row, so it stayed
+on screen for two of its durations and every cycle was longer. No Scarab code change is
+expected. Scope: a real-window check of the animated tiles (Lua cannot read a tile's current
+frame, so no headless test can see it), and a CARAVELLIUS_BREAKAGES entry. Sub-tasks detailed
+when the item starts.
+
+**V5 (TODO - fully planned 2026-10-23, to start the next session).** sunlight entries 8, 11
+and 17: **text**, **tile** (`OT_TILE`, drawn at their own size or stretched into their box,
+clipped to the viewport, animated) and **point** objects (a filled square, `point_size`
+property, default one map unit, scaled by zoom) are now drawn. Up to v0.38.0 all three were
+invisible, so a map that used one as hidden data or a marker would now show it. The row used
+to list entry 1 too, but that is the non-orthogonal refusal, already O1, so it was dropped.
+
+**Map audit (2026-10-23, measured):**
+
+| Map | Object layers | Objects | Text / tile / point |
+|---|---|---|---|
+| Scarab `resources/tilemap/test.tmx` (Scarab's only map) | 0 | 0 | none |
+| Caravellius `resources/tilemap/corsair/corsair.tmx` | 7 | 3 | none: all 3 are rectangle triggers (`SubBossIntervalStart`, `SubBossIntervalEnd`, `CephalonPosition`) |
+| Caravellius `resources/tilemap/cover/cover.tmx` | 6 | 0 | none |
+
+The Caravellius figures come from the local checkout `../caravellius` (commit `22bbaaf`,
+2026-09-23), read-only. So nothing changes on screen in either project. Scarab's only object
+function, `tilemap_get_object_by_name`, reads an object's position and size, not how it is
+drawn, so it is unaffected.
+
+**Side finding, O3, for Caravellius:** O3 (shape outlines scale with zoom) is "not
+applicable" for Scarab, which has no shape objects. But Caravellius' 3 trigger markers are
+rectangles (`OT_SQUARE`) on an object layer with no `visible="0"`. sunlight drew rectangles
+before (v0.38.0 has `case OT_SQUARE`) and still does, so they are probably drawn in the game,
+now with zoom-scaled outlines. Whether they are actually visible (colour, opacity, where the
+camera goes) can't be told from the map alone. That goes in V5c below.
+
+**Sub-tasks (agreed with the owner 2026-10-23):**
+- **V5a:** record the audit above (done in this text).
+- **V5b, a new `samples/objects` sample**, asked for by the owner so V5 has something to see
+  by eye. It is built from sunlight's own object samples, read from the local sunlight repo at
+  the pinned commit (`git -C ../sunlight show bfce598:samples/...`), from the vendored
+  `build/_deps/sunlight-src`, or by asking the sunlight session:
+  - `samples/objects/resources/map/objects.tmx` (60x40, 32 px): 6 **tile** objects, one row
+    per case (own size, stretched to a 64 px box, cut by the left viewport edge, animated,
+    flip bits ignored, cut by the bottom edge), each with a numbered **text** object label.
+    It uses `tileset_house.tsx` + `images/house.png`, the same house tileset Scarab already
+    ships in `resources/tilemap/`. A green rectangle object frames the viewport. sunlight's
+    `docs/README.md` for that sample lists what to look for per case.
+  - **point** objects: only `samples/shapes/resources/map/thick.tmx` has any (3, with 11 text
+    objects and 9 shapes). `samples/text/resources/map/text.tmx` has 17 text objects.
+  - Shape (`rotation.tmx`, `shapes.tmx`, `stress.tmx`) and opacity maps (`opacity.tmx`,
+    13 text + 7 tile objects) exist too. They cover V6 (rotation) and V7 (opacity), so pick
+    the maps with those items in mind: one Scarab map per item, or one shared objects map.
+  - Open questions for the start: whether text objects draw with the font `set_font` loads
+    or sunlight's default (sunlight's samples register a font, `RegisterFont`, which is C6 and
+    not exposed to Lua); where the map lives (a new `resources/tilemap/objects/` with its own
+    README and provenance, per the shared-resources rules); and the zoom (the house tiles are
+    32 px, and Scarab's default zoom 3.8125 would show little of a 60x40 map).
+  - Controls follow the shared scheme (arrows pan, Page Up/Down or `+`/`-` zoom, `=` reset
+    zoom, Home reset), with the text on dark plates. The owner checks it in a real window.
+    Add it to `samples/README.md` and to the VSCode template `launch.json` picker.
+- **V5c:** `doc/CARAVELLIUS_BREAKAGES.md` entry: text, tile and point objects in a map are
+  now drawn (Caravellius' maps have none today, so any marker added later should be a
+  rectangle or sit on a hidden layer), and its 3 rectangle trigger markers, probably already
+  drawn, now have zoom-scaled outlines (O3). Check they are hidden or harmless.
+- **V5d:** the plan write-up, CI green, then DONE.
+
+**V6-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
 unaffected or adjusted, not assumed from the BREAKAGES table alone.
 
@@ -473,16 +544,19 @@ its opacity); if any Scarab asset relied on that, it now looks different.
 
 ## Phase O: confirmed not applicable, recorded anyway
 
+Every reason below was re-checked against the code on 2026-10-23, after the pin had moved
+twice (P4, P5). Twelve held. Two did not: O4 (moved to V13) and O8 (reworded below).
+
 | # | Change | BREAKAGES entry | Why |
 |---|--------|------------------|-----|
 | O1 | Non-orthogonal maps refused | 1 | All Scarab maps are orthogonal |
 | O2 | `SetPixel` removed | 15 | Zero calls anywhere in Scarab (confirmed by grep across `src/`, `resources/`, `docs/`, `samples/`, `README.md`) |
 | O3 | Polyline/polygon/rectangle/ellipse width-by-zoom | 16 | No polyline/shape object in any Scarab map |
-| O4 | Tile animation first-frame-double-duration fix | 44 | No animated tiles in any Scarab map |
+| O4 | ~~Tile animation first-frame-double-duration fix~~ - **moved to V13** (2026-10-23) | 44 | ~~No animated tiles in any Scarab map~~ - wrong: `test.tmx`'s tilesets have animated tiles, see V13 |
 | O5 | Layer parallax placement correction | 34, 49 | No parallax in any Scarab map, sample or source (confirmed by grep) |
 | O6 | Listener dispatch reentrancy now well-defined | 42 | Scarab registers its listeners once at startup, never from inside a dispatch |
 | O7 | Isometric/staggered/hexagonal maps now load | 21-23 | All Scarab maps are orthogonal; new capability, not a requirement |
-| O8 | TTF/OTF accented glyphs | 43 | Scarab's docs name a TTF only as an example; no live behavior to check |
+| O8 | TTF/OTF accented glyphs | 43 | Applies, harmless: `samples/text` really loads a TTF (`resources/fonts/pressstart2p-regular.ttf`; the first reason, "Scarab's docs name a TTF only as an example", was wrong, found 2026-10-23). ASCII text is drawn exactly as before, and accented letters now draw instead of `?`. Nothing to do |
 | O9 | `IEngine` gains `LoadFont`/`BeginClip`/`EndClip` | 6 | Scarab doesn't implement `IEngine` |
 | O10 | `SetWindowBackgroundColor` takes `stColor` | 10 | Nothing in Scarab calls it |
 | O11 | `doc/TODO.txt`/`FIXME.txt`/`MISSING_FEATURES.md` removed from sunlight | 3 | No link to them anywhere in Scarab |
@@ -491,6 +565,13 @@ its opacity); if any Scarab asset relied on that, it now looks different.
 | O14 | Sample fonts moved to `samples/shared/fonts` in sunlight | 13 | Samples only, no API change |
 
 ## Phase C: new capabilities, not required
+
+**Why "not required":** each item is a new sunlight capability that Scarab doesn't expose yet.
+Scarab compiles and behaves exactly as before without it, so whether to offer it to Lua games
+is a product decision, not integration work. B1 (blend modes) was one, promoted by the owner.
+**When the plan reaches this phase, ask the owner, item by item, whether to make a detailed
+plan for it** (the owner's instruction, 2026-10-23). None is started or scheduled without
+that.
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
