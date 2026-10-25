@@ -25,8 +25,9 @@ pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 `feat/master_plan` when the handoff was sent), re-pinned in P4 to
 `a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing), in
 P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6 to
-`9c8c6bf421a1147d1e8c099e698dfbe7c1885af2` (fonts by handle), and in V6 to
-`f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path).
+`9c8c6bf421a1147d1e8c099e698dfbe7c1885af2` (fonts by handle), in V6 to
+`f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path), and in
+P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id checks).
 
 ## Phase P: pin & plumbing
 
@@ -38,6 +39,7 @@ P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6
 | P3 | Every existing Scarab check green against the pin, before any further BREAKAGES item is touched | DONE |
 | P4 | Re-pin to `a63fec6811ba28fb46a94015d05b852393016692` (sunlight's I1 fix: semi-transparent drawing no longer darker; sunlight BREAKAGES entry 50) | DONE |
 | P5 | Re-pin to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's I2: blend modes; sunlight BREAKAGES entry 51) | DONE |
+| P6 | Re-pin to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (sunlight's I5: CollisionManager checks every layer id, `Clear()`/`RemoveAll()` work; sunlight BREAKAGES entry 54) | DONE |
 
 **P0 (DONE).** This document and [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -160,6 +162,32 @@ Lua side as a new item, B1 (below). This item is only the re-pin. In sunlight:
 - No CARAVELLIUS_BREAKAGES entry: nothing changes for a game that uses no blend mode, and
   Caravellius cannot use one before B1 exists. No real-window check either, for the same
   reason.
+
+**P6 (DONE, 2026-10-24).** Re-pin to sunlight's I5, the fix for the CollisionManager bug
+found in D3 and reported on the owner's request (sunlight PR #223, BREAKAGES entry 54). Checking
+the report, sunlight found two more of the same class and fixed all four:
+`AddColliderToColliderRule`'s duplicate search indexed the layer array with both ids before any
+check; its bounds check tested the first id twice (`(1, 300)` and `(1, -1)` were accepted, and
+the next `Update()` crashed); `Clear()` destroyed every layer's list, so the next add/remove/update
+dereferenced null; `RemoveAll()`'s default `-1` ("every layer") cleared nothing. Every method
+taking a layer id now checks `0 <= id < MAX_COLLIDER_LAYERS` first. Nothing to do for Scarab or
+Caravellius: valid ids behave as before, D3 already refuses ids outside `0..254`, and neither
+calls `Clear()` or `RemoveAll()`. Scarab keeps its own range checks (the owner's question,
+answered 2026-10-24): they give the precise `"argument 'x' must be between 0 and 254"` instead of
+a plain refusal that would read like "already declared", and use sunlight's public
+`MAX_COLLIDER_LAYERS`; only their comments changed.
+- `SCARAB_SUNLIGHT_REF` `fa953f38cb22508247b528c8234ad2bb0f4293e8`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@fa953f3`. Verified: on
+  `origin/feat/master_plan`, two commits after `f651acc` (the I4 pin record, docs only, and the
+  fix; 2 files in `src/collision/`, no API change).
+- Checks: real fetch exact (`build/_deps/sunlight-src` at `fa953f3`), clean build, `--version`
+  shows `feat/master_plan@fa953f3`; every smoke test (error reporting, renderer API, camera
+  boundary, blend API, tilemap layer, input constants, font API, headless incl. the budget run,
+  tileset archive plain and encrypted), the docs generator and all 18 samples pass; Caravellius'
+  acceptance PASS and its reference state fingerprint (`hash=33897632`).
+- Local note: the local build's content key was lost when `build/` was deleted for the clean
+  fetch; the owner chose to reuse Caravellius' local key for Scarab's local build (CI uses its own
+  secret, unaffected).
 
 ## Phase D: design items
 
@@ -302,7 +330,8 @@ argument checks; (6) one PR, reviewed "by average".
   `TEXTURE_ANIMATION_MODE_*` arguments must be one of their constants (a misspelt constant name
   is `nil` in Lua and is now reported); tilemap layer opacity keeps V3's clamping. `tools/pack.lua`
   reads the new results. `set_timer`'s background callback now prints and pops its Lua error.
-- **Found on the way: a sunlight bug** (not reported yet, the owner decides): in
+- **Found on the way: a sunlight bug** (reported to sunlight on the owner's request, fixed there
+  as I5 and pinned in P6 - see below): in
   `CollisionManager::AddColliderToColliderRule` (`collisionmanager.cpp`), the `find_if` lambda
   indexes `m_ColliderLayerList[id]` (a `std::array` of `MAX_COLLIDER_LAYERS` = 255) BEFORE any
   bounds check, and the check that follows tests the FIRST id twice and never the second, so

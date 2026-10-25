@@ -77,7 +77,7 @@ namespace Scarab  {
             /**
              * @brief Read a layer id argument: sunlight keeps a sprite's collider in a fixed array
              * of MAX_COLLIDER_LAYERS lists, so a layer id outside 0..MAX_COLLIDER_LAYERS-1 can't
-             * hold a sprite.
+             * hold a sprite - checked here so a script gets that reason, not a plain refusal.
              */
             static bool ReadLayerIdArg( lua_State *pLuaState, int nIndex, int &nLayerId, std :: string &strError )  {
 
