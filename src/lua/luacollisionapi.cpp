@@ -29,8 +29,10 @@ namespace Scarab  {
 
             /**
              * @brief Read a collision layer id: sunlight keeps one collider list per id in a fixed
-             * array of MAX_COLLIDER_LAYERS, and indexes it before checking the id, so an id
-             * outside it must never reach CollisionManager.
+             * array of MAX_COLLIDER_LAYERS. CollisionManager refuses an id outside it since sunlight's
+             * I5 (before, it read past the array); checked here too so a script gets the reason
+             * ("argument 'layerB' must be between 0 and 254") rather than a plain refusal that reads
+             * like "the rule is already declared".
              */
             static bool ReadCollisionLayerArg( lua_State *pLuaState, int nIndex, const char *szName, int &nLayerId, std :: string &strError )  {
 
