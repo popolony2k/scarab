@@ -10,3 +10,13 @@ What is in it (60x40 tiles of 32 px, object layers only, no tile layers):
 - a **text object** label beside each one, in font family `"Sans"`, plus a yellow title. Text objects draw only with a font registered for their family (`register_font`), else `??????`.
 
 Used in [samples/objects](../../../samples/objects/docs/README.md).
+
+## opacity.tmx
+
+A map made to show **per-object opacity**, from sunlight's own [`opacity` sample](https://github.com/popolony2k/sunlight/tree/feat/master_plan/samples/opacity) at commit `f651acc`, with the same single change (the tileset path, `../tileset_house.tsx`) and the same `frame` rectangle at (100, 100, 1000, 800). A Tiled object's own `opacity` custom property (a float, 0 to 1) overrides its layer's opacity for that object; and since sunlight's master plan, shape and text objects follow their layer's opacity at all (before, only tile objects did). Four rows, each labelled:
+1. five tile objects with `opacity` 1.0, 0.75, 0.5, 0.25 and 0.0 (the last one invisible);
+2. five rectangle outlines with the same values;
+3. five text objects with the same values;
+4. two tiles on a layer at opacity 0.4: one with no `opacity` property, one with `5` (outside 0..1, ignored with a warning once). Both fall back to the layer's 0.4 and look the same.
+
+Used in [samples/shapes](../../../samples/shapes/docs/README.md) (key `4`).
