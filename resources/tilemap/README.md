@@ -8,4 +8,4 @@ Used in [samples/tilemap](../../samples/tilemap/docs/README.md) (loaded via `til
 
 [shapes/](shapes/README.md) holds `shapes.tmx`, `rotation.tmx` and `thick.tmx`, maps made for shape, rotated and point objects (from sunlight's own `shapes` sample). Used in [samples/shapes](../../samples/shapes/docs/README.md).
 
-[objects/](objects/README.md) holds `objects.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).
+[objects/](objects/README.md) holds `objects.tmx` and `opacity.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).

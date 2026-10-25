@@ -336,7 +336,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | DONE |
 | V5 | Tile/text/point objects now drawn where they were invisible before (entries 8, 11, 17) | DONE |
 | V6 | Rotated shape/tile/text objects (entries 18-20) | DONE |
-| V7 | Shape/text object opacity now respects layer opacity (entry 36) | TODO |
+| V7 | Shape/text object opacity now respects layer opacity (entry 36) | DONE |
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | TODO |
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47) | TODO |
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | TODO |
@@ -665,7 +665,26 @@ methods only concern implementers, and Scarab implements neither.
 - **The point objects V5 deferred** are covered by map 3.
 - `doc/CARAVELLIUS_BREAKAGES.md` entry 8.
 
-**V7-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
+**V7 (DONE, 2026-10-24).** sunlight entry 36 (L2): a Tiled object's own `opacity` custom
+property (0 to 1) overrides its layer's opacity, and shape and text objects follow layer opacity at
+all (before, only tile objects did; shapes and text were always drawn at their colour's own alpha).
+- **Audit:** no object layer below opacity 1.0 and no object `opacity` property in any Scarab map
+  or in Caravellius' `corsair.tmx`/`cover.tmx`, so nothing changes on screen for either.
+- **Decisions (the owner):** the map goes to `resources/tilemap/objects/opacity.tmx` (next to
+  `objects.tmx`, same `../tileset_house.tsx` path); it is key `4` of `samples/shapes`, the
+  extensible map switcher V6 built; no automated test (a headless run can't see opacity; that
+  the map loads is checked), the owner's window check instead.
+- **Built:** `opacity.tmx` from sunlight's `samples/opacity` at `f651acc` (tileset and image
+  byte-identical to Scarab's; only the tileset path changed, noted in the map and the objects
+  README). `samples/shapes` gained per-map starting cameras (map 4 starts at (100, 100), where its
+  frame is, as in sunlight's sample; `Home` returns to the current map's start). Docs: the objects
+  README, `resources/tilemap/README.md`, the shapes sample README and `samples/README.md`.
+- **The owner's real-window check (2026-10-24, screenshot):** tile objects, rectangle outlines and
+  text each fade 1.0 / 0.75 / 0.5 / 0.25 with the 0.0 one invisible; the two row-4 tiles (no
+  property, invalid `5`) look the same at the layer's 0.4; labels in Caravellius 8x8, no `??????`.
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 10.
+
+**V8-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
 unaffected or adjusted, not assumed from the BREAKAGES table alone.
 

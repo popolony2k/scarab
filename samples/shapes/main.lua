@@ -22,7 +22,8 @@
  shapes - Tiled shape objects (rectangle, ellipse, polyline, polygon),
  rotated objects and point objects (master plan item V6), on three maps made
  for them (resources/tilemap/shapes/, from sunlight's own samples/shapes - see
- resources/tilemap/shapes/README.md). Keys 1, 2 and 3 switch maps:
+ resources/tilemap/shapes/README.md), plus one for per-object opacity. Keys 1 to 4
+ switch maps:
 
    1. shapes.tmx   - the four shapes, and how the viewport clips them;
    2. rotation.tmx - shapes, tile objects and text objects with a Tiled
@@ -30,7 +31,13 @@
                      point (the small square marked "pivot"). Before sunlight's
                      master plan the rotation was ignored;
    3. thick.tmx    - outlines with a line_width property and point objects
-                     with a point_size; both scale with the zoom.
+                     with a point_size; both scale with the zoom;
+   4. opacity.tmx  - per-object opacity (master plan item V7, from
+                     resources/tilemap/objects/): tile, shape and text objects
+                     fading out, an object's own "opacity" property overriding
+                     its layer's. Before sunlight's master plan, shape and text
+                     objects ignored opacity altogether. Its frame starts at
+                     (100, 100), so this map starts the camera there.
 
  Switching loads another map over the one already loaded (tilemap_load_map
  again), which sunlight no longer leaks (master plan item V10). The maps'
@@ -41,15 +48,18 @@
 
 -- The layout sunlight's sample uses: a 1000 x 800 viewport at (40, 40),
 -- zoom 1.0, the camera at the map's origin.
-local VIEWPORT     = { x = 40, y = 40, w = 1000, h = 800 }
-local START_CAMERA = { x = 0, y = 0 }
-local SCROLL_STEP  = 4    -- map pixels per frame while an arrow key is held
+local VIEWPORT      = { x = 40, y = 40, w = 1000, h = 800 }
+local ORIGIN_CAMERA = { x = 0, y = 0 }
+local FRAME_CAMERA  = { x = 100, y = 100 }   -- where opacity.tmx's frame rectangle starts
+local SCROLL_STEP   = 4    -- map pixels per frame while an arrow key is held
 
-local MAP_DIR = "resources/tilemap/shapes/"
+local SHAPES_DIR  = "resources/tilemap/shapes/"
+local OBJECTS_DIR = "resources/tilemap/objects/"
 local MAPS = {
-    { key = KEY_ONE,   file = "shapes.tmx",   title = "1 shapes: the four shapes, clipped by the viewport" },
-    { key = KEY_TWO,   file = "rotation.tmx", title = "2 rotation: each object turned about its pivot" },
-    { key = KEY_THREE, file = "thick.tmx",    title = "3 thick: line widths and points, scaled by zoom" },
+    { key = KEY_ONE,   file = SHAPES_DIR .. "shapes.tmx",    camera = ORIGIN_CAMERA, title = "1 shapes: the four shapes, clipped by the viewport" },
+    { key = KEY_TWO,   file = SHAPES_DIR .. "rotation.tmx",  camera = ORIGIN_CAMERA, title = "2 rotation: each object turned about its pivot" },
+    { key = KEY_THREE, file = SHAPES_DIR .. "thick.tmx",     camera = ORIGIN_CAMERA, title = "3 thick: line widths and points, scaled by zoom" },
+    { key = KEY_FOUR,  file = OBJECTS_DIR .. "opacity.tmx",  camera = FRAME_CAMERA,  title = "4 opacity: an object's own opacity, else its layer's" },
 }
 
 local renderer, err = renderer_create{
@@ -72,9 +82,9 @@ assert( register_font( "Sans", sans ) )
 local current
 
 local function show_map( entry )
-    assert( tilemap_load_map( MAP_DIR .. entry.file, MAP_ALIGNMENT_TOP_LEFT ) )
+    assert( tilemap_load_map( entry.file, MAP_ALIGNMENT_TOP_LEFT ) )
     zoom_reset()
-    camera_set_position( START_CAMERA.x, START_CAMERA.y )
+    camera_set_position( entry.camera.x, entry.camera.y )
     current = entry
 end
 
@@ -126,13 +136,13 @@ function on_update( dt )
 
     if input_is_key_released( KEY_HOME ) then
         zoom_reset()
-        camera_set_position( START_CAMERA.x, START_CAMERA.y )
+        camera_set_position( current.camera.x, current.camera.y )
     end
 
     local camX, camY = camera_get_position()
 
     draw_hud_line( current.title, HUD_X, HUD_Y, 255, 255, 255 )
-    draw_hud_line( string.format( "camera %d, %d   zoom %.2f   keys 1, 2, 3 switch maps", camX, camY, viewport_get_zoom_factor() ),
+    draw_hud_line( string.format( "camera %d, %d   zoom %.2f   keys 1-4 switch maps", camX, camY, viewport_get_zoom_factor() ),
         HUD_X, HUD_Y + HUD_LINE, 200, 200, 200 )
     draw_hud_line( "arrows/WASD pan   PageUp/PageDown or +/- zoom   = reset zoom   Home reset", HUD_X, HUD_Y + 2 * HUD_LINE, 200, 200, 200 )
 end
