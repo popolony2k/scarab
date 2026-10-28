@@ -367,7 +367,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V6 | Rotated shape/tile/text objects (entries 18-20) | DONE |
 | V7 | Shape/text object opacity now respects layer opacity (entry 36) | DONE |
 | V8a | Scarab drew every sprite a second time each frame (`SpritePool::UpdateAll`), over the whole frame: layer visibility, layer order and view layer masks never applied to sprites (found in V8) | DONE |
-| V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | IN PROGRESS |
+| V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | DONE |
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47) | TODO |
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | TODO |
 | V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
@@ -740,7 +740,30 @@ and every sprite was drawn above the map layers meant to cover it.
 - `CLAUDE.md`'s layer-visibility gotcha corrected (it was only true for drawing since this fix);
   `doc/CARAVELLIUS_BREAKAGES.md` entry 11.
 
-**V8-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
+**V8 (DONE, 2026-10-27).** sunlight entry 39 (M2): a sprite added with `AddSprite` while
+no map is loaded is now drawn (before: accepted, collider updated, never drawn); with no map, the
+layer ids draw in ascending order and a view's layer mask hides them by id; `Stop()`/the destructor
+now also release sprites registered with no map (they leaked). With a map loaded nothing changes.
+- **Audit:** every Scarab sample and test script loads its map before adding a sprite. Caravellius:
+  a temporary trace (never committed) printing every `sprite_add_to_layer` with no map loaded counted
+  ZERO over its acceptance and state fingerprint runs (both still the reference); the same trace
+  fired on a 5-line script that adds a sprite before any map, so the zero is real. Not covered:
+  code reached only by player input.
+- **Decisions (the owner):** a new `samples/mapless`; the runtime audit as above; a breakage entry
+  either way.
+- **Built:** `samples/mapless` (no map: shadow, Sunny and glow on layer ids 1-3, Sunny moved with the
+  arrows, `1`/`2`/`3` toggle each layer through `view_show_layer`, the shared zoom keys, a four-line
+  HUD on plates), its README, `samples/README.md` and both VSCode pickers. Docs: `CLAUDE.md`'s
+  "sprite setup before the map loads" gotcha (a sprite added early is now drawn over an empty
+  background), `samples/sprite`'s header comment, and `sprite_add_to_layer`'s `@luadoc`.
+- **Found while building it:** the layer keys changed the mask but hid nothing - Scarab drew every
+  sprite a second time (V8a, fixed and merged first).
+- **The owner's real-window check (2026-10-27, screenshots, after V8a):** all three sprites draw with
+  no map, Sunny over the shadow and under the glow, each key hides its sprite and the HUD matches,
+  all off leaves only the HUD, zoom scales everything.
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 12.
+
+**V9-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
 unaffected or adjusted, not assumed from the BREAKAGES table alone.
 

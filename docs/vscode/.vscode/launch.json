@@ -38,6 +38,7 @@
                 "samples/views/project.json",
                 "samples/blend/project.json",
                 "samples/objects/project.json",
+                "samples/mapless/project.json",
                 "samples/shapes/project.json",
                 "samples/scripting/project.json",
                 "samples/sound/project.json",

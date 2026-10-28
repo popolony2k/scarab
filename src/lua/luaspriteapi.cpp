@@ -822,7 +822,10 @@ namespace Scarab  {
              * Fails for an invalid handle, for a layer id that isn't a layer of
              * the loaded map (`"layer N is not a layer of the loaded map"` —
              * before, that silently drew nothing), and for a sprite already on
-             * that layer. With no map loaded yet any layer id is accepted.
+             * that layer. With no map loaded yet any layer id is accepted, and
+             * the sprite is drawn right away: without a map a layer id is a
+             * grouping key, drawn in ascending id order, that a view's layer
+             * mask hides by id (`samples/mapless`).
              * Layer ids are integers from `0` to `254`.
              * `sprite_remove_from_layer` fails when the sprite isn't on that
              * layer.
