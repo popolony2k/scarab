@@ -448,7 +448,13 @@ namespace Scarab  {
             CheckSpritesQueueEmpty();
             RunScriptMachine();
 
-            m_SpritePool.UpdateAll();
+            /*
+             * No per-frame sprite update here: sunlight's own layer pass advances and draws every
+             * sprite added to a layer, in its layer's place and honouring the layer's visibility and
+             * each view's layer mask. A second Update() of every pool sprite here (SpritePool::UpdateAll,
+             * removed in doc/MASTER_PLAN.md item V8a) drew them all again on top of the whole frame,
+             * so hiding a layer never hid its sprites.
+             */
             m_LuaEngine.CallOnUpdate( __FRAME_DELTA_MILLI );
         }
 
