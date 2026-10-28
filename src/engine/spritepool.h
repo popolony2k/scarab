@@ -111,7 +111,6 @@ namespace Scarab  {
             SunLight :: Canvas :: TextureCanvas* GetOrCreateTexture( SpriteHandle handle, int nSequenceId );
             int GetOrCacheNativeWidth( SpriteHandle handle, int nSequenceId, int nCurrentWidth );
             int GetOrCacheNativeHeight( SpriteHandle handle, int nSequenceId, int nCurrentHeight );
-            void UpdateAll( void );
             void Clear( void );
         };
     }

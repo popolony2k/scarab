@@ -366,7 +366,8 @@ argument checks; (6) one PR, reviewed "by average".
 | V5 | Tile/text/point objects now drawn where they were invisible before (entries 8, 11, 17) | DONE |
 | V6 | Rotated shape/tile/text objects (entries 18-20) | DONE |
 | V7 | Shape/text object opacity now respects layer opacity (entry 36) | DONE |
-| V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | TODO |
+| V8a | Scarab drew every sprite a second time each frame (`SpritePool::UpdateAll`), over the whole frame: layer visibility, layer order and view layer masks never applied to sprites (found in V8) | DONE |
+| V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | IN PROGRESS |
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47) | TODO |
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | TODO |
 | V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
@@ -712,6 +713,32 @@ all (before, only tile objects did; shapes and text were always drawn at their c
   text each fade 1.0 / 0.75 / 0.5 / 0.25 with the 0.0 one invisible; the two row-4 tiles (no
   property, invalid `5`) look the same at the layer's 0.4; labels in Caravellius 8x8, no `??????`.
 - `doc/CARAVELLIUS_BREAKAGES.md` entry 10.
+
+**V8a (DONE, 2026-10-27).** Found while building V8's `samples/mapless`: its layer keys
+changed the view's layer mask (`view_is_layer_shown` read it back) but nothing disappeared. sunlight
+was right (`DrawPassContent` checks the active view's mask, also for mapless layers); Scarab was the
+cause. `EngineHost::RunStageStateHandler` called `SpritePool::UpdateAll()` every frame: a second
+`Sprite::Update()` (`Advance()` + `Draw()`) of every live pool sprite, AFTER sunlight's layer pass
+had already advanced and drawn each one, on top of the whole frame and with no layer or mask check.
+It predates the Scarab/Caravellius split. So hiding a layer (`tilemap_set_layer(id, false, ...)`,
+an authored `visible="0"`) never hid its sprites, a view's layer mask never hid them in that view,
+and every sprite was drawn above the map layers meant to cover it.
+- **Measured before deciding (the owner's request):** with the call removed, `samples/mapless`' layer
+  keys really hide sprites (owner's window check); animation pace unchanged (a temporary probe, never
+  committed, counted a 4-frame `AUTOMATIC_RIGHT_LEFT` sprite's tile changes over 600 headless
+  frames: 101 with and without the call, with and without a map - each step waits for its delay);
+  Caravellius' acceptance PASS and its state fingerprint the reference `hash=33897632` (5 runs); and
+  a sprite never added to a layer is invisible even WITH the call (owner's window check of a probe),
+  so removing it hides nothing that is visible today.
+- **Fix:** the call and `SpritePool::UpdateAll()` are removed; sunlight's layer pass is the one place
+  a sprite is advanced and drawn. A comment at the call site says why.
+- **The owner's window checks (2026-10-27, screenshots):** `samples/sprite`: Sunny (layer 4,
+  `clouds`) now goes under the `houses` roof and the `monke` layer above him; `samples/mapless`: keys
+  `1`/`2`/`3` hide and show each sprite, all off leaves only the HUD; `samples/views`: Sunny once in
+  the main view, the minimap and the close-up, `L` toggles the minimap's clouds only, `C` the close-up.
+- No automated test: it is purely drawing, which a headless run can't see.
+- `CLAUDE.md`'s layer-visibility gotcha corrected (it was only true for drawing since this fix);
+  `doc/CARAVELLIUS_BREAKAGES.md` entry 11.
 
 **V8-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either

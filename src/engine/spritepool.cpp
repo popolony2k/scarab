@@ -352,17 +352,6 @@ namespace Scarab  {
             return nCurrentHeight;
         }
 
-        /**
-         * @brief Advance the animation frame of every in-use sprite. Called once
-         * per frame by the engine so Lua never needs to remember to do it.
-         */
-        void SpritePool :: UpdateAll( void )  {
-
-            for( stSlot &slot : m_Slots )  {
-                if( slot.bInUse )
-                    slot.sprite.Update();
-            }
-        }
 
         /**
          * @brief Release every slot's textures now, while the caller still has a
