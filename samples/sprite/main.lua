@@ -28,13 +28,12 @@
  layer-visibility gotcha in root CLAUDE.md), and keyboard-driven
  sprite_set_pos/sprite_get_pos/sprite_get_size.
 
- IMPORTANT - see root CLAUDE.md's own gotcha: acquiring/positioning/
- adding a sprite to a layer from top-level (load-time) code fails
- silently if that code runs BEFORE the map is loaded. This script is
- safe specifically because tilemap_load_map is called synchronously,
- first, and every sprite call below runs strictly after it in the same
- top-level script - not because top-level sprite setup is safe in
- general.
+ IMPORTANT - see root CLAUDE.md's own gotcha: a sprite added to a layer
+ before the map is loaded is drawn right away, over an empty background,
+ until the map appears (samples/mapless draws sprites with no map at
+ all). This script loads its map first: tilemap_load_map is called
+ synchronously, and every sprite call below runs strictly after it in
+ the same top-level script.
 ]]
 
 app_set_name( "Scarab - sprite sample" )
