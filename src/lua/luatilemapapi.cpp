@@ -182,6 +182,16 @@ namespace Scarab  {
              * @luaname{tilemap_unload_map() -> true | nil, message}
              * @luadoc
              * Unload the current map. Fails with `"no map is loaded"`.
+             *
+             * **Every sprite on a layer is unloaded with it**: its textures are
+             * released, it has no active sequence (`sprite_get_active_sequence`
+             * returns `-1`), it is on no layer and its collider is taken out, so it
+             * never collides while unloaded. Its handle stays valid: to use it
+             * after the next `tilemap_load_map`, call `sprite_configure_texture`,
+             * `sprite_set_active_sequence` and `sprite_add_to_layer` again (it
+             * then collides once per frame, as before). The collision rules
+             * (`collision_add_rule`) are kept. Loading a map over a loaded one
+             * (`tilemap_load_map` again) does NOT unload sprites.
              */
             int LuaTilemapApi :: UnloadMap( lua_State *pLuaState )  {
 

@@ -244,3 +244,17 @@ jobs:
         run: |
           python scripts/error_reporting_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "error reporting smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_unload_map unloads every sprite on a layer and takes their colliders out: no
+      # collision while the map is unloaded, exactly one per frame after the sprites are added
+      # again (doc/MASTER_PLAN.md item V9) - see the script's own header.
+      - name: Unload map smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/unload_map_smoke.py build/scarab
+
+      - name: Unload map smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/unload_map_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "unload map smoke test exited with code $LASTEXITCODE" }
