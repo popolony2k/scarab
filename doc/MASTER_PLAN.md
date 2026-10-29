@@ -26,8 +26,9 @@ pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
 `a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing), in
 P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6 to
 `9c8c6bf421a1147d1e8c099e698dfbe7c1885af2` (fonts by handle), in V6 to
-`f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path), and in
-P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id checks).
+`f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path), in
+P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id checks), and in
+V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' colliders out).
 
 ## Phase P: pin & plumbing
 
@@ -368,7 +369,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V7 | Shape/text object opacity now respects layer opacity (entry 36) | DONE |
 | V8a | Scarab drew every sprite a second time each frame (`SpritePool::UpdateAll`), over the whole frame: layer visibility, layer order and view layer masks never applied to sprites (found in V8) | DONE |
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | DONE |
-| V9 | `Sprite::Unload()` leaves no active sequence (entry 47) | TODO |
+| V9 | `Sprite::Unload()` leaves no active sequence (entry 47); re-pin to `a6ac4f6` (I6, entry 55) | DONE |
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | TODO |
 | V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
 | V12 | A tile object resized away from its own tile's size now takes its object layer's tint (entry 45) | TODO |
@@ -763,7 +764,41 @@ now also release sprites registered with no map (they leaked). With a map loaded
   all off leaves only the HUD, zoom scales everything.
 - `doc/CARAVELLIUS_BREAKAGES.md` entry 12.
 
-**V9-V10.** Scope as stated in each row; each closes with a check against Scarab's actual
+**V9 (DONE, 2026-10-29).** sunlight entry 47: `Sprite::Unload()` leaves no active sequence
+(before, the active sequence stayed marked valid over freed memory), and `UnloadMap()`/`Stop()`
+unload every sprite registered on a layer. Loading a map over a loaded one does not.
+- **Audit:** neither Scarab's samples and scripts nor Caravellius call `tilemap_unload_map` (the only
+  call is D3's error test, with no map loaded). A reconfigure after an unload works: `Sprite::Unload`
+  empties the sequences, so `sprite_configure_texture` takes its "add" path, and
+  `sprite_set_active_sequence` returns `nil, "sequence N is not configured"` until then.
+- **Found: a sunlight bug.** `UnloadMap` unloaded and unregistered the sprites but left their
+  colliders in the `CollisionManager`. Measured on the `fa953f3` pin (a temporary headless script, two
+  overlapping sprites on layers 2 and 3 of `test.tmx`, a rule between them, collision calls per 60
+  frames): map loaded 60; map unloaded **60** (unloaded sprites kept colliding); map loaded again and
+  sprites re-added **240** (each collider registered twice). The published v0.1.25 segfaulted
+  (exit 139) on the frame after the unload. Reported to sunlight on the owner's request; fixed there
+  as I6 (PR #225, BREAKAGES 55): `UnloadSprites()` removes each unloaded sprite's own collider, for
+  `UnloadMap`, `Stop()` and the destructor; a collider the game added itself and the collision rules
+  are kept.
+- **Re-pin (inside V9, the owner's choice):** `SCARAB_SUNLIGHT_REF`
+  `a6ac4f6bea9973795c1668dd8eabfc67defc03c1`, `SCARAB_SUNLIGHT_DISPLAY_VERSION`
+  `feat/master_plan@a6ac4f6`. Verified on `origin/feat/master_plan`, two commits after `fa953f3`
+  (the I5 pin record, docs only, and the fix; 3 files in `src/`, no public API change).
+  Reconfigured in place (not a clean `build/`), fetch exact.
+- **Checks:** clean build, `--version` shows `feat/master_plan@a6ac4f6`; every smoke test (incl. the
+  new one), the headless test and its budget run, the tileset archive test (plain and encrypted),
+  the docs generator and all 19 samples pass; Caravellius' acceptance PASS and its reference state
+  fingerprint (`hash=33897632`, 3 runs).
+- **Regression test:** `scripts/unload_map_smoke.py` (+ `scripts/unload_map_smoke/`, ci.yml on all 4
+  platforms): the same scenario, expecting exactly 60 / 0 / 60, `-1` as the active sequence after the
+  unload and `set_active_sequence` refused until reconfigured. Passes at `a6ac4f6`; the measurement
+  above is what it rejects at `fa953f3`; the published v0.1.25 crashes on it (exit -11).
+- **Docs:** `tilemap_unload_map`'s `@luadoc` (every sprite on a layer is unloaded and taken out of
+  collisions; set it up again after the next map; the rules stay; a map loaded over a map unloads
+  nothing). No window check: collisions and sequence state are counted headless.
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 13.
+
+**V10.** Scope as stated in each row; each closes with a check against Scarab's actual
 `resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
 unaffected or adjusted, not assumed from the BREAKAGES table alone.
 
