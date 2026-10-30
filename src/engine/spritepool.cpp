@@ -19,6 +19,11 @@
  */
 
 #include "engine/spritepool.h"
+#include <climits>
+
+/** A sprite's opacity and tint as sunlight creates it - what Release() puts back. */
+#define __SPRITE_OPAQUE   1.0f
+#define __SPRITE_NO_TINT  SunLight :: Base :: stColor { UCHAR_MAX, UCHAR_MAX, UCHAR_MAX, UCHAR_MAX }
 
 
 namespace Scarab  {
@@ -206,6 +211,8 @@ namespace Scarab  {
             slot.sprite.SetVisible( false );
             slot.sprite.SetWorldSpace( false );   // a recycled handle must not inherit the previous owner's coordinate space
             slot.sprite.ClearBlendMode();         // ... nor its blend mode (doc/MASTER_PLAN.md item B1)
+            slot.sprite.SetOpacity( __SPRITE_OPAQUE );    // ... nor its opacity or tint (item P8)
+            slot.sprite.SetTint( __SPRITE_NO_TINT );
             slot.nGeneration++;
 
             m_FreeListsByType[slot.strTypeTag].push_back( ( uint32_t ) nIndex );

@@ -26,7 +26,10 @@
  pattern), sprite_configure_texture (a 4-frame auto-animating strip),
  sprite_add_to_layer (required before a sprite draws at all - see the
  layer-visibility gotcha in root CLAUDE.md), and keyboard-driven
- sprite_set_pos/sprite_get_pos/sprite_get_size.
+ sprite_set_pos/sprite_get_pos/sprite_get_size, and a sprite's own
+ opacity and tint (sprite_set_opacity/sprite_set_tint, keys O and T) - a
+ second, untouched Sunny on the same texture shows they are the sprite's
+ own, not its texture's.
 
  IMPORTANT - see root CLAUDE.md's own gotcha: a sprite added to a layer
  before the map is loaded is drawn right away, over an empty background,
@@ -47,9 +50,10 @@ tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER )
 -- "sunny" is sunlight's own sample character (resources/sprites/, shared
 -- from sunlight/samples/sprite/ - see resources/sprites/README.md), a
 -- 128x32 strip of four 32x32 frames.
-pool_register_type( "sunny", 1 )
+pool_register_type( "sunny", 2 )
 
 local handle = sprite_acquire( "sunny" )
+local twin   = sprite_acquire( "sunny" )   -- the same texture, never faded or tinted
 
 -- The last argument is the frame delay in ms: WITHOUT it (the default, -1) the frame is held and sunny never animates.
 sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
@@ -65,12 +69,45 @@ sprite_set_pos( handle, 100, 100 )
 -- all, regardless of sprite_set_visible (see root CLAUDE.md).
 sprite_add_to_layer( handle, 4 )
 
+sprite_configure_texture( twin, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
+sprite_set_active_sequence( twin, 0 )
+sprite_set_world_space( twin, true )
+sprite_set_pos( twin, 52, 100 )    -- left of sunny, over the open clouds (to its right the house covers it)
+sprite_add_to_layer( twin, 4 )
+
+-- O cycles sunny's opacity (0 transparent .. 1 opaque), T its tint (r, g, b
+-- multiply into the frame: white = none, a red hit flash, a blue team colour).
+local OPACITIES = { 1, 0.5, 0.25, 0 }
+local TINTS     = {
+    { name = "none (white)",    r = 255, g = 255, b = 255 },
+    { name = "red hit flash",   r = 255, g = 80,  b = 80 },
+    { name = "blue team",       r = 120, g = 160, b = 255 },
+}
+local opacityIndex = 1
+local tintIndex    = 1
+
 local __SPEED = 3  -- pixels/frame, fine for a short demo - see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
 
--- Dark text: the map behind the text is mostly white clouds and light sky,
--- so white/light-grey text can't be read over it.
-local TITLE_COLOR = { r = 20, g = 20, b = 20, a = 255 }
-local INFO_COLOR  = { r = 50, g = 50, b = 70, a = 255 }
+-- The HUD's font: Caravellius 8x8, loaded once (the built-in font is hard to read at these sizes).
+local hudFont = assert( load_font( "resources/fonts/caravellius8x8.fnt" ) )
+
+local HUD_SIZE      = 16
+local HUD_LINE      = 28    -- pixels between two HUD lines
+local PLATE_PADDING = 4     -- pixels around a line of text on its plate
+local PLATE_ALPHA   = 170   -- the plate's opacity, 0..255
+
+local TITLE_COLOR = { r = 255, g = 255, b = 255 }
+local INFO_COLOR  = { r = 255, g = 220, b = 120 }
+
+-- A line of text on a dark translucent plate: the text crosses the white
+-- clouds of the map, where light text alone can't be read.
+local function draw_text_plate( text, line, color )
+    local y = 20 + ( line - 1 ) * HUD_LINE
+
+    draw_filled_rectangle( 20 - PLATE_PADDING, y - PLATE_PADDING,
+        measure_text( text, HUD_SIZE, hudFont ) + 2 * PLATE_PADDING, HUD_SIZE + 2 * PLATE_PADDING, 0, 0, 0, PLATE_ALPHA )
+    draw_text( text, 20, y, HUD_SIZE, color.r, color.g, color.b, 255, hudFont )
+end
 
 local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
 local mapPixelWidth  = mapWidth * tileWidth
@@ -98,6 +135,17 @@ local function follow( x, y, width, height )
 end
 
 function on_update( dt )
+
+    if input_is_key_released( KEY_O ) then
+        opacityIndex = opacityIndex % #OPACITIES + 1
+        sprite_set_opacity( handle, OPACITIES[opacityIndex] )
+    end
+
+    if input_is_key_released( KEY_T ) then
+        tintIndex = tintIndex % #TINTS + 1
+        local tint = TINTS[tintIndex]
+        sprite_set_tint( handle, tint.r, tint.g, tint.b )
+    end
 
     local x, y = sprite_get_pos( handle )
 
@@ -127,9 +175,12 @@ function on_update( dt )
 
     local cameraX, cameraY = follow( x, y, width, height )
 
-    draw_text( "sprite sample - arrows/WASD to move, the camera follows", 20, 20, 20, TITLE_COLOR.r, TITLE_COLOR.g, TITLE_COLOR.b, TITLE_COLOR.a )
-    draw_text( "sprite_get_pos: " .. x .. ", " .. y .. "   sprite_get_size: " .. width .. "x" .. height,
-        20, 50, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
-    draw_text( "camera_get_position: " .. cameraX .. ", " .. cameraY,
-        20, 72, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
+    local r, g, b = sprite_get_tint( handle )
+
+    draw_text_plate( "sprite sample - arrows/WASD move, the camera follows", 1, TITLE_COLOR )
+    draw_text_plate( "O opacity, T tint - the twin on the left stays as it is", 2, TITLE_COLOR )
+    draw_text_plate( "sprite_get_pos: " .. x .. ", " .. y .. "   sprite_get_size: " .. width .. "x" .. height, 3, INFO_COLOR )
+    draw_text_plate( "camera_get_position: " .. cameraX .. ", " .. cameraY, 4, INFO_COLOR )
+    draw_text_plate( string.format( "sprite_get_opacity: %g", sprite_get_opacity( handle ) ), 5, INFO_COLOR )
+    draw_text_plate( string.format( "sprite_get_tint: %d, %d, %d (%s)", r, g, b, TINTS[tintIndex].name ), 6, INFO_COLOR )
 end
