@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.8" orientation="orthogonal" width="20" height="20" tilewidth="32" tileheight="32">
+ <!-- Deliberately malformed (unclosed tags): scripts/load_map_smoke loads it to check that a map that fails to parse leaves the loaded map loaded. -->
+ <layer id="1" name="broken" width="20" height="20">
