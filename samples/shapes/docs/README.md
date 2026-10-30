@@ -16,7 +16,7 @@ From the repo root:
 | --- | --- |
 | `1` / `2` / `3` / `4` / `5` | Show `shapes.tmx` / `rotation.tmx` / `thick.tmx` / `opacity.tmx` / `tint.tmx` |
 | `T` (map 5) | Cycle layer 2's tint at runtime (`tilemap_set_layer_tint`): yellow, green, white, cyan |
-| `G` (map 5) | Step the group's opacity at runtime (`tilemap_set_layer`): 255, 64, 153 |
+| `G` (map 5) | Step the group's opacity at runtime (`tilemap_set_layer`): 1, 0.25, 0.6 |
 | `Arrow keys` / `WASD` (held) | Pan the camera (same direction as [camera](../../camera/docs/README.md)) |
 | `Page Up` / `Page Down`, or `+` / `-` (held, main keyboard or keypad) | Zoom in/out |
 | `=` (main keyboard or keypad) | Reset the zoom |

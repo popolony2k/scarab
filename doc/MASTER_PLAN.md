@@ -30,7 +30,8 @@ P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6
 P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id checks), and in
 V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' colliders out), and in
 V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile picking in map space), and in
-V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, group tint and opacity).
+V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, group tint and opacity), and
+in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1 float, exact round trips).
 
 ## Phase P: pin & plumbing
 
@@ -43,6 +44,7 @@ V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, gr
 | P4 | Re-pin to `a63fec6811ba28fb46a94015d05b852393016692` (sunlight's I1 fix: semi-transparent drawing no longer darker; sunlight BREAKAGES entry 50) | DONE |
 | P5 | Re-pin to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's I2: blend modes; sunlight BREAKAGES entry 51) | DONE |
 | P6 | Re-pin to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (sunlight's I5: CollisionManager checks every layer id, `Clear()`/`RemoveAll()` work; sunlight BREAKAGES entry 54) | DONE |
+| P7 | Re-pin to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (sunlight's I9: layer opacity is a 0..1 float with exact round trips, `SetScreenFade` clamped; sunlight BREAKAGES entry 58) and move Lua's layer opacity to 0..1 | DONE |
 
 **P0 (DONE).** This document and [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -191,6 +193,38 @@ a plain refusal that would read like "already declared", and use sunlight's publ
 - Local note: the local build's content key was lost when `build/` was deleted for the clean
   fetch; the owner chose to reuse Caravellius' local key for Scarab's local build (CI uses its own
   secret, unaffected).
+
+**P7 (DONE, 2026-10-30).** sunlight I9 (PR #231, BREAKAGES 58, BREAKING), found by sunlight
+after V12 and sent on its owner's go-ahead: `stLayer::nOpacity` (an int 0..255) is replaced by
+`fOpacity` (a float 0..1, as Tiled, libtmx and raylib store it). With the int, an unchanged
+`GetLayer` -> `SetLayer` moved an authored 0.5 to 128/255 = 0.502, and Scarab's `tilemap_set_layer`
+does that round trip on every call, even one that only changes visibility. `GetLayer` now reads the
+authored value exactly; `SetLayer` clamps to 0..1 and writes the opacity and parallax only when they
+changed. `SetScreenFade` clamps to 0..1 (Scarab's `screen_fade` already refuses anything else, D3).
+- **Decision (the owner): option (a)** - Lua's layer opacity moves to a number 0..1 too, in
+  `tilemap_get_layer`/`tilemap_set_layer` (and `_by_name`), rather than keeping 0..255 with a
+  conversion that would bring the 0.502 drift back. Strict 0..1 on write (outside it, or not a
+  number: `nil, "message"`, the layer unchanged), like `screen_fade` and `sound_set_volume`. It
+  reverses the unit V3 chose; V3's exactness is kept, now without rounding.
+- **Reads the shortest decimal:** sunlight's float holds an authored 0.69 as 0.6899999761...; Scarab
+  pushes the shortest decimal that converts back to the same float, so a script reads `0.69` as Tiled
+  shows it and writing it back gives the identical float (mutation-checked: pushing the raw float makes
+  the test read 0.68999999761581).
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `8842ccc831a0dc7d10f85a93fc9f978f63015b09`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@8842ccc`; verified on `origin/feat/master_plan`,
+  two commits after `4274ecb` (the I8 pin record and the fix); reconfigured in place.
+- **Tests:** `scripts/tilemap_layer_smoke` (V3's) rewritten for 0..1: the authored 0.69/0.65/1 read
+  exactly, three write-backs in a row change nothing, 0/0.25/0.3/0.5/0.65/0.69/1 round-trip exactly by
+  id and by name (0.5 is the value the int moved), 1.5/-0.1/255/"0.5" refused with the layer unchanged,
+  the other fields round-trip with it. `error_reporting_smoke`: an opacity of 255 refused.
+- **Samples:** `samples/tilemap`'s Up/Down now step the clouds layer by 0.125 (exact in binary) between
+  0 and 1, and the HUD shows "of 1" (its HUD moved to Caravellius 8x8 on three short lines, at the
+  owner's request: the built-in font was hard to read); `samples/shapes`' `G` steps the group through
+  1 / 0.25 / 0.6. The owner's window check (2026-10-30): readable HUD, the clouds layer at exactly 0.25.
+- **Docs:** `tilemap_get_layer` / `tilemap_set_layer` (`@luadoc`, example now `0.5`).
+- **Caravellius:** its `core/presentation.lua` reads a layer's opacity and passes it straight back to
+  hide the layer, so it keeps working (acceptance and fingerprint unchanged). Breakage entry 17, and
+  entry 4 (V3's 0..255) now points at it.
 
 ## Phase D: design items
 

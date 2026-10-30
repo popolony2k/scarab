@@ -118,7 +118,7 @@ local GROUP_LAYER    = 10      -- "group tinted blue, opacity 0.6"
 local TINTS          = {       -- r, g, b, a; the last one is the layer's authored tint
     { 255, 255, 128, 255 }, { 128, 255, 128, 255 }, { 255, 255, 255, 255 }, { 128, 255, 255, 255 },
 }
-local GROUP_OPACITIES = { 255, 64, 153 }   -- 0..255; 153 is the authored 0.6
+local GROUP_OPACITIES = { 1, 0.25, 0.6 }   -- 0..1; 0.6 is the authored value
 local tintIndex      = #TINTS
 local opacityIndex   = #GROUP_OPACITIES
 
@@ -187,7 +187,7 @@ function on_update( dt )
         local r, g, b = tilemap_get_layer_tint( TINTED_LAYER )
         local _, groupOpacity = tilemap_get_layer( GROUP_LAYER )
 
-        mapLine = string.format( "keys 1-5 maps   T: layer 2 tint %d,%d,%d   G: group opacity %d", r, g, b, groupOpacity )
+        mapLine = string.format( "keys 1-5 maps   T: layer 2 tint %d,%d,%d   G: group opacity %g", r, g, b, groupOpacity )
     end
 
     draw_hud_line( mapLine, HUD_X, HUD_Y + HUD_LINE, 200, 200, 200 )

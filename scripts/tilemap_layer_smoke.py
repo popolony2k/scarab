@@ -4,10 +4,11 @@ Smoke test for a tile-map layer's opacity as Lua reads and writes it
 (tilemap_get_layer / tilemap_set_layer and their _by_name forms).
 
 Runs scripts/tilemap_layer_smoke/main.lua headless once, on resources/tilemap/test.tmx:
-an opaque layer reads 255, the authored 0.69/0.65 layers read 176/166, writing a layer's
-own values back changes nothing, 0/1/128/254/255 round-trip exactly by id and by name,
-writing 255 keeps a layer visible, and out-of-range values are clamped to 0..255. See the
-Lua script's own header, and doc/MASTER_PLAN.md item V3.
+opacity is a number from 0 to 1: an opaque layer reads 1, the authored 0.69/0.65 layers read
+exactly 0.69/0.65, writing a layer's own values back changes nothing however often, values
+including 0.5 (which the old 0..255 integer moved to 0.502) round-trip exactly by id and by
+name, and a value outside 0..1 or not a number is refused. See the Lua script's own header,
+and doc/MASTER_PLAN.md items V3 and P7.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.
