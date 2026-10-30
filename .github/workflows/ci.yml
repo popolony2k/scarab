@@ -272,3 +272,17 @@ jobs:
         run: |
           python scripts/load_map_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "load map smoke test exited with code $LASTEXITCODE" }
+
+      # Sprite-vs-tile collisions and tile lookups in map space: exact collision windows (view-
+      # relative and world-space, camera offset, zoom 1 and 3.8125), the tile's map rectangle, one
+      # call per touched tile, two collision shapes, the far edge - doc/MASTER_PLAN.md item V11.
+      - name: Tile collision smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/tile_collision_smoke.py build/scarab
+
+      - name: Tile collision smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/tile_collision_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "tile collision smoke test exited with code $LASTEXITCODE" }

@@ -360,7 +360,10 @@ namespace Scarab  {
              * Look up a single tile by its row/column position on a given
              * layer. `gid` is the tile's Tiled global id (`0`
              * conventionally means "no tile here" in Tiled, same as the
-             * raw `.tmx` format). Returns `nil, "message"` if the layer or
+             * raw `.tmx` format). `x`/`y`/`width`/`height` are the tile's
+             * rectangle in **map pixels** (its cell, plus the layer's own
+             * offset), whatever the camera or the zoom - the same rectangle a
+             * tile collision reports. Returns `nil, "message"` if the layer or
              * tile position doesn't exist.
              * @luaexample
              * local gid, x, y, w, h = tilemap_get_tile(0, 0, 1)
@@ -397,13 +400,19 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{tilemap_to_tile_matrix(worldX, worldY) -> row, col | nil, message}
+             * @luaname{tilemap_to_tile_matrix(mapX, mapY) -> row, col | nil, message}
              * @luadoc
-             * Convert a world/screen pixel coordinate to a tile
-             * row/column — the inverse of the position math you'd
-             * otherwise do by hand against `tilemap_get_map_info`'s tile
-             * size. Returns `nil, "message"` if the coordinate is outside the
-             * map or no map is loaded.
+             * Convert a **map position** (map pixels, before the camera, the
+             * zoom or the viewport's origin) to a tile row/column — the inverse
+             * of the position math you'd otherwise do by hand against
+             * `tilemap_get_map_info`'s tile size. A world-space sprite's
+             * position is a map position as it is; a view-relative sprite's
+             * map position is its own plus the camera position
+             * (`camera_get_position`). Returns `nil, "message"` if the position
+             * is outside the map or no map is loaded. Up to Scarab v0.1.25 the
+             * viewport's origin and the camera were added to the position
+             * first, so the answer was shifted (by 10 px with the default
+             * viewport) and the last strip of the map counted as outside.
              * @luaexample
              * local row, col = tilemap_to_tile_matrix(100, 250)
              */
