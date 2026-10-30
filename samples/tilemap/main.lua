@@ -39,6 +39,9 @@ app_set_name( "Scarab - tilemap sample" )
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
+-- The HUD's font: Caravellius 8x8, loaded once (the built-in font is hard to read at these sizes).
+local hudFont = assert( load_font( "resources/fonts/caravellius8x8.fnt" ) )
+
 local mapLoaded = tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER )
 
 local mapWidth, mapHeight, tileWidth, tileHeight
@@ -47,12 +50,13 @@ if mapLoaded then
     mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
 end
 
--- A layer's opacity is an integer 0..255 (255 = fully opaque). The Up/Down
--- arrows raise/lower the "clouds" layer's (id 4 in test.tmx - it also holds
--- the grass islands, so the change is easy to see) by FADE_STEP per press.
+-- A layer's opacity is a number from 0 (transparent) to 1 (fully opaque), as
+-- Tiled stores it. The Up/Down arrows raise/lower the "clouds" layer's (id 4 in
+-- test.tmx - it also holds the grass islands, so the change is easy to see) by
+-- FADE_STEP per press.
 local FADE_LAYER   = 4
-local OPAQUE       = 255
-local FADE_STEP    = 15    -- divides 255 exactly: 17 steps land on both 0 and 255
+local OPAQUE       = 1
+local FADE_STEP    = 0.125  -- exact in binary: 8 steps land on both 0 and 1 with no rounding
 
 local PLATE_PADDING = 4     -- pixels around a line of text on its plate
 local PLATE_ALPHA   = 170   -- the plate's opacity, 0..255
@@ -61,8 +65,8 @@ local PLATE_ALPHA   = 170   -- the plate's opacity, 0..255
 -- clouds of the map, where light text alone can't be read.
 local function draw_text_plate( text, x, y, size, r, g, b )
     draw_filled_rectangle( x - PLATE_PADDING, y - PLATE_PADDING,
-        measure_text( text, size ) + 2 * PLATE_PADDING, size + 2 * PLATE_PADDING, 0, 0, 0, PLATE_ALPHA )
-    draw_text( text, x, y, size, r, g, b, 255 )
+        measure_text( text, size, hudFont ) + 2 * PLATE_PADDING, size + 2 * PLATE_PADDING, 0, 0, 0, PLATE_ALPHA )
+    draw_text( text, x, y, size, r, g, b, 255, hudFont )
 end
 
 function on_update( dt )
@@ -78,15 +82,15 @@ function on_update( dt )
         tilemap_set_layer( FADE_LAYER, visible, math.max( 0, math.min( opacity + delta, OPAQUE ) ), offX, offY )
     end
 
-    draw_text_plate( "tilemap sample - Up/Down change the clouds layer's opacity", 20, 20, 24, 255, 255, 255 )
+    draw_text_plate( "tilemap sample - Up/Down change the clouds layer's opacity", 20, 20, 16, 255, 255, 255 )
 
     if mapLoaded then
         local _, opacity = tilemap_get_layer( FADE_LAYER )
 
-        draw_text_plate( "tilemap_load_map succeeded - " .. mapWidth .. "x" .. mapHeight .. " tiles, "
-            .. tileWidth .. "x" .. tileHeight .. "px each (tilemap_get_map_info)", 20, 54, 20, 220, 220, 220 )
-        draw_text_plate( "clouds layer opacity: " .. tostring( opacity ) .. " of 255 (tilemap_get_layer)", 20, 82, 20, 255, 220, 120 )
+        draw_text_plate( string.format( "map: %dx%d tiles of %dx%d px (tilemap_get_map_info)", mapWidth, mapHeight, tileWidth, tileHeight ),
+            20, 48, 16, 220, 220, 220 )
+        draw_text_plate( string.format( "clouds layer opacity: %g of 1 (tilemap_get_layer)", opacity ), 20, 76, 16, 255, 220, 120 )
     else
-        draw_text_plate( "tilemap_load_map FAILED", 20, 54, 20, 255, 80, 80 )
+        draw_text_plate( "tilemap_load_map FAILED", 20, 48, 16, 255, 80, 80 )
     end
 end

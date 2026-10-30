@@ -21,6 +21,8 @@
 #include "lua/luatilemapapi.h"
 #include "lua/luaengineutil.h"
 #include <climits>
+#include <cstdio>
+#include <cstdlib>
 
 extern "C"
 {
@@ -96,24 +98,46 @@ namespace Scarab  {
                 return true;
             }
 
+            /** The most significant digits a float needs to round-trip through decimal text. */
+            static const int  FLOAT_ROUND_TRIP_DIGITS = 9;
+
+            /**
+             * @brief The shortest decimal that converts back to exactly this float, as a double - so an
+             * authored opacity of 0.69 (stored as the float 0.6899999761...) reaches Lua as 0.69, as Tiled
+             * shows it, and writing that back gives the identical float again.
+             */
+            static double ShortestDecimal( float fValue )  {
+
+                char  szBuffer[32];
+
+                for( int nDigits = 1; nDigits < FLOAT_ROUND_TRIP_DIGITS; nDigits++ )  {
+                    snprintf( szBuffer, sizeof( szBuffer ), "%.*g", nDigits, ( double ) fValue );
+
+                    if( ( float ) strtod( szBuffer, nullptr ) == fValue )
+                        return strtod( szBuffer, nullptr );
+                }
+
+                return ( double ) fValue;
+            }
+
             /**
              * @brief Read tilemap_set_layer's visible/opacity/offsetX/offsetY arguments (from
-             * index 2) into layer. The opacity is clamped to 0..255 by sunlight, so any integer
-             * is accepted.
+             * index 2) into layer. The opacity is a number from 0 (transparent) to 1 (opaque), as
+             * Tiled stores it (sunlight I9).
              */
             static bool ReadLayerValues( lua_State *pLuaState, stLayer &layer, std :: string &strError )  {
 
-                int  nOpacity = 0;
-                int  nOffsetX = 0;
-                int  nOffsetY = 0;
+                double  fOpacity = 0.0;
+                int     nOffsetX = 0;
+                int     nOffsetY = 0;
 
                 if( !LuaEngineUtil :: ReadBooleanArg( pLuaState, 2, "visible", layer.bVisible, strError ) ||
-                    !LuaEngineUtil :: ReadIntArg( pLuaState, 3, "opacity", nOpacity, strError ) ||
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 3, "opacity", 0.0, 1.0, fOpacity, strError ) ||
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 4, "offsetX", nOffsetX, strError ) ||
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 5, "offsetY", nOffsetY, strError ) )
                     return false;
 
-                layer.nOpacity = nOpacity;
+                layer.fOpacity = ( float ) fOpacity;
                 layer.offset.x = nOffsetX;
                 layer.offset.y = nOffsetY;
 
@@ -124,7 +148,7 @@ namespace Scarab  {
             static int PushLayer( lua_State *pLuaState, const stLayer &layer )  {
 
                 lua_pushboolean( pLuaState, layer.bVisible );
-                lua_pushinteger( pLuaState, layer.nOpacity );
+                lua_pushnumber( pLuaState, ShortestDecimal( layer.fOpacity ) );
                 lua_pushinteger( pLuaState, layer.offset.x );
                 lua_pushinteger( pLuaState, layer.offset.y );
 
@@ -251,10 +275,11 @@ namespace Scarab  {
              *
              * Returns the layer's `visible` flag, its `opacity` and its
              * pixel offset, or `nil, "message"` if there is no such layer. `opacity`
-             * is an integer **0..255**, where `255` is fully opaque and
-             * `0` fully transparent: the layer's Tiled opacity (0.0–1.0)
-             * times 255, rounded, so a layer authored at `0.69` reads
-             * `176`.
+             * is a **number from `0` to `1`**, `1` fully opaque and `0` fully
+             * transparent - the layer's Tiled opacity exactly as authored, so a
+             * layer authored at `0.69` reads `0.69`. (Up to Scarab v0.1.25 it read
+             * as an integer 0..255; since Scarab's V3 the integer was exact, but a
+             * read-and-write-back still moved an authored `0.5` to `0.502`.)
              * @luaexample
              * local visible, opacity, offX, offY = tilemap_get_layer(2)
              */
@@ -292,20 +317,21 @@ namespace Scarab  {
              * @luaname{tilemap_set_layer(layerId, visible, opacity, offsetX, offsetY) -> true | nil, message}
              * @luagroup{set_layer}
              * @luadoc
-             * Write a layer's `visible` flag, `opacity` (an integer
-             * **0..255**, `255` = fully opaque, as `tilemap_get_layer`
-             * reads it; a value outside 0..255 is clamped) and pixel
-             * offset. Returns `nil, "message"` if there is no such layer;
-             * `visible` must be a boolean and the other three integers.
+             * Write a layer's `visible` flag, `opacity` (a **number from `0`
+             * to `1`**, `1` = fully opaque, as `tilemap_get_layer` reads it;
+             * a value outside `0`..`1` is an error) and pixel offset. Returns
+             * `nil, "message"` if there is no such layer; `visible` must be a
+             * boolean, the offsets integers.
              *
              * It writes **all four** values, so to change one, read the
              * layer first and pass the others back unchanged — writing a
-             * layer's own values back changes nothing. Hiding a layer this
-             * way hides every sprite added to it too.
+             * layer's own values back changes nothing, exactly (its opacity,
+             * offset, tint and parallax stay as the map authored them). Hiding
+             * a layer this way hides every sprite added to it too.
              * @luaexample
-             * -- fade layer 2 to about half (128 of 255), keeping the rest as it is
+             * -- fade layer 2 to half, keeping the rest as it is
              * local visible, _, offX, offY = tilemap_get_layer(2)
-             * tilemap_set_layer(2, visible, 128, offX, offY)
+             * tilemap_set_layer(2, visible, 0.5, offX, offY)
              */
             int LuaTilemapApi :: SetLayer( lua_State *pLuaState )  {
 
