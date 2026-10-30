@@ -28,7 +28,8 @@ P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6
 `9c8c6bf421a1147d1e8c099e698dfbe7c1885af2` (fonts by handle), in V6 to
 `f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path), in
 P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id checks), and in
-V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' colliders out).
+V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' colliders out), and in
+V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile picking in map space).
 
 ## Phase P: pin & plumbing
 
@@ -371,7 +372,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | DONE |
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47); re-pin to `a6ac4f6` (I6, entry 55) | DONE |
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | DONE |
-| V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
+| V11 | The collision lookup no longer reads a wrong tile past the map's far edge (entry 4, A6); tile collisions and lookups in map space, re-pin to `4189199` (I7, entry 56); Scarab's tile handler fixed | DONE |
 | V12 | A tile object resized away from its own tile's size now takes its object layer's tint (entry 45) | TODO |
 | V13 | Tiled tile animations show each frame once per cycle (entry 44; moved here from O4) | TODO |
 
@@ -826,11 +827,51 @@ was lost and no map was left).
   `m_pMap`): views are cameras on the one loaded map. The owner added C7 (several maps at once).
 - `doc/CARAVELLIUS_BREAKAGES.md` entry 14.
 
-**V11.** BREAKAGES' own note: "any game with a sprite in the last strip of a map, at any
-camera position" could have hit this before the fix, and "Caravellius has not hit it so far
-(the maintainer's observation, not a test)" - Scarab has made no observation of its own
-either way. Scope: check `samples/collision` and any other Scarab sample/sprite setup that
-can reach a map's last strip.
+**V11 (DONE, 2026-10-30).** sunlight entry 4 (A6): the collision lookup refused only a
+negative row/column, so a position past the map's far edge read past the layer's tile array.
+Checking it opened up the whole sprite-vs-tile path, which no project had ever seen work: no tileset
+in Scarab or Caravellius has a collision shape (only sunlight's isometric/staggered/hexagonal
+obstacles, whose samples deliberately ignore the callback because of "spurious hits").
+- **A Scarab bug, from before the split:** `LuaCollisionListener`'s tile callback pushed six values
+  and called `lua_pcall(..., 5, ...)`, so Lua called the sprite handle ("attempt to call a number
+  value") and `collision_set_tile_handler` never ran in any Scarab release. Fixed (5 -> 6).
+- **Measured on the `a6ac4f6` pin (with that fix), the owner shown first:** a 32x32 sprite swept past
+  one collision tile (map 160..191), default viewport (10,10). It collided for x 150..180 instead of
+  129..191 (only the tile under its top-left corner, shifted by the viewport origin); with the camera
+  at (64,64) a world-space sprite collided 64 px away from itself (the camera added again) and never
+  with the tile it was on; the tile came back camera-relative (96,96). Zoom made no difference.
+  Reported to sunlight on the owner's request; fixed as I7 (PR #227, BREAKAGES 56), which also found
+  three more: a tile with two collision shapes hung the frame, the bounds check and the cell index
+  disagreed about zoom, `GetTile` with no map dereferenced null. The new model: everything in MAP
+  space - `TileMapToTileMatrix` takes a map position, `GetTile`/the collision callback give the tile's
+  map rectangle, a collision tests every tile the collider overlaps (view-relative sprites with the
+  camera, world-space as is), one callback per tile, half-open overlap (touching edges don't count).
+- **Re-pin (inside V11):** `SCARAB_SUNLIGHT_REF` `4189199f7b3af75e590792f85d51051916f4a206`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@4189199`. Verified on `origin/feat/master_plan`,
+  two commits after `a6ac4f6` (the I6 pin record and the fix, 18 files in `src/`). Reconfigured in
+  place, fetch exact, content key kept.
+- **Regression test:** `scripts/tile_collision_smoke.py` (+ `scripts/tile_collision_smoke/` with its
+  own `collision.tmx`; ci.yml on all 4 platforms), at zoom 1 and 3.8125: `tilemap_to_tile_matrix` /
+  `tilemap_get_tile` in map space; the exact windows (view-relative camera 0: 129..191; camera 64:
+  65..127; world-space: 129..191 whatever the camera, none two rows away); the tile's map rectangle,
+  gid and the handle in the callback; two calls a frame for a sprite on two tiles; one for a tile with
+  two shapes (hung before I7); the far corner tile, and nothing past the far edge. Fails with Scarab's
+  old argument count (no collision reaches Lua - checked by mutation), and the `a6ac4f6` measurement
+  above is what it rejects.
+- **Docs:** `collision_add_tile_rule` (only tiles with a collision shape; map space; touching edges
+  don't count), `collision_set_tile_handler` (map rectangle; once per tile touched; undo a frame's
+  movement once and all of it - sunlight's lesson from its own sample), `tilemap_get_tile` (map
+  rectangle), `tilemap_to_tile_matrix` (a map position; it said "world/screen pixel coordinate").
+- **`samples/collision` (the owner's choice: wall tiles):** now on `resources/tilemap/collision.tmx`
+  (sunlight's collision sample map at `4189199`: `test.tmx` plus a `walls` layer, id 9, drawn with the
+  new `tileset_wall.tsx` and `images/wall.png`, unmodified). Sunny (world-space) starts inside a box
+  of brick walls that stop her from every side (the handler undoes the frame's movement once), the gap
+  on the right lets her out to the second Sunny (hits counted as before), the shared zoom keys, HUD on
+  plates. Created with `renderer_create{ zoom = 3.8125, preferred_zoom = 3.8125 }` so a zoom reset returns
+  to the start zoom (the owner noticed the default renderer resets to 1.0). The owner's real-window
+  check (2026-10-30, screenshots): flush against a wall and in a corner at zoom 3.81 and 4.56, the
+  gap and the sprite hit at zoom 1.0, and the zoom reset back to 3.81.
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 15.
 
 **V12.** Scope: check `resources/tilemap/test.tmx` and any other Scarab map for a resized
 tile object on a tinted object layer - before this fix it drew untinted (white, with only

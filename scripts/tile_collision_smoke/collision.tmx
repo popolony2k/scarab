@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.8" orientation="orthogonal" renderorder="right-down" width="10" height="10" tilewidth="32" tileheight="32" infinite="0" nextlayerid="3" nextobjectid="4">
+ <!-- scripts/tile_collision_smoke's map: 10x10 tiles of 32 px. Tile 0 of the embedded tileset has one Tiled
+      collision rectangle covering it, tile 1 has two (left and right halves). Collision tiles at (row, col):
+      (5,5) alone; (2,2) and (2,3) side by side; (8,1) with two shapes; (9,9) in the far corner. The image is
+      Scarab's house tileset, only so the tileset has one. -->
+ <tileset firstgid="1" name="collision" tilewidth="32" tileheight="32" tilecount="10" columns="5">
+  <image source="../../resources/tilemap/images/house.png" width="160" height="64"/>
+  <tile id="0">
+   <objectgroup draworder="index"><object id="1" x="0" y="0" width="32" height="32"/></objectgroup>
+  </tile>
+  <tile id="1">
+   <objectgroup draworder="index"><object id="2" x="0" y="0" width="16" height="32"/><object id="3" x="16" y="0" width="16" height="32"/></objectgroup>
+  </tile>
+ </tileset>
+ <layer id="1" name="ground" width="10" height="10">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,1,1,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,1,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,
+0,2,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,1
+</data>
+ </layer>
+ <objectgroup id="2" name="sprites"/>
+</map>

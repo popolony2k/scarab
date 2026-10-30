@@ -93,6 +93,18 @@ namespace Scarab  {
              * the static tiles of `tileLayerId` (e.g. terrain collision,
              * as opposed to sprite-vs-sprite). `tileLayerId` must be a layer
              * of the loaded map, so declare it after `tilemap_load_map`.
+             *
+             * **Only a tile with a collision shape collides**: a rectangle drawn
+             * on it in Tiled's Tile Collision Editor (in its tileset). Every
+             * frame, each sprite is checked against every such tile it
+             * overlaps, in **map space**: a view-relative sprite's position is
+             * taken with the camera, a world-space one's as it is, so the camera
+             * and the zoom never change where a sprite collides. Rectangles that
+             * only share an edge don't touch, so a sprite can rest flush against
+             * a wall. Up to Scarab v0.1.25 (sunlight up to I6) only the tile
+             * under the sprite's top-left corner was checked, shifted by the
+             * viewport's origin, and world-space sprites got the camera added -
+             * and Scarab's handler never ran at all.
              */
             int LuaCollisionApi :: AddTileRule( lua_State *pLuaState )  {
 
@@ -168,11 +180,27 @@ namespace Scarab  {
              * Register the handler for sprite-vs-tile collisions (from
              * `collision_add_tile_rule`):
              * `fn(handle, gid, x, y, width, height)` — `gid` is the
-             * tile's Tiled global id, `x`/`y`/`width`/`height` its
-             * world-space position and size.
+             * tile's Tiled global id, `x`/`y`/`width`/`height` the tile's
+             * rectangle in **map pixels** (the same numbers
+             * `tilemap_get_tile` returns).
+             *
+             * It fires **once per tile touched**, every frame the sprite
+             * overlaps it: a sprite in a corner of two walls gets two calls in
+             * one frame. A handler that blocks movement must therefore undo the
+             * frame's movement ONCE, and all of it: a diagonal (two keys held)
+             * is two steps in one frame, and undoing only the last one lets the
+             * sprite work its way through a wall. The handler runs after
+             * `on_update`, in the same frame, so a position set here is the one
+             * drawn. `samples/collision` shows the pattern.
              * @luaexample
+             * local before = {}     -- the player's position before this frame's movement, saved in on_update
+             * local undoneFrame = -1
+             *
              * collision_set_tile_handler(function(handle, gid, x, y, width, height)
-             *   print(("hit tile gid %d at %d,%d"):format(gid, x, y))
+             *   if handle == player and undoneFrame ~= frame then
+             *     sprite_set_pos(player, before.x, before.y)   -- the whole frame's movement, once
+             *     undoneFrame = frame
+             *   end
              * end)
              */
             int LuaCollisionApi :: SetTileHandler( lua_State *pLuaState )  {

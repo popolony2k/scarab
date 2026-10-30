@@ -119,7 +119,7 @@ namespace Scarab  {
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.size.nWidth );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.size.nHeight );
 
-                if( lua_pcall( m_pLuaState, 5, 0, 0 ) != 0 )  {
+                if( lua_pcall( m_pLuaState, 6, 0, 0 ) != 0 )  {
                     fprintf( stderr, "Error calling collision tile handler: %s\n", lua_tostring( m_pLuaState, -1 ) );
                     lua_pop( m_pLuaState, 1 );
                 }
