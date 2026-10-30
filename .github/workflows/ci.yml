@@ -258,3 +258,17 @@ jobs:
         run: |
           python scripts/unload_map_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "unload map smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_load_map over a loaded map: a map that fails to parse leaves the loaded one loaded,
+      # sprites stay registered, and 1000 loads don't grow peak memory over 20 (Linux/macOS; the
+      # functional checks only on Windows) - doc/MASTER_PLAN.md item V10, see the script's header.
+      - name: Load map smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/load_map_smoke.py build/scarab
+
+      - name: Load map smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/load_map_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "load map smoke test exited with code $LASTEXITCODE" }

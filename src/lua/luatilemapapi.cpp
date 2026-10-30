@@ -154,6 +154,15 @@ namespace Scarab  {
              * `MAP_ALIGNMENT_CENTER_HEIGHT_RIGHT`. Fails with
              * `"cannot load map '<path>'"` for a map that can't be loaded,
              * and for an unknown alignment.
+             *
+             * **Loading over a loaded map** (switching stages) frees the old
+             * map - its tile textures, tile animations and resources - and
+             * keeps every sprite on its layer, as before (`tilemap_unload_map`
+             * is what unloads sprites). The new map is read first: if it can't
+             * be loaded, the call fails and the loaded map stays loaded. Up to
+             * Scarab v0.1.25 every such load leaked the whole previous map, and
+             * a map that failed to parse left no map at all. One map is loaded
+             * at a time; every view shows it.
              * @luaexample
              * tilemap_load_map(BASE_PATH .. "tilemap/corsair/corsair.tmx", MAP_ALIGNMENT_CENTER_WIDTH_BOTTOM)
              */

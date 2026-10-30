@@ -370,7 +370,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V8a | Scarab drew every sprite a second time each frame (`SpritePool::UpdateAll`), over the whole frame: layer visibility, layer order and view layer masks never applied to sprites (found in V8) | DONE |
 | V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | DONE |
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47); re-pin to `a6ac4f6` (I6, entry 55) | DONE |
-| V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | TODO |
+| V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | DONE |
 | V11 | The collision lookup no longer reads a wrong tile for a sprite past the map's far edge (entry 4, A6) | TODO |
 | V12 | A tile object resized away from its own tile's size now takes its object layer's tint (entry 45) | TODO |
 | V13 | Tiled tile animations show each frame once per cycle (entry 44; moved here from O4) | TODO |
@@ -798,9 +798,33 @@ unload every sprite registered on a layer. Loading a map over a loaded one does 
   nothing). No window check: collisions and sequence state are counted headless.
 - `doc/CARAVELLIUS_BREAKAGES.md` entry 13.
 
-**V10.** Scope as stated in each row; each closes with a check against Scarab's actual
-`resources/` and `samples/` maps and sprite-pool/collision code, confirmed either
-unaffected or adjusted, not assumed from the BREAKAGES table alone.
+**V10 (DONE, 2026-10-29).** sunlight entry 40 (T2): `LoadMap` over a loaded map frees the
+old map (tile textures, Resource Manager, tile animations); before, it overwrote the map pointer and
+leaked the whole previous map on every switch. Sprites stay registered across it, as before. The new
+map is parsed first, so a map that fails to parse leaves the loaded map loaded (before, the old map
+was lost and no map was left).
+- **Measured (headless, peak memory, `test.tmx` loaded over itself; no GPU, so the CPU side only):**
+  current pin 10 loads 11 MB, 200 loads 11 MB; published v0.1.25 10 MB and 16 MB. In the final test:
+  20 vs 1000 loads, +0.0-0.1 MB at the pin, **+27.9 MB** on v0.1.25 (about 30 KB per load).
+- **Audit:** Caravellius switches stages exactly this way (`core/bootstrap.lua`, no unload), so it
+  leaked every previous stage and is fixed with nothing to change; its failure path
+  (`if not tilemap_load_map(...)` -> print, `return false`) works with `nil` and now leaves the
+  previous stage's map loaded. `samples/shapes` switches maps on keys 1-4 the same way.
+- **Decisions (the owner):** test the leak in CI too, option (a) - a Python peak-memory comparison on
+  Linux/macOS (Windows has no peak-memory reading in Python's standard library; the functional
+  checks still run there).
+- **Regression test:** `scripts/load_map_smoke.py` (+ `scripts/load_map_smoke/` with a deliberately
+  malformed `broken.tmx`; ci.yml on all 4 platforms). Each of two runs (`LOADS` = 20 and 1000):
+  `broken.tmx` returns `nil, "cannot load map ..."` and `tilemap_get_map_info` still reports
+  `test.tmx` (20x20, 32 px), a sprite added to a layer is still on it after the loads, and the
+  peak memory of the 1000-load run is at most 8 MB above the 20-load one (`os.wait4`'s `ru_maxrss`,
+  bytes on macOS, KB on Linux). Fails on v0.1.25: no map left after `broken.tmx`, and +27.9 MB.
+- **Docs:** `tilemap_load_map`'s `@luadoc` (a load over a loaded map frees the old one and keeps
+  sprites; a failed load keeps the loaded map; one map at a time, shown by every view).
+- **Asked during V10 (the owner):** does multi-view mean several maps? No - checked in sunlight's
+  `multiview`/`multiview_overlap` samples, `IView` (no map of its own) and `TileMapRenderer` (one
+  `m_pMap`): views are cameras on the one loaded map. The owner added C7 (several maps at once).
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 14.
 
 **V11.** BREAKAGES' own note: "any game with a sprite in the last strip of a map, at any
 camera position" could have hit this before the fix, and "Caravellius has not hit it so far
@@ -851,6 +875,7 @@ that.
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
+| C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
 
 **C6 (DONE, 2026-10-24 - tested by the owner in a real window, reviewed and approved; promoted by the owner 2026-10-24, done right before V5, out of phase order;
 reshaped the same day into "fonts by handle").**
@@ -1018,6 +1043,23 @@ uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed on
     `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
     S4 follows for the others.
 - Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
+**C7 (TODO, added by the owner 2026-10-29 during V10; plan it together with sunlight when it
+starts, not before).** Today a renderer holds ONE map (`TileMapRenderer::m_pMap`), views are cameras
+on that one map (`IView` has no map of its own; sunlight's `multiview` samples show one map in
+three views), and Scarab allows one renderer per process. Many games show different maps at once:
+split-screen with players in different areas, a world map beside the local one, a picture-in-picture
+dungeon, a menu over a different map, a cross-fade between two maps.
+- **sunlight's side (the map lives there, so it comes first):** several maps loaded at once, each with
+  its own textures and tile animations, and a view showing one of them; layer ids collide between
+  maps, so sprites, collision rules and layer masks must say which map they belong to; collisions
+  per map (sprite-vs-tile against that map's tiles); camera alignment, scroll limits and `FitToMap`
+  per map.
+- **Scarab's side, a sketch to agree with sunlight:** `tilemap_load_map` returning a map handle, a
+  `view_set_map(view, map)`, and the `tilemap_*` / `sprite_add_to_layer` / collision functions taking
+  an optional map; the single-map calls keep acting on the current map, so existing games are
+  unchanged.
+- When C7 starts: contact sunlight (with the owner) to plan the design together.
 
 ## Phase R: requisites
 
