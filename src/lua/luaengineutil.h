@@ -122,6 +122,7 @@ namespace Scarab  {
                 static int PushError( lua_State *pLuaState, const std :: string &strMessage );
                 static int PushTrue( lua_State *pLuaState );
                 static std :: string FormatNumber( double fValue );
+                static double ShortestDecimal( float fValue );
                 static bool ReadIntegerArg( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer &nOut, std :: string &strError );
                 static bool ReadIntegerArgInRange( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer nMin, lua_Integer nMax,
                                                    lua_Integer &nOut, std :: string &strError );

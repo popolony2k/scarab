@@ -21,6 +21,10 @@
 #include "lua/luaengineutil.h"
 #include <climits>
 #include <cstdio>
+#include <cstdlib>
+
+/** The most significant digits a float needs to round-trip through decimal text. */
+#define __FLOAT_ROUND_TRIP_DIGITS  9
 
 
 namespace Scarab  {
@@ -211,6 +215,26 @@ namespace Scarab  {
                 snprintf( szBuffer, sizeof( szBuffer ), "%g", fValue );
 
                 return szBuffer;
+            }
+
+            /**
+             * @brief The shortest decimal that converts back to exactly this float, as a double - so an
+             * authored opacity of 0.69 (stored as the float 0.6899999761...) reaches Lua as 0.69, as Tiled
+             * shows it, and writing that back gives the identical float again. Used by every getter that
+             * returns a value sunlight keeps as a float (a layer's or a sprite's opacity).
+             */
+            double LuaEngineUtil :: ShortestDecimal( float fValue )  {
+
+                char  szBuffer[32];
+
+                for( int nDigits = 1; nDigits < __FLOAT_ROUND_TRIP_DIGITS; nDigits++ )  {
+                    snprintf( szBuffer, sizeof( szBuffer ), "%.*g", nDigits, ( double ) fValue );
+
+                    if( ( float ) strtod( szBuffer, nullptr ) == fValue )
+                        return strtod( szBuffer, nullptr );
+                }
+
+                return ( double ) fValue;
             }
 
             /*

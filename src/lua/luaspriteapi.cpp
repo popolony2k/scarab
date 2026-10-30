@@ -38,6 +38,10 @@ using namespace SunLight :: Canvas;
 /** delayMilli's default and smallest value: a held frame (see sprite_configure_texture). */
 #define __HELD_FRAME_DELAY  -1
 
+/** The opacity range of sprite_set_opacity - sunlight's, the same as a layer's. */
+#define __SPRITE_OPACITY_MIN  0.0
+#define __SPRITE_OPACITY_MAX  1.0
+
 
 namespace Scarab  {
     namespace Engine  {
@@ -665,6 +669,132 @@ namespace Scarab  {
             }
 
             /**
+             * @luaname{sprite_set_opacity(handle, opacity) -> true | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             * @luaheading{Opacity and tint}
+             * @luadoc
+             * A sprite's own **opacity**, a number from `0` (transparent) to `1`
+             * (opaque, the default) - the same unit as a layer's opacity
+             * (`tilemap_set_layer`) - and its own **tint**, four integers
+             * `0`..`255`, opaque white (`255, 255, 255, 255`, no tint) by default.
+             * The tint's `r`, `g`, `b` multiply into the sprite's frame, as a
+             * layer's tint does into its tiles: `255, 255, 255` changes nothing,
+             * `255, 80, 80` reddens it (a hit flash), `120, 160, 255` turns it
+             * blue (a team colour). The tint's `a` is kept and read back but
+             * **ignored for drawing** - the opacity is the only alpha control.
+             *
+             * Both apply to whatever frame the sprite draws, in every sequence and
+             * every view, until changed; the next frame draws with them. They are
+             * the sprite's own: two sprites showing the same texture keep their
+             * own opacity and tint, and a sprite does **not** take its layer's
+             * opacity or tint. `sprite_release` resets both, so a recycled handle
+             * starts opaque and untinted. Opacity reads back exactly as written
+             * (`0.3` reads `0.3`).
+             *
+             * Failures are `nil, "message"`, like every sprite function: `"invalid
+             * sprite handle"`, an opacity outside `0`..`1` (or not a number), or a
+             * channel outside `0`..`255`. `a` may be left out (`255`).
+             * **Games that never call them are unchanged.**
+             * @luaexample
+             * sprite_set_opacity( ghost, 0.5 )                -- half transparent
+             * sprite_set_tint( player, 255, 80, 80 )         -- a red hit flash ...
+             * sprite_set_tint( player, 255, 255, 255 )       -- ... and back to none
+             * local r, g, b, a = sprite_get_tint( player )   -- 255, 255, 255, 255
+             * -- a fade-out over one second, from on_update
+             * fade = math.max( 0, fade - dt / 1000 )
+             * sprite_set_opacity( ghost, fade )
+             */
+            int LuaSpriteApi :: SetOpacity( lua_State *pLuaState )  {
+
+                std :: string                  strError;
+                double                         fOpacity = __SPRITE_OPACITY_MAX;
+                SunLight :: Sprite :: Sprite   *pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr ||
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2, "opacity", __SPRITE_OPACITY_MIN, __SPRITE_OPACITY_MAX, fOpacity, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetOpacity( ( float ) fOpacity );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_get_opacity(handle) -> opacity | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             */
+            int LuaSpriteApi :: GetOpacity( lua_State *pLuaState )  {
+
+                std :: string                  strError;
+                SunLight :: Sprite :: Sprite   *pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( pSprite -> GetOpacity() ) );
+
+                return 1;
+            }
+
+            /**
+             * @luaname{sprite_set_tint(handle, r, g, b[, a]) -> true | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             */
+            int LuaSpriteApi :: SetTint( lua_State *pLuaState )  {
+
+                static const char * const  aszChannel[3] = { "r", "g", "b" };
+
+                std :: string                  strError;
+                lua_Integer                    anChannel[3] = { 0, 0, 0 };
+                lua_Integer                    nAlpha       = UCHAR_MAX;
+                SunLight :: Sprite :: Sprite   *pSprite     = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                for( int nArg = 0; nArg < 3; nArg++ )
+                    if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 2 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !lua_isnoneornil( pLuaState, 5 ) &&
+                    !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 5, "a", 0, UCHAR_MAX, nAlpha, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: Base :: stColor  tint;
+
+                tint.nRed   = ( unsigned char ) anChannel[0];
+                tint.nGreen = ( unsigned char ) anChannel[1];
+                tint.nBlue  = ( unsigned char ) anChannel[2];
+                tint.nAlpha = ( unsigned char ) nAlpha;
+
+                pSprite -> SetTint( tint );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_get_tint(handle) -> r, g, b, a | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             */
+            int LuaSpriteApi :: GetTint( lua_State *pLuaState )  {
+
+                std :: string                  strError;
+                SunLight :: Sprite :: Sprite   *pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: Base :: stColor  tint = pSprite -> GetTint();
+
+                lua_pushinteger( pLuaState, tint.nRed );
+                lua_pushinteger( pLuaState, tint.nGreen );
+                lua_pushinteger( pLuaState, tint.nBlue );
+                lua_pushinteger( pLuaState, tint.nAlpha );
+
+                return 4;
+            }
+
+            /**
              * @luaname{sprite_get_pos(handle) -> x, y | nil, message}
              * @luagroup{position_size}
              * @luaheading{Position and size}
@@ -904,6 +1034,10 @@ namespace Scarab  {
                 lua_register( pLuaState, "sprite_set_blend_mode", LuaSpriteApi :: SetBlendMode );
                 lua_register( pLuaState, "sprite_clear_blend_mode", LuaSpriteApi :: ClearBlendMode );
                 lua_register( pLuaState, "sprite_get_blend_mode", LuaSpriteApi :: GetBlendMode );
+                lua_register( pLuaState, "sprite_set_opacity", LuaSpriteApi :: SetOpacity );
+                lua_register( pLuaState, "sprite_get_opacity", LuaSpriteApi :: GetOpacity );
+                lua_register( pLuaState, "sprite_set_tint", LuaSpriteApi :: SetTint );
+                lua_register( pLuaState, "sprite_get_tint", LuaSpriteApi :: GetTint );
                 lua_register( pLuaState, "sprite_get_pos", LuaSpriteApi :: GetPos );
                 lua_register( pLuaState, "sprite_set_pos", LuaSpriteApi :: SetPos );
                 lua_register( pLuaState, "sprite_get_size", LuaSpriteApi :: GetSize );

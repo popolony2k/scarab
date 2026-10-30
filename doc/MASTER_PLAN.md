@@ -31,7 +31,8 @@ P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id 
 V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' colliders out), and in
 V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile picking in map space), and in
 V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, group tint and opacity), and
-in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1 float, exact round trips).
+in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1 float, exact round trips),
+and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and tint).
 
 ## Phase P: pin & plumbing
 
@@ -45,6 +46,7 @@ in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1
 | P5 | Re-pin to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's I2: blend modes; sunlight BREAKAGES entry 51) | DONE |
 | P6 | Re-pin to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (sunlight's I5: CollisionManager checks every layer id, `Clear()`/`RemoveAll()` work; sunlight BREAKAGES entry 54) | DONE |
 | P7 | Re-pin to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (sunlight's I9: layer opacity is a 0..1 float with exact round trips, `SetScreenFade` clamped; sunlight BREAKAGES entry 58) and move Lua's layer opacity to 0..1 | DONE |
+| P8 | Re-pin to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (sunlight's I10: sprite opacity and tint; sunlight BREAKAGES entry 59) and expose them to Lua (`sprite_set/get_opacity`, `sprite_set/get_tint`) | DONE |
 
 **P0 (DONE).** This document and [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -225,6 +227,43 @@ changed. `SetScreenFade` clamps to 0..1 (Scarab's `screen_fade` already refuses 
 - **Caravellius:** its `core/presentation.lua` reads a layer's opacity and passes it straight back to
   hide the layer, so it keeps working (acceptance and fingerprint unchanged). Breakage entry 17, and
   entry 4 (V3's 0..255) now points at it.
+
+**P8 (DONE, 2026-10-30).** sunlight I10 (PR #233, BREAKAGES 59, nothing breaks), sent by sunlight on
+its owner's go-ahead: `Sprite::SetOpacity`/`GetOpacity` (0..1, clamped, NaN ignored - the unit of a
+layer's `fOpacity`) and `SetTint`/`GetTint` (opaque white = none; RGB multiplies into the frame, alpha
+kept but unused). `Draw()` applies both to the frame it draws, for that draw only, so a canvas shared
+by two sprites is safe; `Unload()` keeps them; a sprite does not take its layer's opacity or tint.
+`Shape::MultiplyTint` moved to `SunLight::Base::MultiplyTint` (Scarab never used it). sunlight's code
+style now forward-declares only to break an include cycle; Scarab's `src/` has no forward declaration,
+so nothing to change.
+- **Lua (covered fully, the owner's rule):** `sprite_set_opacity(h, 0..1)` / `sprite_get_opacity(h)`
+  (strict on write - outside 0..1, NaN or not a number: `nil, "message"`, unchanged; read back as the
+  shortest decimal, like P7's layer opacity) and `sprite_set_tint(h, r, g, b[, a])` /
+  `sprite_get_tint(h) -> r, g, b, a` (0..255, `a` optional = 255, the shape of
+  `tilemap_set_layer_tint`). `ShortestDecimal` moved from `luatilemapapi.cpp` to `LuaEngineUtil` so
+  both opacities share it.
+- **Recycled slots:** `SpritePool::Release` resets opacity to 1 and tint to white (`__SPRITE_OPAQUE`,
+  `__SPRITE_NO_TINT`), like the world-space flag and blend mode, since sunlight keeps them across
+  `Unload()`.
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `ef1499d811e87c520a3669c9754cf4e6893ff4a8`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@ef1499d`; verified in `../sunlight`, two commits
+  after `8842ccc` (the I9 pin record and I10); reconfigured in place.
+- **Tests:** new `scripts/sprite_tint_smoke` (ci.yml, all 4 platforms): a fresh sprite's defaults,
+  0/0.1/0.25/0.3/0.5/0.69/0.75/1 round-trip exactly, tint with and without alpha, write-backs, every
+  rejection (1.5, 255, -0.1, NaN, "0.5", missing; channels 256/-1/3.5/missing, alpha 300/"x") leaving
+  the values as they were, bad/string/released handles, a recycled slot starting opaque and untinted,
+  no renderer created by any of it, two sprites on the same texture keeping their own values,
+  reconfiguring the texture and switching the sequence keeping them, and 5 frames of drawing.
+  `error_reporting_smoke` gained one check per kind of failure. Proven: fails on the published v0.1.25
+  (`sprite_get_opacity` is nil); mutation-checked twice (without the `Release` reset the recycled sprite
+  kept 0.5 and 1,2,3,4; pushing the raw float read `0.30000001192093`).
+- **Sample:** `samples/sprite` - `O` cycles Sunny's opacity 1 / 0.5 / 0.25 / 0, `T` its tint none / red
+  hit flash / blue team; a second Sunny on the same texture stays untouched; HUD on Caravellius 8x8
+  plates (the owner: the built-in font was unreadable). The owner's window check (2026-10-30): faded
+  at 0.25 with the grass showing through, red and blue-team tints, the twin unchanged.
+- **Docs:** new "Opacity and tint" group in the sprite reference.
+- **Caravellius:** calls none of them; acceptance PASS, fingerprint `hash=33897632`. Breakage entry 18
+  (informational).
 
 ## Phase D: design items
 

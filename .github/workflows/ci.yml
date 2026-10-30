@@ -300,3 +300,17 @@ jobs:
         run: |
           python scripts/layer_tint_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "layer tint smoke test exited with code $LASTEXITCODE" }
+
+      # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
+      # rejection, two sprites sharing a texture keeping their own values, a recycled slot
+      # starting opaque and untinted - doc/MASTER_PLAN.md item P8.
+      - name: Sprite tint smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/sprite_tint_smoke.py build/scarab
+
+      - name: Sprite tint smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/sprite_tint_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "sprite tint smoke test exited with code $LASTEXITCODE" }

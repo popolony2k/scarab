@@ -98,28 +98,6 @@ namespace Scarab  {
                 return true;
             }
 
-            /** The most significant digits a float needs to round-trip through decimal text. */
-            static const int  FLOAT_ROUND_TRIP_DIGITS = 9;
-
-            /**
-             * @brief The shortest decimal that converts back to exactly this float, as a double - so an
-             * authored opacity of 0.69 (stored as the float 0.6899999761...) reaches Lua as 0.69, as Tiled
-             * shows it, and writing that back gives the identical float again.
-             */
-            static double ShortestDecimal( float fValue )  {
-
-                char  szBuffer[32];
-
-                for( int nDigits = 1; nDigits < FLOAT_ROUND_TRIP_DIGITS; nDigits++ )  {
-                    snprintf( szBuffer, sizeof( szBuffer ), "%.*g", nDigits, ( double ) fValue );
-
-                    if( ( float ) strtod( szBuffer, nullptr ) == fValue )
-                        return strtod( szBuffer, nullptr );
-                }
-
-                return ( double ) fValue;
-            }
-
             /**
              * @brief Read tilemap_set_layer's visible/opacity/offsetX/offsetY arguments (from
              * index 2) into layer. The opacity is a number from 0 (transparent) to 1 (opaque), as
@@ -148,7 +126,7 @@ namespace Scarab  {
             static int PushLayer( lua_State *pLuaState, const stLayer &layer )  {
 
                 lua_pushboolean( pLuaState, layer.bVisible );
-                lua_pushnumber( pLuaState, ShortestDecimal( layer.fOpacity ) );
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( layer.fOpacity ) );
                 lua_pushinteger( pLuaState, layer.offset.x );
                 lua_pushinteger( pLuaState, layer.offset.y );
 
