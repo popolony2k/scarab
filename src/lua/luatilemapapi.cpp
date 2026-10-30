@@ -20,6 +20,7 @@
 
 #include "lua/luatilemapapi.h"
 #include "lua/luaengineutil.h"
+#include <climits>
 
 extern "C"
 {
@@ -354,6 +355,149 @@ namespace Scarab  {
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
+            /** @brief Push a layer's tint - tilemap_get_layer_tint's four results (r, g, b, a). */
+            static int PushTint( lua_State *pLuaState, const stLayer &layer )  {
+
+                lua_pushinteger( pLuaState, layer.tint.nRed );
+                lua_pushinteger( pLuaState, layer.tint.nGreen );
+                lua_pushinteger( pLuaState, layer.tint.nBlue );
+                lua_pushinteger( pLuaState, layer.tint.nAlpha );
+
+                return 4;
+            }
+
+            /**
+             * @brief Read tilemap_set_layer_tint's r, g, b and a arguments (from index 2), each 0..255,
+             * into layer.tint.
+             */
+            static bool ReadTint( lua_State *pLuaState, stLayer &layer, std :: string &strError )  {
+
+                static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
+
+                lua_Integer  anChannel[4] = { 0, 0, 0, 0 };
+
+                for( int nArg = 0; nArg < 4; nArg++ )
+                    if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 2 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
+                        return false;
+
+                layer.tint.nRed   = ( unsigned char ) anChannel[0];
+                layer.tint.nGreen = ( unsigned char ) anChannel[1];
+                layer.tint.nBlue  = ( unsigned char ) anChannel[2];
+                layer.tint.nAlpha = ( unsigned char ) anChannel[3];
+
+                return true;
+            }
+
+            /**
+             * @luaname{tilemap_get_layer_tint(layerId) -> r, g, b, a | nil, message}
+             * @luagroup{layer_tint}
+             * @luaheading{Layer tint}
+             * @luadoc
+             * A layer's **tint**: Tiled's `tintcolor` layer property, as four
+             * integers `0`..`255`. Its `r`, `g`, `b` multiply into everything
+             * textured the layer draws - the tiles of a tile layer, an image
+             * layer, and every tile object of an object layer (at its own size,
+             * turned or stretched) - so `255, 255, 255` (white, what a layer
+             * without a `tintcolor` reads) changes nothing, and `255, 128, 128`
+             * reddens it. Shape and text objects are never tinted.
+             *
+             * `a` is the alpha the map file declares: it is kept and read back,
+             * but **ignored for drawing** - the layer's opacity
+             * (`tilemap_set_layer`) is the only alpha control.
+             *
+             * A **group layer**'s tint (and opacity) multiply into every layer
+             * inside it, nested groups too, the way Tiled draws them; shapes and
+             * text inside take only the group's opacity.
+             *
+             * `tilemap_set_layer_tint` changes it at runtime; the next frame
+             * draws with it. Writing back the values read changes nothing, and
+             * `tilemap_set_layer` keeps a layer's tint as it is. Every function
+             * returns `nil, "message"` for an unknown layer, with no map loaded,
+             * or for a channel outside `0`..`255`.
+             * @luaexample
+             * local r, g, b, a = tilemap_get_layer_tint(3)
+             * tilemap_set_layer_tint(3, 255, 160, 160, a)     -- a reddish light, same alpha
+             * tilemap_set_layer_tint_by_name("background", 255, 255, 255, 255)   -- no tint
+             */
+            int LuaTilemapApi :: GetLayerTint( lua_State *pLuaState )  {
+
+                std :: string  strError;
+                int            nLayerId = 0;
+                stLayer        layer;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) ||
+                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), nLayerId, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return PushTint( pLuaState, layer );
+            }
+
+            /**
+             * @luaname{tilemap_get_layer_tint_by_name(layerName) -> r, g, b, a | nil, message}
+             * @luagroup{layer_tint}
+             */
+            int LuaTilemapApi :: GetLayerTintByName( lua_State *pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+                stLayer        layer;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) ||
+                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), strName, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return PushTint( pLuaState, layer );
+            }
+
+            /**
+             * @luaname{tilemap_set_layer_tint(layerId, r, g, b, a) -> true | nil, message}
+             * @luagroup{layer_tint}
+             */
+            int LuaTilemapApi :: SetLayerTint( lua_State *pLuaState )  {
+
+                std :: string  strError;
+                int            nLayerId = 0;
+                stLayer        layer;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+
+                // Read first: every other field (visible, opacity, offset, parallax) is written back as it is.
+                if( !FindLayer( pTileMap, nLayerId, layer, strError ) || !ReadTint( pLuaState, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pTileMap -> SetLayer( nLayerId, layer ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the engine refused to change layer " + std :: to_string( nLayerId ) );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{tilemap_set_layer_tint_by_name(layerName, r, g, b, a) -> true | nil, message}
+             * @luagroup{layer_tint}
+             */
+            int LuaTilemapApi :: SetLayerTintByName( lua_State *pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+                stLayer        layer;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+
+                if( !FindLayer( pTileMap, strName, layer, strError ) || !ReadTint( pLuaState, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pTileMap -> SetLayer( strName.c_str(), layer ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the engine refused to change layer '" + strName + "'" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
             /**
              * @luaname{tilemap_get_tile(row, col, layerId) -> gid, x, y, width, height | nil, message}
              * @luadoc
@@ -500,6 +644,10 @@ namespace Scarab  {
                 lua_register( pLuaState, "tilemap_get_layer_by_name", LuaTilemapApi :: GetLayerByName );
                 lua_register( pLuaState, "tilemap_set_layer", LuaTilemapApi :: SetLayer );
                 lua_register( pLuaState, "tilemap_set_layer_by_name", LuaTilemapApi :: SetLayerByName );
+                lua_register( pLuaState, "tilemap_get_layer_tint", LuaTilemapApi :: GetLayerTint );
+                lua_register( pLuaState, "tilemap_get_layer_tint_by_name", LuaTilemapApi :: GetLayerTintByName );
+                lua_register( pLuaState, "tilemap_set_layer_tint", LuaTilemapApi :: SetLayerTint );
+                lua_register( pLuaState, "tilemap_set_layer_tint_by_name", LuaTilemapApi :: SetLayerTintByName );
                 lua_register( pLuaState, "tilemap_get_tile", LuaTilemapApi :: GetTile );
                 lua_register( pLuaState, "tilemap_to_tile_matrix", LuaTilemapApi :: ToTileMatrix );
                 lua_register( pLuaState, "tilemap_get_object_by_name", LuaTilemapApi :: GetObjectByName );
