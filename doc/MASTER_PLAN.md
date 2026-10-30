@@ -29,7 +29,8 @@ P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6
 `f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path), in
 P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id checks), and in
 V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' colliders out), and in
-V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile picking in map space).
+V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile picking in map space), and in
+V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, group tint and opacity).
 
 ## Phase P: pin & plumbing
 
@@ -373,7 +374,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V9 | `Sprite::Unload()` leaves no active sequence (entry 47); re-pin to `a6ac4f6` (I6, entry 55) | DONE |
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | DONE |
 | V11 | The collision lookup no longer reads a wrong tile past the map's far edge (entry 4, A6); tile collisions and lookups in map space, re-pin to `4189199` (I7, entry 56); Scarab's tile handler fixed | DONE |
-| V12 | A tile object resized away from its own tile's size now takes its object layer's tint (entry 45) | TODO |
+| V12 | A tile object resized away from its own tile's size takes its object layer's tint (entry 45); layer tint at runtime + group tint/opacity, re-pin to `4274ecb` (I8, entry 57) | DONE |
 | V13 | Tiled tile animations show each frame once per cycle (entry 44; moved here from O4) | TODO |
 
 **V1 (DONE, 2026-10-22 - V1d confirmed by the owner in a real window).** Not just a rename: the scroll clamp genuinely changed (the last step can now be
@@ -873,9 +874,41 @@ obstacles, whose samples deliberately ignore the callback because of "spurious h
   gap and the sprite hit at zoom 1.0, and the zoom reset back to 3.81.
 - `doc/CARAVELLIUS_BREAKAGES.md` entry 15.
 
-**V12.** Scope: check `resources/tilemap/test.tmx` and any other Scarab map for a resized
-tile object on a tinted object layer - before this fix it drew untinted (white, with only
-its opacity); if any Scarab asset relied on that, it now looks different.
+**V12 (DONE, 2026-10-30).** sunlight entry 45: a tile object stretched away from its tile's
+size takes its object layer's tint (before, it was drawn untinted). The owner asked for V12 to be
+covered fully rather than kept small (after what testing everything found in V11): "100% compliant
+with the new sunlight features, even if it breaks Caravellius".
+- **Audit:** no map in Scarab, Caravellius or sunlight's samples used `tintcolor`; at the `4189199`
+  pin a tint existed only in the map file (`stLayer` had no tint), so nothing could read or change it.
+- **Decisions (the owner):** a Scarab-made tint test map with every case; key `5` in `samples/shapes`;
+  a runtime tint API, option (b) - asked of sunlight first, V12 held until its pin.
+- **sunlight I8** (PR #229, BREAKAGES 57): `stLayer::tint` (RGBA, opaque white by default), read by
+  `GetLayer` from the authored `tintcolor` alpha included, for tile, image, object and group layers,
+  written by `SetLayer`; RGB multiplies into what the layer draws, alpha kept but ignored for drawing.
+  Also: group layers drawn as Tiled draws them (a group's opacity and tint multiply into its children;
+  shapes and text take only the opacity), and image layers apply their own opacity. Caravellius'
+  one image layer has no opacity, so nothing changes for it.
+- **Re-pin (inside V12):** `SCARAB_SUNLIGHT_REF` `4274ecbf6cdd71c3625254f68ae14e0ed6631acb`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@4274ecb`; verified on `origin/feat/master_plan`,
+  two commits after `4189199` (the I7 pin record and the feature); reconfigured in place.
+- **Lua API (separate functions, the owner's choice over extending `tilemap_set_layer`):**
+  `tilemap_get_layer_tint(layerId) -> r, g, b, a`, `tilemap_set_layer_tint(layerId, r, g, b, a)` and
+  their `_by_name` forms; strict `0..255`, `nil, "message"` on failure, read-before-write so the
+  layer's other values are kept; `tilemap_set_layer` keeps the tint.
+- **Regression test:** `scripts/layer_tint_smoke.py` (+ `scripts/layer_tint_smoke/`, ci.yml on all 4
+  platforms) on `resources/tilemap/tint/tint.tmx`: every authored tint read back exactly (alpha 64
+  kept; white without one; image, object and group layers), by name, set then get, a write-back
+  changing nothing, `tilemap_set_layer` keeping the tint and the tint keeping the other values, every
+  error. Mutation-checked (the alpha not stored: the set-then-get checks fail).
+- **The map and the sample:** `resources/tilemap/tint/tint.tmx` (Scarab-made, README) with five
+  labelled rows - tile layer, image layer (incl. opacity 0.5), tile objects own/turned/stretched with an
+  untinted shape and text, tint alpha ignored vs opacity, a group's tint and opacity on its children.
+  Key `5` in `samples/shapes`; `T` cycles a layer's tint and `G` a group's opacity at runtime.
+- **The owner's real-window check (2026-10-30, screenshots):** the first look found three sample
+  problems, all fixed: an overlapping label, invisible rectangles (their object layers had no colour),
+  and a red tint barely visible on red roof tiles (now cyan). Then: every row as described, `T` and
+  `G` working, shapes and text untinted, the group's opacity on its rectangle and text.
+- `doc/CARAVELLIUS_BREAKAGES.md` entry 16.
 
 ## Phase O: confirmed not applicable, recorded anyway
 

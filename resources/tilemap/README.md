@@ -8,6 +8,8 @@ Used in [samples/tilemap](../../samples/tilemap/docs/README.md) (loaded via `til
 
 `collision.tmx` is `test.tmx` plus one tile layer, `walls` (id 9): a box of brick tiles with a gap on its right side, drawn with `tileset_wall.tsx` and `images/wall.png` (a 32 px brick tile whose one tile has a collision rectangle over the whole tile, drawn in Tiled's Tile Collision Editor). It is sunlight's own [`collision` sample](https://github.com/popolony2k/sunlight/tree/feat/master_plan/samples/collision) map at commit `4189199`, unmodified, and the only map here with collision tiles. Used in [samples/collision](../../samples/collision/docs/README.md) and by `scripts/tile_collision_smoke` (which has its own small map too).
 
+[tint/](tint/README.md) holds `tint.tmx`, Scarab's own map for Tiled layer tint: tile, image, object and group layers, tint alpha, shapes and text. Used in [samples/shapes](../../samples/shapes/docs/README.md) (key `5`) and by `scripts/layer_tint_smoke`.
+
 [shapes/](shapes/README.md) holds `shapes.tmx`, `rotation.tmx` and `thick.tmx`, maps made for shape, rotated and point objects (from sunlight's own `shapes` sample). Used in [samples/shapes](../../samples/shapes/docs/README.md).
 
 [objects/](objects/README.md) holds `objects.tmx` and `opacity.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).

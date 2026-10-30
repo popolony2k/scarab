@@ -286,3 +286,17 @@ jobs:
         run: |
           python scripts/tile_collision_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "tile collision smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_get/set_layer_tint (+ _by_name): every authored Tiled tintcolor read back exactly
+      # (alpha included) for tile, image, object and group layers, set then get, a write-back
+      # changing nothing, and every error - doc/MASTER_PLAN.md item V12.
+      - name: Layer tint smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/layer_tint_smoke.py build/scarab
+
+      - name: Layer tint smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/layer_tint_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "layer tint smoke test exited with code $LASTEXITCODE" }

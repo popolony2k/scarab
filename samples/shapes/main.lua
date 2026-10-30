@@ -22,8 +22,8 @@
  shapes - Tiled shape objects (rectangle, ellipse, polyline, polygon),
  rotated objects and point objects (master plan item V6), on three maps made
  for them (resources/tilemap/shapes/, from sunlight's own samples/shapes - see
- resources/tilemap/shapes/README.md), plus one for per-object opacity. Keys 1 to 4
- switch maps:
+ resources/tilemap/shapes/README.md), plus per-object opacity and layer tint. Keys 1 to
+ 5 switch maps:
 
    1. shapes.tmx   - the four shapes, and how the viewport clips them;
    2. rotation.tmx - shapes, tile objects and text objects with a Tiled
@@ -37,7 +37,12 @@
                      fading out, an object's own "opacity" property overriding
                      its layer's. Before sunlight's master plan, shape and text
                      objects ignored opacity altogether. Its frame starts at
-                     (100, 100), so this map starts the camera there.
+                     (100, 100), so this map starts the camera there;
+   5. tint.tmx     - Tiled layer tint (master plan item V12, sunlight I8, from
+                     resources/tilemap/tint/): tile, image and object layers,
+                     alpha ignored, shapes and text untinted, a group's tint and
+                     opacity multiplying into its children. T and G change a
+                     tint and the group's opacity at runtime.
 
  Switching loads another map over the one already loaded (tilemap_load_map
  again), which sunlight no longer leaks (master plan item V10). The maps'
@@ -55,11 +60,13 @@ local SCROLL_STEP   = 4    -- map pixels per frame while an arrow key is held
 
 local SHAPES_DIR  = "resources/tilemap/shapes/"
 local OBJECTS_DIR = "resources/tilemap/objects/"
+local TINT_DIR    = "resources/tilemap/tint/"
 local MAPS = {
     { key = KEY_ONE,   file = SHAPES_DIR .. "shapes.tmx",    camera = ORIGIN_CAMERA, title = "1 shapes: the four shapes, clipped by the viewport" },
     { key = KEY_TWO,   file = SHAPES_DIR .. "rotation.tmx",  camera = ORIGIN_CAMERA, title = "2 rotation: each object turned about its pivot" },
     { key = KEY_THREE, file = SHAPES_DIR .. "thick.tmx",     camera = ORIGIN_CAMERA, title = "3 thick: line widths and points, scaled by zoom" },
     { key = KEY_FOUR,  file = OBJECTS_DIR .. "opacity.tmx",  camera = FRAME_CAMERA,  title = "4 opacity: an object's own opacity, else its layer's" },
+    { key = KEY_FIVE,  file = TINT_DIR .. "tint.tmx",        camera = ORIGIN_CAMERA, title = "5 tint: Tiled tintcolor, changed at runtime with T and G", tint = true },
 }
 
 local renderer, err = renderer_create{
@@ -104,10 +111,42 @@ local function draw_hud_line( text, x, y, r, g, b )
     draw_text( text, x, y, HUD_SIZE, r, g, b, 255, sans )
 end
 
+-- Map 5 (tint.tmx): T cycles the "tiles tinted red" layer's tint, G steps the group's opacity -
+-- both at runtime, through tilemap_set_layer_tint / tilemap_set_layer (the map file is unchanged).
+local TINTED_LAYER   = 2       -- "tiles tinted cyan" in tint.tmx
+local GROUP_LAYER    = 10      -- "group tinted blue, opacity 0.6"
+local TINTS          = {       -- r, g, b, a; the last one is the layer's authored tint
+    { 255, 255, 128, 255 }, { 128, 255, 128, 255 }, { 255, 255, 255, 255 }, { 128, 255, 255, 255 },
+}
+local GROUP_OPACITIES = { 255, 64, 153 }   -- 0..255; 153 is the authored 0.6
+local tintIndex      = #TINTS
+local opacityIndex   = #GROUP_OPACITIES
+
+local function runtime_tint_keys()
+    if input_is_key_released( KEY_T ) then
+        tintIndex = tintIndex % #TINTS + 1
+        tilemap_set_layer_tint( TINTED_LAYER, table.unpack( TINTS[tintIndex] ) )
+    end
+
+    if input_is_key_released( KEY_G ) then
+        local visible, _, offsetX, offsetY = tilemap_get_layer( GROUP_LAYER )
+
+        opacityIndex = opacityIndex % #GROUP_OPACITIES + 1
+        tilemap_set_layer( GROUP_LAYER, visible, GROUP_OPACITIES[opacityIndex], offsetX, offsetY )
+    end
+end
+
 function on_update( dt )
 
     for _, entry in ipairs( MAPS ) do
-        if input_is_key_released( entry.key ) and entry ~= current then show_map( entry ) end
+        if input_is_key_released( entry.key ) and entry ~= current then
+            show_map( entry )
+            tintIndex, opacityIndex = #TINTS, #GROUP_OPACITIES   -- a reload restores the authored values
+        end
+    end
+
+    if current.tint then
+        runtime_tint_keys()
     end
 
     -- Same mapping as samples/camera: the arrow moves the map's content that way.
@@ -142,7 +181,15 @@ function on_update( dt )
     local camX, camY = camera_get_position()
 
     draw_hud_line( current.title, HUD_X, HUD_Y, 255, 255, 255 )
-    draw_hud_line( string.format( "camera %d, %d   zoom %.2f   keys 1-4 switch maps", camX, camY, viewport_get_zoom_factor() ),
-        HUD_X, HUD_Y + HUD_LINE, 200, 200, 200 )
+    local mapLine = string.format( "camera %d, %d   zoom %.2f   keys 1-5 switch maps", camX, camY, viewport_get_zoom_factor() )
+
+    if current.tint then
+        local r, g, b = tilemap_get_layer_tint( TINTED_LAYER )
+        local _, groupOpacity = tilemap_get_layer( GROUP_LAYER )
+
+        mapLine = string.format( "keys 1-5 maps   T: layer 2 tint %d,%d,%d   G: group opacity %d", r, g, b, groupOpacity )
+    end
+
+    draw_hud_line( mapLine, HUD_X, HUD_Y + HUD_LINE, 200, 200, 200 )
     draw_hud_line( "arrows/WASD pan   PageUp/PageDown or +/- zoom   = reset zoom   Home reset", HUD_X, HUD_Y + 2 * HUD_LINE, 200, 200, 200 )
 end
