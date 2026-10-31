@@ -1314,7 +1314,7 @@ filesystem, and the headless and archive smoke tests already cover it).
 | S2b | C++ names and code (Hungarian renames, `override`, `using namespace`, `#define __NAME` constants, named numbers, `unique_ptr`), proven by behaviour | DONE |
 | S2c | Lua (`__NAME <const>`, license headers, names, named numbers in samples) + a CI style check, proven by the smoke tests and a window check | DONE |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | DONE |
-| S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | TODO |
+| S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | DONE |
 
 **S1 (DONE, 2026-10-31).** The owner widened it (2026-10-31): Lua gets rules too, so Scarab now has its
 own guide, **`docs/CODE_STYLE.md`**. Its C++ part is sunlight's `doc/CODE_STYLE.md` (sunlight `ef1499d`)
@@ -1508,7 +1508,7 @@ Doxygen bullet ("don't add commentary the surrounding code doesn't already have"
 linter, match the existing style" line points to the guide, and the Style check step is described.
 Documentation only.
 
-**S4 (TODO, added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
+**S4 (DONE 2026-10-31; added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
 mixes helpers every Lua module shares with ones only one category uses. Each new engine object
 got another "fetch the light-userdata global" getter there (C6's `GetFontPool` too), so
 `luaengineutil.h` includes the sound, sprite-pool, font-pool, script-processor and timer headers,
@@ -1538,6 +1538,36 @@ Scope:
 - Behavior unchanged: a pure refactor, proven the way S2 plans (object-file-identical where the
   code didn't move, otherwise every smoke test and sample unchanged). It is deliberately kept out
   of D3, so every PR is either a refactor or a behavior change, never both.
+
+**S4 done (2026-10-31).** As planned, with what the work found:
+- `LuaEngineUtil :: GetGlobalPointer( L, szName )` replaces six copies of "get global, touserdata, pop"
+  (renderer provider, sound manager, sprite pool, script processor, font pool, timer map). The stack
+  leak this plan described was already gone - every getter popped since the C6 fix - so the gain is
+  one copy instead of six. A new doctest pins it (the value, nullptr for a missing global, the stack
+  top unchanged), shown failing with the `lua_pop` removed (top 2 and 3 instead of 1).
+- Each global's name is a `static constexpr` on the module that reads it, C6's `FONT_POOL_GLOBAL` form:
+  `LuaEngineUtil :: RENDERER_PROVIDER_GLOBAL`, `LuaSoundApi :: SOUND_MANAGER_GLOBAL`,
+  `LuaSpriteApi :: SPRITE_POOL_GLOBAL`, `LuaScriptingApi :: SCRIPT_PROCESSOR_GLOBAL`,
+  `LuaTimerApi :: TIMER_MAP_GLOBAL`; `LuaEngine` sets every global through them. The strings are
+  unchanged (`"soundManagerPtr"`, ...).
+- Moved: `GetSoundManager`/`GetSpritePool` are file-local in their modules; `GetScriptProcessor` and
+  `AddOneParmCommandScript` are public on `LuaScriptingApi` (the sound module calls them there);
+  `TimerMap` is in `luatimerapi.h`. `luaengineutil.h` no longer includes the sound, sprite-pool,
+  script-processor or timer headers, nor `<map>`/`<memory>`; `luaengine.h` includes what it really
+  uses (`luatimerapi.h`, `engine/spritepool.h`). `CLAUDE.md`'s `src/lua/` paragraph says where a new
+  engine object's getter goes.
+- **Effect** (objects of `scarab_core`'s 24 that depend on each header, from the build's depfiles):
+
+  | Header | Before | After |
+  |---|---|---|
+  | `sound/soundmanager.h` | 19 | 3 (sound, `LuaEngine`, `EngineHost`) |
+  | `engine/spritepool.h` | 20 | 4 (sprite, `SpritePool`, `LuaEngine`, `EngineHost`) |
+  | `scripting/scriptprocessor.h` | 19 | 4 (scripting, sound, `LuaEngine`, `EngineHost`) |
+  | `concurrent/timer.h` | 19 | 3 (timer, `LuaEngine`, `EngineHost`) |
+
+- **Proof:** 26/26 unit tests (also under ASan), 14 smoke tests, the headless smoke test, 19 samples
+  headless, all 35 `asan_run.py` runs clean, Caravellius' acceptance PASS and state fingerprint
+  `hash=33897632`, style check 0 findings. No Lua API change, no Caravellius breakage.
 
 **Rules the owner has already decided (S1 records them, S3 writes them into `CLAUDE.md`):**
 - **A class from sunlight (or any other external library) is never forward-declared: include

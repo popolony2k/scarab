@@ -20,6 +20,8 @@
 
 #include "lua/luasoundapi.h"
 #include "lua/luaengineutil.h"
+#include "lua/luascriptingapi.h"
+#include "sound/soundmanager.h"
 #include <cstdint>
 #include <set>
 
@@ -30,6 +32,16 @@
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
+
+            /**
+             * @brief Fetch the engine's SoundManager instance stashed as a Lua light userdata global.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             */
+            static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State* pLuaState )  {
+
+                return static_cast<SunLight :: Sound :: SoundManager *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaSoundApi :: SOUND_MANAGER_GLOBAL ) );
+            }
 
             /*
              * The ids loaded through sound_load and not unloaded since. SoundManager can't be asked
@@ -93,7 +105,7 @@ namespace Scarab  {
                 if( s_LoadedSounds.find( nSoundId ) != s_LoadedSounds.end() )
                     return LuaEngineUtil :: PushError( pLuaState, "sound " + std :: to_string( nSoundId ) + " is already loaded (sound_unload it first)" );
 
-                if( !LuaEngineUtil :: GetSoundManager( pLuaState ) -> Load( nSoundId, strPath ) )
+                if( !GetSoundManager( pLuaState ) -> Load( nSoundId, strPath ) )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot load sound '" + strPath + "'" );
 
                 s_LoadedSounds.insert( nSoundId );
@@ -114,7 +126,7 @@ namespace Scarab  {
                 if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Unload( nSoundId );
+                GetSoundManager( pLuaState ) -> Unload( nSoundId );
                 s_LoadedSounds.erase( nSoundId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -136,7 +148,7 @@ namespace Scarab  {
                 if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Play( nSoundId );
+                GetSoundManager( pLuaState ) -> Play( nSoundId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -154,7 +166,7 @@ namespace Scarab  {
                 if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Stop( nSoundId );
+                GetSoundManager( pLuaState ) -> Stop( nSoundId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -172,7 +184,7 @@ namespace Scarab  {
                 if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Pause( nSoundId );
+                GetSoundManager( pLuaState ) -> Pause( nSoundId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -190,7 +202,7 @@ namespace Scarab  {
                 if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                LuaEngineUtil :: GetSoundManager( pLuaState ) -> Resume( nSoundId );
+                GetSoundManager( pLuaState ) -> Resume( nSoundId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -210,7 +222,7 @@ namespace Scarab  {
                 if( !ReadLoadedSoundArg( pLuaState, 1, nSoundId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                lua_pushboolean( pLuaState, LuaEngineUtil :: GetSoundManager( pLuaState ) -> IsPlaying( nSoundId ) );
+                lua_pushboolean( pLuaState, GetSoundManager( pLuaState ) -> IsPlaying( nSoundId ) );
 
                 return 1;
             }
@@ -237,7 +249,7 @@ namespace Scarab  {
                     !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2, "volume", 0.0, 1.0, fVolume, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                LuaEngineUtil :: GetSoundManager( pLuaState ) -> SetVolume( nSoundId, ( float ) fVolume );
+                GetSoundManager( pLuaState ) -> SetVolume( nSoundId, ( float ) fVolume );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -263,7 +275,7 @@ namespace Scarab  {
                 if( nSoundId != __NO_AUDIO_SOUND_ID && s_LoadedSounds.find( ( int ) nSoundId ) == s_LoadedSounds.end() )
                     return LuaEngineUtil :: PushError( pLuaState, "sound " + std :: to_string( nSoundId ) + " is not loaded (see sound_load)" );
 
-                LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> GetScriptListener() -> OnCommand( cmd, ( uint16_t ) nSoundId );
+                LuaScriptingApi :: GetScriptProcessor( pLuaState ) -> GetScriptListener() -> OnCommand( cmd, ( uint16_t ) nSoundId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -412,7 +424,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_CMD, "id", strError ) )
+                if( !LuaScriptingApi :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PLAY_SONG_CMD, "id", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -431,7 +443,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PAUSE_SONG_CMD, "id", strError ) )
+                if( !LuaScriptingApi :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: PAUSE_SONG_CMD, "id", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -450,7 +462,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: STOP_SONG_CMD, "id", strError ) )
+                if( !LuaScriptingApi :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: STOP_SONG_CMD, "id", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -469,7 +481,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: RESUME_SONG_CMD, "id", strError ) )
+                if( !LuaScriptingApi :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: RESUME_SONG_CMD, "id", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );

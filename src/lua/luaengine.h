@@ -31,6 +31,8 @@ extern "C"  {
 #include "tilemap/itilemap.h"
 #include "sound/soundmanager.h"
 #include "lua/luaengineutil.h"
+#include "lua/luatimerapi.h"
+#include "engine/spritepool.h"
 #include "lua/luacollisionlistener.h"
 #include "engine/fontpool.h"
 #include <string>

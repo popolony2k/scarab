@@ -20,11 +20,50 @@
 
 #include "lua/luascriptingapi.h"
 #include "lua/luaengineutil.h"
+#include <cstdint>
 
 
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
+
+            /**
+             * @brief Fetch the engine's ScriptProcessor instance stashed as a Lua light userdata global.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             */
+            SunLight :: Scripting :: ScriptProcessor* LuaScriptingApi :: GetScriptProcessor( lua_State* pLuaState )  {
+
+                return static_cast<SunLight :: Scripting :: ScriptProcessor *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, SCRIPT_PROCESSOR_GLOBAL ) );
+            }
+
+            /**
+             * @brief Add an one parameter command to the ScriptProcessor's queue;
+             * shared by every Lua primitive that queues a command rather than
+             * acting immediately (sp_wait, sp_move_sprites_to_screen,
+             * sp_play_song, ...).
+             *
+             * The parameter is the first argument, an integer the command's 16 bit slot can hold
+             * (0..65535) - anything else is an error and nothing is queued.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param cmd The command to add to queue;
+             * @param szName The parameter's name, for the error message;
+             * @param strError Receives the reason on failure;
+             * @return true if the command was queued;
+             */
+            bool LuaScriptingApi :: AddOneParmCommandScript( lua_State* pLuaState, SunLight :: Scripting :: Commands cmd,
+                                                             const char* szName, std :: string& strError )  {
+
+                lua_Integer  nParm = 0;
+
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 1, szName, 0, UINT16_MAX, nParm, strError ) )
+                    return false;
+
+                GetScriptProcessor( pLuaState ) -> AddOneParmCmd( cmd, ( uint16_t ) nParm );
+
+                return true;
+            }
 
             /**
              * @brief Implement the script processing wait routine wrapper;
@@ -51,7 +90,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: WAIT_CMD, "milliseconds", strError ) )
+                if( !AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: WAIT_CMD, "milliseconds", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -75,7 +114,7 @@ namespace Scarab  {
              */
             int LuaScriptingApi :: Clear( lua_State* pLuaState )  {
 
-                LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> Clear();
+                GetScriptProcessor( pLuaState ) -> Clear();
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -101,7 +140,7 @@ namespace Scarab  {
              */
             int LuaScriptingApi :: WaitQueueEmpty( lua_State* pLuaState )  {
 
-                LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> AddNoParmCmd( SunLight :: Scripting :: Commands :: WAIT_SPRITES_QUEUE_EMPTY );
+                GetScriptProcessor( pLuaState ) -> AddNoParmCmd( SunLight :: Scripting :: Commands :: WAIT_SPRITES_QUEUE_EMPTY );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -129,7 +168,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: MOVE_SPRITES_TO_SCREEN_CMD, "stateId", strError ) )
+                if( !AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: MOVE_SPRITES_TO_SCREEN_CMD, "stateId", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -162,7 +201,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LABEL_CMD, "id", strError ) )
+                if( !AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LABEL_CMD, "id", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -181,7 +220,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: GOTO_LABEL_CMD, "id", strError ) )
+                if( !AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: GOTO_LABEL_CMD, "id", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -211,7 +250,7 @@ namespace Scarab  {
 
                 std :: string  strError;
 
-                if( !LuaEngineUtil :: AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LOAD_STAGE_CMD, "stageId", strError ) )
+                if( !AddOneParmCommandScript( pLuaState, SunLight :: Scripting :: Commands :: LOAD_STAGE_CMD, "stageId", strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );

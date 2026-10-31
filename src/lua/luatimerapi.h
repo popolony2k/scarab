@@ -21,6 +21,8 @@
 #ifndef __LUATIMERAPI_H__
 #define __LUATIMERAPI_H__
 
+#include <map>
+#include <memory>
 #include <string>
 
 extern "C"  {
@@ -28,10 +30,20 @@ extern "C"  {
   #include "lauxlib.h"
 }
 
+#include "concurrent/timer.h"
+
 
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
+
+            /**
+             * @brief Shared type for LuaEngine's m_Timers member and LuaTimerApi's
+             * casts of the TIMER_MAP_GLOBAL global - both need the exact same type,
+             * not just structurally identical ones.
+             */
+            typedef std :: map<int, std :: unique_ptr<SunLight :: Concurrent :: Timer>> TimerMap;
+
             /**
              * @brief Background-thread periodic/delayed callback Lua
              * primitives (set_timer/reset_timer), backed by
@@ -84,6 +96,9 @@ namespace Scarab  {
                 static int ResetTimer( lua_State* pLuaState );
 
                 public:
+
+                // The Lua global LuaEngine stashes its TimerMap in (a light userdata).
+                static constexpr const char*  TIMER_MAP_GLOBAL = "timerMapPtr";
 
                 static void Register( lua_State* pLuaState );
             };

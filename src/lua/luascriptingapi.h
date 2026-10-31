@@ -25,6 +25,10 @@ extern "C"  {
   #include "lua.h"
 }
 
+#include <string>
+
+#include "scripting/scriptprocessor.h"
+
 
 namespace Scarab  {
     namespace Engine  {
@@ -73,7 +77,12 @@ namespace Scarab  {
 
                 public:
 
+                // The Lua global LuaEngine stashes the engine's ScriptProcessor in (a light userdata).
+                static constexpr const char*  SCRIPT_PROCESSOR_GLOBAL = "scriptProcessorPtr";
+
                 static void Register( lua_State* pLuaState );
+                static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State* pLuaState );
+                static bool AddOneParmCommandScript( lua_State* pLuaState, SunLight :: Scripting :: Commands cmd, const char* szName, std :: string& strError );
             };
         }
     }

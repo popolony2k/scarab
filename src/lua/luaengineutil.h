@@ -23,8 +23,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <map>
-#include <memory>
 #include <mutex>
 #include <string>
 
@@ -34,10 +32,6 @@ extern "C"  {
 
 #include "tilemap/itilemap.h"
 #include "drawsurface/idrawsurface.h"
-#include "sound/soundmanager.h"
-#include "engine/spritepool.h"
-#include "scripting/scriptprocessor.h"
-#include "concurrent/timer.h"
 #include "engine/irendererprovider.h"
 
 
@@ -64,14 +58,7 @@ namespace Scarab  {
             };
 
             /**
-             * @brief Shared type for LuaEngine's m_Timers member and LuaTimerApi's
-             * casts of the timerMapPtr global - both need the exact same type,
-             * not just structurally identical ones.
-             */
-            typedef std :: map<int, std :: unique_ptr<SunLight :: Concurrent :: Timer>> TimerMap;
-
-            /**
-             * @brief Shared helpers used by every Lua primitive API module -
+             * @brief Helpers several Lua primitive API modules share -
              * and, for s_LuaMutex specifically, by LuaEngine itself too
              * (the orchestrator, not one of the primitive API modules -
              * see s_LuaMutex's own comment for why it lives here rather
@@ -109,14 +96,14 @@ namespace Scarab  {
                  */
                 static std :: mutex                       s_LuaMutex;
 
+                // The Lua global LuaEngine::Init stashes the renderer provider in (a light userdata).
+                static constexpr const char*              RENDERER_PROVIDER_GLOBAL = "rendererProviderPtr";
+
+                static void* GetGlobalPointer( lua_State* pLuaState, const char* szName );
                 static Engine :: IRendererProvider* GetRendererProvider( lua_State* pLuaState );
                 static void EnsureRenderer( lua_State* pLuaState );
                 static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State* pLuaState );
                 static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State* pLuaState );
-                static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State* pLuaState );
-                static Engine :: SpritePool* GetSpritePool( lua_State* pLuaState );
-                static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State* pLuaState );
-                static bool AddOneParmCommandScript( lua_State* pLuaState, SunLight :: Scripting :: Commands cmd, const char* szName, std :: string& strError );
                 static void RegisterConstants( lua_State* pLuaState, const stNamedConstant* pTable, size_t nCount );
                 static void RegisterRealConstants( lua_State* pLuaState, const stNamedRealConstant* pTable, size_t nCount );
                 static int PushError( lua_State* pLuaState, const std :: string& strMessage );

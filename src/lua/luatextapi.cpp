@@ -39,13 +39,7 @@ namespace Scarab  {
              */
             static Engine :: FontPool* GetFontPool( lua_State* pLuaState )  {
 
-                lua_getglobal( pLuaState, LuaTextApi :: FONT_POOL_GLOBAL );
-
-                Engine :: FontPool*  pFontPool = static_cast<Engine :: FontPool *>( lua_touserdata( pLuaState, -1 ) );
-
-                lua_pop( pLuaState, 1 );
-
-                return pFontPool;
+                return static_cast<Engine :: FontPool *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaTextApi :: FONT_POOL_GLOBAL ) );
             }
 
             /**
