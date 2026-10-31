@@ -314,3 +314,18 @@ jobs:
         run: |
           python scripts/sprite_tint_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "sprite tint smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
+      # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
+      # while hidden or off screen, checked exactly every frame for 11 cycles - doc/MASTER_PLAN.md
+      # item V13.
+      - name: Tile animation smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/tile_animation_smoke.py build/scarab
+
+      - name: Tile animation smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/tile_animation_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "tile animation smoke test exited with code $LASTEXITCODE" }

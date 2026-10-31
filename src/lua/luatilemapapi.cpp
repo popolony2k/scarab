@@ -630,6 +630,115 @@ namespace Scarab  {
                 return 4;
             }
 
+            /**
+             * @luaname{tilemap_get_tile_frame(row, col, layerId) -> gid | nil, message}
+             * @luagroup{tile_frame}
+             * @luaheading{Animated tiles}
+             * @luadoc
+             * The gid a cell of a tile layer **draws right now**: for a tile
+             * with a Tiled animation, the gid of the frame its animation shows
+             * at this moment; for a static tile, the tile's own gid
+             * (`tilemap_get_tile`'s). Flip bits are removed.
+             * `tilemap_get_object_tile_frame` is the same for a tile object,
+             * found by name as `tilemap_get_object_by_name` finds it.
+             *
+             * A Tiled tile animation runs **by time**, as Tiled shows it: the
+             * frame on screen is the time since `tilemap_load_map`, modulo the
+             * animation's cycle (the sum of its frame durations), walked
+             * through the durations - frame k is shown from the sum of the
+             * durations before it, for its own duration, in every cycle. So
+             * every cell and tile object showing the same tile is in step, and
+             * a tile that is not drawn (scrolled off screen, on a hidden layer,
+             * masked out of a view) does not pause: it shows the frame for the
+             * time now. An animation whose durations are all `0` shows its
+             * first frame. Up to Scarab v0.1.25 an animation advanced only
+             * while drawn, from where it stopped, its first frame was shown
+             * twice each cycle, and a duration that was not a whole number of
+             * frames was held until the next frame.
+             *
+             * Asking only reads: it never changes what is drawn. Failures are
+             * `nil, "message"`: no map loaded, no such layer, a layer that is
+             * not a tile layer, a cell off the map, an empty cell; for an
+             * object, no object of that name or one that is not a tile object.
+             * A hidden layer still answers.
+             * @luaexample
+             * -- the torch at row 4, col 7 of layer 1: is its flame frame up?
+             * local FLAME_UP_GID = 12
+             * local flameUp = tilemap_get_tile_frame(4, 7, 1) == FLAME_UP_GID
+             * local doorGid = tilemap_get_object_tile_frame("door")
+             */
+            int LuaTilemapApi :: GetTileFrame( lua_State *pLuaState )  {
+
+                std :: string      strError;
+                stMatrixPosition   pos;
+                int                nLayerId = 0;
+                stLayer            layer;
+                stMapInfo          mapInfo;
+                unsigned int       nGID = 0;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "row", pos.nTileRow, strError ) ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "col", pos.nTileCol, strError ) ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 3, "layerId", nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+
+                if( !FindLayer( pTileMap, nLayerId, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: string  strCell = "row " + std :: to_string( pos.nTileRow ) + ", col " + std :: to_string( pos.nTileCol );
+
+                // sunlight's GetTileFrame answers only false for every refusal: the reasons it can't tell
+                // apart are checked here first, so the one left when it still says false is an empty cell.
+                if( ( layer.pLayer == nullptr ) || ( layer.pLayer -> type != L_LAYER ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "layer " + std :: to_string( nLayerId ) + " is not a tile layer" );
+
+                pTileMap -> GetMapInfo( mapInfo );
+
+                if( ( pos.nTileRow < 0 ) || ( pos.nTileRow >= mapInfo.mapSize.nHeight ) ||
+                    ( pos.nTileCol < 0 ) || ( pos.nTileCol >= mapInfo.mapSize.nWidth ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strCell + " is off the map (" + std :: to_string( mapInfo.mapSize.nHeight ) +
+                                                       " rows, " + std :: to_string( mapInfo.mapSize.nWidth ) + " cols)" );
+
+                if( !pTileMap -> GetTileFrame( nLayerId, pos, nGID ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "no tile at " + strCell + " of layer " + std :: to_string( nLayerId ) + " (the cell is empty)" );
+
+                lua_pushinteger( pLuaState, ( lua_Integer ) nGID );
+
+                return 1;
+            }
+
+            /**
+             * @luaname{tilemap_get_object_tile_frame(name) -> gid | nil, message}
+             * @luagroup{tile_frame}
+             */
+            int LuaTilemapApi :: GetObjectTileFrame( lua_State *pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+                stObject       object;
+                stMapInfo      mapInfo;
+                unsigned int   nGID = 0;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "name", strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+
+                if( !pTileMap -> GetMapInfo( mapInfo ) )
+                    return LuaEngineUtil :: PushError( pLuaState, NO_MAP_LOADED );
+
+                if( !pTileMap -> GetObjectByName( strName.c_str(), object ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "no object named '" + strName + "' in the loaded map" );
+
+                if( !pTileMap -> GetObjectTileFrame( strName.c_str(), nGID ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "object '" + strName + "' is not a tile object" );
+
+                lua_pushinteger( pLuaState, ( lua_Integer ) nGID );
+
+                return 1;
+            }
+
             void LuaTilemapApi :: RegisterEnums( lua_State *pLuaState )  {
 
 
@@ -655,6 +764,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "tilemap_get_tile", LuaTilemapApi :: GetTile );
                 lua_register( pLuaState, "tilemap_to_tile_matrix", LuaTilemapApi :: ToTileMatrix );
                 lua_register( pLuaState, "tilemap_get_object_by_name", LuaTilemapApi :: GetObjectByName );
+                lua_register( pLuaState, "tilemap_get_tile_frame", LuaTilemapApi :: GetTileFrame );
+                lua_register( pLuaState, "tilemap_get_object_tile_frame", LuaTilemapApi :: GetObjectTileFrame );
 
                 RegisterEnums( pLuaState );
             }

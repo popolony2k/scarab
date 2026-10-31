@@ -22,8 +22,8 @@
  shapes - Tiled shape objects (rectangle, ellipse, polyline, polygon),
  rotated objects and point objects (master plan item V6), on three maps made
  for them (resources/tilemap/shapes/, from sunlight's own samples/shapes - see
- resources/tilemap/shapes/README.md), plus per-object opacity and layer tint. Keys 1 to
- 5 switch maps:
+ resources/tilemap/shapes/README.md), plus per-object opacity, layer tint and tile animation. Keys 1 to
+ 6 switch maps:
 
    1. shapes.tmx   - the four shapes, and how the viewport clips them;
    2. rotation.tmx - shapes, tile objects and text objects with a Tiled
@@ -43,6 +43,13 @@
                      alpha ignored, shapes and text untinted, a group's tint and
                      opacity multiplying into its children. T and G change a
                      tint and the group's opacity at runtime.
+   6. animation.tmx - Tiled tile animation by time (master plan item V13,
+                     sunlight I11, from resources/tilemap/animation/): one tile
+                     animating over three monkeys for 100 / 50 / 300 ms, in
+                     several cells, flipped, far to the right and as tile
+                     objects - all in step - next to a static tile and an
+                     all-0 ms animation (its first frame). The HUD reads the
+                     frame back with tilemap_get_tile_frame.
 
  Switching loads another map over the one already loaded (tilemap_load_map
  again), which sunlight no longer leaks (master plan item V10). The maps'
@@ -61,12 +68,14 @@ local SCROLL_STEP   = 4    -- map pixels per frame while an arrow key is held
 local SHAPES_DIR  = "resources/tilemap/shapes/"
 local OBJECTS_DIR = "resources/tilemap/objects/"
 local TINT_DIR    = "resources/tilemap/tint/"
+local ANIM_DIR    = "resources/tilemap/animation/"
 local MAPS = {
     { key = KEY_ONE,   file = SHAPES_DIR .. "shapes.tmx",    camera = ORIGIN_CAMERA, title = "1 shapes: the four shapes, clipped by the viewport" },
     { key = KEY_TWO,   file = SHAPES_DIR .. "rotation.tmx",  camera = ORIGIN_CAMERA, title = "2 rotation: each object turned about its pivot" },
     { key = KEY_THREE, file = SHAPES_DIR .. "thick.tmx",     camera = ORIGIN_CAMERA, title = "3 thick: line widths and points, scaled by zoom" },
     { key = KEY_FOUR,  file = OBJECTS_DIR .. "opacity.tmx",  camera = FRAME_CAMERA,  title = "4 opacity: an object's own opacity, else its layer's" },
     { key = KEY_FIVE,  file = TINT_DIR .. "tint.tmx",        camera = ORIGIN_CAMERA, title = "5 tint: Tiled tintcolor, changed at runtime with T and G", tint = true },
+    { key = KEY_SIX,   file = ANIM_DIR .. "animation.tmx",   camera = ORIGIN_CAMERA, title = "6 animation: one tile, 100 / 50 / 300 ms, every copy in step", animation = true },
 }
 
 local renderer, err = renderer_create{
@@ -118,6 +127,8 @@ local GROUP_LAYER    = 10      -- "group tinted blue, opacity 0.6"
 local TINTS          = {       -- r, g, b, a; the last one is the layer's authored tint
     { 255, 255, 128, 255 }, { 128, 255, 128, 255 }, { 255, 255, 255, 255 }, { 128, 255, 255, 255 },
 }
+local ANIMATED_LAYER = 1       -- animation.tmx's "animated" tile layer (map 6)
+
 local GROUP_OPACITIES = { 1, 0.25, 0.6 }   -- 0..1; 0.6 is the authored value
 local tintIndex      = #TINTS
 local opacityIndex   = #GROUP_OPACITIES
@@ -181,13 +192,19 @@ function on_update( dt )
     local camX, camY = camera_get_position()
 
     draw_hud_line( current.title, HUD_X, HUD_Y, 255, 255, 255 )
-    local mapLine = string.format( "camera %d, %d   zoom %.2f   keys 1-5 switch maps", camX, camY, viewport_get_zoom_factor() )
+    local mapLine = string.format( "camera %d, %d   zoom %.2f   keys 1-6 switch maps", camX, camY, viewport_get_zoom_factor() )
 
     if current.tint then
         local r, g, b = tilemap_get_layer_tint( TINTED_LAYER )
         local _, groupOpacity = tilemap_get_layer( GROUP_LAYER )
 
-        mapLine = string.format( "keys 1-5 maps   T: layer 2 tint %d,%d,%d   G: group opacity %g", r, g, b, groupOpacity )
+        mapLine = string.format( "keys 1-6 maps   T: layer 2 tint %d,%d,%d   G: group opacity %g", r, g, b, groupOpacity )
+    end
+
+    if current.animation then
+        mapLine = string.format( "keys 1-6 maps   tilemap_get_tile_frame: gid %d   object gid %d   static gid %d",
+            tilemap_get_tile_frame( 2, 2, ANIMATED_LAYER ), tilemap_get_object_tile_frame( "anim_object" ),
+            tilemap_get_tile_frame( 2, 20, ANIMATED_LAYER ) )
     end
 
     draw_hud_line( mapLine, HUD_X, HUD_Y + HUD_LINE, 200, 200, 200 )

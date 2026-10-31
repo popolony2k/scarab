@@ -10,6 +10,8 @@ Used in [samples/tilemap](../../samples/tilemap/docs/README.md) (loaded via `til
 
 [tint/](tint/README.md) holds `tint.tmx`, Scarab's own map for Tiled layer tint: tile, image, object and group layers, tint alpha, shapes and text. Used in [samples/shapes](../../samples/shapes/docs/README.md) (key `5`) and by `scripts/layer_tint_smoke`.
 
+[animation/](animation/README.md) holds `animation.tmx`, Scarab's own map for Tiled tile animation by time: one animated tile in several cells, flipped, off screen, on a hidden layer and as tile objects, next to a static tile and an all-0 ms animation. Used in [samples/shapes](../../samples/shapes/docs/README.md) (key `6`) and by `scripts/tile_animation_smoke`.
+
 [shapes/](shapes/README.md) holds `shapes.tmx`, `rotation.tmx` and `thick.tmx`, maps made for shape, rotated and point objects (from sunlight's own `shapes` sample). Used in [samples/shapes](../../samples/shapes/docs/README.md).
 
 [objects/](objects/README.md) holds `objects.tmx` and `opacity.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).
