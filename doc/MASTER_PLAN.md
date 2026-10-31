@@ -1245,11 +1245,36 @@ dungeon, a menu over a different map, a cross-fade between two maps.
 
 | # | Item | Status |
 |---|------|--------|
-| R1 | AddressSanitizer CI job (Linux) | TODO |
+| R1 | AddressSanitizer CI job (Linux) | DONE |
 | R2 | First doctest suite | TODO |
 
-**R1.** Mirrors sunlight's own "AddressSanitizer (Linux)" job - Linux only, for CI time;
+**R1 (DONE, 2026-10-30).** Mirrors sunlight's own "AddressSanitizer (Linux)" job - Linux only, for CI time;
 also runs LeakSanitizer, which macOS's AddressSanitizer does not.
+- **Job:** `ci.yml` "AddressSanitizer (Linux)" - Scarab and every fetched dependency (sunlight, raylib,
+  libtmx, libxml2, Lua) built Debug with `-fsanitize=address -fno-omit-frame-pointer -g`, with the CI content
+  key, so the encrypted archive test runs too. Scarab has no unit tests yet (R2), so the job runs the
+  executable: `scripts/asan_run.py` runs the headless smoke test (and its budget run), every
+  `scripts/*_smoke.py` and every sample headless for 120 frames, with
+  `detect_leaks=1:halt_on_error=1:abort_on_error=1`. Every report goes to a log directory (`log_path`), so
+  a report fails the run even where a smoke driver would only print its output's tail. New smoke tests and
+  samples are picked up automatically.
+- **Leaks:** `scripts/lsan.supp` is for leaks PROVEN to be inside a third-party library, one entry each with
+  its reason; it is empty - the first CI run found no leak anywhere (35 of 35 runs).
+- **One test adjusted:** `load_map_smoke`'s peak-memory comparison (V10) grew 365 MB under ASan: its
+  quarantine keeps freed memory, so peak memory grows whatever the code does. The driver skips only that
+  comparison under a sanitizer (`SCARAB_SANITIZER`, set by the wrapper); LeakSanitizer covers leaks there
+  more strictly, and the normal builds still compare (0.0 MB).
+- **Local (macOS, no LeakSanitizer):** the same build in `build-asan/` (now ignored by git): 35 of 35 runs
+  clean (`--no-leaks`); Caravellius' acceptance PASS and fingerprint `hash=33897632` under ASan, no report;
+  `leaks --atExit` on the normal build: 0 leaks for the headless smoke test and samples sprite, shapes and
+  mapless.
+- **Proven:** a deliberate heap use-after-free in `sprite_get_opacity` was caught locally by the wrapper (in
+  `sprite_tint_smoke` and `samples/sprite`, naming `luaspriteapi.cpp:735`), then restored; a deliberate leak
+  (a `new` with no `delete` in the same function) was pushed as a throwaway commit to the PR branch: the CI
+  job failed with LeakSanitizer reports naming `luaspriteapi.cpp:734` (`sprite_tint_smoke`, 72 bytes in 18
+  allocations; `samples/sprite`, 476 bytes in 119; 33 of 35 passed), every other job stayed green, and the
+  commit was reverted.
+- **Docs:** `CLAUDE.md`'s CI section. CI only - no Caravellius breakage entry.
 
 **R2.** Needs its own scoping discussion: what's testable without a window. `SpritePool`
 (`src/engine/`) is the obvious first candidate - deliberately Lua-agnostic, no `lua_State`
