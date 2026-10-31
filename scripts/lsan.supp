@@ -1,0 +1,5 @@
+# LeakSanitizer suppressions for scripts/asan_run.py (doc/MASTER_PLAN.md item R1).
+#
+# Only leaks PROVEN to be inside a third-party library, never in Scarab's or sunlight's own code,
+# may be listed here - one entry per leak, each with the reason it is not ours to fix. A leak in
+# Scarab is fixed; one in sunlight is reported to sunlight.

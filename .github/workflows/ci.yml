@@ -16,6 +16,51 @@ jobs:
       - name: Check every Lua-callable primitive is tagged for docs generation
         run: python3 scripts/generate_lua_api_docs.py
 
+  # Scarab, sunlight, raylib, libtmx and Lua all built with AddressSanitizer, and every headless
+  # check run under it with LeakSanitizer on (doc/MASTER_PLAN.md item R1, mirroring sunlight's own
+  # "AddressSanitizer (Linux)" job): the smoke tests, the headless smoke test and every sample.
+  # Linux only - macOS's AddressSanitizer has no LeakSanitizer, and one platform keeps CI time down.
+  # Any sanitizer report fails the job (scripts/asan_run.py); known third-party leaks are suppressed
+  # only through scripts/lsan.supp, each with its reason.
+  asan:
+    name: AddressSanitizer (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            zlib1g-dev \
+            libasound2-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxcursor-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - name: Configure with AddressSanitizer
+        env:
+          SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
+          ASAN_FLAGS: -fsanitize=address -fno-omit-frame-pointer -g
+        run: >
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY"
+          "-DCMAKE_C_FLAGS=$ASAN_FLAGS" "-DCMAKE_CXX_FLAGS=$ASAN_FLAGS"
+          "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address" "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address"
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      - name: Run every headless check under AddressSanitizer and LeakSanitizer
+        run: python3 scripts/asan_run.py build/scarab --require-encrypted
+
   build:
     strategy:
       fail-fast: false
