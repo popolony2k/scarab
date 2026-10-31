@@ -51,12 +51,18 @@ jobs:
           ASAN_FLAGS: -fsanitize=address -fno-omit-frame-pointer -g
         run: >
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-          -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY"
+          -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY" -DSCARAB_BUILD_TESTS=ON
           "-DCMAKE_C_FLAGS=$ASAN_FLAGS" "-DCMAKE_CXX_FLAGS=$ASAN_FLAGS"
           "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address" "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address"
 
       - name: Build
         run: cmake --build build -j 4
+
+      - name: Unit tests under AddressSanitizer and LeakSanitizer
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:abort_on_error=1
+          LSAN_OPTIONS: suppressions=scripts/lsan.supp
+        run: ./build/scarab_tests
 
       - name: Run every headless check under AddressSanitizer and LeakSanitizer
         run: python3 scripts/asan_run.py build/scarab --require-encrypted
@@ -98,14 +104,14 @@ jobs:
         if: runner.os != 'Windows'
         env:
           SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
-        run: cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY"
+        run: cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DSCARAB_BUILD_TESTS=ON -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY"
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         env:
           SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
-        run: cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" "-DSCARAB_CONTENT_KEY=$env:SCARAB_CI_CONTENT_KEY"
+        run: cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DSCARAB_BUILD_TESTS=ON" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" "-DSCARAB_CONTENT_KEY=$env:SCARAB_CI_CONTENT_KEY"
 
       - name: Verify SCARAB_CONTENT_KEY actually configured (Linux/macOS)
         if: runner.os != 'Windows'
@@ -143,6 +149,20 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release -j 4
+
+      # Scarab's unit tests (doctest, tests/): what needs no window - the sprite and font
+      # pools, LuaEngineUtil's argument readers, the zoom rule, content encryption -
+      # doc/MASTER_PLAN.md item R2.
+      - name: Unit tests (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: ./build/scarab_tests
+
+      - name: Unit tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & build/Release/scarab_tests.exe
+          if ($LASTEXITCODE -ne 0) { throw "unit tests exited with code $LASTEXITCODE" }
 
       # --headless runs the game on sunlight's null renderer: no window, no
       # GPU - so, unlike everything before this step, it can actually RUN
