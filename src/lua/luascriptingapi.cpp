@@ -29,7 +29,7 @@ namespace Scarab  {
             /**
              * @brief Implement the script processing wait routine wrapper;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{sp_wait(milliseconds) -> true | nil, message}
@@ -47,7 +47,7 @@ namespace Scarab  {
              * @luaexample
              * sp_wait(2000)  -- 2 second pause, non-blocking
              */
-            int LuaScriptingApi :: Wait( lua_State *pLuaState )  {
+            int LuaScriptingApi :: Wait( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -60,7 +60,7 @@ namespace Scarab  {
             /**
              * @brief Implement the script processing clear routine wrapper;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{sp_clear() -> true}
@@ -73,7 +73,7 @@ namespace Scarab  {
              * @luaexample
              * sp_clear()
              */
-            int LuaScriptingApi :: Clear( lua_State *pLuaState )  {
+            int LuaScriptingApi :: Clear( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> Clear();
 
@@ -83,7 +83,7 @@ namespace Scarab  {
             /**
              * @brief Implement the script processing Wait for queue empty routine wrapper;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{sp_wait_queue_empty() -> true}
@@ -99,7 +99,7 @@ namespace Scarab  {
              * sp_wait_queue_empty()
              * sp_move_sprites_to_screen(STATE_MOVE_CYLINDER_SHIP_TO_SCREEN_LEFT_SIDE)  -- only starts once wave 1 is gone
              */
-            int LuaScriptingApi :: WaitQueueEmpty( lua_State *pLuaState )  {
+            int LuaScriptingApi :: WaitQueueEmpty( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> AddNoParmCmd( SunLight :: Scripting :: Commands :: WAIT_SPRITES_QUEUE_EMPTY );
 
@@ -109,7 +109,7 @@ namespace Scarab  {
             /**
              * @brief Implement the script processing Move sprites to screen routine wrapper;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{sp_move_sprites_to_screen(stateId) -> true | nil, message}
@@ -125,7 +125,7 @@ namespace Scarab  {
              * @luaexample
              * sp_move_sprites_to_screen(STATE_MOVE_SATELLITES_TO_SCREEN_RANDOM)
              */
-            int LuaScriptingApi :: MoveSpritesToScreen( lua_State *pLuaState )  {
+            int LuaScriptingApi :: MoveSpritesToScreen( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -138,7 +138,7 @@ namespace Scarab  {
             /**
              * @brief Implement the script processing Add label routine wrapper;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{sp_add_label(id) -> true | nil, message}
@@ -158,7 +158,7 @@ namespace Scarab  {
              *
              * sp_goto_label(1)  -- repeats the wave forever
              */
-            int LuaScriptingApi :: AddLabel( lua_State *pLuaState )  {
+            int LuaScriptingApi :: AddLabel( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -171,13 +171,13 @@ namespace Scarab  {
             /**
              * @brief Implement the script processing Goto label routine wrapper;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{sp_goto_label(id) -> true | nil, message}
              * @luagroup{labels}
              */
-            int LuaScriptingApi :: GotoLabel( lua_State *pLuaState )  {
+            int LuaScriptingApi :: GotoLabel( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -190,7 +190,7 @@ namespace Scarab  {
             /**
              * @brief Implement the script processing Load stage routine wrapper;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{sp_load_stage(stageId) -> true | nil, message}
@@ -207,7 +207,7 @@ namespace Scarab  {
              * @luaexample
              * sp_load_stage(STAGE_FIRST)
              */
-            int LuaScriptingApi :: LoadStage( lua_State *pLuaState )  {
+            int LuaScriptingApi :: LoadStage( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -220,7 +220,7 @@ namespace Scarab  {
             /**
              * @brief Register the ScriptProcessor queue-control Lua-callable functions.
              */
-            void LuaScriptingApi :: Register( lua_State *pLuaState )  {
+            void LuaScriptingApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "sp_wait", LuaScriptingApi :: Wait );
                 lua_register( pLuaState, "sp_clear", LuaScriptingApi :: Clear );

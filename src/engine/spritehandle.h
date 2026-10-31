@@ -41,16 +41,32 @@ namespace Scarab  {
         /** A handle keeps a slot's index + 1 in 16 bits, so the pool holds at most this many slots in all. */
         const uint32_t MAX_SPRITE_SLOTS = 0xFFFF;
 
+        /**
+         * @brief Pack a slot index and its generation into a handle.
+         * @param nIndex The slot's 0-based index (stored + 1, so a handle is never 0);
+         * @param nGeneration The slot's current generation;
+         * @return The handle;
+         */
         inline SpriteHandle MakeSpriteHandle( uint32_t nIndex, uint16_t nGeneration )  {
 
             return ( ( ( SpriteHandle ) nGeneration ) << 16 ) | ( ( nIndex + 1 ) & 0xFFFF );
         }
 
+        /**
+         * @brief The slot index a handle addresses.
+         * @param handle The handle;
+         * @return The 0-based slot index; -1 for INVALID_SPRITE_HANDLE;
+         */
         inline int32_t SpriteHandleIndex( SpriteHandle handle )  {
 
             return ( int32_t ) ( handle & 0xFFFF ) - 1;
         }
 
+        /**
+         * @brief The generation a handle was made with - it resolves only while its slot still has it.
+         * @param handle The handle;
+         * @return The generation;
+         */
         inline uint16_t SpriteHandleGeneration( SpriteHandle handle )  {
 
             return ( uint16_t ) ( handle >> 16 );
@@ -69,21 +85,37 @@ namespace Scarab  {
          */
         const uintptr_t SPRITE_HANDLE_PTR_TAG = 0xDEADBEEF00000000ULL;
 
+        /**
+         * @brief Pack a handle into a pointer-sized value for a Collider's opaque data, tagged with
+         * SPRITE_HANDLE_PTR_TAG.
+         * @param handle The handle;
+         * @return The tagged value, never a real pointer;
+         */
         inline void* PackSpriteHandleAsPtr( SpriteHandle handle )  {
 
             return ( void * ) ( SPRITE_HANDLE_PTR_TAG | ( uintptr_t ) handle );
         }
 
-        inline bool IsPackedSpriteHandle( void *pPtr )  {
+        /**
+         * @brief Whether a Collider's opaque data holds a packed handle (it carries the tag).
+         * @param pPtr The Collider's data;
+         * @return true for a value made by PackSpriteHandleAsPtr;
+         */
+        inline bool IsPackedSpriteHandle( void* pPtr )  {
 
             return ( ( ( uintptr_t ) pPtr ) & 0xFFFFFFFF00000000ULL ) == SPRITE_HANDLE_PTR_TAG;
         }
 
-        inline SpriteHandle UnpackSpriteHandleFromPtr( void *pPtr )  {
+        /**
+         * @brief The handle inside a value made by PackSpriteHandleAsPtr.
+         * @param pPtr The packed value (check IsPackedSpriteHandle first);
+         * @return The handle;
+         */
+        inline SpriteHandle UnpackSpriteHandleFromPtr( void* pPtr )  {
 
             return ( SpriteHandle ) ( ( uintptr_t ) pPtr & 0xFFFFFFFFULL );
         }
     }
 }
 
-#endif  /* __SPRITEHANDLE_H__ */
+#endif /* __SPRITEHANDLE_H__ */

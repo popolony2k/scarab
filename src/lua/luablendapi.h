@@ -21,8 +21,7 @@
 #ifndef __LUABLENDAPI_H__
 #define __LUABLENDAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -62,18 +61,18 @@ namespace Scarab  {
              */
             class LuaBlendApi  {
 
-                static int BeginBlendMode( lua_State *pLuaState );
-                static int EndBlendMode( lua_State *pLuaState );
+                static int BeginBlendMode( lua_State* pLuaState );
+                static int EndBlendMode( lua_State* pLuaState );
 
-                static void RegisterEnums( lua_State *pLuaState );
+                static void RegisterEnums( lua_State* pLuaState );
 
                 public:
 
-                static bool ReadBlendMode( lua_State *pLuaState, int nIndex, SunLight :: Base :: BlendMode &mode, std :: string &strError );
-                static void Register( lua_State *pLuaState );
+                static bool ReadBlendMode( lua_State* pLuaState, int nIndex, SunLight :: Base :: BlendMode& mode, std :: string& strError );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUABLENDAPI_H__ */
+#endif /* __LUABLENDAPI_H__ */

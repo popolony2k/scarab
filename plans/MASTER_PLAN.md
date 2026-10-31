@@ -1310,7 +1310,9 @@ filesystem, and the headless and archive smoke tests already cover it).
 | # | Item | Status |
 |---|------|--------|
 | S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts; Scarab's own guide `docs/CODE_STYLE.md` (C++ copied from sunlight, plus Lua rules) | DONE |
-| S2 | Mechanical alignment pass, object-file-identical proof | TODO |
+| S2a | Mechanical C++ alignment (spacing, `*`/`&` side, guards, `extern "C"` braces, `@param ;`, declaration columns), proven by identical object files | DONE |
+| S2b | C++ names and code (Hungarian renames, `override`, `using namespace`, `#define __NAME` constants, named numbers, `unique_ptr`), proven by behaviour | TODO |
+| S2c | Lua (`__NAME <const>`, license headers, names, named numbers in samples) + a CI style check, proven by the smoke tests and a window check | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
 | S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | TODO |
 
@@ -1382,6 +1384,47 @@ with the identical-object proof; the "rename" and "code" rows change object file
 usual proof (unit tests, every smoke test and sample, Caravellius' acceptance and fingerprint); the
 Lua rows are proven by the smoke tests, the samples headless and a window check. That is three kinds of
 proof, so S2 is probably three PRs.
+
+**S2 (planned 2026-10-31 with the owner).** Three PRs, one per kind of proof, in this order: S2a, S2b,
+S2c. The owner's decisions: numbers in Lua API calls that are argument or stack positions
+(`lua_setfield( pLuaState, -2, ... )`, `lua_pcall( L, 6, 0, 0 )`) stay as they are - "very local and
+visible"; the other C++ numbers (array sizes, loop bounds, bit masks) get names in S2b; and once the audit
+is at 0, a CI step fails on any new finding (S2c).
+
+**S2a (DONE, 2026-10-31).** Whitespace and layout only, over `src/` and `tests/` (54 files):
+- `Type *pName` -> `Type* pName` (and `&`), keeping each column (699, incl. 444 `lua_State* pLuaState` and
+  every `const std :: string& strName`); `extern "C"  {` (30); `#endif /* __X_H__ */` (25); `@param ... ;`
+  (40, comments); `->` and `::` spacing; braces with two spaces; `switch(`; `default :`; two function bodies
+  given a blank first line; `main.cpp` includes its own `main.h` first; and every block of declarations
+  aligned to one column (78 blocks; each to the right-most column it already used, so the fewest lines
+  move).
+- **The audit was sharpened on the way (and recalibrated on sunlight each time):** the pointer rule had
+  skipped any line with a scoped type, taking `std ::`'s colon for an operator, so S1's "529" missed 170
+  (`const std :: string &strX`); sunlight's own count rose from 72 to 107, all real. A new rule,
+  `cpp-decl-columns` (48 real blocks in sunlight; a parameter continued on its own line is not a
+  declaration). A bare scope block's lone `{` is exempt (nothing to end - sunlight has none).
+- **Every function has a Doxygen comment (the owner, 2026-10-31).** The owner noticed
+  `spritehandle.h`'s six inline helpers had none; the guide gained a Scarab section, "Documentation
+  (Scarab)" (every function - inline helpers, file-local statics, private helpers, `main` - documented
+  where declared or defined; an interface's comment covers its implementations; `@brief`, `@param ;`,
+  `@return ;`), and the audit a rule, `cpp-undocumented-function` (doctest's `TEST_CASE` is named by its
+  description; sunlight's headers count for the interfaces Scarab implements). 20 functions were
+  documented: the 6 handle helpers, `FontPool`'s 3, `LuaRendererApi`'s 4 file-local helpers, 3
+  `RegisterEnums`, `main`, and 3 test helpers. Calibrated on sunlight: 51 real ones there (eg.
+  `NullBackend :: GetClock`). The pointer rule also learned the range-based `for` (`for( stSlot &slot :`,
+  3 in Scarab).
+- **Proof:** a second build, `build-proof/`, with debug info off (`-g0`, `SCARAB_DEBUG_SYMBOLS_UNIX=OFF`) -
+  first shown deterministic (all 31 objects of `scarab_core`, `scarab` and `scarab_tests` identical after
+  a rebuild from the same source). After S2a: **all 25 objects of `src/` byte-identical** (`main.cpp`'s
+  include reorder included). The 6 test objects can't be compared that way: doctest records each
+  `CHECK`'s `__LINE__`, and the new comments and the joined `extern "C"` brace move lines. So they were
+  compiled with `-D__LINE__=0`, once from `master_plan`'s test sources and once from the new ones, at the
+  same path: **all 6 identical**; the same compile of one test with a single changed expected value
+  differs, so the method catches a real change. (A first attempt reported every test object "different"
+  - its `old` compile had never run, a script bug, not a code difference; rerun step by step.) Also:
+  25/25 unit tests, 14 smoke tests, 19 samples headless, the docs generator.
+- **Audit after S2a:** every mechanical rule at 0; left for S2b - 24 names, 5 `using namespace`, 4
+  constants, 8 `new`/`delete`.
 
 **S4 (TODO, added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
 mixes helpers every Lua module shares with ones only one category uses. Each new engine object

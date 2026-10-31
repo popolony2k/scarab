@@ -23,8 +23,7 @@
 
 #include <string>
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -58,25 +57,25 @@ namespace Scarab  {
              */
             class LuaRendererApi  {
 
-                static int RendererCreate( lua_State *pLuaState );
-                static int RendererDestroy( lua_State *pLuaState );
-                static int RendererGetCurrent( lua_State *pLuaState );
-                static int RendererGetConfig( lua_State *pLuaState );
-                static int RendererGetDefaultView( lua_State *pLuaState );
-                static int RendererGetBackend( lua_State *pLuaState );
-                static int RendererGetViewCount( lua_State *pLuaState );
+                static int RendererCreate( lua_State* pLuaState );
+                static int RendererDestroy( lua_State* pLuaState );
+                static int RendererGetCurrent( lua_State* pLuaState );
+                static int RendererGetConfig( lua_State* pLuaState );
+                static int RendererGetDefaultView( lua_State* pLuaState );
+                static int RendererGetBackend( lua_State* pLuaState );
+                static int RendererGetViewCount( lua_State* pLuaState );
 
-                static void RegisterEnums( lua_State *pLuaState );
+                static void RegisterEnums( lua_State* pLuaState );
 
                 public:
 
-                static bool CheckHandle( lua_State *pLuaState, int nIndex, std :: string &strError );
-                static bool ValidateZoomFactor( double fFactor, unsigned &nZoomPos, std :: string &strError );
+                static bool CheckHandle( lua_State* pLuaState, int nIndex, std :: string& strError );
+                static bool ValidateZoomFactor( double fFactor, unsigned& nZoomPos, std :: string& strError );
                 static double FactorOfPosition( unsigned nZoomPos );
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUARENDERERAPI_H__ */
+#endif /* __LUARENDERERAPI_H__ */

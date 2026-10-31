@@ -23,8 +23,7 @@
 
 #include "collision/icollisionlistener.h"
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -43,20 +42,20 @@ namespace Scarab  {
              */
             class LuaCollisionListener : public SunLight :: Collision :: ICollisionListener  {
 
-                lua_State  *m_pLuaState;
+                lua_State*  m_pLuaState;
 
                 public:
 
-                LuaCollisionListener( lua_State *pLuaState );
+                LuaCollisionListener( lua_State* pLuaState );
                 virtual ~LuaCollisionListener( void );
 
-                void OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                  SunLight :: Collision :: Collider *pSecond );
-                void OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                  SunLight :: TileMap :: stTile *pSecond );
+                void OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                  SunLight :: Collision :: Collider* pSecond );
+                void OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                  SunLight :: TileMap :: stTile* pSecond );
             };
         }
     }
 }
 
-#endif  /* __LUACOLLISIONLISTENER_H__ */
+#endif /* __LUACOLLISIONLISTENER_H__ */

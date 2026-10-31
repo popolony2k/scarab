@@ -23,8 +23,7 @@
 
 #include <string>
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -53,24 +52,24 @@ namespace Scarab  {
              */
             class LuaInputApi  {
 
-                static int IsKeyDown( lua_State *pLuaState );
-                static int IsKeyUp( lua_State *pLuaState );
-                static int IsKeyReleased( lua_State *pLuaState );
-                static int IsGamepadButtonDown( lua_State *pLuaState );
-                static int IsGamepadButtonUp( lua_State *pLuaState );
-                static int GetGamepadAxisMovement( lua_State *pLuaState );
-                static int AddGamepad( lua_State *pLuaState );
+                static int IsKeyDown( lua_State* pLuaState );
+                static int IsKeyUp( lua_State* pLuaState );
+                static int IsKeyReleased( lua_State* pLuaState );
+                static int IsGamepadButtonDown( lua_State* pLuaState );
+                static int IsGamepadButtonUp( lua_State* pLuaState );
+                static int GetGamepadAxisMovement( lua_State* pLuaState );
+                static int AddGamepad( lua_State* pLuaState );
 
-                static void RegisterEnums( lua_State *pLuaState );
+                static void RegisterEnums( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
-                static bool ReadKeyArg( lua_State *pLuaState, int nIndex, const char *szName,
-                                        SunLight :: Input :: KeyboardKey &key, std :: string &strError );
+                static void Register( lua_State* pLuaState );
+                static bool ReadKeyArg( lua_State* pLuaState, int nIndex, const char* szName,
+                                        SunLight :: Input :: KeyboardKey& key, std :: string& strError );
             };
         }
     }
 }
 
-#endif  /* __LUAINPUTAPI_H__ */
+#endif /* __LUAINPUTAPI_H__ */

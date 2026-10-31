@@ -47,7 +47,7 @@ TEST_CASE( "SpriteHandle packs a 1-based index and a generation" )  {
     CHECK( MakeSpriteHandle( 0, 0 ) != INVALID_SPRITE_HANDLE );    // index 0 is stored as 1
     CHECK( SpriteHandleIndex( INVALID_SPRITE_HANDLE ) == -1 );
 
-    void  *pPacked = PackSpriteHandleAsPtr( handle );
+    void*  pPacked = PackSpriteHandleAsPtr( handle );
 
     CHECK( IsPackedSpriteHandle( pPacked ) );
     CHECK( UnpackSpriteHandleFromPtr( pPacked ) == handle );
@@ -141,7 +141,7 @@ TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no ble
     REQUIRE( pool.RegisterType( "ship", 1 ) );
 
     SpriteHandle                   handle  = pool.Acquire( "ship" );
-    SunLight :: Sprite :: Sprite  *pSprite = pool.Resolve( handle );
+    SunLight :: Sprite :: Sprite*  pSprite = pool.Resolve( handle );
 
     REQUIRE( pSprite != nullptr );
     pSprite -> SetVisible( true );

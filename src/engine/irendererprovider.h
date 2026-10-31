@@ -91,13 +91,13 @@ namespace Scarab  {
              * a later renderer_create can say which call created the
              * default renderer implicitly;
              */
-            virtual SunLight :: TileMap :: ITileMap* GetTileMap( const char *szTrigger ) = 0;
+            virtual SunLight :: TileMap :: ITileMap* GetTileMap( const char* szTrigger ) = 0;
 
             /**
              * @brief The draw surface, creating the default renderer first
              * if none exists yet - see @link GetTileMap.
              */
-            virtual SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char *szTrigger ) = 0;
+            virtual SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char* szTrigger ) = 0;
 
             /**
              * @brief The draw surface if a renderer already exists, else
@@ -114,8 +114,8 @@ namespace Scarab  {
              * @param extras What renderer_create asks for beyond RendererConfig itself, applied
              * once the renderer exists - see stRendererCreateExtras;
              */
-            virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
-                                         const stRendererCreateExtras &extras, std :: string *pError ) = 0;
+            virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig& config,
+                                         const stRendererCreateExtras& extras, std :: string* pError ) = 0;
 
             /** @brief How the current renderer came to exist (ORIGIN_NONE if it doesn't yet). */
             virtual Origin GetOrigin( void ) = 0;
@@ -133,7 +133,7 @@ namespace Scarab  {
             virtual SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void ) = 0;
 
             /** @brief Record a window-title change, so the effective configuration stays live. */
-            virtual void NoteWindowTitle( const std :: string &strTitle ) = 0;
+            virtual void NoteWindowTitle( const std :: string& strTitle ) = 0;
 
             /**
              * @brief What CreateRenderer's extras.bUseDefaultKeyHandler was last given (false if
@@ -153,24 +153,24 @@ namespace Scarab  {
              * exists yet, like GetTileMap.
              * @return false for no family, no font, or an invalid font;
              */
-            virtual bool RegisterFont( const char *szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
-                                       bool bBold, bool bItalic, const char *szTrigger ) = 0;
+            virtual bool RegisterFont( const char* szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
+                                       bool bBold, bool bItalic, const char* szTrigger ) = 0;
 
             /**
              * @brief Unregister a font from every family and style it serves.
              * @return true if it was registered for at least one; false if no renderer exists yet
              * (nothing can have been registered, and none is created for this);
              */
-            virtual bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont> &pFont ) = 0;
+            virtual bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont>& pFont ) = 0;
 
             /**
              * @brief Unregister the font of one family and style, leaving its others.
              * @return true if a font was registered for exactly that family and style; false if no
              * renderer exists yet (none is created for this);
              */
-            virtual bool UnregisterFont( const char *szFamily, bool bBold, bool bItalic ) = 0;
+            virtual bool UnregisterFont( const char* szFamily, bool bBold, bool bItalic ) = 0;
         };
     }
 }
 
-#endif  /* __IRENDERERPROVIDER_H__ */
+#endif /* __IRENDERERPROVIDER_H__ */

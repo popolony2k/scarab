@@ -178,8 +178,8 @@ namespace Scarab  {
             /**
              * @brief Read a key argument (a KEY_* constant) - shared with app_set_exit_key.
              */
-            bool LuaInputApi :: ReadKeyArg( lua_State *pLuaState, int nIndex, const char *szName,
-                                            SunLight :: Input :: KeyboardKey &key, std :: string &strError )  {
+            bool LuaInputApi :: ReadKeyArg( lua_State* pLuaState, int nIndex, const char* szName,
+                                            SunLight :: Input :: KeyboardKey& key, std :: string& strError )  {
 
                 int  nKey = 0;
 
@@ -193,7 +193,7 @@ namespace Scarab  {
             }
 
             /** @brief Read a gamepad id argument: 0 to MAX_GAMEPAD_COUNT - 1. */
-            static bool ReadGamepadIdArg( lua_State *pLuaState, int nIndex, int &nGamePadId, std :: string &strError )  {
+            static bool ReadGamepadIdArg( lua_State* pLuaState, int nIndex, int& nGamePadId, std :: string& strError )  {
 
                 lua_Integer  nValue = 0;
 
@@ -206,7 +206,7 @@ namespace Scarab  {
             }
 
             /** @brief Read a gamepad id and a GAMEPAD_BUTTON_* constant (arguments 1 and 2). */
-            static bool ReadGamepadButtonArgs( lua_State *pLuaState, int &nGamePadId, GamepadButton &button, std :: string &strError )  {
+            static bool ReadGamepadButtonArgs( lua_State* pLuaState, int& nGamePadId, GamepadButton& button, std :: string& strError )  {
 
                 int  nButton = 0;
 
@@ -244,7 +244,7 @@ namespace Scarab  {
              *   end
              * end
              */
-            int LuaInputApi :: IsKeyDown( lua_State *pLuaState )  {
+            int LuaInputApi :: IsKeyDown( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 KeyboardKey    key = KeyboardKey :: KEY_NULL;
@@ -261,7 +261,7 @@ namespace Scarab  {
              * @luaname{input_is_key_up(key) -> up | nil, message}
              * @luagroup{keyboard}
              */
-            int LuaInputApi :: IsKeyUp( lua_State *pLuaState )  {
+            int LuaInputApi :: IsKeyUp( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 KeyboardKey    key = KeyboardKey :: KEY_NULL;
@@ -278,7 +278,7 @@ namespace Scarab  {
              * @luaname{input_is_key_released(key) -> released | nil, message}
              * @luagroup{keyboard}
              */
-            int LuaInputApi :: IsKeyReleased( lua_State *pLuaState )  {
+            int LuaInputApi :: IsKeyReleased( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 KeyboardKey    key = KeyboardKey :: KEY_NULL;
@@ -321,7 +321,7 @@ namespace Scarab  {
              *   end
              * end
              */
-            int LuaInputApi :: IsGamepadButtonDown( lua_State *pLuaState )  {
+            int LuaInputApi :: IsGamepadButtonDown( lua_State* pLuaState )  {
 
                 std :: string   strError;
                 int             nGamePadId = 0;
@@ -339,7 +339,7 @@ namespace Scarab  {
              * @luaname{input_is_gamepad_button_up(gamepadId, button) -> up | nil, message}
              * @luagroup{gamepad}
              */
-            int LuaInputApi :: IsGamepadButtonUp( lua_State *pLuaState )  {
+            int LuaInputApi :: IsGamepadButtonUp( lua_State* pLuaState )  {
 
                 std :: string   strError;
                 int             nGamePadId = 0;
@@ -357,7 +357,7 @@ namespace Scarab  {
              * @luaname{input_get_gamepad_axis(gamepadId, axis) -> value | nil, message}
              * @luagroup{gamepad}
              */
-            int LuaInputApi :: GetGamepadAxisMovement( lua_State *pLuaState )  {
+            int LuaInputApi :: GetGamepadAxisMovement( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nGamePadId = 0;
@@ -380,7 +380,7 @@ namespace Scarab  {
              * @luaname{input_add_gamepad(gamepadId) -> true | nil, message}
              * @luagroup{gamepad}
              */
-            int LuaInputApi :: AddGamepad( lua_State *pLuaState )  {
+            int LuaInputApi :: AddGamepad( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nGamePadId = 0;
@@ -393,7 +393,11 @@ namespace Scarab  {
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
-            void LuaInputApi :: RegisterEnums( lua_State *pLuaState )  {
+            /**
+             * @brief Register this module's constant groups as Lua globals (see each group's @luaconstants).
+             * @param pLuaState Lua state to be used by engine call;
+             */
+            void LuaInputApi :: RegisterEnums( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aKeyboardKeys, sizeof( s_aKeyboardKeys ) / sizeof( s_aKeyboardKeys[0] ) );
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aGamepadButtons, sizeof( s_aGamepadButtons ) / sizeof( s_aGamepadButtons[0] ) );
@@ -404,7 +408,7 @@ namespace Scarab  {
             /**
              * @brief Register the input polling Lua-callable functions and enums.
              */
-            void LuaInputApi :: Register( lua_State *pLuaState )  {
+            void LuaInputApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "input_is_key_down", LuaInputApi :: IsKeyDown );
                 lua_register( pLuaState, "input_is_key_up", LuaInputApi :: IsKeyUp );

@@ -23,6 +23,7 @@
  * runs whichever game argv[1] points at. Nothing here is specific to any
  * one game.
  */
+#include "main.h"
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -31,7 +32,6 @@
 #include <filesystem>
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
-#include "main.h"
 #include "enginehost.h"
 #include "lua/luacryptoapi.h"
 #include "lua/luaengine.h"
@@ -54,7 +54,8 @@
  * precedent of small, explicit platform ifdefs for OS APIs (never
  * Autotools/etc - see CLAUDE.md's "Build" section).
  */
-static void SetPackEnvVar( const char *szName, const std :: string &strValue )  {
+static void SetPackEnvVar( const char* szName, const std :: string& strValue )  {
+
 #ifdef _WIN32
     _putenv_s( szName, strValue.c_str() );
 #else
@@ -80,7 +81,7 @@ static void SetPackEnvVar( const char *szName, const std :: string &strValue )  
 static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )  {
 
     SunLight :: Renderer :: RendererConfig  config;
-    SunLight :: Base :: stDimension2D    viewport;
+    SunLight :: Base :: stDimension2D       viewport;
 
     viewport.pos.x = VIEWPORT_POS_X;
     viewport.pos.y = VIEWPORT_POS_Y;
@@ -103,7 +104,15 @@ static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )
 }
 
 
-int main( int argc, char **argv ) {
+/**
+ * @brief Parse the command line, then run the entry script, the --pack tool or a headless run (see
+ * CLAUDE.md, src/main.cpp).
+ * @param argc Argument count;
+ * @param argv Arguments;
+ * @return EXIT_SUCCESS, EXIT_FAILURE, EXIT_FRAME_BUDGET_EXHAUSTED when a --headless run's frame budget
+ * ran out, or CLI11's own code after --help/--version (0) or a bad command line (CLI11_PARSE);
+ */
+int main( int argc, char** argv )  {
 
     /*
      * Entry point argument parsing (Phase 12, archive-distribution).
@@ -159,11 +168,11 @@ int main( int argc, char **argv ) {
     std :: string  strEntryOverride;
     std :: string  strPackConfigPath;
 
-    CLI :: Option  *pPathOption = app.add_option( "path", strEntryPath,
+    CLI :: Option*  pPathOption = app.add_option( "path", strEntryPath,
                     "Entry point: a .lua script, a .json project file, or a .zip bundle" )
-       ->check( CLI :: ExistingFile );
+       -> check( CLI :: ExistingFile );
 
-    CLI :: Option  *pEntryOption = app.add_option( "-e,--entry", strEntryOverride,
+    CLI :: Option*  pEntryOption = app.add_option( "-e,--entry", strEntryOverride,
                     "Actual entry point location - inside the .zip when entry is an archive "
                     "(a .lua path there runs directly, anything else is read as project.json "
                     "- default: project.json at its root), or overriding entry itself when "
@@ -182,18 +191,18 @@ int main( int argc, char **argv ) {
      * opens" philosophy ResolveEntryScript's own --entry/.lua check
      * already follows.
      */
-    CLI :: Option  *pPackOption = app.add_option( "--pack", strPackConfigPath,
+    CLI :: Option*  pPackOption = app.add_option( "--pack", strPackConfigPath,
                     "Encrypt + zip a game's own source directory (see README.md's "
                     "own \"Content encryption\" section) and exit - no window opens. "
                     "<config.json>: {\"source_dir\": \"...\", \"output\": \"...\"} - "
                     "relative paths inside it resolve against the config file's own "
                     "directory, not the current working directory." )
-       ->check( CLI :: ExistingFile );
+       -> check( CLI :: ExistingFile );
 
-    pPathOption->excludes( pPackOption );
-    pPackOption->excludes( pPathOption );
-    pEntryOption->excludes( pPackOption );
-    pPackOption->excludes( pEntryOption );
+    pPathOption -> excludes( pPackOption );
+    pPackOption -> excludes( pPathOption );
+    pEntryOption -> excludes( pPackOption );
+    pPackOption -> excludes( pEntryOption );
 
     /*
      * --headless runs the game on sunlight's null renderer: no window, no
@@ -222,27 +231,27 @@ int main( int argc, char **argv ) {
     unsigned  nMaxFrames    = 0;
     bool      bMaxFramesOk  = false;
 
-    CLI :: Option  *pHeadlessOption = app.add_flag( "--headless", bHeadless,
+    CLI :: Option*  pHeadlessOption = app.add_flag( "--headless", bHeadless,
                     "Run with no window on the null renderer (virtual clock, no GPU) - for "
                     "automated runs on machines with no display. Audio is unaffected." );
 
     app.add_flag( "--fast", bHeadlessFast,
                     "With --headless: run frames as fast as the game logic allows instead of "
                     "real-time paced (the virtual clock is unchanged)." )
-       ->needs( pHeadlessOption );
+       -> needs( pHeadlessOption );
 
-    CLI :: Option  *pMaxFramesOption = app.add_option( "--max-frames", nMaxFrames,
+    CLI :: Option*  pMaxFramesOption = app.add_option( "--max-frames", nMaxFrames,
                     "With --headless: stop after N frames. Exits with code 3 if this ends the "
                     "run before the game called app_quit() (a safety net against hangs)." )
-       ->check( CLI :: PositiveNumber )
-       ->needs( pHeadlessOption );
+       -> check( CLI :: PositiveNumber )
+       -> needs( pHeadlessOption );
 
     app.add_flag( "--max-frames-ok", bMaxFramesOk,
                     "With --max-frames: treat reaching the frame budget as success (exit 0)." )
-       ->needs( pMaxFramesOption );
+       -> needs( pMaxFramesOption );
 
-    pHeadlessOption->excludes( pPackOption );
-    pPackOption->excludes( pHeadlessOption );
+    pHeadlessOption -> excludes( pPackOption );
+    pPackOption -> excludes( pHeadlessOption );
 
     CLI11_PARSE( app, argc, argv );
 
@@ -320,7 +329,7 @@ int main( int argc, char **argv ) {
         // directory (relocatable, like project.json's main_script - not
         // against whatever the caller's own CWD happens to be); an
         // already-absolute path is used unchanged.
-        auto ResolvePackPath = [ &packConfigDir ]( const std :: string &strRaw ) -> std :: string  {
+        auto ResolvePackPath = [ &packConfigDir ]( const std :: string& strRaw ) -> std :: string  {
             std :: filesystem :: path  rawPath( strRaw );
 
             return ( rawPath.is_absolute() ? rawPath : ( packConfigDir / rawPath ) ).string();
@@ -389,7 +398,7 @@ int main( int argc, char **argv ) {
      * with no key at all.
      */
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().SetReadFilter(
-        []( const std :: vector<unsigned char> &in, std :: vector<unsigned char> &out ) {
+        []( const std :: vector<unsigned char>& in, std :: vector<unsigned char>& out )  {
             return Scarab :: Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( in, out );
         } );
 
@@ -486,7 +495,7 @@ int main( int argc, char **argv ) {
     engineHost.RunEntryScript();
     rendererProvider.EnsureCreated( "the end of the entry script" );
 
-    SunLight :: Renderer :: TileMapRenderer  *pRenderer = rendererProvider.GetRenderer();
+    SunLight :: Renderer :: TileMapRenderer*  pRenderer = rendererProvider.GetRenderer();
 
     pRenderer -> Run();
 

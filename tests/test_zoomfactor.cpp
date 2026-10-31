@@ -36,7 +36,7 @@ using namespace Scarab :: Engine :: Lua;
 
 TEST_CASE( "Every whole multiple of the zoom step is valid, and maps to its position" )  {
 
-    unsigned  nZoomPos = 0;
+    unsigned       nZoomPos = 0;
     std :: string  strError;
 
     CHECK( LuaRendererApi :: ValidateZoomFactor( 0.0625, nZoomPos, strError ) );
@@ -58,7 +58,7 @@ TEST_CASE( "Every whole multiple of the zoom step is valid, and maps to its posi
 
 TEST_CASE( "A factor between two steps is refused, naming the nearest valid one - never rounded" )  {
 
-    unsigned  nZoomPos = 99;
+    unsigned       nZoomPos = 99;
     std :: string  strError;
 
     CHECK_FALSE( LuaRendererApi :: ValidateZoomFactor( 3.8, nZoomPos, strError ) );
@@ -68,7 +68,7 @@ TEST_CASE( "A factor between two steps is refused, naming the nearest valid one 
 
 TEST_CASE( "A factor outside the range, or not finite, is refused" )  {
 
-    unsigned  nZoomPos = 0;
+    unsigned       nZoomPos = 0;
     std :: string  strError;
 
     CHECK_FALSE( LuaRendererApi :: ValidateZoomFactor( 0.0, nZoomPos, strError ) );

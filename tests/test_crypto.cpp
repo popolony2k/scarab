@@ -32,8 +32,7 @@
 #include "doctest/doctest.h"
 #include "lua/luacryptoapi.h"
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -44,15 +43,19 @@ using namespace Scarab :: Engine :: Lua;
 
 static const char * const  PLAIN_TEXT = "<map version=\"1.10\"> the plain bytes of a packed file </map>";
 
+/**
+ * @brief Whether this build was configured with a content key.
+ * @return true when SCARAB_CONTENT_KEY holds a full key;
+ */
 static bool HasContentKey( void )  {
 
     return std :: strlen( SCARAB_CONTENT_KEY ) == __KEY_HEX_LENGTH;
 }
 
 /** crypto_encrypt_data( PLAIN_TEXT ) through Lua, as tools/pack.lua calls it; false if it failed. */
-static bool Encrypt( std :: vector<unsigned char> &blob, std :: string &strError )  {
+static bool Encrypt( std :: vector<unsigned char>& blob, std :: string& strError )  {
 
-    lua_State  *L = luaL_newstate();
+    lua_State*  L = luaL_newstate();
 
     LuaCryptoApi :: Register( L );
     lua_getglobal( L, "crypto_encrypt_data" );
@@ -63,7 +66,7 @@ static bool Encrypt( std :: vector<unsigned char> &blob, std :: string &strError
 
     if( bOk )  {
         size_t       nLength = 0;
-        const char  *pData   = lua_tolstring( L, -2, &nLength );
+        const char*  pData   = lua_tolstring( L, -2, &nLength );
 
         blob.assign( pData, pData + nLength );
     }

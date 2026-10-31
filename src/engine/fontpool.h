@@ -72,4 +72,4 @@ namespace Scarab  {
     }
 }
 
-#endif  /* __FONTPOOL_H__ */
+#endif /* __FONTPOOL_H__ */

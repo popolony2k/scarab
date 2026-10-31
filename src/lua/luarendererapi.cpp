@@ -27,8 +27,7 @@
 #include <cstring>
 #include <string>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -63,7 +62,7 @@ namespace Scarab  {
              * @param nZoomPos Receives the zoom position on success;
              * @param strError Receives the reason on failure;
              */
-            bool LuaRendererApi :: ValidateZoomFactor( double fFactor, unsigned &nZoomPos, std :: string &strError )  {
+            bool LuaRendererApi :: ValidateZoomFactor( double fFactor, unsigned& nZoomPos, std :: string& strError )  {
 
                 double  fMin  = SunLight :: Base :: ZOOM_FACTOR_MIN;
                 double  fMax  = SunLight :: Base :: ZOOM_FACTOR_MAX;
@@ -105,8 +104,8 @@ namespace Scarab  {
              * @brief Read an integer option: a Lua number with an exact integer value (a JSON
              * `1260` arrives as an integer, `1260.0` is accepted too; `1260.5` and strings are not).
              */
-            static bool ReadInteger( lua_State *pLuaState, int nIndex, const std :: string &strName,
-                                     lua_Integer nMin, lua_Integer nMax, lua_Integer &nOut, std :: string &strError )  {
+            static bool ReadInteger( lua_State* pLuaState, int nIndex, const std :: string& strName,
+                                     lua_Integer nMin, lua_Integer nMax, lua_Integer& nOut, std :: string& strError )  {
 
                 int  bIsInteger = 0;
 
@@ -127,7 +126,16 @@ namespace Scarab  {
                 return true;
             }
 
-            static bool ReadBoolean( lua_State *pLuaState, int nIndex, const std :: string &strName, bool &bOut, std :: string &strError )  {
+            /**
+             * @brief Read a boolean option of renderer_create's table (strict: true or false, nothing else).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param nIndex Stack index of the option's value;
+             * @param strName The option's name, for the error message;
+             * @param bOut Receives the value;
+             * @param strError Receives the reason on failure;
+             * @return true if the value is a boolean;
+             */
+            static bool ReadBoolean( lua_State* pLuaState, int nIndex, const std :: string& strName, bool& bOut, std :: string& strError )  {
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TBOOLEAN )  {
                     strError = "option '" + strName + "' must be a boolean";
@@ -144,9 +152,9 @@ namespace Scarab  {
              * is required and any other key is rejected, so a misspelt field is an error, not a
              * silently ignored one.
              */
-            static bool ReadIntegerFields( lua_State *pLuaState, int nIndex, const std :: string &strName,
-                                           const char * const *aszFields, size_t nFields,
-                                           lua_Integer nMin, lua_Integer nMax, lua_Integer *aOut, std :: string &strError )  {
+            static bool ReadIntegerFields( lua_State* pLuaState, int nIndex, const std :: string& strName,
+                                           const char * const* aszFields, size_t nFields,
+                                           lua_Integer nMin, lua_Integer nMax, lua_Integer* aOut, std :: string& strError )  {
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TTABLE )  {
                     strError = "option '" + strName + "' must be a table";
@@ -161,7 +169,7 @@ namespace Scarab  {
                     bool  bKnown = false;
 
                     if( lua_type( pLuaState, -2 ) == LUA_TSTRING )  {
-                        const char  *szKey = lua_tostring( pLuaState, -2 );
+                        const char*  szKey = lua_tostring( pLuaState, -2 );
 
                         for( size_t nField = 0; nField < nFields; nField++ )
                             if( strcmp( szKey, aszFields[nField] ) == 0 )
@@ -207,8 +215,8 @@ namespace Scarab  {
              * exact reason. Options left out keep the value already in *pConfig (Scarab's
              * defaults). Also reports which of the null-backend-only options were given.
              */
-            static bool ParseOptions( lua_State *pLuaState, int nTable, RendererConfig &config,
-                                      bool &bNullOnlyGiven, Engine :: stRendererCreateExtras &extras, std :: string &strError )  {
+            static bool ParseOptions( lua_State* pLuaState, int nTable, RendererConfig& config,
+                                      bool& bNullOnlyGiven, Engine :: stRendererCreateExtras& extras, std :: string& strError )  {
 
                 static const char * const  aszViewport[]   = { "x", "y", "w", "h" };
                 static const char * const  aszScrollStep[] = { "w", "h" };
@@ -378,7 +386,7 @@ namespace Scarab  {
             /**
              * @brief renderer_create's checks that need the whole configuration, not one option.
              */
-            static bool ValidateConfig( const RendererConfig &config, bool bNullOnlyGiven, bool bNullBackend, std :: string &strError )  {
+            static bool ValidateConfig( const RendererConfig& config, bool bNullOnlyGiven, bool bNullBackend, std :: string& strError )  {
 
                 if( bNullOnlyGiven && !bNullBackend )  {
                     strError = "frame_pacing/max_frames are only valid on the null backend";
@@ -386,7 +394,7 @@ namespace Scarab  {
                 }
 
                 if( config.viewport )  {
-                    const SunLight :: Base :: stDimension2D  &vp = *config.viewport;
+                    const SunLight :: Base :: stDimension2D&  vp = *config.viewport;
 
                     if( vp.size.nWidth < 1 || vp.size.nHeight < 1 )  {
                         strError = "option 'viewport' needs w and h of at least 1";
@@ -408,9 +416,9 @@ namespace Scarab  {
             /**
              * @brief Check that argument nIndex names the current renderer.
              */
-            bool LuaRendererApi :: CheckHandle( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+            bool LuaRendererApi :: CheckHandle( lua_State* pLuaState, int nIndex, std :: string& strError )  {
 
-                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                Engine :: IRendererProvider*  pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TNUMBER || !lua_isinteger( pLuaState, nIndex ) )  {
                     strError = "expected a renderer handle (the value renderer_create returned)";
@@ -501,13 +509,13 @@ namespace Scarab  {
              *     error( "cannot create the renderer: " .. err )
              * end
              */
-            int LuaRendererApi :: RendererCreate( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererCreate( lua_State* pLuaState )  {
 
-                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
-                RendererConfig                config    = pProvider -> GetDefaultConfig();
-                bool                          bNullOnlyGiven        = false;
+                Engine :: IRendererProvider*      pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                RendererConfig                    config    = pProvider -> GetDefaultConfig();
+                bool                              bNullOnlyGiven        = false;
                 Engine :: stRendererCreateExtras  extras;
-                std :: string                 strError;
+                std :: string                     strError;
 
                 if( lua_gettop( pLuaState ) > 1 || ( lua_gettop( pLuaState ) == 1 && !lua_istable( pLuaState, 1 ) ) )
                     return LuaEngineUtil :: PushError( pLuaState, "renderer_create expects one argument: an options table" );
@@ -538,7 +546,7 @@ namespace Scarab  {
              * local renderer = renderer_get_current()
              * if renderer then renderer_destroy( renderer ) end
              */
-            int LuaRendererApi :: RendererDestroy( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererDestroy( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -564,9 +572,9 @@ namespace Scarab  {
              * local renderer, origin = renderer_get_current()
              * assert( renderer == nil, "a window call ran before renderer_create" )
              */
-            int LuaRendererApi :: RendererGetCurrent( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetCurrent( lua_State* pLuaState )  {
 
-                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                Engine :: IRendererProvider*  pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
 
                 if( pProvider -> GetOrigin() == Engine :: IRendererProvider :: ORIGIN_NONE )  {
                     lua_pushnil( pLuaState );
@@ -580,19 +588,37 @@ namespace Scarab  {
                 return 2;
             }
 
-            static void SetIntegerField( lua_State *pLuaState, const char *szName, lua_Integer nValue )  {
+            /**
+             * @brief Set field szName of the table on top of the stack to an integer (renderer_get_config's result).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The field's name;
+             * @param nValue The value;
+             */
+            static void SetIntegerField( lua_State* pLuaState, const char* szName, lua_Integer nValue )  {
 
                 lua_pushinteger( pLuaState, nValue );
                 lua_setfield( pLuaState, -2, szName );
             }
 
-            static void SetBooleanField( lua_State *pLuaState, const char *szName, bool bValue )  {
+            /**
+             * @brief Set field szName of the table on top of the stack to a boolean (renderer_get_config's result).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The field's name;
+             * @param bValue The value;
+             */
+            static void SetBooleanField( lua_State* pLuaState, const char* szName, bool bValue )  {
 
                 lua_pushboolean( pLuaState, bValue ? 1 : 0 );
                 lua_setfield( pLuaState, -2, szName );
             }
 
-            static void SetNumberField( lua_State *pLuaState, const char *szName, double fValue )  {
+            /**
+             * @brief Set field szName of the table on top of the stack to a number (renderer_get_config's result).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The field's name;
+             * @param fValue The value;
+             */
+            static void SetNumberField( lua_State* pLuaState, const char* szName, double fValue )  {
 
                 lua_pushnumber( pLuaState, fValue );
                 lua_setfield( pLuaState, -2, szName );
@@ -617,18 +643,18 @@ namespace Scarab  {
              * assert( config.title == "My Game" )
              * assert( config.zoom == 3.8125 )
              */
-            int LuaRendererApi :: RendererGetConfig( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetConfig( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                Engine :: IRendererProvider           *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
-                RendererConfig                         config    = pProvider -> GetEffectiveConfig();
-                SunLight :: DrawSurface :: IDrawSurface  *pSurface  = pProvider -> PeekDrawSurface();
-                SunLight :: TileMap :: ITileMap          *pTileMap  = pProvider -> GetTileMap( "renderer_get_config" );
-                SunLight :: Base :: stDimension2D    &vp        = pTileMap -> GetViewport().GetDimension2D();
+                Engine :: IRendererProvider*              pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                RendererConfig                            config    = pProvider -> GetEffectiveConfig();
+                SunLight :: DrawSurface :: IDrawSurface*  pSurface  = pProvider -> PeekDrawSurface();
+                SunLight :: TileMap :: ITileMap*          pTileMap  = pProvider -> GetTileMap( "renderer_get_config" );
+                SunLight :: Base :: stDimension2D&        vp        = pTileMap -> GetViewport().GetDimension2D();
 
                 lua_newtable( pLuaState );
 
@@ -681,7 +707,7 @@ namespace Scarab  {
              * @luaexample
              * local view = renderer_get_default_view( renderer )
              */
-            int LuaRendererApi :: RendererGetDefaultView( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetDefaultView( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -705,7 +731,7 @@ namespace Scarab  {
              *     print( "running headless" )
              * end
              */
-            int LuaRendererApi :: RendererGetBackend( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetBackend( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -727,7 +753,7 @@ namespace Scarab  {
              * @luaexample
              * print( renderer_get_view_count( renderer ) )   -- 1 until view_create is used
              */
-            int LuaRendererApi :: RendererGetViewCount( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetViewCount( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -742,7 +768,7 @@ namespace Scarab  {
             /**
              * @brief Register the renderer/view constants exposed to Lua.
              */
-            void LuaRendererApi :: RegisterEnums( lua_State *pLuaState )  {
+            void LuaRendererApi :: RegisterEnums( lua_State* pLuaState )  {
 
                 /**
                  * @luaconstants{Renderer backends}
@@ -816,7 +842,7 @@ namespace Scarab  {
             /**
              * @brief Register the renderer lifecycle Lua-callable functions and constants.
              */
-            void LuaRendererApi :: Register( lua_State *pLuaState )  {
+            void LuaRendererApi :: Register( lua_State* pLuaState )  {
 
                 RegisterEnums( pLuaState );
 

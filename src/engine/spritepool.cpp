@@ -52,7 +52,7 @@ namespace Scarab  {
          * @param strTypeTag The caller-defined type tag (opaque to the pool);
          * @param nCapacity Fixed number of slots to reserve for this type;
          */
-        bool SpritePool :: RegisterType( const std :: string &strTypeTag, uint32_t nCapacity )  {
+        bool SpritePool :: RegisterType( const std :: string& strTypeTag, uint32_t nCapacity )  {
 
             if( HasType( strTypeTag ) || ( nCapacity > MAX_SPRITE_SLOTS - GetSlotCount() ) )
                 return false;
@@ -85,7 +85,7 @@ namespace Scarab  {
         /**
          * @brief Whether a type tag has been registered.
          */
-        bool SpritePool :: HasType( const std :: string &strTypeTag ) const  {
+        bool SpritePool :: HasType( const std :: string& strTypeTag ) const  {
 
             return m_FreeListsByType.find( strTypeTag ) != m_FreeListsByType.end();
         }
@@ -106,7 +106,7 @@ namespace Scarab  {
          * @return A valid handle on success, INVALID_SPRITE_HANDLE if the type
          * wasn't registered or has no free slots left;
          */
-        SpriteHandle SpritePool :: Acquire( const std :: string &strTypeTag )  {
+        SpriteHandle SpritePool :: Acquire( const std :: string& strTypeTag )  {
 
             auto  itFreeList = m_FreeListsByType.find( strTypeTag );
 
@@ -385,7 +385,7 @@ namespace Scarab  {
          */
         void SpritePool :: Clear( void )  {
 
-            for( stSlot &slot : m_Slots )
+            for( stSlot& slot : m_Slots )
                 slot.sprite.Unload();
 
             m_FreeListsByType.clear();

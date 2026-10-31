@@ -24,8 +24,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -61,7 +60,7 @@ namespace Scarab  {
             /**
              * @brief Fetch layer nLayerId of the loaded map, with the reason on failure.
              */
-            static bool FindLayer( ITileMap *pTileMap, int nLayerId, stLayer &layer, std :: string &strError )  {
+            static bool FindLayer( ITileMap* pTileMap, int nLayerId, stLayer& layer, std :: string& strError )  {
 
                 stMapInfo  mapInfo;
 
@@ -81,7 +80,7 @@ namespace Scarab  {
             /**
              * @brief Fetch the layer named strName of the loaded map, with the reason on failure.
              */
-            static bool FindLayer( ITileMap *pTileMap, const std :: string &strName, stLayer &layer, std :: string &strError )  {
+            static bool FindLayer( ITileMap* pTileMap, const std :: string& strName, stLayer& layer, std :: string& strError )  {
 
                 stMapInfo  mapInfo;
 
@@ -103,7 +102,7 @@ namespace Scarab  {
              * index 2) into layer. The opacity is a number from 0 (transparent) to 1 (opaque), as
              * Tiled stores it (sunlight I9).
              */
-            static bool ReadLayerValues( lua_State *pLuaState, stLayer &layer, std :: string &strError )  {
+            static bool ReadLayerValues( lua_State* pLuaState, stLayer& layer, std :: string& strError )  {
 
                 double  fOpacity = 0.0;
                 int     nOffsetX = 0;
@@ -123,7 +122,7 @@ namespace Scarab  {
             }
 
             /** @brief Push a layer's visible, opacity and offset - tilemap_get_layer's four results. */
-            static int PushLayer( lua_State *pLuaState, const stLayer &layer )  {
+            static int PushLayer( lua_State* pLuaState, const stLayer& layer )  {
 
                 lua_pushboolean( pLuaState, layer.bVisible );
                 lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( layer.fOpacity ) );
@@ -169,7 +168,7 @@ namespace Scarab  {
              * @luaexample
              * tilemap_load_map(BASE_PATH .. "tilemap/corsair/corsair.tmx", MAP_ALIGNMENT_CENTER_WIDTH_BOTTOM)
              */
-            int LuaTilemapApi :: LoadMap( lua_State *pLuaState )  {
+            int LuaTilemapApi :: LoadMap( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strPath;
@@ -205,10 +204,10 @@ namespace Scarab  {
              * (`collision_add_rule`) are kept. Loading a map over a loaded one
              * (`tilemap_load_map` again) does NOT unload sprites.
              */
-            int LuaTilemapApi :: UnloadMap( lua_State *pLuaState )  {
+            int LuaTilemapApi :: UnloadMap( lua_State* pLuaState )  {
 
-                ITileMap   *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
-                stMapInfo  mapInfo;
+                ITileMap*   pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                stMapInfo   mapInfo;
 
                 if( !pTileMap -> GetMapInfo( mapInfo ) || !pTileMap -> UnloadMap() )
                     return LuaEngineUtil :: PushError( pLuaState, NO_MAP_LOADED );
@@ -226,7 +225,7 @@ namespace Scarab  {
              * @luaexample
              * local mapW, mapH, tileW, tileH = tilemap_get_map_info()
              */
-            int LuaTilemapApi :: GetMapInfo( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetMapInfo( lua_State* pLuaState )  {
 
                 stMapInfo  mapInfo;
 
@@ -261,7 +260,7 @@ namespace Scarab  {
              * @luaexample
              * local visible, opacity, offX, offY = tilemap_get_layer(2)
              */
-            int LuaTilemapApi :: GetLayer( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetLayer( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nLayerId = 0;
@@ -278,7 +277,7 @@ namespace Scarab  {
              * @luaname{tilemap_get_layer_by_name(layerName) -> visible, opacity, offsetX, offsetY | nil, message}
              * @luagroup{get_layer}
              */
-            int LuaTilemapApi :: GetLayerByName( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetLayerByName( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strName;
@@ -311,7 +310,7 @@ namespace Scarab  {
              * local visible, _, offX, offY = tilemap_get_layer(2)
              * tilemap_set_layer(2, visible, 0.5, offX, offY)
              */
-            int LuaTilemapApi :: SetLayer( lua_State *pLuaState )  {
+            int LuaTilemapApi :: SetLayer( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nLayerId = 0;
@@ -320,7 +319,7 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 /*
                  * Fetch the existing layer first so it's internal tmx_layer pointer
@@ -339,7 +338,7 @@ namespace Scarab  {
              * @luaname{tilemap_set_layer_by_name(layerName, visible, opacity, offsetX, offsetY) -> true | nil, message}
              * @luagroup{set_layer}
              */
-            int LuaTilemapApi :: SetLayerByName( lua_State *pLuaState )  {
+            int LuaTilemapApi :: SetLayerByName( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strName;
@@ -348,7 +347,7 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 if( !FindLayer( pTileMap, strName, layer, strError ) || !ReadLayerValues( pLuaState, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -360,7 +359,7 @@ namespace Scarab  {
             }
 
             /** @brief Push a layer's tint - tilemap_get_layer_tint's four results (r, g, b, a). */
-            static int PushTint( lua_State *pLuaState, const stLayer &layer )  {
+            static int PushTint( lua_State* pLuaState, const stLayer& layer )  {
 
                 lua_pushinteger( pLuaState, layer.tint.nRed );
                 lua_pushinteger( pLuaState, layer.tint.nGreen );
@@ -374,7 +373,7 @@ namespace Scarab  {
              * @brief Read tilemap_set_layer_tint's r, g, b and a arguments (from index 2), each 0..255,
              * into layer.tint.
              */
-            static bool ReadTint( lua_State *pLuaState, stLayer &layer, std :: string &strError )  {
+            static bool ReadTint( lua_State* pLuaState, stLayer& layer, std :: string& strError )  {
 
                 static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
 
@@ -423,7 +422,7 @@ namespace Scarab  {
              * tilemap_set_layer_tint(3, 255, 160, 160, a)     -- a reddish light, same alpha
              * tilemap_set_layer_tint_by_name("background", 255, 255, 255, 255)   -- no tint
              */
-            int LuaTilemapApi :: GetLayerTint( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetLayerTint( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nLayerId = 0;
@@ -440,7 +439,7 @@ namespace Scarab  {
              * @luaname{tilemap_get_layer_tint_by_name(layerName) -> r, g, b, a | nil, message}
              * @luagroup{layer_tint}
              */
-            int LuaTilemapApi :: GetLayerTintByName( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetLayerTintByName( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strName;
@@ -457,7 +456,7 @@ namespace Scarab  {
              * @luaname{tilemap_set_layer_tint(layerId, r, g, b, a) -> true | nil, message}
              * @luagroup{layer_tint}
              */
-            int LuaTilemapApi :: SetLayerTint( lua_State *pLuaState )  {
+            int LuaTilemapApi :: SetLayerTint( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nLayerId = 0;
@@ -466,7 +465,7 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 // Read first: every other field (visible, opacity, offset, parallax) is written back as it is.
                 if( !FindLayer( pTileMap, nLayerId, layer, strError ) || !ReadTint( pLuaState, layer, strError ) )
@@ -482,7 +481,7 @@ namespace Scarab  {
              * @luaname{tilemap_set_layer_tint_by_name(layerName, r, g, b, a) -> true | nil, message}
              * @luagroup{layer_tint}
              */
-            int LuaTilemapApi :: SetLayerTintByName( lua_State *pLuaState )  {
+            int LuaTilemapApi :: SetLayerTintByName( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strName;
@@ -491,7 +490,7 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 if( !FindLayer( pTileMap, strName, layer, strError ) || !ReadTint( pLuaState, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -516,7 +515,7 @@ namespace Scarab  {
              * @luaexample
              * local gid, x, y, w, h = tilemap_get_tile(0, 0, 1)
              */
-            int LuaTilemapApi :: GetTile( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetTile( lua_State* pLuaState )  {
 
                 std :: string      strError;
                 stMatrixPosition   pos;
@@ -529,7 +528,7 @@ namespace Scarab  {
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 3, "layerId", nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 if( !FindLayer( pTileMap, nLayerId, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -564,7 +563,7 @@ namespace Scarab  {
              * @luaexample
              * local row, col = tilemap_to_tile_matrix(100, 250)
              */
-            int LuaTilemapApi :: ToTileMatrix( lua_State *pLuaState )  {
+            int LuaTilemapApi :: ToTileMatrix( lua_State* pLuaState )  {
 
                 std :: string                       strError;
                 SunLight :: Base :: stCoordinate2D  coord;
@@ -575,7 +574,7 @@ namespace Scarab  {
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "worldY", coord.y, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 if( !pTileMap -> GetMapInfo( mapInfo ) )
                     return LuaEngineUtil :: PushError( pLuaState, NO_MAP_LOADED );
@@ -604,7 +603,7 @@ namespace Scarab  {
              *   camera_set_position(x, y)
              * end
              */
-            int LuaTilemapApi :: GetObjectByName( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetObjectByName( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strName;
@@ -614,7 +613,7 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "name", strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 if( !pTileMap -> GetMapInfo( mapInfo ) )
                     return LuaEngineUtil :: PushError( pLuaState, NO_MAP_LOADED );
@@ -667,7 +666,7 @@ namespace Scarab  {
              * local flameUp = tilemap_get_tile_frame(4, 7, 1) == FLAME_UP_GID
              * local doorGid = tilemap_get_object_tile_frame("door")
              */
-            int LuaTilemapApi :: GetTileFrame( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetTileFrame( lua_State* pLuaState )  {
 
                 std :: string      strError;
                 stMatrixPosition   pos;
@@ -681,7 +680,7 @@ namespace Scarab  {
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 3, "layerId", nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 if( !FindLayer( pTileMap, nLayerId, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -712,7 +711,7 @@ namespace Scarab  {
              * @luaname{tilemap_get_object_tile_frame(name) -> gid | nil, message}
              * @luagroup{tile_frame}
              */
-            int LuaTilemapApi :: GetObjectTileFrame( lua_State *pLuaState )  {
+            int LuaTilemapApi :: GetObjectTileFrame( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strName;
@@ -723,7 +722,7 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "name", strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
 
                 if( !pTileMap -> GetMapInfo( mapInfo ) )
                     return LuaEngineUtil :: PushError( pLuaState, NO_MAP_LOADED );
@@ -739,7 +738,11 @@ namespace Scarab  {
                 return 1;
             }
 
-            void LuaTilemapApi :: RegisterEnums( lua_State *pLuaState )  {
+            /**
+             * @brief Register this module's constant groups as Lua globals (see each group's @luaconstants).
+             * @param pLuaState Lua state to be used by engine call;
+             */
+            void LuaTilemapApi :: RegisterEnums( lua_State* pLuaState )  {
 
 
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aMapAlignments, sizeof( s_aMapAlignments ) / sizeof( s_aMapAlignments[0] ) );
@@ -748,7 +751,7 @@ namespace Scarab  {
             /**
              * @brief Register the tile map management Lua-callable functions and enums.
              */
-            void LuaTilemapApi :: Register( lua_State *pLuaState )  {
+            void LuaTilemapApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "tilemap_load_map", LuaTilemapApi :: LoadMap );
                 lua_register( pLuaState, "tilemap_unload_map", LuaTilemapApi :: UnloadMap );

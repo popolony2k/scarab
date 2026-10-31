@@ -21,8 +21,7 @@
 #ifndef __LUAENGINE_H__
 #define __LUAENGINE_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
   #include "lualib.h"
   #include "lauxlib.h"
@@ -38,7 +37,7 @@ extern "C"
 #include <cstdint>
 
 namespace Scarab  {
-    namespace Lua {
+    namespace Lua  {
         /**
          * @brief Implements a C++ abstraction for using
          * Lua engine;
@@ -67,17 +66,17 @@ namespace Scarab  {
          */
         class LuaEngine  {
 
-            lua_State                                 *m_pLuaState;
-            SunLight :: Scripting :: ScriptProcessor  *m_pScriptProcessor;
+            lua_State*                                 m_pLuaState;
+            SunLight :: Scripting :: ScriptProcessor*  m_pScriptProcessor;
             Engine :: Lua :: TimerMap                  m_Timers;
-            Engine :: Lua :: LuaCollisionListener     *m_pCollisionListener;
+            Engine :: Lua :: LuaCollisionListener*     m_pCollisionListener;
             std :: string                              m_strAppDirectory;
 
             void RegisterCalls( void );
 
             public:
 
-            LuaEngine( SunLight :: Scripting :: ScriptProcessor *pScriptProcessor );
+            LuaEngine( SunLight :: Scripting :: ScriptProcessor* pScriptProcessor );
             virtual ~LuaEngine( void );
 
             bool RunFile( std :: string strFileName );
@@ -86,13 +85,13 @@ namespace Scarab  {
             bool TryDispatchLoadStage( uint16_t nStageId );
             int GetActiveEnemyCount( void );
             const std :: string& GetApplicationDirectory( void ) const;
-            void Init( Engine :: IRendererProvider *pRendererProvider,
-                      SunLight :: Sound :: SoundManager *pSoundManager,
-                      Engine :: SpritePool *pSpritePool,
-                      Engine :: FontPool *pFontPool );
-            void AttachToTileMap( SunLight :: TileMap :: ITileMap &tileMap );
+            void Init( Engine :: IRendererProvider* pRendererProvider,
+                      SunLight :: Sound :: SoundManager* pSoundManager,
+                      Engine :: SpritePool* pSpritePool,
+                      Engine :: FontPool* pFontPool );
+            void AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap );
             void InstallVirtualClock( void );
         };
     }
 }
-#endif  /* __LUAENGINE_H__ */
+#endif /* __LUAENGINE_H__ */

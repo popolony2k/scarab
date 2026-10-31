@@ -21,8 +21,7 @@
 #ifndef __LUASCRIPTINGAPI_H__
 #define __LUASCRIPTINGAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -64,20 +63,20 @@ namespace Scarab  {
              */
             class LuaScriptingApi  {
 
-                static int Wait( lua_State *pLuaState );
-                static int Clear( lua_State *pLuaState );
-                static int WaitQueueEmpty( lua_State *pLuaState );
-                static int MoveSpritesToScreen( lua_State *pLuaState );
-                static int AddLabel( lua_State *pLuaState );
-                static int GotoLabel( lua_State *pLuaState );
-                static int LoadStage( lua_State *pLuaState );
+                static int Wait( lua_State* pLuaState );
+                static int Clear( lua_State* pLuaState );
+                static int WaitQueueEmpty( lua_State* pLuaState );
+                static int MoveSpritesToScreen( lua_State* pLuaState );
+                static int AddLabel( lua_State* pLuaState );
+                static int GotoLabel( lua_State* pLuaState );
+                static int LoadStage( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUASCRIPTINGAPI_H__ */
+#endif /* __LUASCRIPTINGAPI_H__ */
