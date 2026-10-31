@@ -28,7 +28,6 @@
 #include <nlohmann/json.hpp>
 #include "general/clock.h"
 
-using namespace std :: chrono;
 namespace fs = std :: filesystem;
 
 
@@ -46,6 +45,9 @@ namespace fs = std :: filesystem;
  * tracked") that nothing in Lua ever references by name.
  */
 #define __SOUND_ID_NO_AUDIO                                0
+
+/** Room for an engine error message ("Error loading stage id [65535]" and the like). */
+#define __ERROR_MESSAGE_SIZE  50
 
 /*
  * There is no compiled-in default entry script anymore - main.cpp requires
@@ -330,55 +332,55 @@ namespace Scarab  {
             /*
              * Loop current BGM song when it finishes.
              */
-            PlaySound( m_CurrentSong );
+            PlaySound( m_nCurrentSong );
         }
 
         /**
          * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to play;
+         * @param nId The sound id to play;
          * @param bIgnorePlaying If set will ignore if player is playing any sound and will
          * play again (cutting current playing);
          */
-        bool EngineHost :: PlaySound( uint16_t id, bool bIgnorePlaying )  {
+        bool EngineHost :: PlaySound( uint16_t nId, bool bIgnorePlaying )  {
 
-            if( ( id != __SOUND_ID_NO_AUDIO ) && ( !m_SoundManager.IsPlaying( id ) || bIgnorePlaying ) )
-                return m_SoundManager.Play( id );
-
-            return true;
-        }
-
-        /**
-         * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to pause;
-         */
-        bool EngineHost :: PauseSound( uint16_t id )  {
-
-            if( m_SoundManager.IsPlaying( id ) )
-                return m_SoundManager.Pause( id );
+            if( ( nId != __SOUND_ID_NO_AUDIO ) && ( !m_SoundManager.IsPlaying( nId ) || bIgnorePlaying ) )
+                return m_SoundManager.Play( nId );
 
             return true;
         }
 
         /**
          * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to stop;
+         * @param nId The sound id to pause;
          */
-        bool EngineHost :: StopSound( uint16_t id )  {
+        bool EngineHost :: PauseSound( uint16_t nId )  {
 
-            if( m_SoundManager.IsPlaying( id ) )
-                return m_SoundManager.Stop( id );
+            if( m_SoundManager.IsPlaying( nId ) )
+                return m_SoundManager.Pause( nId );
 
             return true;
         }
 
         /**
          * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to resume;
+         * @param nId The sound id to stop;
          */
-        bool EngineHost :: ResumeSound( uint16_t id )  {
+        bool EngineHost :: StopSound( uint16_t nId )  {
 
-            if( !m_SoundManager.IsPlaying( id ) )
-                return m_SoundManager.Resume( id );
+            if( m_SoundManager.IsPlaying( nId ) )
+                return m_SoundManager.Stop( nId );
+
+            return true;
+        }
+
+        /**
+         * @brief Must be implemented to provide sprite sound handling.
+         * @param nId The sound id to resume;
+         */
+        bool EngineHost :: ResumeSound( uint16_t nId )  {
+
+            if( !m_SoundManager.IsPlaying( nId ) )
+                return m_SoundManager.Resume( nId );
 
             return true;
         }
@@ -590,7 +592,7 @@ namespace Scarab  {
                         m_CurrentStateHandler = m_aEngineStateHandlers[STATE_STAGE_RUNNING];
                     }
                     else  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error loading stage id [%d]", nEventId );
                         OnError( szMsg );
@@ -608,7 +610,7 @@ namespace Scarab  {
                      * id was actually handled.
                      */
                     if( !m_LuaEngine.TryDispatchMoveSpritesToScreen( nEventId ) )  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Unhandled sprite move state [%d]", nEventId );
                         OnError( szMsg );
@@ -616,11 +618,11 @@ namespace Scarab  {
                 break;
 
                 case  SunLight :: Scripting :: Commands :: PLAY_SONG_CMD :
-                    m_CurrentSong = nEventId;
+                    m_nCurrentSong = nEventId;
                 case  SunLight :: Scripting :: Commands :: PLAY_SONG_DIRECT_CMD :
 
                     if( !PlaySound( nEventId ) )  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error playing song id [%d]", nEventId );
                         OnError( szMsg );
@@ -643,11 +645,11 @@ namespace Scarab  {
                      * header comment for why queued sp_* commands enqueued
                      * from live Lua code can go permanently unreached).
                      */
-                    if( nEventId == m_CurrentSong )
-                        m_CurrentSong = __SOUND_ID_NO_AUDIO;
+                    if( nEventId == m_nCurrentSong )
+                        m_nCurrentSong = __SOUND_ID_NO_AUDIO;
 
                     if( !StopSound( nEventId ) )  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error stopping song id [%d]", nEventId );
                         OnError( szMsg );
@@ -667,11 +669,11 @@ namespace Scarab  {
                      * paused) and immediately restart it from the beginning
                      * the very next frame, making a paused BGM impossible.
                      */
-                    if( nEventId == m_CurrentSong )
-                        m_CurrentSong = __SOUND_ID_NO_AUDIO;
+                    if( nEventId == m_nCurrentSong )
+                        m_nCurrentSong = __SOUND_ID_NO_AUDIO;
 
                     if( !PauseSound( nEventId ) )  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error pausing song id [%d]", nEventId );
                         OnError( szMsg );
@@ -686,11 +688,11 @@ namespace Scarab  {
                      * mirrors the untrack above without clobbering some
                      * other song that might legitimately be tracked already.
                      */
-                    if( m_CurrentSong == __SOUND_ID_NO_AUDIO )
-                        m_CurrentSong = nEventId;
+                    if( m_nCurrentSong == __SOUND_ID_NO_AUDIO )
+                        m_nCurrentSong = nEventId;
 
                     if( !ResumeSound( nEventId ) )  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error resuming song id [%d]", nEventId );
                         OnError( szMsg );

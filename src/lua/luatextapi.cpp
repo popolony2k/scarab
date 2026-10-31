@@ -24,6 +24,9 @@
 #include <memory>
 #include <string>
 
+/** draw_text's colour channels: r, g, b, a. */
+#define __RGBA_CHANNELS  4
+
 
 namespace Scarab  {
     namespace Engine  {
@@ -134,12 +137,12 @@ namespace Scarab  {
                 if( !pFont )
                     return LuaEngineUtil :: PushError( pLuaState, std :: string( "cannot load font '" ) + szPath + "'" );
 
-                FontHandle  handle = GetFontPool( pLuaState ) -> Add( std :: move( pFont ) );
+                FontHandle  hFont = GetFontPool( pLuaState ) -> Add( std :: move( pFont ) );
 
-                if( handle == INVALID_FONT_HANDLE )
+                if( hFont == INVALID_FONT_HANDLE )
                     return LuaEngineUtil :: PushError( pLuaState, "too many fonts loaded - release_font the ones no longer needed" );
 
-                lua_pushinteger( pLuaState, ( lua_Integer ) handle );
+                lua_pushinteger( pLuaState, ( lua_Integer ) hFont );
 
                 return 1;
             }
@@ -364,7 +367,7 @@ namespace Scarab  {
              */
             int LuaTextApi :: DrawText( lua_State* pLuaState )  {
 
-                static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
+                static const char * const  aszChannel[__RGBA_CHANNELS] = { "r", "g", "b", "a" };
 
                 std :: string                                 strError;
                 std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
@@ -372,14 +375,14 @@ namespace Scarab  {
                 int                                           nSize        = 0;
                 int                                           nPosX        = 0;
                 int                                           nPosY        = 0;
-                lua_Integer                                   anChannel[4] = { 0, 0, 0, 0 };
+                lua_Integer                                   anChannel[__RGBA_CHANNELS] = { 0, 0, 0, 0 };
 
                 if( !ReadTextArgs( pLuaState, 1, 4, strText, nSize, strError ) ||
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "x", nPosX, strError ) ||
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 3, "y", nPosY, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                for( int nArg = 0; nArg < 4; nArg++ )
+                for( int nArg = 0; nArg < __RGBA_CHANNELS; nArg++ )
                     if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 5 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
                         return LuaEngineUtil :: PushError( pLuaState, strError );
 

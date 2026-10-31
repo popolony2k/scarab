@@ -39,19 +39,19 @@ using namespace Scarab :: Engine;
 
 TEST_CASE( "SpriteHandle packs a 1-based index and a generation" )  {
 
-    SpriteHandle  handle = MakeSpriteHandle( 5, 7 );
+    SpriteHandle  hSprite = MakeSpriteHandle( 5, 7 );
 
-    CHECK( SpriteHandleIndex( handle ) == 5 );
-    CHECK( SpriteHandleGeneration( handle ) == 7 );
-    CHECK( handle != INVALID_SPRITE_HANDLE );
+    CHECK( SpriteHandleIndex( hSprite ) == 5 );
+    CHECK( SpriteHandleGeneration( hSprite ) == 7 );
+    CHECK( hSprite != INVALID_SPRITE_HANDLE );
     CHECK( MakeSpriteHandle( 0, 0 ) != INVALID_SPRITE_HANDLE );    // index 0 is stored as 1
     CHECK( SpriteHandleIndex( INVALID_SPRITE_HANDLE ) == -1 );
 
-    void*  pPacked = PackSpriteHandleAsPtr( handle );
+    void*  pPacked = PackSpriteHandleAsPtr( hSprite );
 
     CHECK( IsPackedSpriteHandle( pPacked ) );
-    CHECK( UnpackSpriteHandleFromPtr( pPacked ) == handle );
-    CHECK_FALSE( IsPackedSpriteHandle( &handle ) );                 // a real pointer is not a handle
+    CHECK( UnpackSpriteHandleFromPtr( pPacked ) == hSprite );
+    CHECK_FALSE( IsPackedSpriteHandle( &hSprite ) );                 // a real pointer is not a handle
 }
 
 TEST_CASE( "RegisterType reserves fixed slots per type, once" )  {
@@ -84,13 +84,13 @@ TEST_CASE( "Acquire hands out each slot of its type once, until released" )  {
 
     CHECK( pool.Acquire( "unknown" ) == INVALID_SPRITE_HANDLE );
 
-    SpriteHandle  first  = pool.Acquire( "ship" );
-    SpriteHandle  second = pool.Acquire( "ship" );
+    SpriteHandle  hFirst  = pool.Acquire( "ship" );
+    SpriteHandle  hSecond = pool.Acquire( "ship" );
 
-    CHECK( first != INVALID_SPRITE_HANDLE );
-    CHECK( second != INVALID_SPRITE_HANDLE );
-    CHECK( first != second );
-    CHECK( pool.Resolve( first ) != pool.Resolve( second ) );
+    CHECK( hFirst != INVALID_SPRITE_HANDLE );
+    CHECK( hSecond != INVALID_SPRITE_HANDLE );
+    CHECK( hFirst != hSecond );
+    CHECK( pool.Resolve( hFirst ) != pool.Resolve( hSecond ) );
     CHECK( pool.Acquire( "ship" ) == INVALID_SPRITE_HANDLE );       // the type is exhausted ...
     CHECK( pool.Acquire( "bullet" ) != INVALID_SPRITE_HANDLE );     // ... the other type is not
 }
@@ -101,22 +101,22 @@ TEST_CASE( "A released handle never resolves again, even when its slot is reused
 
     REQUIRE( pool.RegisterType( "ship", 1 ) );
 
-    SpriteHandle  handle = pool.Acquire( "ship" );
+    SpriteHandle  hSprite = pool.Acquire( "ship" );
 
-    REQUIRE( pool.Resolve( handle ) != nullptr );
-    CHECK( pool.Release( handle ) );
-    CHECK( pool.Resolve( handle ) == nullptr );
-    CHECK_FALSE( pool.Release( handle ) );                          // a second release is refused
+    REQUIRE( pool.Resolve( hSprite ) != nullptr );
+    CHECK( pool.Release( hSprite ) );
+    CHECK( pool.Resolve( hSprite ) == nullptr );
+    CHECK_FALSE( pool.Release( hSprite ) );                          // a second release is refused
 
-    SpriteHandle  reused = pool.Acquire( "ship" );                  // capacity 1: the same slot
+    SpriteHandle  hReused = pool.Acquire( "ship" );                  // capacity 1: the same slot
 
-    REQUIRE( reused != INVALID_SPRITE_HANDLE );
-    CHECK( SpriteHandleIndex( reused ) == SpriteHandleIndex( handle ) );
-    CHECK( SpriteHandleGeneration( reused ) == SpriteHandleGeneration( handle ) + 1 );
-    CHECK( pool.Resolve( reused ) != nullptr );
-    CHECK( pool.Resolve( handle ) == nullptr );                     // the stale copy still fails
-    CHECK_FALSE( pool.Release( handle ) );
-    CHECK( pool.Resolve( reused ) != nullptr );                     // ... and did not release the new owner
+    REQUIRE( hReused != INVALID_SPRITE_HANDLE );
+    CHECK( SpriteHandleIndex( hReused ) == SpriteHandleIndex( hSprite ) );
+    CHECK( SpriteHandleGeneration( hReused ) == SpriteHandleGeneration( hSprite ) + 1 );
+    CHECK( pool.Resolve( hReused ) != nullptr );
+    CHECK( pool.Resolve( hSprite ) == nullptr );                     // the stale copy still fails
+    CHECK_FALSE( pool.Release( hSprite ) );
+    CHECK( pool.Resolve( hReused ) != nullptr );                     // ... and did not release the new owner
 }
 
 TEST_CASE( "Handles that were never handed out are refused" )  {
@@ -125,13 +125,13 @@ TEST_CASE( "Handles that were never handed out are refused" )  {
 
     REQUIRE( pool.RegisterType( "ship", 1 ) );
 
-    SpriteHandle  handle = pool.Acquire( "ship" );
+    SpriteHandle  hSprite = pool.Acquire( "ship" );
 
     CHECK( pool.Resolve( INVALID_SPRITE_HANDLE ) == nullptr );
     CHECK_FALSE( pool.Release( INVALID_SPRITE_HANDLE ) );
     CHECK( pool.Resolve( MakeSpriteHandle( 100, 1 ) ) == nullptr ); // an index past every slot
     CHECK_FALSE( pool.Release( MakeSpriteHandle( 100, 1 ) ) );
-    CHECK( pool.Resolve( MakeSpriteHandle( SpriteHandleIndex( handle ), SpriteHandleGeneration( handle ) + 1 ) ) == nullptr );
+    CHECK( pool.Resolve( MakeSpriteHandle( SpriteHandleIndex( hSprite ), SpriteHandleGeneration( hSprite ) + 1 ) ) == nullptr );
 }
 
 TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no blend mode, opaque, untinted" )  {
@@ -140,8 +140,8 @@ TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no ble
 
     REQUIRE( pool.RegisterType( "ship", 1 ) );
 
-    SpriteHandle                   handle  = pool.Acquire( "ship" );
-    SunLight :: Sprite :: Sprite*  pSprite = pool.Resolve( handle );
+    SpriteHandle                   hSprite  = pool.Acquire( "ship" );
+    SunLight :: Sprite :: Sprite*  pSprite = pool.Resolve( hSprite );
 
     REQUIRE( pSprite != nullptr );
     pSprite -> SetVisible( true );
@@ -149,7 +149,7 @@ TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no ble
     pSprite -> SetBlendMode( SunLight :: Base :: BLEND_MODE_ADD );
     pSprite -> SetOpacity( __CHANGED_OPACITY );
     pSprite -> SetTint( __CHANGED_TINT );
-    REQUIRE( pool.Release( handle ) );
+    REQUIRE( pool.Release( hSprite ) );
 
     pSprite = pool.Resolve( pool.Acquire( "ship" ) );
 

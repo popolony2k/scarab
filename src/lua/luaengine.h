@@ -35,6 +35,7 @@ extern "C"  {
 #include "engine/fontpool.h"
 #include <string>
 #include <cstdint>
+#include <memory>
 
 namespace Scarab  {
     namespace Lua  {
@@ -66,11 +67,11 @@ namespace Scarab  {
          */
         class LuaEngine  {
 
-            lua_State*                                 m_pLuaState;
-            SunLight :: Scripting :: ScriptProcessor*  m_pScriptProcessor;
-            Engine :: Lua :: TimerMap                  m_Timers;
-            Engine :: Lua :: LuaCollisionListener*     m_pCollisionListener;
-            std :: string                              m_strAppDirectory;
+            lua_State*                                                m_pLuaState;
+            SunLight :: Scripting :: ScriptProcessor*                 m_pScriptProcessor;
+            Engine :: Lua :: TimerMap                                 m_Timers;
+            std :: unique_ptr<Engine :: Lua :: LuaCollisionListener>  m_pCollisionListener;
+            std :: string                                             m_strAppDirectory;
 
             void RegisterCalls( void );
 

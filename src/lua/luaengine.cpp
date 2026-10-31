@@ -362,7 +362,7 @@ namespace Scarab  {
         Engine :: Lua :: LuaSpriteApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCollisionApi :: Register( m_pLuaState );
 
-        m_pCollisionListener = new Engine :: Lua :: LuaCollisionListener( m_pLuaState );
+        m_pCollisionListener = std :: make_unique<Engine :: Lua :: LuaCollisionListener>( m_pLuaState );
     }
 
     /**
@@ -375,7 +375,7 @@ namespace Scarab  {
      */
     void LuaEngine :: AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap )  {
 
-        tileMap.GetCollisionManager().AddCollisionListener( m_pCollisionListener );
+        tileMap.GetCollisionManager().AddCollisionListener( m_pCollisionListener.get() );
     }
 
     /**
@@ -415,7 +415,6 @@ namespace Scarab  {
 
         m_pScriptProcessor  = pScriptProcessor;
         m_pLuaState         = luaL_newstate();
-        m_pCollisionListener = nullptr;
         m_Timers.clear();
 
         if( m_pLuaState )  {
@@ -431,13 +430,10 @@ namespace Scarab  {
      */
     LuaEngine :: ~LuaEngine( void )  {
 
-        for( auto timer : m_Timers )  {
-            SunLight :: Concurrent :: Timer* pTimer = timer.second;
-
-            delete pTimer;
-        }
-
-        delete m_pCollisionListener;
+        // Released here, before lua_close: a timer's thread calls back into the Lua state, and the
+        // listener holds it - left to the members' own destructors, both would outlive it.
+        m_Timers.clear();
+        m_pCollisionListener.reset();
 
         if( m_pLuaState )  {
             lua_close( m_pLuaState );

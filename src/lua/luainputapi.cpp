@@ -22,9 +22,8 @@
 #include "lua/luaengineutil.h"
 #include "input/iinputhandler.h"
 
-using namespace SunLight :: Input;
 
-#define __CONST( name )  { #name, ( int ) name }
+#define __CONST( name )  { #name, ( int ) SunLight :: Input :: name }
 
 
 namespace Scarab  {
@@ -206,7 +205,7 @@ namespace Scarab  {
             }
 
             /** @brief Read a gamepad id and a GAMEPAD_BUTTON_* constant (arguments 1 and 2). */
-            static bool ReadGamepadButtonArgs( lua_State* pLuaState, int& nGamePadId, GamepadButton& button, std :: string& strError )  {
+            static bool ReadGamepadButtonArgs( lua_State* pLuaState, int& nGamePadId, SunLight :: Input :: GamepadButton& button, std :: string& strError )  {
 
                 int  nButton = 0;
 
@@ -216,7 +215,7 @@ namespace Scarab  {
                                                        "GAMEPAD_BUTTON_*", nButton, strError ) )
                     return false;
 
-                button = ( GamepadButton ) nButton;
+                button = ( SunLight :: Input :: GamepadButton ) nButton;
 
                 return true;
             }
@@ -246,8 +245,8 @@ namespace Scarab  {
              */
             int LuaInputApi :: IsKeyDown( lua_State* pLuaState )  {
 
-                std :: string  strError;
-                KeyboardKey    key = KeyboardKey :: KEY_NULL;
+                std :: string                       strError;
+                SunLight :: Input :: KeyboardKey    key = SunLight :: Input :: KeyboardKey :: KEY_NULL;
 
                 if( !ReadKeyArg( pLuaState, 1, "key", key, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -263,8 +262,8 @@ namespace Scarab  {
              */
             int LuaInputApi :: IsKeyUp( lua_State* pLuaState )  {
 
-                std :: string  strError;
-                KeyboardKey    key = KeyboardKey :: KEY_NULL;
+                std :: string                       strError;
+                SunLight :: Input :: KeyboardKey    key = SunLight :: Input :: KeyboardKey :: KEY_NULL;
 
                 if( !ReadKeyArg( pLuaState, 1, "key", key, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -280,8 +279,8 @@ namespace Scarab  {
              */
             int LuaInputApi :: IsKeyReleased( lua_State* pLuaState )  {
 
-                std :: string  strError;
-                KeyboardKey    key = KeyboardKey :: KEY_NULL;
+                std :: string                       strError;
+                SunLight :: Input :: KeyboardKey    key = SunLight :: Input :: KeyboardKey :: KEY_NULL;
 
                 if( !ReadKeyArg( pLuaState, 1, "key", key, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -323,9 +322,9 @@ namespace Scarab  {
              */
             int LuaInputApi :: IsGamepadButtonDown( lua_State* pLuaState )  {
 
-                std :: string   strError;
-                int             nGamePadId = 0;
-                GamepadButton   button     = ( GamepadButton ) 0;
+                std :: string                        strError;
+                int                                  nGamePadId = 0;
+                SunLight :: Input :: GamepadButton   button     = ( SunLight :: Input :: GamepadButton ) 0;
 
                 if( !ReadGamepadButtonArgs( pLuaState, nGamePadId, button, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -341,9 +340,9 @@ namespace Scarab  {
              */
             int LuaInputApi :: IsGamepadButtonUp( lua_State* pLuaState )  {
 
-                std :: string   strError;
-                int             nGamePadId = 0;
-                GamepadButton   button     = ( GamepadButton ) 0;
+                std :: string                        strError;
+                int                                  nGamePadId = 0;
+                SunLight :: Input :: GamepadButton   button     = ( SunLight :: Input :: GamepadButton ) 0;
 
                 if( !ReadGamepadButtonArgs( pLuaState, nGamePadId, button, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -368,7 +367,7 @@ namespace Scarab  {
                                                        "GAMEPAD_AXIS_*", nAxis, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                lua_pushnumber( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().GetGamepadAxisMovement( nGamePadId, ( GamepadAxis ) nAxis ) );
+                lua_pushnumber( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().GetGamepadAxisMovement( nGamePadId, ( SunLight :: Input :: GamepadAxis ) nAxis ) );
 
                 return 1;
             }

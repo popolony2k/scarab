@@ -105,12 +105,12 @@ namespace Scarab  {
             bool HasType( const std :: string& strTypeTag ) const;
             uint32_t GetSlotCount( void ) const;
             SpriteHandle Acquire( const std :: string& strTypeTag );
-            bool Release( SpriteHandle handle );
-            SunLight :: Sprite :: Sprite* Resolve( SpriteHandle handle );
-            SunLight :: Canvas :: TextureCanvas* GetTexture( SpriteHandle handle, int nSequenceId );
-            SunLight :: Canvas :: TextureCanvas* GetOrCreateTexture( SpriteHandle handle, int nSequenceId );
-            int GetOrCacheNativeWidth( SpriteHandle handle, int nSequenceId, int nCurrentWidth );
-            int GetOrCacheNativeHeight( SpriteHandle handle, int nSequenceId, int nCurrentHeight );
+            bool Release( SpriteHandle hSprite );
+            SunLight :: Sprite :: Sprite* Resolve( SpriteHandle hSprite );
+            SunLight :: Canvas :: TextureCanvas* GetTexture( SpriteHandle hSprite, int nSequenceId );
+            SunLight :: Canvas :: TextureCanvas* GetOrCreateTexture( SpriteHandle hSprite, int nSequenceId );
+            int GetOrCacheNativeWidth( SpriteHandle hSprite, int nSequenceId, int nCurrentWidth );
+            int GetOrCacheNativeHeight( SpriteHandle hSprite, int nSequenceId, int nCurrentHeight );
             void Clear( void );
         };
     }

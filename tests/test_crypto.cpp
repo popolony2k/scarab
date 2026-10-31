@@ -41,7 +41,7 @@ using namespace Scarab :: Engine :: Lua;
 /** A configured key is 32 bytes as 64 hex characters (see LuaCryptoApi's GetContentKey). */
 #define __KEY_HEX_LENGTH  64
 
-static const char * const  PLAIN_TEXT = "<map version=\"1.10\"> the plain bytes of a packed file </map>";
+#define __PLAIN_TEXT  "<map version=\"1.10\"> the plain bytes of a packed file </map>"
 
 /**
  * @brief Whether this build was configured with a content key.
@@ -52,14 +52,14 @@ static bool HasContentKey( void )  {
     return std :: strlen( SCARAB_CONTENT_KEY ) == __KEY_HEX_LENGTH;
 }
 
-/** crypto_encrypt_data( PLAIN_TEXT ) through Lua, as tools/pack.lua calls it; false if it failed. */
+/** crypto_encrypt_data( __PLAIN_TEXT ) through Lua, as tools/pack.lua calls it; false if it failed. */
 static bool Encrypt( std :: vector<unsigned char>& blob, std :: string& strError )  {
 
     lua_State*  L = luaL_newstate();
 
     LuaCryptoApi :: Register( L );
     lua_getglobal( L, "crypto_encrypt_data" );
-    lua_pushstring( L, PLAIN_TEXT );
+    lua_pushstring( L, __PLAIN_TEXT );
     lua_call( L, 1, 2 );
 
     bool  bOk = lua_isstring( L, -2 ) != 0;
@@ -81,7 +81,8 @@ static bool Encrypt( std :: vector<unsigned char>& blob, std :: string& strError
 
 TEST_CASE( "Plain, unencrypted bytes never pass the read filter" )  {
 
-    std :: vector<unsigned char>  plain( PLAIN_TEXT, PLAIN_TEXT + std :: strlen( PLAIN_TEXT ) );
+    std :: string                 strPlain = __PLAIN_TEXT;
+    std :: vector<unsigned char>  plain( strPlain.begin(), strPlain.end() );
     std :: vector<unsigned char>  out;
 
     CHECK_FALSE( LuaCryptoApi :: TryDecryptBytes( plain, out ) );
@@ -101,10 +102,10 @@ TEST_CASE( "Encrypted bytes decrypt back exactly; tampered or cut ones are refus
     }
 
     REQUIRE( Encrypt( blob, strError ) );
-    REQUIRE( blob.size() > std :: strlen( PLAIN_TEXT ) );         // a nonce and a MAC in front
+    REQUIRE( blob.size() > std :: strlen( __PLAIN_TEXT ) );         // a nonce and a MAC in front
 
     CHECK( LuaCryptoApi :: TryDecryptBytes( blob, out ) );
-    CHECK( std :: string( out.begin(), out.end() ) == PLAIN_TEXT );
+    CHECK( std :: string( out.begin(), out.end() ) == __PLAIN_TEXT );
 
     std :: vector<unsigned char>  tampered = blob;
 

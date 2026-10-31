@@ -25,13 +25,13 @@
 #include <cstring>
 #include <vector>
 
+/** crypto_*_data's failure when this build has no usable key. */
+#define __NO_CONTENT_KEY  "this build has no content key (SCARAB_CONTENT_KEY is not configured)"
+
 
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
-
-            /** @brief crypto_*_data's failure when this build has no usable key. */
-            static const char * const  NO_CONTENT_KEY = "this build has no content key (SCARAB_CONTENT_KEY is not configured)";
 
             /**
              * @brief Lazily decodes the compile-time SCARAB_CONTENT_KEY
@@ -123,7 +123,7 @@ namespace Scarab  {
                 const unsigned char*  pKey = GetContentKey();
 
                 if( pKey == nullptr )
-                    return LuaEngineUtil :: PushError( pLuaState, NO_CONTENT_KEY );
+                    return LuaEngineUtil :: PushError( pLuaState, __NO_CONTENT_KEY );
 
                 std :: vector<unsigned char>  blob( crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES + strPlain.size() );
                 unsigned char*  pNonce      = blob.data();
@@ -206,7 +206,7 @@ namespace Scarab  {
                 const unsigned char*  pKey = GetContentKey();
 
                 if( pKey == nullptr )
-                    return LuaEngineUtil :: PushError( pLuaState, NO_CONTENT_KEY );
+                    return LuaEngineUtil :: PushError( pLuaState, __NO_CONTENT_KEY );
 
                 std :: vector<unsigned char>  plain;
 

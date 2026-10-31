@@ -38,8 +38,12 @@ namespace Scarab  {
 
         const SpriteHandle INVALID_SPRITE_HANDLE = 0;
 
+        /** A handle's layout: the slot index + 1 in the low 16 bits, the generation in the high 16. */
+        const uint32_t SPRITE_HANDLE_INDEX_MASK     = 0xFFFF;
+        const int      SPRITE_HANDLE_GENERATION_SHIFT = 16;
+
         /** A handle keeps a slot's index + 1 in 16 bits, so the pool holds at most this many slots in all. */
-        const uint32_t MAX_SPRITE_SLOTS = 0xFFFF;
+        const uint32_t MAX_SPRITE_SLOTS = SPRITE_HANDLE_INDEX_MASK;
 
         /**
          * @brief Pack a slot index and its generation into a handle.
@@ -49,27 +53,27 @@ namespace Scarab  {
          */
         inline SpriteHandle MakeSpriteHandle( uint32_t nIndex, uint16_t nGeneration )  {
 
-            return ( ( ( SpriteHandle ) nGeneration ) << 16 ) | ( ( nIndex + 1 ) & 0xFFFF );
+            return ( ( ( SpriteHandle ) nGeneration ) << SPRITE_HANDLE_GENERATION_SHIFT ) | ( ( nIndex + 1 ) & SPRITE_HANDLE_INDEX_MASK );
         }
 
         /**
          * @brief The slot index a handle addresses.
-         * @param handle The handle;
+         * @param hSprite The handle;
          * @return The 0-based slot index; -1 for INVALID_SPRITE_HANDLE;
          */
-        inline int32_t SpriteHandleIndex( SpriteHandle handle )  {
+        inline int32_t SpriteHandleIndex( SpriteHandle hSprite )  {
 
-            return ( int32_t ) ( handle & 0xFFFF ) - 1;
+            return ( int32_t ) ( hSprite & SPRITE_HANDLE_INDEX_MASK ) - 1;
         }
 
         /**
          * @brief The generation a handle was made with - it resolves only while its slot still has it.
-         * @param handle The handle;
+         * @param hSprite The handle;
          * @return The generation;
          */
-        inline uint16_t SpriteHandleGeneration( SpriteHandle handle )  {
+        inline uint16_t SpriteHandleGeneration( SpriteHandle hSprite )  {
 
-            return ( uint16_t ) ( handle >> 16 );
+            return ( uint16_t ) ( hSprite >> SPRITE_HANDLE_GENERATION_SHIFT );
         }
 
         /*
@@ -83,17 +87,19 @@ namespace Scarab  {
          * is fully gone now, Phase 9, but the tag remains a cheap defensive
          * check against any future non-handle value ending up there).
          */
-        const uintptr_t SPRITE_HANDLE_PTR_TAG = 0xDEADBEEF00000000ULL;
+        const uintptr_t SPRITE_HANDLE_PTR_TAG        = 0xDEADBEEF00000000ULL;
+        const uintptr_t SPRITE_HANDLE_PTR_TAG_MASK   = 0xFFFFFFFF00000000ULL;     // the tag's half of a packed value
+        const uintptr_t SPRITE_HANDLE_PTR_VALUE_MASK = 0xFFFFFFFFULL;             // the handle's half
 
         /**
          * @brief Pack a handle into a pointer-sized value for a Collider's opaque data, tagged with
          * SPRITE_HANDLE_PTR_TAG.
-         * @param handle The handle;
+         * @param hSprite The handle;
          * @return The tagged value, never a real pointer;
          */
-        inline void* PackSpriteHandleAsPtr( SpriteHandle handle )  {
+        inline void* PackSpriteHandleAsPtr( SpriteHandle hSprite )  {
 
-            return ( void * ) ( SPRITE_HANDLE_PTR_TAG | ( uintptr_t ) handle );
+            return ( void * ) ( SPRITE_HANDLE_PTR_TAG | ( uintptr_t ) hSprite );
         }
 
         /**
@@ -103,7 +109,7 @@ namespace Scarab  {
          */
         inline bool IsPackedSpriteHandle( void* pPtr )  {
 
-            return ( ( ( uintptr_t ) pPtr ) & 0xFFFFFFFF00000000ULL ) == SPRITE_HANDLE_PTR_TAG;
+            return ( ( ( uintptr_t ) pPtr ) & SPRITE_HANDLE_PTR_TAG_MASK ) == SPRITE_HANDLE_PTR_TAG;
         }
 
         /**
@@ -113,7 +119,7 @@ namespace Scarab  {
          */
         inline SpriteHandle UnpackSpriteHandleFromPtr( void* pPtr )  {
 
-            return ( SpriteHandle ) ( ( uintptr_t ) pPtr & 0xFFFFFFFFULL );
+            return ( SpriteHandle ) ( ( uintptr_t ) pPtr & SPRITE_HANDLE_PTR_VALUE_MASK );
         }
     }
 }

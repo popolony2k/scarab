@@ -30,9 +30,8 @@ extern "C"  {
   #include "lauxlib.h"
 }
 
-using namespace SunLight :: Canvas;
 
-#define __CONST( name )  { #name, ( int ) name }
+#define __CONST( name )  { #name, ( int ) SunLight :: Canvas :: name }
 
 /** delayMilli's default and smallest value: a held frame (see sprite_configure_texture). */
 #define __HELD_FRAME_DELAY  -1
@@ -40,6 +39,10 @@ using namespace SunLight :: Canvas;
 /** The opacity range of sprite_set_opacity - sunlight's, the same as a layer's. */
 #define __SPRITE_OPACITY_MIN  0.0
 #define __SPRITE_OPACITY_MAX  1.0
+
+/** sprite_set_tint's colour channels (r, g, b; a is optional) and a collider's four inset sides. */
+#define __RGB_CHANNELS  3
+#define __INSET_SIDES   4
 
 
 namespace Scarab  {
@@ -63,7 +66,7 @@ namespace Scarab  {
             };
 
             /** @brief Read an animationMode argument (a TEXTURE_ANIMATION_MODE_* constant). */
-            static bool ReadAnimationModeArg( lua_State* pLuaState, int nIndex, AnimationMode& mode, std :: string& strError )  {
+            static bool ReadAnimationModeArg( lua_State* pLuaState, int nIndex, SunLight :: Canvas :: AnimationMode& mode, std :: string& strError )  {
 
                 int  nMode = 0;
 
@@ -72,7 +75,7 @@ namespace Scarab  {
                                                        "TEXTURE_ANIMATION_MODE_*", nMode, strError ) )
                     return false;
 
-                mode = ( AnimationMode ) nMode;
+                mode = ( SunLight :: Canvas :: AnimationMode ) nMode;
 
                 return true;
             }
@@ -175,12 +178,12 @@ namespace Scarab  {
                 if( !pPool -> HasType( strTypeTag ) )
                     return LuaEngineUtil :: PushError( pLuaState, "unknown pool type '" + strTypeTag + "' (see pool_register_type)" );
 
-                SpriteHandle  handle = pPool -> Acquire( strTypeTag );
+                SpriteHandle  hSprite = pPool -> Acquire( strTypeTag );
 
-                if( handle == INVALID_SPRITE_HANDLE )
+                if( hSprite == INVALID_SPRITE_HANDLE )
                     return LuaEngineUtil :: PushError( pLuaState, "pool type '" + strTypeTag + "' is full" );
 
-                lua_pushinteger( pLuaState, ( lua_Integer ) handle );
+                lua_pushinteger( pLuaState, ( lua_Integer ) hSprite );
 
                 return 1;
             }
@@ -247,13 +250,13 @@ namespace Scarab  {
              */
             int LuaSpriteApi :: ConfigureTexture( lua_State* pLuaState )  {
 
-                std :: string   strError;
-                std :: string   strPath;
-                int             nSequenceId      = 0;
-                lua_Integer     nFramesByTexture = 0;
-                lua_Integer     nActiveTileIndex = 0;
-                lua_Integer     nDelayMilli      = __HELD_FRAME_DELAY;
-                AnimationMode   animationMode    = TEXTURE_ANIMATION_MODE_MANUAL;
+                std :: string                         strError;
+                std :: string                         strPath;
+                int                                   nSequenceId      = 0;
+                lua_Integer                           nFramesByTexture = 0;
+                lua_Integer                           nActiveTileIndex = 0;
+                lua_Integer                           nDelayMilli      = __HELD_FRAME_DELAY;
+                SunLight :: Canvas :: AnimationMode   animationMode    = SunLight :: Canvas :: TEXTURE_ANIMATION_MODE_MANUAL;
 
                 SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
@@ -276,9 +279,9 @@ namespace Scarab  {
                  */
                 LuaEngineUtil :: EnsureRenderer( pLuaState );
 
-                SpriteHandle    handle   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                SpritePool*     pPool   = LuaEngineUtil :: GetSpritePool( pLuaState );
-                TextureCanvas*  pTexture = pPool -> GetOrCreateTexture( handle, nSequenceId );
+                SpriteHandle                          hSprite   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                SpritePool*                           pPool   = LuaEngineUtil :: GetSpritePool( pLuaState );
+                SunLight :: Canvas :: TextureCanvas*  pTexture = pPool -> GetOrCreateTexture( hSprite, nSequenceId );
 
                 /*
                  * A recycled pool slot's TextureCanvas may already hold a
@@ -301,7 +304,7 @@ namespace Scarab  {
                  * down the correct value the first time and returns it on every
                  * later call regardless of what's currently aliased.
                  */
-                int  nNativeWidth  = pPool -> GetOrCacheNativeWidth( handle, nSequenceId, pTexture -> GetDimension2D().size.nWidth );
+                int  nNativeWidth  = pPool -> GetOrCacheNativeWidth( hSprite, nSequenceId, pTexture -> GetDimension2D().size.nWidth );
                 int  nTextureWidth = nNativeWidth / ( int ) nFramesByTexture;
 
                 /*
@@ -311,7 +314,7 @@ namespace Scarab  {
                  * differs from each other (not the case for Satellite's own
                  * assets today, but will be for other enemy types).
                  */
-                pPool -> GetOrCacheNativeHeight( handle, nSequenceId, pTexture -> GetDimension2D().size.nHeight );
+                pPool -> GetOrCacheNativeHeight( hSprite, nSequenceId, pTexture -> GetDimension2D().size.nHeight );
 
                 pTexture -> SetCenterTileIndex( ( int ) nActiveTileIndex );
                 pTexture -> SetActiveTileIndex( ( int ) nActiveTileIndex );
@@ -411,15 +414,15 @@ namespace Scarab  {
                 if( pSprite == nullptr || !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "sequenceId", nSequenceId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SpriteHandle    handle   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                SpritePool*     pPool   = LuaEngineUtil :: GetSpritePool( pLuaState );
-                TextureCanvas*  pTexture = pPool -> GetTexture( handle, nSequenceId );
+                SpriteHandle                          hSprite   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                SpritePool*                           pPool   = LuaEngineUtil :: GetSpritePool( pLuaState );
+                SunLight :: Canvas :: TextureCanvas*  pTexture = pPool -> GetTexture( hSprite, nSequenceId );
 
                 if( pTexture == nullptr || !pSprite -> SetActiveTextureSequence( nSequenceId ) )
                     return LuaEngineUtil :: PushError( pLuaState, "sequence " + std :: to_string( nSequenceId ) + " is not configured" );
 
                 pSprite -> GetDimension2D().size.nWidth  = pTexture -> GetTileSize();
-                pSprite -> GetDimension2D().size.nHeight = pPool -> GetOrCacheNativeHeight( handle, nSequenceId, 0 );
+                pSprite -> GetDimension2D().size.nHeight = pPool -> GetOrCacheNativeHeight( hSprite, nSequenceId, 0 );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -445,16 +448,16 @@ namespace Scarab  {
              */
             int LuaSpriteApi :: SetAnimationMode( lua_State* pLuaState )  {
 
-                std :: string   strError;
-                int             nSequenceId = 0;
-                AnimationMode   mode        = TEXTURE_ANIMATION_MODE_MANUAL;
+                std :: string                         strError;
+                int                                   nSequenceId = 0;
+                SunLight :: Canvas :: AnimationMode   mode        = SunLight :: Canvas :: TEXTURE_ANIMATION_MODE_MANUAL;
 
                 if( ResolveHandleArg( pLuaState, 1, strError ) == nullptr ||
                     !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "sequenceId", nSequenceId, strError ) ||
                     !ReadAnimationModeArg( pLuaState, 3, mode, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                TextureCanvas*  pTexture = LuaEngineUtil :: GetSpritePool( pLuaState ) -> GetTexture( ( SpriteHandle ) lua_tointeger( pLuaState, 1 ), nSequenceId );
+                SunLight :: Canvas :: TextureCanvas*  pTexture = LuaEngineUtil :: GetSpritePool( pLuaState ) -> GetTexture( ( SpriteHandle ) lua_tointeger( pLuaState, 1 ), nSequenceId );
 
                 if( pTexture == nullptr )
                     return LuaEngineUtil :: PushError( pLuaState, "sequence " + std :: to_string( nSequenceId ) + " is not configured" );
@@ -741,17 +744,17 @@ namespace Scarab  {
              */
             int LuaSpriteApi :: SetTint( lua_State* pLuaState )  {
 
-                static const char * const  aszChannel[3] = { "r", "g", "b" };
+                static const char * const  aszChannel[__RGB_CHANNELS] = { "r", "g", "b" };
 
                 std :: string                   strError;
-                lua_Integer                     anChannel[3] = { 0, 0, 0 };
+                lua_Integer                     anChannel[__RGB_CHANNELS] = { 0, 0, 0 };
                 lua_Integer                     nAlpha       = UCHAR_MAX;
                 SunLight :: Sprite :: Sprite*   pSprite     = ResolveHandleArg( pLuaState, 1, strError );
 
                 if( pSprite == nullptr )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                for( int nArg = 0; nArg < 3; nArg++ )
+                for( int nArg = 0; nArg < __RGB_CHANNELS; nArg++ )
                     if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 2 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
                         return LuaEngineUtil :: PushError( pLuaState, strError );
 
@@ -914,17 +917,17 @@ namespace Scarab  {
              */
             int LuaSpriteApi :: SetCollisionInset( lua_State* pLuaState )  {
 
-                static const char * const  aszNames[4] = { "leftPct", "topPct", "rightPct", "bottomPct" };
+                static const char * const  aszNames[__INSET_SIDES] = { "leftPct", "topPct", "rightPct", "bottomPct" };
 
                 std :: string  strError;
-                double         afInset[4] = { 0.0, 0.0, 0.0, 0.0 };
+                double         afInset[__INSET_SIDES] = { 0.0, 0.0, 0.0, 0.0 };
 
                 SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
                 if( pSprite == nullptr )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                for( int nArg = 0; nArg < 4; nArg++ )
+                for( int nArg = 0; nArg < __INSET_SIDES; nArg++ )
                     if( !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2 + nArg, aszNames[nArg], 0.0, 1.0, afInset[nArg], strError ) )
                         return LuaEngineUtil :: PushError( pLuaState, strError );
 
