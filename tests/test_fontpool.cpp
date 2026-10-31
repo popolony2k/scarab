@@ -30,6 +30,9 @@
 
 using namespace Scarab :: Engine;
 
+// The checks compare raw pointers (.get()): doctest prints both sides of a failed check, and
+// GCC/MSVC can't print a std::shared_ptr of an abstract class (Apple clang can).
+
 /** A font that draws nothing: only its identity and lifetime matter to the pool. */
 class FakeFont : public SunLight :: Font :: IFont  {
 
@@ -61,13 +64,13 @@ TEST_CASE( "Add hands out a handle that resolves to the same font" )  {
     FontHandle  handle = pool.Add( pFont );
 
     CHECK( handle != INVALID_FONT_HANDLE );
-    CHECK( pool.Resolve( handle ) == pFont );
+    CHECK( pool.Resolve( handle ).get() == pFont.get() );
     CHECK( pool.Add( nullptr ) == INVALID_FONT_HANDLE );           // no font, no handle
 
     FontHandle  other = pool.Add( std :: make_shared<FakeFont>() );
 
     CHECK( other != handle );
-    CHECK( pool.Resolve( other ) != pFont );
+    CHECK( pool.Resolve( other ).get() != pFont.get() );
 }
 
 TEST_CASE( "Release drops only the pool's reference: a font still used elsewhere stays alive" )  {
@@ -93,17 +96,17 @@ TEST_CASE( "A released font handle never resolves again, even when its slot is r
     FontHandle  handle = pool.Add( std :: make_shared<FakeFont>() );
 
     REQUIRE( pool.Release( handle ) );
-    CHECK( pool.Resolve( handle ) == nullptr );
+    CHECK( pool.Resolve( handle ).get() == nullptr );
     CHECK_FALSE( pool.Release( handle ) );
 
     std :: shared_ptr<SunLight :: Font :: IFont>  pNext = std :: make_shared<FakeFont>();
     FontHandle                              reused = pool.Add( pNext );     // takes the freed slot
 
     CHECK( reused != handle );
-    CHECK( pool.Resolve( reused ) == pNext );
-    CHECK( pool.Resolve( handle ) == nullptr );
+    CHECK( pool.Resolve( reused ).get() == pNext.get() );
+    CHECK( pool.Resolve( handle ).get() == nullptr );
     CHECK_FALSE( pool.Release( handle ) );
-    CHECK( pool.Resolve( reused ) == pNext );                      // the stale handle did not release it
+    CHECK( pool.Resolve( reused ).get() == pNext.get() );                      // the stale handle did not release it
 }
 
 TEST_CASE( "Clear releases every font the pool holds" )  {
@@ -122,6 +125,6 @@ TEST_CASE( "Clear releases every font the pool holds" )  {
     REQUIRE_FALSE( weak.expired() );                               // only the pool holds it now
     pool.Clear();
     CHECK( weak.expired() );
-    CHECK( pool.Resolve( handle ) == nullptr );
-    CHECK( pool.Resolve( INVALID_FONT_HANDLE ) == nullptr );
+    CHECK( pool.Resolve( handle ).get() == nullptr );
+    CHECK( pool.Resolve( INVALID_FONT_HANDLE ).get() == nullptr );
 }
