@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" orientation="orthogonal" renderorder="right-down" width="40" height="12" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="40">
+ <!-- Scarab's tile animation test map (doc/MASTER_PLAN.md item V13, sunlight I11 / BREAKAGES 44 and 60): an animated
+      tile in two cells, flipped, far to the right, on a hidden layer and as tile objects, next to a static tile and a
+      0 ms cycle. Every copy of the animated tile shows the frame for the time since the map loaded. -->
+ <tileset firstgid="1" source="tileset_anim.tsx"/>
+ <layer id="1" name="animated" width="40" height="12">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,1,0,0,0,0,0,1,0,0,0,0,0,2147483649,0,0,0,0,0,16,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,1,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="2" name="hidden animated" width="40" height="12" visible="0">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <objectgroup id="3" name="objects" color="#ffffffff">
+  <object id="1" name="anim_object" gid="1" x="64" y="288" width="32" height="32"/>
+  <object id="2" name="anim_object_flipped" gid="2147483649" x="256" y="288" width="32" height="32"/>
+  <object id="3" name="not_a_tile" x="448" y="256" width="32" height="32"/>
+ </objectgroup>
+ <objectgroup id="4" name="labels" color="#ffffffff">
+  <object id="20" x="32" y="8" width="900" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">tile animation by time (V13): 100 / 50 / 300 ms</text></object>
+  <object id="31" x="32" y="32" width="900" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">a 450 ms cycle, from tilemap_load_map</text></object>
+  <object id="21" x="32" y="104" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">animated</text></object>
+  <object id="22" x="224" y="104" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">same tile</text></object>
+  <object id="23" x="416" y="104" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">flipped</text></object>
+  <object id="24" x="608" y="104" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">static</text></object>
+  <object id="25" x="800" y="104" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">0 ms cycle</text></object>
+  <object id="26" x="1120" y="104" width="160" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">far right</text></object>
+  <object id="27" x="32" y="200" width="900" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">row 5: the same tile on a hidden layer</text></object>
+  <object id="28" x="32" y="296" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">tile object</text></object>
+  <object id="29" x="224" y="296" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">flipped</text></object>
+  <object id="30" x="416" y="296" width="180" height="16"><text fontfamily="Sans" pixelsize="16" color="#ffffffff">rectangle</text></object>
+ </objectgroup>
+</map>

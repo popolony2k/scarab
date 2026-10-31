@@ -32,7 +32,8 @@ V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' c
 V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile picking in map space), and in
 V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, group tint and opacity), and
 in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1 float, exact round trips),
-and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and tint).
+and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and tint), and in V13 to
+`56a73cd4de2868fe30e124e79340ea19d71feae7` (I11, tile animation by time and the frame query, with the 0 ms fix).
 
 ## Phase P: pin & plumbing
 
@@ -448,7 +449,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | DONE |
 | V11 | The collision lookup no longer reads a wrong tile past the map's far edge (entry 4, A6); tile collisions and lookups in map space, re-pin to `4189199` (I7, entry 56); Scarab's tile handler fixed | DONE |
 | V12 | A tile object resized away from its own tile's size takes its object layer's tint (entry 45); layer tint at runtime + group tint/opacity, re-pin to `4274ecb` (I8, entry 57) | DONE |
-| V13 | Tiled tile animations show each frame once per cycle (entry 44; moved here from O4) | TODO |
+| V13 | Tiled tile animations run by time, each frame once per cycle (entries 44, 60; moved here from O4); re-pin to `56a73cd4de2868fe30e124e79340ea19d71feae7` (I11) and `tilemap_get_tile_frame` / `tilemap_get_object_tile_frame` | DONE |
 
 **V1 (DONE, 2026-10-22 - V1d confirmed by the owner in a real window).** Not just a rename: the scroll clamp genuinely changed (the last step can now be
 partial, reaching the map's true edge where it used to stop a step short;
@@ -626,17 +627,49 @@ takes sunlight's values. Nothing in `samples/`, `scripts/`, `docs/` or `resource
 - **V4c:** `doc/CARAVELLIUS_BREAKAGES.md` entry 5.
 - No real-window check: the change is purely constant values, which the test pins directly.
 
-**V13 (TODO, added 2026-10-23, moved here from O4).** O4 said "no animated tiles in any Scarab
-map", and so did sunlight's BREAKAGES entry 44 ("no Caravellius or Scarab map has animated
-tiles (owner, 2026-10-14)"). Both were wrong for Scarab: `resources/tilemap/test.tmx`'s
+**V13 (DONE, 2026-10-30; added 2026-10-23, moved here from O4).** O4 said "no animated tiles in any
+Scarab map", and so did sunlight's BREAKAGES entry 44. That was wrong for Scarab: `resources/tilemap/test.tmx`'s
 tilesets have animated tiles (`tileset_house.tsx` 1, `tileset_house_var1.tsx` 2,
-`tileset_monke_variants.tsx` 4), and every sample that loads it shows them. The Caravellius
-half of that sentence has not been re-checked. sunlight's fix: each frame shows once per
-cycle for its own Tiled duration. Before, the first frame showed twice in a row, so it stayed
-on screen for two of its durations and every cycle was longer. No Scarab code change is
-expected. Scope: a real-window check of the animated tiles (Lua cannot read a tile's current
-frame, so no headless test can see it), and a CARAVELLIUS_BREAKAGES entry. Sub-tasks detailed
-when the item starts.
+`tileset_monke_variants.tsx` 4), and every sample that loads it shows them. Caravellius has none (checked
+by sunlight and here: no `<animation>` anywhere in `../caravellius/resources`). The old plan said "Lua
+cannot read a tile's current frame, so no headless test can see it"; under the owner's "cover every item
+fully" rule (V12) that was the gap to close.
+- **sunlight I11 (asked for by Scarab, PR #235, BREAKAGES 60):** the frame an animated tile shows was a lazy,
+  draw-driven state per tile (`__stTileAnimInfo`), so a tile not drawn (off screen, hidden layer, view mask)
+  PAUSED and resumed one frame on, and each frame's deadline was set from the draw that noticed it was due,
+  so a duration that was not a whole number of frames was held until the next draw (40 ms at 60 fps held
+  50 ms) and the cycle stretched. Now the animation is a pure function of time, as Tiled animates: the frame
+  shown is (now - LoadMap time) modulo the cycle, walked through the durations. No pause, no drift, no
+  state; every cell and tile object of a tile in step. New read-only queries `ITileMap::GetTileFrame( layer,
+  cell, gid )` and `GetObjectTileFrame( name, gid )`.
+- **A sunlight bug found by this item's test (fixed as PR #237):** an animation whose durations are all 0 ms
+  showed its LAST frame (the walk stepped past every zero-length frame, `0 >= 0`), though I11 said the first.
+  Reported on the owner's go-ahead; now the first frame, drawn and queried.
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `56a73cd4de2868fe30e124e79340ea19d71feae7`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@56a73cd` (via `06009d4`, I11 before the fix); verified
+  on `origin/feat/master_plan`; reconfigured in place.
+- **Lua:** `tilemap_get_tile_frame(row, col, layerId) -> gid` and `tilemap_get_object_tile_frame(name) -> gid`
+  (flip bits removed). sunlight answers only false for every refusal, so Scarab checks the reasons first and
+  reports each: no map, no such layer, not a tile layer, a cell off the map, an empty cell; no such object,
+  not a tile object. The `@luadoc` ("Animated tiles") explains the time-based animation and the change.
+- **Test map:** `resources/tilemap/animation/` (`animation.tmx`, `tileset_anim.tsx`, README) - one tile over
+  gids 1 / 6 / 11 for 100 / 50 / 300 ms (50 ms is not a whole number of 60 fps frames), in two cells, flipped,
+  far to the right, on a hidden layer and as two tile objects, next to a static tile and an all-0 ms animation.
+  (A comment placed before the `.tsx`'s root element made libtmx fail with "missing 'name' attribute in the
+  'tileset' element"; it now sits inside the element.)
+- **Tests:** new `scripts/tile_animation_smoke` (ci.yml, all 4 platforms). The map loads at a virtual time
+  that is not a whole millisecond; then every frame for 300 frames (11 cycles) every copy must equal EXACTLY
+  the gid the virtual clock predicts (`llround` ms, as sunlight's `VirtualClock`), also while the layer is
+  hidden, masked out of the default view and scrolled off screen; a second query gives the same answer; the
+  static tile and the 0 ms cycle never change; every gid is seen; every refusal. `error_reporting_smoke`
+  gained one check per kind. Proven: it failed on `06009d4` (the 0 ms cycle read gid 7, the last frame), and
+  with sunlight's `FrameGidOf` mutated in the fetched source - frame 0 held twice per cycle (gid 11 at 450 ms
+  where 1 was due) and a frame skipped (gid 11 at 100 ms where 6 was due) - then restored.
+- **Sample:** `samples/shapes` key 6 shows the map at real speed; the HUD reads the frame back. The owner's
+  window check (2026-10-30): every copy and both tile objects change face together (gids 1, 6 - the 50 ms
+  flash - and 11 caught), the static and 0 ms tiles stay. Labels respaced after the first look.
+- **Caravellius:** no animated tiles, nothing reads `tmx_tile::user_data`; acceptance PASS, fingerprint
+  `hash=33897632`. Breakage entry 19.
 
 **V5 (DONE, 2026-10-24 - checked by the owner in a real window and approved; fully planned 2026-10-23, open questions settled 2026-10-24, started 2026-10-24 after C6).** sunlight entries 8, 11
 and 17: **text**, **tile** (`OT_TILE`, drawn at their own size or stretched into their box,
