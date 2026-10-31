@@ -34,7 +34,7 @@ Two parts:
    arrays and checks every constant exists, no two in a group share a value, and KEY_MENU is 5
    (raylib's), not 82 - which up to sunlight v0.38.0 was also KEY_R.
 
-See the Lua script's own header, and doc/MASTER_PLAN.md item V4.
+See the Lua script's own header, and plans/MASTER_PLAN.md item V4.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.

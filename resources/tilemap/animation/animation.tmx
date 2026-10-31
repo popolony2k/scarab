@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" orientation="orthogonal" renderorder="right-down" width="40" height="12" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="40">
- <!-- Scarab's tile animation test map (doc/MASTER_PLAN.md item V13, sunlight I11 / BREAKAGES 44 and 60): an animated
+ <!-- Scarab's tile animation test map (plans/MASTER_PLAN.md item V13, sunlight I11 / BREAKAGES 44 and 60): an animated
       tile in two cells, flipped, far to the right, on a hidden layer and as tile objects, next to a static tile and a
       0 ms cycle. Every copy of the animated tile shows the frame for the time since the map loaded. -->
  <tileset firstgid="1" source="tileset_anim.tsx"/>

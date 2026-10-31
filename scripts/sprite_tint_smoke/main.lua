@@ -3,7 +3,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/sprite_tint_smoke/project.json
 
-    Pins doc/MASTER_PLAN.md item P8 (sunlight I10, BREAKAGES 59): sprite_set/get_opacity and
+    Pins plans/MASTER_PLAN.md item P8 (sunlight I10, BREAKAGES 59): sprite_set/get_opacity and
     sprite_set/get_tint - the defaults of a fresh sprite, exact round trips (0.3 reads 0.3, the
     tint's alpha kept and defaulting to 255), every rejection leaving the value as it was, that
     two sprites showing the SAME texture keep their own values, that reconfiguring a sprite's

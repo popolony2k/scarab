@@ -6,7 +6,7 @@ draw_end_blend_mode, sprite_set / clear / get_blend_mode).
 Runs scripts/blend_api_smoke/main.lua headless once: the constants' values, every round
 trip, every error (nil + the reason), that a recycled sprite slot never inherits its previous
 owner's mode, that the sprite functions create no renderer, and that a begin with no end is
-harmless across frames. See the Lua script's own header, and doc/MASTER_PLAN.md item B1.
+harmless across frames. See the Lua script's own header, and plans/MASTER_PLAN.md item B1.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.

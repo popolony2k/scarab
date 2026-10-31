@@ -1,5 +1,5 @@
 """
-Run Scarab's headless checks under AddressSanitizer / LeakSanitizer (doc/MASTER_PLAN.md item R1).
+Run Scarab's headless checks under AddressSanitizer / LeakSanitizer (plans/MASTER_PLAN.md item R1).
 
 Runs, with a scarab built with -fsanitize=address (see ci.yml's "asan" job, or CLAUDE.md's ASan recipe):
 

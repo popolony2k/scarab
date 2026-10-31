@@ -3,7 +3,7 @@
 
         ZOOM=<factor> scarab --headless --fast --max-frames 2000 scripts/tile_collision_smoke/project.json
 
-    Pins doc/MASTER_PLAN.md item V11 (sunlight BREAKAGES 4 and 56): sprite-vs-tile collisions and
+    Pins plans/MASTER_PLAN.md item V11 (sunlight BREAKAGES 4 and 56): sprite-vs-tile collisions and
     tile lookups in MAP space, on collision.tmx next to this script (10x10 tiles of 32 px; collision
     tiles at (row, col) (5,5), (2,2)+(2,3), (8,1) with two shapes, and (9,9) in the far corner).
       - The lookups: tilemap_to_tile_matrix takes a map position; tilemap_get_tile returns the tile's

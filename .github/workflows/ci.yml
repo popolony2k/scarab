@@ -17,7 +17,7 @@ jobs:
         run: python3 scripts/generate_lua_api_docs.py
 
   # Scarab, sunlight, raylib, libtmx and Lua all built with AddressSanitizer, and every headless
-  # check run under it with LeakSanitizer on (doc/MASTER_PLAN.md item R1, mirroring sunlight's own
+  # check run under it with LeakSanitizer on (plans/MASTER_PLAN.md item R1, mirroring sunlight's own
   # "AddressSanitizer (Linux)" job): the smoke tests, the headless smoke test and every sample.
   # Linux only - macOS's AddressSanitizer has no LeakSanitizer, and one platform keeps CI time down.
   # Any sanitizer report fails the job (scripts/asan_run.py); known third-party leaks are suppressed
@@ -152,7 +152,7 @@ jobs:
 
       # Scarab's unit tests (doctest, tests/): what needs no window - the sprite and font
       # pools, LuaEngineUtil's argument readers, the zoom rule, content encryption -
-      # doc/MASTER_PLAN.md item R2.
+      # plans/MASTER_PLAN.md item R2.
       - name: Unit tests (Linux/macOS)
         if: runner.os != 'Windows'
         run: ./build/scarab_tests
@@ -297,7 +297,7 @@ jobs:
 
       # Every Lua function that can fail returns nil + the reason (never a Lua error, never a
       # silent no-op), a function with nothing else to return returns true, and arguments are
-      # checked strictly - one check per kind of failure of every module (doc/MASTER_PLAN.md
+      # checked strictly - one check per kind of failure of every module (plans/MASTER_PLAN.md
       # item D3) - see the script's own header.
       - name: Error reporting smoke test (Linux/macOS)
         if: runner.os != 'Windows'
@@ -312,7 +312,7 @@ jobs:
 
       # tilemap_unload_map unloads every sprite on a layer and takes their colliders out: no
       # collision while the map is unloaded, exactly one per frame after the sprites are added
-      # again (doc/MASTER_PLAN.md item V9) - see the script's own header.
+      # again (plans/MASTER_PLAN.md item V9) - see the script's own header.
       - name: Unload map smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/unload_map_smoke.py build/scarab
@@ -326,7 +326,7 @@ jobs:
 
       # tilemap_load_map over a loaded map: a map that fails to parse leaves the loaded one loaded,
       # sprites stay registered, and 1000 loads don't grow peak memory over 20 (Linux/macOS; the
-      # functional checks only on Windows) - doc/MASTER_PLAN.md item V10, see the script's header.
+      # functional checks only on Windows) - plans/MASTER_PLAN.md item V10, see the script's header.
       - name: Load map smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/load_map_smoke.py build/scarab
@@ -340,7 +340,7 @@ jobs:
 
       # Sprite-vs-tile collisions and tile lookups in map space: exact collision windows (view-
       # relative and world-space, camera offset, zoom 1 and 3.8125), the tile's map rectangle, one
-      # call per touched tile, two collision shapes, the far edge - doc/MASTER_PLAN.md item V11.
+      # call per touched tile, two collision shapes, the far edge - plans/MASTER_PLAN.md item V11.
       - name: Tile collision smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/tile_collision_smoke.py build/scarab
@@ -354,7 +354,7 @@ jobs:
 
       # tilemap_get/set_layer_tint (+ _by_name): every authored Tiled tintcolor read back exactly
       # (alpha included) for tile, image, object and group layers, set then get, a write-back
-      # changing nothing, and every error - doc/MASTER_PLAN.md item V12.
+      # changing nothing, and every error - plans/MASTER_PLAN.md item V12.
       - name: Layer tint smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/layer_tint_smoke.py build/scarab
@@ -368,7 +368,7 @@ jobs:
 
       # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
       # rejection, two sprites sharing a texture keeping their own values, a recycled slot
-      # starting opaque and untinted - doc/MASTER_PLAN.md item P8.
+      # starting opaque and untinted - plans/MASTER_PLAN.md item P8.
       - name: Sprite tint smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/sprite_tint_smoke.py build/scarab
@@ -382,7 +382,7 @@ jobs:
 
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
-      # while hidden or off screen, checked exactly every frame for 11 cycles - doc/MASTER_PLAN.md
+      # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md
       # item V13.
       - name: Tile animation smoke test (Linux/macOS)
         if: runner.os != 'Windows'

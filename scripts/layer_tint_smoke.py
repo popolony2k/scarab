@@ -1,5 +1,5 @@
 """
-Smoke test for the layer tint functions (doc/MASTER_PLAN.md item V12).
+Smoke test for the layer tint functions (plans/MASTER_PLAN.md item V12).
 
 Runs scripts/layer_tint_smoke/main.lua headless once on resources/tilemap/tint/tint.tmx:
 every authored Tiled tintcolor read back exactly (alpha included, white without one) for tile,

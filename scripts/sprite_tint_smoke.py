@@ -1,5 +1,5 @@
 """
-Smoke test for the sprite opacity and tint functions (doc/MASTER_PLAN.md item P8).
+Smoke test for the sprite opacity and tint functions (plans/MASTER_PLAN.md item P8).
 
 Runs scripts/sprite_tint_smoke/main.lua headless once: a fresh sprite's defaults, exact round
 trips, every rejection, two sprites sharing a texture keeping their own values, a recycled slot

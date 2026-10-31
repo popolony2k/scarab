@@ -6,7 +6,7 @@
 
     Pins a layer's opacity as tilemap_get_layer / tilemap_set_layer (and their _by_name
     forms) exchange it: a number from 0 (transparent) to 1 (opaque), Tiled's own unit, read
-    exactly as authored and written back exactly (doc/MASTER_PLAN.md items V3 and P7, sunlight
+    exactly as authored and written back exactly (plans/MASTER_PLAN.md items V3 and P7, sunlight
     BREAKAGES entries 41 and 58). History: up to sunlight v0.38.0 the 0..255 integer Scarab
     exchanged was not converted symmetrically (an opaque layer read 256, writing 255 hid it);
     V3 made the integer exact, but a read-and-write-back still moved an authored 0.5 to 0.502;

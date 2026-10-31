@@ -4,7 +4,7 @@ This is the working plan for integrating sunlight's `feat/master_plan`. Each ite
 status, a scope, and the test items that must pass before it is closed. Items are closed
 one at a time, in phase order, unless the owner decides otherwise.
 
-Like [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md), this file is integration
+Like [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md), this file is integration
 material only: it lives on `master_plan` and is removed before `master_plan` goes to
 `main`. `master_plan` merges to `main` only on the owner's own explicit command, after
 Scarab's own work here is integrated with Caravellius - not automatically once this plan's
@@ -16,7 +16,7 @@ suite passing (samples, the renderer/view API smoke test, the tileset archive sm
 the headless smoke test), an AddressSanitizer run for anything touching lifetimes once
 Phase R lands, and a PR per item (or per consolidated set of mechanical items).
 
-This plan follows sunlight's own [`doc/MASTER_PLAN.md`](../../sunlight/doc/MASTER_PLAN.md)
+This plan follows sunlight's own [`plans/MASTER_PLAN.md`](../../sunlight/plans/MASTER_PLAN.md)
 in shape and in working rules - see sunlight's handoff, read from
 [`doc/SCARAB_HANDOFF.md`](../../sunlight/doc/SCARAB_HANDOFF.md) in a local checkout of
 sunlight (`../sunlight` from this repo's root), and its peer-impact list,
@@ -49,7 +49,7 @@ and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and
 | P7 | Re-pin to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (sunlight's I9: layer opacity is a 0..1 float with exact round trips, `SetScreenFade` clamped; sunlight BREAKAGES entry 58) and move Lua's layer opacity to 0..1 | DONE |
 | P8 | Re-pin to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (sunlight's I10: sprite opacity and tint; sunlight BREAKAGES entry 59) and expose them to Lua (`sprite_set/get_opacity`, `sprite_set/get_tint`) | DONE |
 
-**P0 (DONE).** This document and [`doc/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
+**P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
 chain), reviewed and approved by the owner before the `master_plan` branch held anything
 else.
@@ -138,7 +138,7 @@ authored.
   `scarab v0.1.25 (sunlight feat/master_plan@a63fec6, Lua 5.4.7)`. The camera boundary,
   renderer API, tileset archive (plain + encrypted) and headless smoke tests (incl. the
   frame-budget exit 3) pass, the Lua API docs generator passes, and all 15 samples run headless.
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 2.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 2.
 - The real check is by eye only, since nothing headless can see colour. The owner ran
   `samples/camera` in a real window (screenshot, 2026-10-22 02:50): `background_clouds` and
   `background` now show light blue and white like Tiled, not grey.
@@ -430,7 +430,7 @@ argument checks; (6) one PR, reviewed "by average".
   state fingerprint is the reference (`hash=33897632 maxScore=3000`); the only error it meets is
   `sprite_remove_from_layer` on a sprite not on the layer, which returned `false` before. A grep
   found the real break: 23 `if handle == 0 then` pool-exhausted checks in 18 files (entry 9).
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 9; `CLAUDE.md` gained the rule for new primitives.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 9; `CLAUDE.md` gained the rule for new primitives.
 
 ## Phase V: visual/behavioral re-verification
 
@@ -474,7 +474,7 @@ Sub-tasks, as agreed with the owner:
 - **V1b** - fix the Lua docs of `camera_move_*` and `view_move_camera_*`: the step was said
   to be "configured on the C++ renderer, not from Lua", the direction was not stated, and
   nothing said the position may not be a multiple of the step.
-- **V1c** - the first entry in `doc/CARAVELLIUS_BREAKAGES.md`.
+- **V1c** - the first entry in `plans/CARAVELLIUS_BREAKAGES.md`.
 - **V1d** - a real-window check of `samples/camera` by the owner.
 
 **Found while building it:**
@@ -553,7 +553,7 @@ own default zoom).
   - `samples/views` and `samples/renderer`: each text line is drawn on a dark translucent
     plate (`draw_text_plate`, sized with `measure_text`). The text crosses both white clouds
     and black areas, where neither light nor dark text alone reads.
-- **V2c:** `doc/CARAVELLIUS_BREAKAGES.md` entry 3.
+- **V2c:** `plans/CARAVELLIUS_BREAKAGES.md` entry 3.
 
 **V3.** `src/lua/luatilemapapi.cpp`'s `GetLayer`/`SetLayer` pass `nOpacity` straight to
 Lua - self-correcting now that both directions are 0..255 (an opaque layer used to read
@@ -588,7 +588,7 @@ owner:
   then asked for ↑/↓ in steps of 15 (which divides 255, so both ends are exact). Screenshots
   at 15, 120, 135, 195 and 255 show a smooth fade that matches the numbers. The sample's text
   is on dark plates, like `views`/`renderer`, and its README has a controls table.
-- **V3d:** `doc/CARAVELLIUS_BREAKAGES.md` entry 4.
+- **V3d:** `plans/CARAVELLIUS_BREAKAGES.md` entry 4.
 
 **V4.** `src/lua/luainputapi.cpp` exposes `KEY_MENU` to Lua *by value* - the value itself
 (82 to 5) is what a script sees, not just an internal rename. Scope: check whether anything
@@ -624,7 +624,7 @@ takes sunlight's values. Nothing in `samples/`, `scripts/`, `docs/` or `resource
 - **V4b:** the "Keyboard keys" constants doc now says the values are raylib's own, and that
   `KEY_BACK`/`KEY_MENU`/`KEY_VOLUME_UP`/`KEY_VOLUME_DOWN` are Android buttons a desktop
   keyboard never sends.
-- **V4c:** `doc/CARAVELLIUS_BREAKAGES.md` entry 5.
+- **V4c:** `plans/CARAVELLIUS_BREAKAGES.md` entry 5.
 - No real-window check: the change is purely constant values, which the test pins directly.
 
 **V13 (DONE, 2026-10-30; added 2026-10-23, moved here from O4).** O4 said "no animated tiles in any
@@ -728,7 +728,7 @@ camera goes) can't be told from the map alone. That goes in V5c below.
   - Controls follow the shared scheme (arrows pan, Page Up/Down or `+`/`-` zoom, `=` reset
     zoom, Home reset), with the text on dark plates. The owner checks it in a real window.
     Add it to `samples/README.md` and to the VSCode template `launch.json` picker.
-- **V5c:** `doc/CARAVELLIUS_BREAKAGES.md` entry: text, tile and point objects in a map are
+- **V5c:** `plans/CARAVELLIUS_BREAKAGES.md` entry: text, tile and point objects in a map are
   now drawn (Caravellius' maps have none today, so any marker added later should be a
   rectangle or sit on a hidden layer), and its 3 rectangle trigger markers, probably already
   drawn, now have zoom-scaled outlines (O3). Check they are hidden or harmless.
@@ -762,7 +762,7 @@ camera goes) can't be told from the map alone. That goes in V5c below.
 - No headless test: drawing can't be seen headless, and nothing in Lua reads an object's drawn
   pixels. The map loading and font registering are covered by the checks above and by C6's font
   test.
-- V5c: `doc/CARAVELLIUS_BREAKAGES.md` entry 7.
+- V5c: `plans/CARAVELLIUS_BREAKAGES.md` entry 7.
 
 **V6 (DONE, 2026-10-24).** sunlight entries 18-20: rectangles, polylines, polygons
 (D1a), ellipses (D1b), tile objects and text objects (D1d) with a Tiled rotation are drawn turned
@@ -802,7 +802,7 @@ methods only concern implementers, and Scarab implements neither.
   distinct, the point objects are filled squares, and both scale at zoom 1.25 and 1.50.
   Switching maps was clean, with no `??????`.
 - **The point objects V5 deferred** are covered by map 3.
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 8.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 8.
 
 **V7 (DONE, 2026-10-24).** sunlight entry 36 (L2): a Tiled object's own `opacity` custom
 property (0 to 1) overrides its layer's opacity, and shape and text objects follow layer opacity at
@@ -821,7 +821,7 @@ all (before, only tile objects did; shapes and text were always drawn at their c
 - **The owner's real-window check (2026-10-24, screenshot):** tile objects, rectangle outlines and
   text each fade 1.0 / 0.75 / 0.5 / 0.25 with the 0.0 one invisible; the two row-4 tiles (no
   property, invalid `5`) look the same at the layer's 0.4; labels in Caravellius 8x8, no `??????`.
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 10.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 10.
 
 **V8a (DONE, 2026-10-27).** Found while building V8's `samples/mapless`: its layer keys
 changed the view's layer mask (`view_is_layer_shown` read it back) but nothing disappeared. sunlight
@@ -847,7 +847,7 @@ and every sprite was drawn above the map layers meant to cover it.
   the main view, the minimap and the close-up, `L` toggles the minimap's clouds only, `C` the close-up.
 - No automated test: it is purely drawing, which a headless run can't see.
 - `CLAUDE.md`'s layer-visibility gotcha corrected (it was only true for drawing since this fix);
-  `doc/CARAVELLIUS_BREAKAGES.md` entry 11.
+  `plans/CARAVELLIUS_BREAKAGES.md` entry 11.
 
 **V8 (DONE, 2026-10-27).** sunlight entry 39 (M2): a sprite added with `AddSprite` while
 no map is loaded is now drawn (before: accepted, collider updated, never drawn); with no map, the
@@ -870,7 +870,7 @@ now also release sprites registered with no map (they leaked). With a map loaded
 - **The owner's real-window check (2026-10-27, screenshots, after V8a):** all three sprites draw with
   no map, Sunny over the shadow and under the glow, each key hides its sprite and the HUD matches,
   all off leaves only the HUD, zoom scales everything.
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 12.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 12.
 
 **V9 (DONE, 2026-10-29).** sunlight entry 47: `Sprite::Unload()` leaves no active sequence
 (before, the active sequence stayed marked valid over freed memory), and `UnloadMap()`/`Stop()`
@@ -904,7 +904,7 @@ unload every sprite registered on a layer. Loading a map over a loaded one does 
 - **Docs:** `tilemap_unload_map`'s `@luadoc` (every sprite on a layer is unloaded and taken out of
   collisions; set it up again after the next map; the rules stay; a map loaded over a map unloads
   nothing). No window check: collisions and sequence state are counted headless.
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 13.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 13.
 
 **V10 (DONE, 2026-10-29).** sunlight entry 40 (T2): `LoadMap` over a loaded map frees the
 old map (tile textures, Resource Manager, tile animations); before, it overwrote the map pointer and
@@ -932,7 +932,7 @@ was lost and no map was left).
 - **Asked during V10 (the owner):** does multi-view mean several maps? No - checked in sunlight's
   `multiview`/`multiview_overlap` samples, `IView` (no map of its own) and `TileMapRenderer` (one
   `m_pMap`): views are cameras on the one loaded map. The owner added C7 (several maps at once).
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 14.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 14.
 
 **V11 (DONE, 2026-10-30).** sunlight entry 4 (A6): the collision lookup refused only a
 negative row/column, so a position past the map's far edge read past the layer's tile array.
@@ -978,7 +978,7 @@ obstacles, whose samples deliberately ignore the callback because of "spurious h
   to the start zoom (the owner noticed the default renderer resets to 1.0). The owner's real-window
   check (2026-10-30, screenshots): flush against a wall and in a corner at zoom 3.81 and 4.56, the
   gap and the sprite hit at zoom 1.0, and the zoom reset back to 3.81.
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 15.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 15.
 
 **V12 (DONE, 2026-10-30).** sunlight entry 45: a tile object stretched away from its tile's
 size takes its object layer's tint (before, it was drawn untinted). The owner asked for V12 to be
@@ -1014,7 +1014,7 @@ with the new sunlight features, even if it breaks Caravellius".
   problems, all fixed: an overlapping label, invisible rectangles (their object layers had no colour),
   and a red tint barely visible on red roof tiles (now cyan). Then: every row as described, `T` and
   `G` working, shapes and text untinted, the group's opacity on its rectangle and text.
-- `doc/CARAVELLIUS_BREAKAGES.md` entry 16.
+- `plans/CARAVELLIUS_BREAKAGES.md` entry 16.
 
 ## Phase O: confirmed not applicable, recorded anyway
 
@@ -1091,7 +1091,7 @@ drawn with directly. One file means one load and one GPU copy.
   slot. The last owner releases it. `Stop()` lets go of every registered font and selects the
   built-in font again while the window is open. When the window closes, every live font becomes
   invalid (calls do nothing, nothing dangles).
-- References in sunlight: `doc/BREAKAGES.md` entry 52, `doc/MASTER_PLAN.md` "Integration
+- References in sunlight: `doc/BREAKAGES.md` entry 52, `plans/MASTER_PLAN.md` "Integration
   follow-ups" I3, `src/drawsurface/idrawsurface.h`, `src/font/ifont.h`, `samples/text` (each face
   loaded once and registered; the Mono face also selected for a HUD line),
   `tests/test_textobjects.cpp`, `tests/test_objectrenderers.cpp`.
@@ -1142,7 +1142,7 @@ forms, each proven by mutation. Re-pin checks as in P4/P5 (real fetch, `--versio
 test). `samples/text` and `samples/hello-world`/`samples/renderer` move to the new API where it
 helps, and the owner checks text by eye. V5's `samples/objects` is the eye check for text objects.
 
-*Breakages:* a `doc/CARAVELLIUS_BREAKAGES.md` entry. Caravellius' `Text.set_font`
+*Breakages:* a `plans/CARAVELLIUS_BREAKAGES.md` entry. Caravellius' `Text.set_font`
 (`src/core/text.lua`, called from `src/main.lua` with `caravellius8x8_bold.fnt`) keeps working
 through the path form, but now gets `nil, "message"` instead of `false` on a bad path. The handle
 form lets it load each font once. Per the owner (2026-10-24): try not to break Caravellius, but
@@ -1204,7 +1204,7 @@ uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed on
   Portuguese/Spanish accented line in the TTF, and it shows `set_font`'s error for a bad path.
   README updated.
 - Docs: the Text page has "Fonts" and "Fonts for the map's text objects" sections, and the
-  `docs/lua-api/README.md` index row was updated. `doc/CARAVELLIUS_BREAKAGES.md` entry 6.
+  `docs/lua-api/README.md` index row was updated. `plans/CARAVELLIUS_BREAKAGES.md` entry 6.
 - **Two review changes (the owner, 2026-10-24):**
   - `screen_get_width`/`screen_get_height` moved from `LuaTextApi` to `LuaAppApi`: they return
     the fixed render-area size every screen-space call uses, and have nothing to do with
@@ -1399,7 +1399,7 @@ item starts:
   `scripts/_lua_api_shared.py`'s `SOURCE_TO_DOC` if a new `src/lua/*api.cpp` file is added.
 - Any file that includes `raylib.h` must write `SunLight :: Base :: BlendMode` in full.
 
-Reference in sunlight: `doc/MASTER_PLAN.md` "Integration follow-ups" I2,
+Reference in sunlight: `plans/MASTER_PLAN.md` "Integration follow-ups" I2,
 `samples/blend/docs/README.md`, `CHANGELOG.md` [Unreleased].
 
 **Decided with the owner (2026-10-23):**
@@ -1473,7 +1473,7 @@ polluted." Measured, not assumed: it is 197 lines with 17 section headings, agai
 sunlight's own `README.md` at 193 lines with 22 headings - comparable in raw size, so
 whatever makes it feel polluted is density or structure, not length alone. sunlight's
 `README.md` can be used as a base. Scope, left open: what moves out (to `CLAUDE.md`, to a
-dedicated `doc/` file, or is dropped), what stays, and the target structure - discussed in
+dedicated `docs/` file, or is dropped), what stays, and the target structure - discussed in
 full when this item starts, not decided here.
 
 **T3 (TODO, added 2026-10-23 at the owner's request).** The owner noticed that some scripts,
@@ -1504,7 +1504,7 @@ Scope, to settle when the item starts:
 
 ## Process
 
-- **Peer impact for Caravellius**: [doc/CARAVELLIUS_BREAKAGES.md](CARAVELLIUS_BREAKAGES.md),
+- **Peer impact for Caravellius**: [plans/CARAVELLIUS_BREAKAGES.md](CARAVELLIUS_BREAKAGES.md),
   the same strategy sunlight used for `doc/BREAKAGES.md` - an entry is added the moment an
   item that affects Caravellius merges, not collected at the end. It lives on `master_plan`
   only and is removed once this plan merges to `main`, after Caravellius has been told.
@@ -1524,5 +1524,5 @@ Scope, to settle when the item starts:
   and Caravellius all merge to their own `main` together, not one at a time as each
   finishes). `--version` reports the branch and a short commit hash for the whole plan (see
   P1).
-- This document and `doc/CARAVELLIUS_BREAKAGES.md` are removed from the tree in the same PR
+- This document and `plans/CARAVELLIUS_BREAKAGES.md` are removed from the tree in the same PR
   that merges `master_plan` into `main`, after Caravellius has been told.

@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/font_api_smoke/project.json
 
-    Pins Scarab's handle-based font API (doc/MASTER_PLAN.md item C6, over sunlight I3 "fonts by
+    Pins Scarab's handle-based font API (plans/MASTER_PLAN.md item C6, over sunlight I3 "fonts by
     handle", BREAKAGES entry 52): load_font / release_font, set_font's three forms (a path, a
     handle, nil), register_font / unregister_font for the map's text objects, and draw_text /
     measure_text's optional font argument - every round trip and every error (nil + the reason).

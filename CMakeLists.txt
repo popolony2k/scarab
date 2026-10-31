@@ -17,7 +17,7 @@ cmake_minimum_required(VERSION 3.24)
 #     SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.38.0" (identical strings; the
 #     leading "v" is part of the value now, not hardcoded at either site);
 #   - a commit pinned during Scarab's master_plan integration (see
-#     doc/MASTER_PLAN.md item P1): SCARAB_SUNLIGHT_REF is the full 40-character
+#     plans/MASTER_PLAN.md item P1): SCARAB_SUNLIGHT_REF is the full 40-character
 #     hash GIT_TAG needs, SCARAB_SUNLIGHT_DISPLAY_VERSION is a human-readable
 #     branch@shorthash for --version instead, eg.
 #     "feat/master_plan@772851c".
@@ -25,7 +25,7 @@ cmake_minimum_required(VERSION 3.24)
 # "v" was hardcoded separately at both call sites - which broke the moment
 # this project needed to pin a raw commit hash instead of a release tag (a
 # "v"-prefixed hash is not a valid ref, and "sunlight v<hash>" is not a
-# sensible version string either). See doc/MASTER_PLAN.md item P1 for the
+# sensible version string either). See plans/MASTER_PLAN.md item P1 for the
 # full story.
 #
 set(SCARAB_SUNLIGHT_REF "56a73cd4de2868fe30e124e79340ea19d71feae7")
@@ -84,7 +84,7 @@ option(SCARAB_CONTENT_KEY_IS_SHARED "Internal - set only by release.yml; marks t
 # dynamic-linking tradeoffs instead
 # (e.g. sharing one libsodium build across several binaries).
 #
-option(SCARAB_BUILD_TESTS "Build Scarab's unit tests (doctest, tests/) - doc/MASTER_PLAN.md item R2" OFF)
+option(SCARAB_BUILD_TESTS "Build Scarab's unit tests (doctest, tests/) - plans/MASTER_PLAN.md item R2" OFF)
 option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library instead of static" OFF)
 
 ####################################################################
@@ -323,7 +323,7 @@ endif()
 
 #
 # Everything but main.cpp is built once, as the static library scarab_core, which the scarab
-# executable and the unit tests (SCARAB_BUILD_TESTS, tests/) both link - doc/MASTER_PLAN.md item R2.
+# executable and the unit tests (SCARAB_BUILD_TESTS, tests/) both link - plans/MASTER_PLAN.md item R2.
 # The tests then exercise exactly the code the executable runs, compiled once.
 #
 set(SCARAB_MAIN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
@@ -541,7 +541,7 @@ endif()
 add_dependencies(scarab scarab_copy_binaries)
 
 #
-# Unit tests (doctest) - doc/MASTER_PLAN.md item R2. Off by default, like sunlight's own
+# Unit tests (doctest) - plans/MASTER_PLAN.md item R2. Off by default, like sunlight's own
 # BUILD_LIBRARY_TESTS; ci.yml turns them on. scarab_tests lands next to scarab, so it runs against
 # the same flattened runtime libraries (scarab_copy_binaries) with the same relocatable rpath.
 #

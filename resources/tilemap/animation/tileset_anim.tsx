@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.11.0" name="tileset_anim" tilewidth="32" tileheight="32" tilecount="16" columns="4">
- <!-- Scarab's tile animation test tileset (doc/MASTER_PLAN.md item V13, sunlight I11): Scarab's monkey icons, one
+ <!-- Scarab's tile animation test tileset (plans/MASTER_PLAN.md item V13, sunlight I11): Scarab's monkey icons, one
       folder up. Tile 0 animates over three icons for 100, 50 and 300 ms (a 450 ms cycle; 50 ms is not a whole
       number of 60 fps frames); tile 3 is an animation whose durations are all 0 (it shows its first frame); tile 15
       has no animation. -->

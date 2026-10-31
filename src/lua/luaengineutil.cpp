@@ -185,7 +185,7 @@ namespace Scarab  {
 
             /**
              * @brief Push `nil, message` and return the count - the failure convention of the
-             * Lua primitives that report errors (doc/MASTER_PLAN.md items B1, D3): a script reads
+             * Lua primitives that report errors (plans/MASTER_PLAN.md items B1, D3): a script reads
              * it with `local ok, err = f( ... )`, and it never raises a Lua error.
              */
             int LuaEngineUtil :: PushError( lua_State *pLuaState, const std :: string &strMessage )  {
@@ -239,7 +239,7 @@ namespace Scarab  {
 
             /*
              * The argument readers below are the strict argument checks of every Lua primitive
-             * (doc/MASTER_PLAN.md item D3): each reads one argument, and on a wrong type or value
+             * (plans/MASTER_PLAN.md item D3): each reads one argument, and on a wrong type or value
              * returns false with the reason in strError, which the caller reports as
              * `nil, message` through PushError - never as a Lua error. The messages all start
              * "argument '<name>'", so a script sees which argument was wrong.

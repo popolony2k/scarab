@@ -27,7 +27,7 @@
             scarab --headless --fast --max-frames 200 scripts/input_constants_smoke/project.json
 
     Pins the KEY_* / GAMEPAD_BUTTON_* / GAMEPAD_AXIS_* / CONTROLLER_* constants Lua sees
-    (doc/MASTER_PLAN.md item V4, sunlight BREAKAGES entry 2). Up to sunlight v0.38.0,
+    (plans/MASTER_PLAN.md item V4, sunlight BREAKAGES entry 2). Up to sunlight v0.38.0,
     KEY_MENU was 82 - the same number as KEY_R - so input_is_key_down( KEY_MENU ) fired on R
     and a key-indexed table mixed the two up. Now it is 5, raylib's own (Android's menu button).
     Every constant of a group must exist and no two may share a value, which catches that

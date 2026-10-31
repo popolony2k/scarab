@@ -130,7 +130,7 @@ namespace Scarab  {
             m_pRenderer -> Start();
 
             /*
-             * Right after Start(), as planned (doc/MASTER_PLAN.md item D1): the renderer and
+             * Right after Start(), as planned (plans/MASTER_PLAN.md item D1): the renderer and
              * its controller manager both exist by now, and no map is loaded yet at this point
              * in the entry script's own flow (renderer_create must be the first window-needing
              * call, so this always runs before tilemap_load_map) - Install only registers

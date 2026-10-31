@@ -75,7 +75,7 @@ static void SetPackEnvVar( const char *szName, const std :: string &strValue )  
  * any stRendererCreateExtras to Create - see RendererProvider::Create):
  * every key a game reacts to goes through Lua's own input_* primitives
  * unless renderer_create{use_default_key_handler=true} asks for the preset
- * explicitly (doc/MASTER_PLAN.md item D1).
+ * explicitly (plans/MASTER_PLAN.md item D1).
  */
 static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )  {
 

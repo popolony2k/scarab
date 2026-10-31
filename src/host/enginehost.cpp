@@ -452,7 +452,7 @@ namespace Scarab  {
              * No per-frame sprite update here: sunlight's own layer pass advances and draws every
              * sprite added to a layer, in its layer's place and honouring the layer's visibility and
              * each view's layer mask. A second Update() of every pool sprite here (SpritePool::UpdateAll,
-             * removed in doc/MASTER_PLAN.md item V8a) drew them all again on top of the whole frame,
+             * removed in plans/MASTER_PLAN.md item V8a) drew them all again on top of the whole frame,
              * so hiding a layer never hid its sprites.
              */
             m_LuaEngine.CallOnUpdate( __FRAME_DELTA_MILLI );
@@ -563,7 +563,7 @@ namespace Scarab  {
          */
         void EngineHost :: OnStop( void )  {
             m_SpritePool.Clear();
-            m_FontPool.Clear();      // Lua's font handles, the same rule (doc/MASTER_PLAN.md item C6)
+            m_FontPool.Clear();      // Lua's font handles, the same rule (plans/MASTER_PLAN.md item C6)
         }
 
         /**

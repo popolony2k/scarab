@@ -3,7 +3,7 @@
 
         scarab --headless --fast --max-frames 400 scripts/unload_map_smoke/project.json
 
-    Pins doc/MASTER_PLAN.md item V9 (sunlight BREAKAGES 47 and 55): tilemap_unload_map unloads
+    Pins plans/MASTER_PLAN.md item V9 (sunlight BREAKAGES 47 and 55): tilemap_unload_map unloads
     every sprite on a layer (no active sequence afterwards, sprite_set_active_sequence refuses it
     until it is configured again) and takes their colliders out, so an unloaded sprite never
     collides and a sprite added again after a new map loads collides exactly once per frame.

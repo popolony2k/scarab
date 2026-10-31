@@ -8,7 +8,7 @@ opacity is a number from 0 to 1: an opaque layer reads 1, the authored 0.69/0.65
 exactly 0.69/0.65, writing a layer's own values back changes nothing however often, values
 including 0.5 (which the old 0..255 integer moved to 0.502) round-trip exactly by id and by
 name, and a value outside 0..1 or not a number is refused. See the Lua script's own header,
-and doc/MASTER_PLAN.md items V3 and P7.
+and plans/MASTER_PLAN.md items V3 and P7.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.

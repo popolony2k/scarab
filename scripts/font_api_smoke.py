@@ -26,7 +26,7 @@ font argument).
 Runs scripts/font_api_smoke/main.lua headless once: every round trip, every error (nil + the
 reason), that releasing a handle never breaks a font still active or registered, and that a
 reused slot never answers to a stale handle. See the Lua script's own header, and
-doc/MASTER_PLAN.md item C6.
+plans/MASTER_PLAN.md item C6.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.

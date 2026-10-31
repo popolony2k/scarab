@@ -34,7 +34,7 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
             /**
-             * @brief Blend-mode Lua primitives (doc/MASTER_PLAN.md item B1) - the BLEND_MODE_*
+             * @brief Blend-mode Lua primitives (plans/MASTER_PLAN.md item B1) - the BLEND_MODE_*
              * constants and the scoped mode around a script's own drawing, a thin wrapper over
              * IDrawSurface::BeginBlendMode/EndBlendMode (sunlight's I2). A sprite's own mode
              * lives with the sprite functions (LuaSpriteApi), which validate the mode here.

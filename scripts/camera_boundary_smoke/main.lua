@@ -5,7 +5,7 @@
         scarab --headless --fast --max-frames 200 scripts/camera_boundary_smoke/project.json
 
     Pins how camera_move_* / view_move_camera_* behave at the edges of the map (sunlight's
-    Camera::MoveUp/Down/Left/Right, doc/MASTER_PLAN.md item V1):
+    Camera::MoveUp/Down/Left/Right, plans/MASTER_PLAN.md item V1):
 
       * up/left scroll towards the map's far edge and stop EXACTLY on it, even when the
         distance is not a whole number of scroll steps - the last step is partial;
