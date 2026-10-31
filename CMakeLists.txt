@@ -84,6 +84,7 @@ option(SCARAB_CONTENT_KEY_IS_SHARED "Internal - set only by release.yml; marks t
 # dynamic-linking tradeoffs instead
 # (e.g. sharing one libsodium build across several binaries).
 #
+option(SCARAB_BUILD_TESTS "Build Scarab's unit tests (doctest, tests/) - doc/MASTER_PLAN.md item R2" OFF)
 option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library instead of static" OFF)
 
 ####################################################################
@@ -320,13 +321,23 @@ if(UNIX)
     endif()
 endif()
 
-add_executable(scarab ${APPLICATION_SOURCES} ${APPLICATION_HEADERS})
+#
+# Everything but main.cpp is built once, as the static library scarab_core, which the scarab
+# executable and the unit tests (SCARAB_BUILD_TESTS, tests/) both link - doc/MASTER_PLAN.md item R2.
+# The tests then exercise exactly the code the executable runs, compiled once.
+#
+set(SCARAB_MAIN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+list(REMOVE_ITEM APPLICATION_SOURCES "${SCARAB_MAIN_SOURCE}")
+
+add_library(scarab_core STATIC ${APPLICATION_SOURCES} ${APPLICATION_HEADERS})
+add_executable(scarab "${SCARAB_MAIN_SOURCE}")
 
 if(SCARAB_USE_OFFICIAL_LUA_FTP)
-  add_dependencies(scarab lua_library_download)
+  add_dependencies(scarab_core lua_library_download)
 endif()
 
-target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES} sodium miniz)
+target_link_libraries(scarab_core PUBLIC ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES} sodium miniz)
+target_link_libraries(scarab scarab_core)
 
 #
 # Feeds --version/-v (main.cpp) - PROJECT_VERSION comes from this file's own
@@ -336,7 +347,7 @@ target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CL
 # of what was actually fetched, even when the fetched ref itself (a commit
 # hash) would not be.
 #
-target_compile_definitions(scarab PRIVATE
+target_compile_definitions(scarab_core PUBLIC
   SCARAB_VERSION="${PROJECT_VERSION}"
   SCARAB_SUNLIGHT_DISPLAY_VERSION="${SCARAB_SUNLIGHT_DISPLAY_VERSION}"
   SCARAB_CONTENT_KEY="${SCARAB_CONTENT_KEY}"
@@ -528,6 +539,15 @@ if(WIN32)
 endif()
 
 add_dependencies(scarab scarab_copy_binaries)
+
+#
+# Unit tests (doctest) - doc/MASTER_PLAN.md item R2. Off by default, like sunlight's own
+# BUILD_LIBRARY_TESTS; ci.yml turns them on. scarab_tests lands next to scarab, so it runs against
+# the same flattened runtime libraries (scarab_copy_binaries) with the same relocatable rpath.
+#
+if(SCARAB_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
 
 # Installation
 # INSTALL(

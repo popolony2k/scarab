@@ -1246,7 +1246,7 @@ dungeon, a menu over a different map, a cross-fade between two maps.
 | # | Item | Status |
 |---|------|--------|
 | R1 | AddressSanitizer CI job (Linux) | DONE |
-| R2 | First doctest suite | TODO |
+| R2 | First doctest suite | DONE |
 
 **R1 (DONE, 2026-10-30).** Mirrors sunlight's own "AddressSanitizer (Linux)" job - Linux only, for CI time;
 also runs LeakSanitizer, which macOS's AddressSanitizer does not.
@@ -1276,9 +1276,34 @@ also runs LeakSanitizer, which macOS's AddressSanitizer does not.
   commit was reverted.
 - **Docs:** `CLAUDE.md`'s CI section. CI only - no Caravellius breakage entry.
 
-**R2.** Needs its own scoping discussion: what's testable without a window. `SpritePool`
-(`src/engine/`) is the obvious first candidate - deliberately Lua-agnostic, no `lua_State`
-touched anywhere in it (confirmed in `CLAUDE.md`'s own description of the module).
+**R2 (DONE, 2026-10-31).** Scoped with the owner (2026-10-30): all five window-free units below, the option off
+by default like sunlight's, and `EngineHost::ResolveEntryScript` left for later (it needs `EngineHost` and the
+filesystem, and the headless and archive smoke tests already cover it).
+- **Build split:** everything in `src/` but `main.cpp` is the static library `scarab_core`, linked by `scarab`
+  (`main.cpp`) and by `scarab_tests` (`tests/`, doctest `v2.4.11` - sunlight's pin), built only with
+  `-DSCARAB_BUILD_TESTS=ON` (OFF by default). `scarab_tests` lands next to `scarab` with the same relocatable
+  rpath and depends on `scarab_copy_binaries`. The compile definitions (version, content key) are `scarab_core`'s,
+  PUBLIC. It is not registered with `ctest`: the fetched Lua project registers its own `lua-testsuite`, which
+  failed there.
+- **The split changes nothing:** `--version`, a relocated copy of the build output (as release.yml's smoke step),
+  all 14 smoke tests, the headless smoke test, all 19 samples, and Caravellius' acceptance PASS and fingerprint
+  `hash=33897632` are all as before; a build with tests OFF builds no test target.
+- **Suites (25 test cases, 711 assertions):** `test_spritepool` (handle packing and the pointer tag, per-type
+  capacity and `MAX_SPRITE_SLOTS`, acquire/exhaust, a released or stale handle never resolving even after its slot
+  is reused, foreign handles refused, a recycled slot reset to hidden/view space/no blend mode/opaque/untinted,
+  `Clear`); `test_fontpool` (a stand-in `IFont`; release drops only the pool's reference, stale handles, `Clear`
+  freeing the last reference); `test_luaengineutil` (every strict reader's accept/refuse cases and exact
+  messages on a bare `lua_State`, `PushError`/`PushTrue`, `FormatNumber`, `ShortestDecimal` round trips);
+  `test_zoomfactor` (all 256 positions round-trip, 3.8 refused naming 3.8125, range and NaN/infinity);
+  `test_crypto` (with the content key: `crypto_encrypt_data` output decrypts exactly through `TryDecryptBytes`,
+  tampered or cut data and plain data refused, a fresh nonce each time; without a key: nothing encrypts).
+- **Proven:** one mutation per suite, each failing its own suite and restored - no generation bump on release,
+  a release that keeps the font, `3.5` accepted as an integer, the zoom position off by one, a failed MAC check
+  accepted. Also clean under the local ASan build.
+- **CI:** every platform configures with `-DSCARAB_BUILD_TESTS=ON` and runs `scarab_tests` after the build; the
+  AddressSanitizer (Linux) job runs it under ASan/LeakSanitizer too.
+- **Docs:** `CLAUDE.md` (Build: the split, how to build and run the tests, and the rule "new pure logic gets a
+  doctest in the same change"; CI). No Caravellius breakage entry (build and tests only).
 
 ## Phase S: code style
 
