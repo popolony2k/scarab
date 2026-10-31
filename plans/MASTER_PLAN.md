@@ -1309,10 +1309,79 @@ filesystem, and the headless and archive smoke tests already cover it).
 
 | # | Item | Status |
 |---|------|--------|
-| S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts | TODO |
+| S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts; Scarab's own guide `docs/CODE_STYLE.md` (C++ copied from sunlight, plus Lua rules) | DONE |
 | S2 | Mechanical alignment pass, object-file-identical proof | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
 | S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | TODO |
+
+**S1 (DONE, 2026-10-31).** The owner widened it (2026-10-31): Lua gets rules too, so Scarab now has its
+own guide, **`docs/CODE_STYLE.md`**. Its C++ part is sunlight's `doc/CODE_STYLE.md` (sunlight `ef1499d`)
+copied word for word, with headings one level down and sunlight's Design section replaced by Scarab's.
+Its Lua part is Scarab's own, since sunlight has no Lua. The Lua part takes in Caravellius' own rules
+(its `CLAUDE.md`, "Code style", `22bbaaf`: the `__` module-constant prefix it has used since 2026-08-11,
+the cases that are not constants, its `tools/lua_lint.py`). The owner's decisions:
+- **Private constants are `__NAME`, public ones `NAME`, in both languages** (the owner's long-standing
+  habit, already Caravellius' rule). In Lua a private constant is `local __NAME <const> = value`;
+  `<const>` makes Lua itself refuse a reassignment (checked on Scarab's Lua 5.4.7:
+  `attempt to assign to const variable`).
+- **Lua calls and definitions take spaces inside the parentheses, `f( x )`, as in C++** - Caravellius
+  mostly writes `f(x)` (1631 against 297) and changes at integration.
+- **The guide lives in `docs/`** (reference material that stays); `doc/` was renamed `plans/` (#66) for
+  the master plan, the breakage log and research.
+
+**The audit tool: `scripts/style_audit.py`.** C++ rules over `src/` and `tests/`, Lua rules over
+`samples/`, `scripts/` and `tools/`. Like Caravellius' lint, it blanks out comments and strings before
+matching, so a rule never fires on text in a comment or a message; `--list RULE` prints every finding.
+**Calibrated on sunlight's own `src/`**, the code the C++ guide describes: every rule was refined until
+none of its findings there is a false one (a leading `::PHYSFS_init`, a call split after `(`, a braced
+initializer, a value-less `#define WIN32_LEAN_AND_MEAN`, a `@param` continued on the next line, a
+keyword before `::`, an aligned `Type  *pName`, the `s_` prefix of a static, an array's `anRect`). What it
+still finds in sunlight is real: 31 Hungarian mismatches, 72 `Type *pName`, 28 `@param`s without `;`,
+15 `case X:`, 13 bodies without a leading blank line, 5 include guards, 15 raw `new`/`delete`, 2
+`std ::make_pair`, `nCount++)` and `push_back(fZoomStep+=` - sunlight's code is not fully aligned
+with its own guide either.
+
+**Scarab, measured (2026-10-31, `master_plan` at `69143e1`):**
+
+| Rule | Count | Files | What it is | S2 |
+|---|---|---|---|---|
+| `Type *pName` (`*`/`&` with the name) | 529 | 47 | 444 of them `lua_State *pLuaState` | mechanical |
+| `@param` without `;` | 40 | 9 | | mechanical (comments) |
+| `extern "C"` then `{` on its own line | 30 | 30 | every Lua header include block | mechanical |
+| include guard's `#endif  /* */` (two spaces) | 25 | 25 | every Scarab header | mechanical |
+| `->` unspaced | 14 | 2 | `it->second` (luapackapi, luatimerapi) | mechanical |
+| brace without two spaces before it | 12 | 5 | `)  : m_X( ... ) {`, `) {` | mechanical |
+| unspaced `::`, `( x)`, `switch (`, `default:`, other `{` alone, body without a blank line, own header not first (`main.cpp`) | 10 | 6 | | mechanical |
+| names whose prefix doesn't fit their type | 24 | 9 | `SpriteHandle handle` (guide: `hName`), `m_CurrentSong` (`uint16_t`), `int bIsInteger` (x3); 13 in the new tests | rename |
+| `override` missing on an interface method | 19 | 3 | `EngineHost` 4, `RendererProvider` 13, `LuaCollisionListener` 2 | code |
+| `using namespace` | 5 | 5 | `enginehost.cpp` (`std :: chrono`), `luainputapi`, `luaspriteapi`, `luarendererapi`, `luatilemapapi` (5 more in tests, allowed) | code |
+| file-local constant not a `#define __NAME` | 4 | 4 | `NO_CONTENT_KEY`, `NO_AUDIO_SOUND_ID`, `NO_MAP_LOADED`, a test's `PLAIN_TEXT` | code |
+| raw `new`/`delete` | 8 | 3 | the collision listener and timers (`LuaEngine`, `LuaTimerApi`), the zip writer (`LuaPackApi`) | code (`unique_ptr`) |
+| numbers outside a named constant | 81 lines | 15 | mostly Lua argument positions (`lua_tointeger( L, 3 )`), bit masks in `spritehandle.h`, `char szMsg[50]` | read each |
+| declarations not in one column | 45 of 141 blocks | | | mechanical |
+| Lua: private constant without `__` | 176 | 23 | `local GLOW_LAYER = 4` | rename |
+| Lua: `__NAME` without `<const>` | 18 | 7 | | mechanical |
+| Lua: magic numbers in samples | 135 lines | 19 | HUD layout and colours (`draw_text( t, 20, 50, 20, 200, ... )`) | code |
+| Lua: no license header | 12 | 12 | every smoke test's `main.lua` | mechanical |
+| Lua: function not `snake_case` / local not `lowerCamel` | 3 / 6 | 4 | `startPos`, `onSecondTick`, `platform_name`, `os_time_start`, ... | rename |
+| Lua: numbers in smoke tests | 261 lines | 11 | expected values - allowed | none |
+
+Zero today: C++ license headers, tabs, one-line namespaces, forward declarations, `()` for `( void )`,
+`} else`; Lua tabs, parenthesis spacing, single quotes.
+
+**S2's proof, tested:** a whitespace-only change must leave every object file byte for byte the same.
+That needs debug info off (`-g0`), since `-g2` records line numbers: compiled from the flags in
+`build/CMakeFiles/scarab_core.dir/flags.make` with `-g0`, `luatimerapi.cpp` gave identical objects
+twice, identical again after three real spacing fixes (`Timer:: Interval`, `pTImer)`,
+`(int nId ) {`), and a different one after a one-character code change - so the proof can fail. No
+Scarab C++ uses `__LINE__`, `__FILE__` or `assert` (the 15 `assert` hits are Lua examples in doc
+comments).
+
+**What this means for S2** (to plan with the owner when it starts): the "mechanical" rows can be done
+with the identical-object proof; the "rename" and "code" rows change object files, so they need the
+usual proof (unit tests, every smoke test and sample, Caravellius' acceptance and fingerprint); the
+Lua rows are proven by the smoke tests, the samples headless and a window check. That is three kinds of
+proof, so S2 is probably three PRs.
 
 **S4 (TODO, added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
 mixes helpers every Lua module shares with ones only one category uses. Each new engine object
