@@ -1,4 +1,24 @@
 --[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
     Sprite opacity/tint smoke test - run by scripts/sprite_tint_smoke.py (and ci.yml, every platform):
 
         scarab --headless --fast --max-frames 200 scripts/sprite_tint_smoke/project.json
@@ -18,11 +38,11 @@
 
 io.stdout:setvbuf( "line" )
 
-local TEXTURE      = "resources/sprites/sunny_idle_down.png"
-local FRAMES       = 4
-local SPRITE_LAYER = 1
-local DRAW_FRAMES  = 5      -- frames drawn with tinted/faded sprites before quitting
-local OPACITIES    = { 0, 0.1, 0.25, 0.3, 0.5, 0.69, 0.75, 1 }   -- each must read back exactly
+local __TEXTURE      <const> = "resources/sprites/sunny_idle_down.png"
+local __FRAMES       <const> = 4
+local __SPRITE_LAYER <const> = 1
+local __DRAW_FRAMES  <const> = 5      -- frames drawn with tinted/faded sprites before quitting
+local __OPACITIES    <const> = { 0, 0.1, 0.25, 0.3, 0.5, 0.69, 0.75, 1 }   -- each must read back exactly
 
 local failures = {}
 
@@ -47,7 +67,7 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
-local WHITE = { 255, 255, 255, 255 }
+local __WHITE <const> = { 255, 255, 255, 255 }
 
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
@@ -58,9 +78,9 @@ local probe = sprite_acquire( "tint_probe" )
 check( probe ~= nil, "sprite_acquire tint_probe failed" )
 
 opacity_is( "fresh sprite", 1, sprite_get_opacity( probe ) )
-tint_is( "fresh sprite", WHITE, sprite_get_tint( probe ) )
+tint_is( "fresh sprite", __WHITE, sprite_get_tint( probe ) )
 
-for _, opacity in ipairs( OPACITIES ) do
+for _, opacity in ipairs( __OPACITIES ) do
     check( sprite_set_opacity( probe, opacity ) == true, "sprite_set_opacity( " .. opacity .. " ) failed" )
     opacity_is( "set then get " .. opacity, opacity, sprite_get_opacity( probe ) )
 end
@@ -106,7 +126,7 @@ expect_error( "get_tint, released handle", "invalid sprite handle", sprite_get_t
 local recycled = sprite_acquire( "tint_probe" )   -- capacity 1: the same slot, a new generation
 check( recycled ~= nil and recycled ~= probe, "the recycled handle must be new: " .. tostring( recycled ) )
 opacity_is( "recycled sprite", 1, sprite_get_opacity( recycled ) )
-tint_is( "recycled sprite", WHITE, sprite_get_tint( recycled ) )
+tint_is( "recycled sprite", __WHITE, sprite_get_tint( recycled ) )
 
 -- none of the above needs a window, so none of it may create the renderer
 check( renderer_get_current() == nil, "a sprite opacity/tint call created the renderer" )
@@ -118,12 +138,12 @@ local b = sprite_acquire( "sunny" )
 check( a ~= nil and b ~= nil, "sprite_acquire sunny failed" )
 
 for _, h in ipairs( { a, b } ) do
-    check( sprite_configure_texture( h, 0, TEXTURE, FRAMES, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 ) == true,
+    check( sprite_configure_texture( h, 0, __TEXTURE, __FRAMES, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 ) == true,
            "sprite_configure_texture failed" )
-    check( sprite_configure_texture( h, 1, TEXTURE, FRAMES, 0, TEXTURE_ANIMATION_MODE_MANUAL ) == true,
+    check( sprite_configure_texture( h, 1, __TEXTURE, __FRAMES, 0, TEXTURE_ANIMATION_MODE_MANUAL ) == true,
            "sprite_configure_texture of sequence 1 failed" )
     check( sprite_set_active_sequence( h, 0 ) == true, "sprite_set_active_sequence failed" )
-    check( sprite_add_to_layer( h, SPRITE_LAYER ) == true, "sprite_add_to_layer failed" )
+    check( sprite_add_to_layer( h, __SPRITE_LAYER ) == true, "sprite_add_to_layer failed" )
     check( sprite_set_visible( h, true ) == true, "sprite_set_visible failed" )
 end
 check( sprite_set_pos( a, 10, 10 ) == true and sprite_set_pos( b, 60, 10 ) == true, "sprite_set_pos failed" )
@@ -132,10 +152,10 @@ check( sprite_set_opacity( a, 0.25 ) == true and sprite_set_tint( a, 255, 80, 80
 opacity_is( "a, after setting a", 0.25, sprite_get_opacity( a ) )
 tint_is( "a, after setting a", { 255, 80, 80, 255 }, sprite_get_tint( a ) )
 opacity_is( "b, after setting a (same texture)", 1, sprite_get_opacity( b ) )
-tint_is( "b, after setting a (same texture)", WHITE, sprite_get_tint( b ) )
+tint_is( "b, after setting a (same texture)", __WHITE, sprite_get_tint( b ) )
 
 -- reconfiguring the texture and switching the sequence keep them (they are the sprite's, not a frame's)
-check( sprite_configure_texture( a, 0, TEXTURE, FRAMES, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 200 ) == true,
+check( sprite_configure_texture( a, 0, __TEXTURE, __FRAMES, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 200 ) == true,
        "reconfiguring a failed" )
 check( sprite_set_active_sequence( a, 1 ) == true and sprite_set_active_sequence( a, 0 ) == true, "switching a's sequence failed" )
 opacity_is( "a, after reconfigure + sequence switch", 0.25, sprite_get_opacity( a ) )
@@ -148,7 +168,7 @@ function on_update( dt )
     frames = frames + 1
 
     -- the values survive real frames of drawing
-    if frames == DRAW_FRAMES then
+    if frames == __DRAW_FRAMES then
         opacity_is( "a, after drawing", 0.25, sprite_get_opacity( a ) )
         tint_is( "a, after drawing", { 255, 80, 80, 255 }, sprite_get_tint( a ) )
         opacity_is( "b, after drawing", 0, sprite_get_opacity( b ) )

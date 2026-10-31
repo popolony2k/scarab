@@ -1,4 +1,24 @@
 --[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
     Layer tint smoke test - run by scripts/layer_tint_smoke.py (and ci.yml, every platform):
 
         scarab --headless --fast --max-frames 200 scripts/layer_tint_smoke/project.json
@@ -16,10 +36,10 @@
 
 io.stdout:setvbuf( "line" )
 
-local MAP = "resources/tilemap/tint/tint.tmx"
+local __MAP <const> = "resources/tilemap/tint/tint.tmx"
 
 -- layer id -> the authored tint { r, g, b, a } (tint.tmx's own tintcolor attributes)
-local AUTHORED = {
+local __AUTHORED <const> = {
     [1]  = { 255, 255, 255, 255 },   -- tile layer, no tint
     [2]  = { 128, 255, 255, 255 },   -- tile layer #80ffff
     [3]  = { 255, 255, 255, 255 },   -- image layer, no tint
@@ -53,16 +73,16 @@ function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
 expect_error( "no map", "no map is loaded", tilemap_get_layer_tint( 1 ) )
-check( tilemap_load_map( MAP, MAP_ALIGNMENT_TOP_LEFT ) == true, MAP .. " failed to load" )
+check( tilemap_load_map( __MAP, MAP_ALIGNMENT_TOP_LEFT ) == true, __MAP .. " failed to load" )
 
 -- every authored tint, by id
-for layerId, expected in pairs( AUTHORED ) do
+for layerId, expected in pairs( __AUTHORED ) do
     tint_is( "layer " .. layerId, expected, tilemap_get_layer_tint( layerId ) )
 end
 
 -- by name
-tint_is( "by name", AUTHORED[2], tilemap_get_layer_tint_by_name( "tiles tinted cyan" ) )
-tint_is( "group by name", AUTHORED[10], tilemap_get_layer_tint_by_name( "group tinted blue, opacity 0.6" ) )
+tint_is( "by name", __AUTHORED[2], tilemap_get_layer_tint_by_name( "tiles tinted cyan" ) )
+tint_is( "group by name", __AUTHORED[10], tilemap_get_layer_tint_by_name( "group tinted blue, opacity 0.6" ) )
 
 -- set then get, by id and by name
 check( tilemap_set_layer_tint( 1, 10, 20, 30, 40 ) == true, "set_layer_tint failed" )
@@ -74,12 +94,12 @@ tint_is( "group set then get", { 1, 2, 3, 4 }, tilemap_get_layer_tint( 10 ) )
 
 -- writing back the values read changes nothing (alpha included)
 check( tilemap_set_layer_tint( 8, tilemap_get_layer_tint( 8 ) ) == true, "write-back failed" )
-tint_is( "write-back", AUTHORED[8], tilemap_get_layer_tint( 8 ) )
+tint_is( "write-back", __AUTHORED[8], tilemap_get_layer_tint( 8 ) )
 
 -- tilemap_set_layer (visible/opacity/offset) keeps the tint
 local visible, opacity, offsetX, offsetY = tilemap_get_layer( 2 )
 check( tilemap_set_layer( 2, visible, opacity, offsetX, offsetY ) == true, "set_layer failed" )
-tint_is( "after set_layer", AUTHORED[2], tilemap_get_layer_tint( 2 ) )
+tint_is( "after set_layer", __AUTHORED[2], tilemap_get_layer_tint( 2 ) )
 
 -- and the tint keeps visibility/opacity/offset
 check( tilemap_set_layer_tint( 2, 255, 0, 0, 255 ) == true, "set_layer_tint failed" )

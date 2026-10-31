@@ -1,4 +1,24 @@
 --[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
     Blend-mode API smoke test - run by scripts/blend_api_smoke.py (and ci.yml, every platform):
 
         scarab --headless --fast --max-frames 200 scripts/blend_api_smoke/project.json
@@ -15,8 +35,8 @@
 
 io.stdout:setvbuf( "line" )
 
-local FRAMES_WITH_OPEN_BLEND = 5    -- frames run after a begin with no end, before quitting
-local UNKNOWN_MODE           = 9
+local __FRAMES_WITH_OPEN_BLEND <const> = 5    -- frames run after a begin with no end, before quitting
+local __UNKNOWN_MODE           <const> = 9
 
 local failures = {}
 
@@ -54,7 +74,7 @@ check( sprite_get_blend_mode( sprite ) == nil, "sprite_clear_blend_mode left a m
 
 -- every rejection: nil + the reason, and nothing changes
 check( sprite_set_blend_mode( sprite, BLEND_MODE_ADD ) == true, "sprite_set_blend_mode( ADD ) failed" )
-expect_error( "unknown mode", "unknown blend mode " .. UNKNOWN_MODE, sprite_set_blend_mode( sprite, UNKNOWN_MODE ) )
+expect_error( "unknown mode", "unknown blend mode " .. __UNKNOWN_MODE, sprite_set_blend_mode( sprite, __UNKNOWN_MODE ) )
 expect_error( "negative mode", "unknown blend mode -1", sprite_set_blend_mode( sprite, -1 ) )
 expect_error( "mode as a string", "expected a BLEND_MODE_* constant", sprite_set_blend_mode( sprite, "add" ) )
 expect_error( "fractional mode", "expected a BLEND_MODE_* constant", sprite_set_blend_mode( sprite, 1.5 ) )
@@ -76,7 +96,7 @@ check( sprite_get_blend_mode( recycled ) == nil, "a recycled sprite inherited bl
 check( renderer_get_current() == nil, "a sprite blend-mode call created the renderer" )
 
 -- the scoped mode: rejections first (they change nothing), then real calls
-expect_error( "begin, unknown mode", "unknown blend mode " .. UNKNOWN_MODE, draw_begin_blend_mode( UNKNOWN_MODE ) )
+expect_error( "begin, unknown mode", "unknown blend mode " .. __UNKNOWN_MODE, draw_begin_blend_mode( __UNKNOWN_MODE ) )
 expect_error( "begin, mode as a string", "expected a BLEND_MODE_* constant", draw_begin_blend_mode( "add" ) )
 check( draw_begin_blend_mode( BLEND_MODE_MULTIPLY ) == true, "draw_begin_blend_mode at load time failed" )
 check( draw_end_blend_mode() == true, "draw_end_blend_mode at load time failed" )
@@ -100,7 +120,7 @@ function on_update( dt )
 
         -- a begin with no end: the next frames must still run normally (each frame starts in normal)
         check( draw_begin_blend_mode( BLEND_MODE_ADD ) == true, "the open draw_begin_blend_mode failed" )
-    elseif frames == 1 + FRAMES_WITH_OPEN_BLEND then
+    elseif frames == 1 + __FRAMES_WITH_OPEN_BLEND then
         if #failures == 0 then
             print( "BLEND API SMOKE OK" )
             app_quit()

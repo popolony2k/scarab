@@ -12,6 +12,12 @@ From the repo root:
 
 **Not** `cd build && ./scarab ../samples/<sample-name>/project.json` — a `..`-relative entry path fails outright (the mount-based filesystem every resource load routes through, see the root [README.md](../README.md#running-rocket), rejects `..` path segments). Run from the repo root as shown above, or pass an absolute path instead.
 
+## Shared code and style
+
+Every sample draws its heads-up display through [shared/hud.lua](shared/hud.lua): lines of text in the Caravellius 8x8 font on dark translucent plates, readable over any map, placed by row (`Hud.line( text, row, Hud.INFO )`, `Hud.line_from_bottom( ... )`). A sample loads it with `local Hud = dofile( "samples/shared/hud.lua" )` - one reason samples are run from the repo root. `hello-world` keeps the engine's built-in font on purpose: it is the smallest possible game, with no asset of its own.
+
+The samples follow Scarab's Lua style ([docs/CODE_STYLE.md](../docs/CODE_STYLE.md), "Lua"): private constants are `local __NAME <const>`, functions are `snake_case`, locals `lowerCamel`, numbers have names, and every call whose failure matters is checked (`assert( ... )`, or shown on the HUD). CI checks this with `scripts/style_audit.py --check`.
+
 ## Getting started
 
 * [hello-world](hello-world/docs/README.md) — the smallest possible Scarab game: opens a window and draws one line of text every frame. No tilemap, no sprites, no sound. Start here.

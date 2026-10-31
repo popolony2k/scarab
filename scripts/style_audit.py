@@ -12,6 +12,11 @@ Usage:
     style_audit.py                         # summary: count per rule, then per file
     style_audit.py --list RULE             # every finding of one rule, with its line
     style_audit.py --cpp-root DIR          # C++ rules only, over another tree (eg. sunlight's src/)
+    style_audit.py --check                 # CI: exit 1 on any finding of an enforced rule (every rule but
+                                           # the "-test" ones, which only report what tests may do)
+
+The C++ documentation rule reads sunlight's headers from build/_deps/sunlight-src (an interface's
+comment covers its implementations), so run it after a CMake configure.
 """
 
 import glob
@@ -66,6 +71,8 @@ RULES = {
     "lua-const-attrib":     "private constant without <const> (local __NAME = ...)",
     "lua-function-name":    "function name not snake_case",
     "lua-local-name":       "local variable in snake_case (should be lowerCamel)",
+    "lua-unchecked-load":   "a call whose failure matters (loading, creating, registering) made as a bare statement",
+    "lua-unchecked-load-test": "the same, in a smoke test (setup a test checks some other way is allowed there)",
     "lua-single-quotes":    "single-quoted string that holds no double quote",
     "lua-magic-number":     "number literal other than 0, 1, -1, 2 outside a constant (samples and tools)",
     "lua-magic-number-test":"the same, in a smoke test (expected values are allowed there)",
@@ -469,19 +476,39 @@ def cpp_findings(path, rel, add):
 # Lua rules
 
 
-def lua_findings(path, rel, add):
+# Calls whose failure matters - a missing file, a bad id, a full pool - and which return nil, "message"
+# then (CLAUDE.md, D3): made as a bare statement, the failure would go unnoticed.
+LUA_FALLIBLE_STATEMENT = re.compile(r"\s*(tilemap_load_map|load_font|set_font|register_font|sound_load|renderer_create|"
+                                    r"sprite_configure_texture|sprite_acquire|sprite_add_to_layer|pool_register_type|load_json|"
+                                    r"view_create|collision_add_rule|collision_add_tile_rule|set_timer|input_add_gamepad|"
+                                    r"app_set_name|pack_create_archive|pack_add_entry|pack_close_archive|pack_write_file)\s*\(")
+
+
+def lua_findings(path, rel, add_finding):
     raw = open(path, encoding="utf-8", errors="replace").read()
     code, strings = blank_lua(raw)
     lines = code.split("\n")
     raw_lines = raw.split("\n")
+
+    def add(rule, rel, n, text):
+        """A finding, unless its line (or the line above) says '-- lint: allow <rule> (why)' (docs/CODE_STYLE.md)."""
+        nearby = raw_lines[n - 1] + ( raw_lines[n - 2] if n >= 2 else "" )
+        if re.search(r"--\s*lint:\s*allow\s+" + re.escape(rule) + r"\b\s*\(", nearby):
+            return
+        add_finding(rule, rel, n, text)
     is_test = rel.startswith("scripts/")
 
     if LICENSE_MARKER not in "\n".join(raw_lines[:5]):
         add("lua-license", rel, 1, raw_lines[0])
 
+    in_constant = 0                                   # brace depth inside a multi-line constant's definition
     for k, line in enumerate(lines):
         n = k + 1
         rawl = raw_lines[k]
+        constant_line = in_constant > 0 or re.match(r"local\s+(__)?[A-Z][A-Z0-9_]*\b", line) is not None
+        if re.match(r"local\s+(__)?[A-Z][A-Z0-9_]*\b", line) or in_constant > 0:
+            in_constant += line.count("{") - line.count("}")
+            in_constant = max(in_constant, 0)
         if "\t" in rawl:
             add("lua-tab", rel, n, rawl)
         if re.search(r"[\w\])]\((?![\s)])|(?<![\s(])\)", line):
@@ -501,10 +528,19 @@ def lua_findings(path, rel, add):
         m = re.match(r"\s*local\s+([a-z][a-z0-9]*_[a-z0-9_]*)\s*[=,]", line)
         if m:
             add("lua-local-name", rel, n, rawl)
-        if not re.match(r"local\s+(__)?[A-Z][A-Z0-9_]*\b", line):          # a constant's own definition names it
-            nums = [x for x in re.findall(r"(?<![\w.])\d+(?:\.\d+)?(?![\w.])", line) if float(x) not in ( 0.0, 1.0, 2.0 )]
+        if not constant_line:                         # a constant's own definition (all its lines) names its values
+            positions = re.sub(r",\s*\d+\s*,(\s*Hud\.[A-Z]+\s*\))", r", ROW,\1", line)   # a HUD row number is a position
+            positions = re.sub(r"\[\s*\d+\s*\]", "[INDEX]", positions)                       # a subscript is a position
+            # a table field's key names its value: "{ width = 960, ..." or a field line "    width = 960,"
+            positions = re.sub(r"([{,]\s*)[a-z_]\w*\s*=\s*-?[\d.]+", r"\1KEY", positions)
+            positions = re.sub(r"^\s*[a-z_]\w*\s*=\s*-?[\d.]+\s*,\s*$", "KEY", positions)
+            nums = [x for x in re.findall(r"(?<![\w.])\d+(?:\.\d+)?(?![\w.])", positions) if float(x) not in ( 0.0, 1.0, 2.0 )]
             if nums:
                 add("lua-magic-number-test" if is_test else "lua-magic-number", rel, n, rawl)
+
+    for k, line in enumerate(lines):
+        if LUA_FALLIBLE_STATEMENT.match(line):
+            add("lua-unchecked-load-test" if is_test else "lua-unchecked-load", rel, k + 1, raw_lines[k])
 
     for n, quote, content in strings:
         if quote == "'" and '"' not in content:
@@ -550,6 +586,14 @@ def main():
         for rel, n, text in findings.get(list_rule, []):
             print(f"{rel}:{n}: {text}")
         return 0
+
+    if "--check" in args:
+        enforced = [rule for rule in RULES if not rule.endswith("-test")]
+        failing  = [(rule, item) for rule in enforced for item in findings.get(rule, [])]
+        for rule, (rel, n, text) in failing:
+            print(f"{rel}:{n}: [{rule}] {RULES[rule]}: {text}")
+        print(f"style check: {len(failing)} finding(s) in {len(enforced)} enforced rules" + ( " - see docs/CODE_STYLE.md" if failing else "" ))
+        return 1 if failing else 0
 
     print(f"{'count':>6}  {'files':>5}  rule")
     for rule, desc in RULES.items():

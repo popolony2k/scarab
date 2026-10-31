@@ -381,11 +381,16 @@ local __GLOW_LAYER     <const> = 4      -- "clouds" in test.tmx: drawn before Su
 - Every Lua function Scarab provides returns `nil, "message"` when it fails (`CLAUDE.md`), so a
   call whose failure matters is checked: `assert( tilemap_load_map( ... ) )` where a failure should
   stop the script, `local ok, err = ...` where it is handled.
+- Numbers that are positions stay as they are: a table field's value (its key names it, as in
+  `renderer_create{ width = 960 }`), a subscript (`color[3]`), and a HUD row (`Hud.line( text, 3, ... )`).
+  Everything else that means something is a constant. Expected values in a smoke test are test data.
 
 ### Checking
 
-- A rule that a script can check is checked by one, the way Caravellius' `tools/lua_lint.py`
-  enforces the `__` prefix on every build: it reads the source with comments and strings blanked
+- A rule that a script can check is checked by one: `scripts/style_audit.py` measures every rule of
+  this guide it can (C++ and Lua), and CI runs `scripts/style_audit.py --check`, which fails on any
+  finding - the same idea as Caravellius' `tools/lua_lint.py`, which enforces the `__` prefix on every
+  build: it reads the source with comments and strings blanked
   out, and a deliberate exception is marked on the line it applies to (or the line above) with
   `-- lint: allow <rule> (why)`, so every exception carries its reason.
 

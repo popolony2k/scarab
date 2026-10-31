@@ -39,46 +39,53 @@
  the same top-level script.
 ]]
 
-app_set_name( "Scarab - sprite sample" )
+assert( app_set_name( "Scarab - sprite sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER )
+assert( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER ) )
 
 -- "sunny" is sunlight's own sample character (resources/sprites/, shared
 -- from sunlight/samples/sprite/ - see resources/sprites/README.md), a
 -- 128x32 strip of four 32x32 frames.
-pool_register_type( "sunny", 2 )
+local __SUNNY_FRAMES      <const> = 4                     -- sunny_idle_down.png: four 32x32 frames side by side
+local __SUNNY_FRAME_MILLI <const> = 100                   -- the frame delay: WITHOUT it (the default, -1) the frame is held and sunny never animates
+local __SUNNY_START       <const> = { x = 100, y = 100 }  -- map pixels
+local __TWIN_POS          <const> = { x = 52, y = 100 }   -- left of sunny, over the open clouds (to its right the house covers it)
+local __SPRITE_LAYER      <const> = 4                     -- "clouds" in test.tmx
 
-local handle = sprite_acquire( "sunny" )
-local twin   = sprite_acquire( "sunny" )   -- the same texture, never faded or tinted
+assert( pool_register_type( "sunny", 2 ) )
 
--- The last argument is the frame delay in ms: WITHOUT it (the default, -1) the frame is held and sunny never animates.
-sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
-sprite_set_active_sequence( handle, 0 )
+local handle = assert( sprite_acquire( "sunny" ) )
+local twin   = assert( sprite_acquire( "sunny" ) )   -- the same texture, never faded or tinted
+
+assert( sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", __SUNNY_FRAMES, 0,
+    TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, __SUNNY_FRAME_MILLI ) )
+assert( sprite_set_active_sequence( handle, 0 ) )
 -- World space: sunny's position is a MAP position in pixels, so the camera
 -- can follow it across the whole map (by default a sprite's position is
 -- relative to the view, and it would stay put on screen while the map moves).
-sprite_set_world_space( handle, true )
-sprite_set_pos( handle, 100, 100 )
+assert( sprite_set_world_space( handle, true ) )
+assert( sprite_set_pos( handle, __SUNNY_START.x, __SUNNY_START.y ) )
 
 -- Layer 4 ("clouds" in test.tmx) is visible by default (no visible="0")
 -- - a sprite added to a layer authored invisible would never draw at
 -- all, regardless of sprite_set_visible (see root CLAUDE.md).
-sprite_add_to_layer( handle, 4 )
+assert( sprite_add_to_layer( handle, __SPRITE_LAYER ) )
 
-sprite_configure_texture( twin, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
-sprite_set_active_sequence( twin, 0 )
-sprite_set_world_space( twin, true )
-sprite_set_pos( twin, 52, 100 )    -- left of sunny, over the open clouds (to its right the house covers it)
-sprite_add_to_layer( twin, 4 )
+assert( sprite_configure_texture( twin, 0, "resources/sprites/sunny_idle_down.png", __SUNNY_FRAMES, 0,
+    TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, __SUNNY_FRAME_MILLI ) )
+assert( sprite_set_active_sequence( twin, 0 ) )
+assert( sprite_set_world_space( twin, true ) )
+assert( sprite_set_pos( twin, __TWIN_POS.x, __TWIN_POS.y ) )
+assert( sprite_add_to_layer( twin, __SPRITE_LAYER ) )
 
 -- O cycles sunny's opacity (0 transparent .. 1 opaque), T its tint (r, g, b
 -- multiply into the frame: white = none, a red hit flash, a blue team colour).
-local OPACITIES = { 1, 0.5, 0.25, 0 }
-local TINTS     = {
+local __OPACITIES <const> = { 1, 0.5, 0.25, 0 }
+local __TINTS     <const> = {
     { name = "none (white)",    r = 255, g = 255, b = 255 },
     { name = "red hit flash",   r = 255, g = 80,  b = 80 },
     { name = "blue team",       r = 120, g = 160, b = 255 },
@@ -86,28 +93,9 @@ local TINTS     = {
 local opacityIndex = 1
 local tintIndex    = 1
 
-local __SPEED = 3  -- pixels/frame, fine for a short demo - see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
+local __SPEED <const> = 3  -- pixels/frame, fine for a short demo - see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
 
--- The HUD's font: Caravellius 8x8, loaded once (the built-in font is hard to read at these sizes).
-local hudFont = assert( load_font( "resources/fonts/caravellius8x8.fnt" ) )
-
-local HUD_SIZE      = 16
-local HUD_LINE      = 28    -- pixels between two HUD lines
-local PLATE_PADDING = 4     -- pixels around a line of text on its plate
-local PLATE_ALPHA   = 170   -- the plate's opacity, 0..255
-
-local TITLE_COLOR = { r = 255, g = 255, b = 255 }
-local INFO_COLOR  = { r = 255, g = 220, b = 120 }
-
--- A line of text on a dark translucent plate: the text crosses the white
--- clouds of the map, where light text alone can't be read.
-local function draw_text_plate( text, line, color )
-    local y = 20 + ( line - 1 ) * HUD_LINE
-
-    draw_filled_rectangle( 20 - PLATE_PADDING, y - PLATE_PADDING,
-        measure_text( text, HUD_SIZE, hudFont ) + 2 * PLATE_PADDING, HUD_SIZE + 2 * PLATE_PADDING, 0, 0, 0, PLATE_ALPHA )
-    draw_text( text, 20, y, HUD_SIZE, color.r, color.g, color.b, 255, hudFont )
-end
+local Hud = dofile( "samples/shared/hud.lua" )
 
 local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
 local mapPixelWidth  = mapWidth * tileWidth
@@ -137,13 +125,13 @@ end
 function on_update( dt )
 
     if input_is_key_released( KEY_O ) then
-        opacityIndex = opacityIndex % #OPACITIES + 1
-        sprite_set_opacity( handle, OPACITIES[opacityIndex] )
+        opacityIndex = opacityIndex % #__OPACITIES + 1
+        sprite_set_opacity( handle, __OPACITIES[opacityIndex] )
     end
 
     if input_is_key_released( KEY_T ) then
-        tintIndex = tintIndex % #TINTS + 1
-        local tint = TINTS[tintIndex]
+        tintIndex = tintIndex % #__TINTS + 1
+        local tint = __TINTS[tintIndex]
         sprite_set_tint( handle, tint.r, tint.g, tint.b )
     end
 
@@ -177,10 +165,10 @@ function on_update( dt )
 
     local r, g, b = sprite_get_tint( handle )
 
-    draw_text_plate( "sprite sample - arrows/WASD move, the camera follows", 1, TITLE_COLOR )
-    draw_text_plate( "O opacity, T tint - the twin on the left stays as it is", 2, TITLE_COLOR )
-    draw_text_plate( "sprite_get_pos: " .. x .. ", " .. y .. "   sprite_get_size: " .. width .. "x" .. height, 3, INFO_COLOR )
-    draw_text_plate( "camera_get_position: " .. cameraX .. ", " .. cameraY, 4, INFO_COLOR )
-    draw_text_plate( string.format( "sprite_get_opacity: %g", sprite_get_opacity( handle ) ), 5, INFO_COLOR )
-    draw_text_plate( string.format( "sprite_get_tint: %d, %d, %d (%s)", r, g, b, TINTS[tintIndex].name ), 6, INFO_COLOR )
+    Hud.line( "sprite sample - arrows/WASD move, the camera follows", 1, Hud.TITLE )
+    Hud.line( "O opacity, T tint - the twin on the left stays as it is", 2, Hud.TITLE )
+    Hud.line( "sprite_get_pos: " .. x .. ", " .. y .. "   sprite_get_size: " .. width .. "x" .. height, 3, Hud.INFO )
+    Hud.line( "camera_get_position: " .. cameraX .. ", " .. cameraY, 4, Hud.INFO )
+    Hud.line( string.format( "sprite_get_opacity: %g", sprite_get_opacity( handle ) ), 5, Hud.INFO )
+    Hud.line( string.format( "sprite_get_tint: %d, %d, %d (%s)", r, g, b, __TINTS[tintIndex].name ), 6, Hud.INFO )
 end

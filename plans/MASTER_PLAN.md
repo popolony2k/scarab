@@ -1312,7 +1312,7 @@ filesystem, and the headless and archive smoke tests already cover it).
 | S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts; Scarab's own guide `docs/CODE_STYLE.md` (C++ copied from sunlight, plus Lua rules) | DONE |
 | S2a | Mechanical C++ alignment (spacing, `*`/`&` side, guards, `extern "C"` braces, `@param ;`, declaration columns), proven by identical object files | DONE |
 | S2b | C++ names and code (Hungarian renames, `override`, `using namespace`, `#define __NAME` constants, named numbers, `unique_ptr`), proven by behaviour | DONE |
-| S2c | Lua (`__NAME <const>`, license headers, names, named numbers in samples) + a CI style check, proven by the smoke tests and a window check | TODO |
+| S2c | Lua (`__NAME <const>`, license headers, names, named numbers in samples) + a CI style check, proven by the smoke tests and a window check | DONE |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
 | S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | TODO |
 
@@ -1463,6 +1463,37 @@ all at 0 in `src/` (the guide allows `using` in a test; numbers in unit tests ar
   generator; Caravellius' acceptance PASS and state fingerprint `hash=33897632`; locally under
   AddressSanitizer the unit tests and all 35 `asan_run.py` runs (the encrypted `--pack` path included)
   clean, and `leaks --atExit` 0 leaks for the headless smoke test and the timers and collision samples.
+
+**S2c (DONE, 2026-10-31).** The Lua side - all 19 samples, the 14 smoke tests' scripts and
+`tools/pack.lua` - aligned with `docs/CODE_STYLE.md`, and the audit made a CI gate.
+- **Constants:** every top-level private constant is `local __NAME <const> = value` (renamed in code
+  positions only - a first pass also renamed inside strings, `os.getenv( "__LOADS" )` and smoke markers,
+  and broke two smoke tests; redone from git with a tool that skips strings and comments). Samples name
+  their numbers; the exemptions the guide documents (HUD row numbers, table-field values, subscripts,
+  constant bodies, a smoke test's expected values) are reported apart.
+- **Fallible calls checked:** samples `assert` their setup (`tilemap_load_map`, `sprite_*`,
+  `pool_register_type`, `renderer_create`, ...); where a failure is a normal outcome the sample shows it on
+  its HUD instead (`sound_load` with no audio device - CI has none; `tilemap`/`json` load errors). One
+  marked exception: `tools/pack.lua`'s `app_set_name` (`-- lint: allow lua-unchecked-load (...)`).
+- **Names and headers:** functions `snake_case`, locals `lowerCamel` (`timers` `on_second_tick`, `input`
+  `start_pos`, `app` `platformName`, `headless_smoke`'s locals); the zlib header added to 12 smoke scripts
+  and `tools/pack.lua`.
+- **Shared HUD helper `samples/shared/hud.lua`** (owner agreed): Caravellius 8x8 at 16 px on dark
+  translucent plates, loaded lazily (a font needs a renderer, and `renderer_create` must come first);
+  `Hud.line`, `Hud.lines` (wraps to the window's width), `Hud.line_from_bottom`, `Hud.line_at`,
+  `Hud.row_y` (one row lower while the FPS counter is on). 18 samples use it; `hello-world` keeps the
+  built-in font on purpose. Long HUD lines were split into rows; `blend`'s labels shortened.
+- **Window check, all 13 samples whose HUD changed, with the owner:** every HUD readable and clear of
+  the FPS counter. Found on the way: `views`' close-up box sat under the two bottom hint rows (moved from
+  y 380 to 320); `samples/scripting/docs/README.md` claimed a period the sample doesn't have (measured
+  4 s: 0.03, 4.55, 8.55, 12.55 s - corrected); `timers` measured at the expected 4:1 (5/20, 10/39, 14/59 over
+  15 s; the owner's 115:19 included time with the 1-second timer stopped by F1).
+- **Audit:** new rules `lua-unchecked-load` (and `-test`), `-- lint: allow <rule> (why)` support, and
+  `--check` (exit 1 on any finding in an enforced rule) - 36 enforced rules, 0 findings; shown failing on
+  an injected `local SPEED = 5`. `ci.yml` runs `python3 scripts/style_audit.py --check` on Linux after the
+  build (the C++ documentation rule reads sunlight's headers from `build/_deps`).
+- **Proof:** 14 smoke tests, the headless smoke test, 19 samples headless, the docs generator, and all
+  35 `asan_run.py` runs clean.
 
 **S4 (TODO, added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
 mixes helpers every Lua module shares with ones only one category uses. Each new engine object

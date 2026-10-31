@@ -34,7 +34,14 @@
  does below.
 ]]
 
-app_set_name( "Scarab - timers sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+local __SECOND_TIMER   <const> = 1       -- timer ids
+local __QUARTER_TIMER  <const> = 2
+local __SECOND_MILLI   <const> = 1000    -- their intervals
+local __QUARTER_MILLI  <const> = 250
+
+assert( app_set_name( "Scarab - timers sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
@@ -45,31 +52,31 @@ local quarterTicks  = 0
 local secondRunning = true
 
 -- Plain Lua data only, per the gotcha above - no engine calls in here.
-local function onSecondTick()
+local function on_second_tick()
     secondTicks = secondTicks + 1
 end
 
-local function onQuarterTick()
+local function on_quarter_tick()
     quarterTicks = quarterTicks + 1
 end
 
-set_timer( 1, 1000, onSecondTick )
-set_timer( 2, 250, onQuarterTick )
+assert( set_timer( __SECOND_TIMER, __SECOND_MILLI, on_second_tick ) )
+assert( set_timer( __QUARTER_TIMER, __QUARTER_MILLI, on_quarter_tick ) )
 
 function on_update( dt )
 
     if input_is_key_released( KEY_F1 ) then
         if secondRunning then
-            reset_timer( 1 )
+            assert( reset_timer( __SECOND_TIMER ) )
         else
-            set_timer( 1, 1000, onSecondTick )
+            assert( set_timer( __SECOND_TIMER, __SECOND_MILLI, on_second_tick ) )
         end
 
         secondRunning = not secondRunning
     end
 
-    draw_text( "timers sample", 20, 20, 24, 255, 255, 255, 255 )
-    draw_text( "1000ms timer ticks: " .. tostring( secondTicks )
-        .. "  (F1 to " .. ( secondRunning and "stop" or "restart" ) .. ")", 20, 54, 20, 200, 200, 200, 255 )
-    draw_text( "250ms timer ticks: " .. tostring( quarterTicks ), 20, 78, 20, 200, 200, 200, 255 )
+    Hud.line( "timers sample", 1, Hud.TITLE )
+    Hud.line( __SECOND_MILLI .. "ms timer ticks: " .. tostring( secondTicks )
+        .. "  (F1 to " .. ( secondRunning and "stop" or "restart" ) .. ")", 2, Hud.INFO )
+    Hud.line( __QUARTER_MILLI .. "ms timer ticks: " .. tostring( quarterTicks ), 3, Hud.INFO )
 end

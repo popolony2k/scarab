@@ -28,30 +28,33 @@
  ipairs-friendly tables, exactly as load_json's own doc describes.
 ]]
 
-app_set_name( "Scarab - json sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+-- The HUD row of the first enemy (rows 1 and 2 are the title and the top-level values).
+local __FIRST_ENEMY_ROW <const> = 3
+
+assert( app_set_name( "Scarab - json sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-local data = load_json( "samples/json/data.json" )
+-- load_json returns nil, "message" on failure: kept, so the HUD can show it.
+local data, loadError = load_json( "samples/json/data.json" )
 
 function on_update( dt )
 
-    draw_text( "json sample", 20, 20, 24, 255, 255, 255, 255 )
+    Hud.line( "json sample", 1, Hud.TITLE )
 
     if data == nil then
-        draw_text( "load_json FAILED", 20, 54, 20, 255, 80, 80, 255 )
+        Hud.line( "load_json FAILED: " .. tostring( loadError ), 2, Hud.ALERT )
 
         return
     end
 
-    draw_text( "title: " .. tostring( data.title ) .. "   debug: " .. tostring( data.debug ), 20, 54, 20, 200, 200, 200, 255 )
-
-    local y = 82
+    Hud.line( "title: " .. tostring( data.title ) .. "   debug: " .. tostring( data.debug ), 2, Hud.INFO )
 
     for index, enemy in ipairs( data.enemies ) do
-        draw_text( index .. ". " .. enemy.name .. " (hp " .. enemy.hp .. ")", 20, y, 18, 200, 200, 200, 255 )
-        y = y + 24
+        Hud.line( index .. ". " .. enemy.name .. " (hp " .. enemy.hp .. ")", __FIRST_ENEMY_ROW + index - 1, Hud.DIM )
     end
 end

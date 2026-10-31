@@ -1,4 +1,24 @@
 --[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
     Camera boundary smoke test - run by scripts/camera_boundary_smoke.py (and ci.yml, every
     platform):
 
@@ -31,10 +51,10 @@
 
 io.stdout:setvbuf( "line" )
 
-local MAP_SIZE      = 640     -- test.tmx: 20 tiles x 32 px, both ways
-local SCROLL_STEP   = 7       -- divides none of the distances to the far limits below
-local MAX_MOVES     = 1000    -- far more than any edge needs; a camera still moving after it is a failure
-local EXTRA_VIEW    = { x = 0, y = 0, w = 300, h = 200 }
+local __MAP_SIZE    <const> = 640     -- test.tmx: 20 tiles x 32 px, both ways
+local __SCROLL_STEP <const> = 7       -- divides none of the distances to the far limits below
+local __MAX_MOVES   <const> = 1000    -- far more than any edge needs; a camera still moving after it is a failure
+local __EXTRA_VIEW  <const> = { x = 0, y = 0, w = 300, h = 200 }
 
 local failures = {}
 
@@ -44,7 +64,7 @@ end
 
 -- the far edge as Lua reads it: sunlight's Camera::FarCameraLimit, negated (see the header)
 local function far_edge( viewportSize, zoom )
-    return -math.ceil( viewportSize / zoom - MAP_SIZE )
+    return -math.ceil( viewportSize / zoom - __MAP_SIZE )
 end
 
 -- call move() until the chosen camera coordinate stops changing; returns that coordinate
@@ -53,7 +73,7 @@ local function move_until_stopped( move, coord )
     local last  = coord()
     local moves = 0
 
-    for _ = 1, MAX_MOVES do
+    for _ = 1, __MAX_MOVES do
         move()
         local now = coord()
         if now == last then return now, moves end
@@ -66,21 +86,21 @@ end
 
 -- one axis of one view: towards the far edge, then back to the origin
 local function check_axis( label, toFar, toOrigin, coord, edge )
-    check( edge > 0 and edge % SCROLL_STEP ~= 0,
-           label .. ": test setup - far edge " .. edge .. " must be positive and not a multiple of " .. SCROLL_STEP )
+    check( edge > 0 and edge % __SCROLL_STEP ~= 0,
+           label .. ": test setup - far edge " .. edge .. " must be positive and not a multiple of " .. __SCROLL_STEP )
 
     local far, farMoves = move_until_stopped( toFar, coord )
     check( far ~= nil, label .. ": camera never stopped moving towards the far edge" )
     check( far == edge, label .. ": stopped at " .. tostring( far ) .. ", want the map's far edge " .. edge )
-    check( far == nil or far % SCROLL_STEP ~= 0,
+    check( far == nil or far % __SCROLL_STEP ~= 0,
            label .. ": travel " .. tostring( far ) .. " is a whole number of steps - the partial last step was refused" )
-    check( farMoves == math.ceil( edge / SCROLL_STEP ),
-           label .. ": " .. farMoves .. " moves to the far edge, want " .. math.ceil( edge / SCROLL_STEP ) )
+    check( farMoves == math.ceil( edge / __SCROLL_STEP ),
+           label .. ": " .. farMoves .. " moves to the far edge, want " .. math.ceil( edge / __SCROLL_STEP ) )
 
     local back, backMoves = move_until_stopped( toOrigin, coord )
     check( back == 0, label .. ": returned to " .. tostring( back ) .. ", want exactly the origin 0" )
-    check( backMoves == math.ceil( edge / SCROLL_STEP ),
-           label .. ": " .. backMoves .. " moves back to the origin, want " .. math.ceil( edge / SCROLL_STEP ) )
+    check( backMoves == math.ceil( edge / __SCROLL_STEP ),
+           label .. ": " .. backMoves .. " moves back to the origin, want " .. math.ceil( edge / __SCROLL_STEP ) )
 end
 
 local function check_view( label, view, viewportW, viewportH, zoom, moves )
@@ -88,7 +108,7 @@ local function check_view( label, view, viewportW, viewportH, zoom, moves )
     local function cam_y() local _, y = view_get_camera_position( view ) return y end
 
     check( view_get_zoom( view ) == zoom, label .. ": zoom is " .. tostring( view_get_zoom( view ) ) .. ", want " .. zoom )
-    check( view_set_scroll_step( view, SCROLL_STEP, SCROLL_STEP ) == true, label .. ": view_set_scroll_step failed" )
+    check( view_set_scroll_step( view, __SCROLL_STEP, __SCROLL_STEP ) == true, label .. ": view_set_scroll_step failed" )
 
     check( view_set_camera_position( view, 0, 0 ) == true, label .. ": view_set_camera_position failed" )
     check_axis( label .. " left/right", moves.left, moves.right, cam_x, far_edge( viewportW, zoom ) )
@@ -115,7 +135,7 @@ check( r ~= nil, "renderer_create failed: " .. tostring( err ) )
 -- the runner's working directory is the repo root
 check( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_TOP_LEFT ), "resources/tilemap/test.tmx failed to load" )
 
-local extra = view_create( r, EXTRA_VIEW.x, EXTRA_VIEW.y, EXTRA_VIEW.w, EXTRA_VIEW.h )
+local extra = view_create( r, __EXTRA_VIEW.x, __EXTRA_VIEW.y, __EXTRA_VIEW.w, __EXTRA_VIEW.h )
 check( extra ~= nil, "view_create failed" )
 
 local _, _, defaultW, defaultH = viewport_get_dimension()
@@ -126,7 +146,7 @@ check_view( "default view, camera_move_*", 0, defaultW, defaultH, defaultZoom,
 check_view( "default view, view_move_camera_*", 0, defaultW, defaultH, defaultZoom, view_moves( 0 ) )
 
 if extra then
-    check_view( "extra view, view_move_camera_*", extra, EXTRA_VIEW.w, EXTRA_VIEW.h, 1.0, view_moves( extra ) )
+    check_view( "extra view, view_move_camera_*", extra, __EXTRA_VIEW.w, __EXTRA_VIEW.h, 1.0, view_moves( extra ) )
 end
 
 local frames = 0

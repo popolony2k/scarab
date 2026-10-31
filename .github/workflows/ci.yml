@@ -150,6 +150,13 @@ jobs:
       - name: Build
         run: cmake --build build --config Release -j 4
 
+      # The code follows docs/CODE_STYLE.md: C++ (sunlight's guide) and Lua (Scarab's own rules), measured
+      # by scripts/style_audit.py - any finding of an enforced rule fails (plans/MASTER_PLAN.md item S2c).
+      # Linux only, after configure: the documentation rule reads sunlight's headers from build/_deps.
+      - name: Style check
+        if: runner.os == 'Linux'
+        run: python3 scripts/style_audit.py --check
+
       # Scarab's unit tests (doctest, tests/): what needs no window - the sprite and font
       # pools, LuaEngineUtil's argument readers, the zoom rule, content encryption -
       # plans/MASTER_PLAN.md item R2.

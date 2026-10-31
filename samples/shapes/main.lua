@@ -60,30 +60,30 @@
 
 -- The layout sunlight's sample uses: a 1000 x 800 viewport at (40, 40),
 -- zoom 1.0, the camera at the map's origin.
-local VIEWPORT      = { x = 40, y = 40, w = 1000, h = 800 }
-local ORIGIN_CAMERA = { x = 0, y = 0 }
-local FRAME_CAMERA  = { x = 100, y = 100 }   -- where opacity.tmx's frame rectangle starts
-local SCROLL_STEP   = 4    -- map pixels per frame while an arrow key is held
+local __VIEWPORT      <const> = { x = 40, y = 40, w = 1000, h = 800 }
+local __ORIGIN_CAMERA <const> = { x = 0, y = 0 }
+local __FRAME_CAMERA  <const> = { x = 100, y = 100 }   -- where opacity.tmx's frame rectangle starts
+local __SCROLL_STEP   <const> = 4    -- map pixels per frame while an arrow key is held
 
-local SHAPES_DIR  = "resources/tilemap/shapes/"
-local OBJECTS_DIR = "resources/tilemap/objects/"
-local TINT_DIR    = "resources/tilemap/tint/"
-local ANIM_DIR    = "resources/tilemap/animation/"
-local MAPS = {
-    { key = KEY_ONE,   file = SHAPES_DIR .. "shapes.tmx",    camera = ORIGIN_CAMERA, title = "1 shapes: the four shapes, clipped by the viewport" },
-    { key = KEY_TWO,   file = SHAPES_DIR .. "rotation.tmx",  camera = ORIGIN_CAMERA, title = "2 rotation: each object turned about its pivot" },
-    { key = KEY_THREE, file = SHAPES_DIR .. "thick.tmx",     camera = ORIGIN_CAMERA, title = "3 thick: line widths and points, scaled by zoom" },
-    { key = KEY_FOUR,  file = OBJECTS_DIR .. "opacity.tmx",  camera = FRAME_CAMERA,  title = "4 opacity: an object's own opacity, else its layer's" },
-    { key = KEY_FIVE,  file = TINT_DIR .. "tint.tmx",        camera = ORIGIN_CAMERA, title = "5 tint: Tiled tintcolor, changed at runtime with T and G", tint = true },
-    { key = KEY_SIX,   file = ANIM_DIR .. "animation.tmx",   camera = ORIGIN_CAMERA, title = "6 animation: one tile, 100 / 50 / 300 ms, every copy in step", animation = true },
+local __SHAPES_DIR  <const> = "resources/tilemap/shapes/"
+local __OBJECTS_DIR <const> = "resources/tilemap/objects/"
+local __TINT_DIR    <const> = "resources/tilemap/tint/"
+local __ANIM_DIR    <const> = "resources/tilemap/animation/"
+local __MAPS        <const> = {
+    { key = KEY_ONE,   file = __SHAPES_DIR .. "shapes.tmx",    camera = __ORIGIN_CAMERA, title = "1 shapes: the four shapes, clipped by the viewport" },
+    { key = KEY_TWO,   file = __SHAPES_DIR .. "rotation.tmx",  camera = __ORIGIN_CAMERA, title = "2 rotation: each object turned about its pivot" },
+    { key = KEY_THREE, file = __SHAPES_DIR .. "thick.tmx",     camera = __ORIGIN_CAMERA, title = "3 thick: line widths and points, scaled by zoom" },
+    { key = KEY_FOUR,  file = __OBJECTS_DIR .. "opacity.tmx",  camera = __FRAME_CAMERA,  title = "4 opacity: an object's own opacity, else its layer's" },
+    { key = KEY_FIVE,  file = __TINT_DIR .. "tint.tmx",        camera = __ORIGIN_CAMERA, title = "5 tint: Tiled tintcolor, changed at runtime with T and G", tint = true },
+    { key = KEY_SIX,   file = __ANIM_DIR .. "animation.tmx",   camera = __ORIGIN_CAMERA, title = "6 animation: one tile, 100 / 50 / 300 ms, every copy in step", animation = true },
 }
 
 local renderer, err = renderer_create{
     title          = "Scarab - shapes sample",
-    viewport       = VIEWPORT,
+    viewport       = __VIEWPORT,
     zoom           = 1.0,
     preferred_zoom = 1.0,
-    scroll_step    = { w = SCROLL_STEP, h = SCROLL_STEP },
+    scroll_step    = { w = __SCROLL_STEP, h = __SCROLL_STEP },
 }
 assert( renderer, err )
 
@@ -92,67 +92,58 @@ assert( renderer, err )
 sp_wait( 1 )
 
 -- One font, one load: every map's "Sans" text objects and the HUD below.
-local sans = assert( load_font( "resources/fonts/caravellius8x8.fnt" ) )
-assert( register_font( "Sans", sans ) )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+assert( register_font( "Sans", Hud.font() ) )
 
 local current
 
 local function show_map( entry )
     assert( tilemap_load_map( entry.file, MAP_ALIGNMENT_TOP_LEFT ) )
-    zoom_reset()
-    camera_set_position( entry.camera.x, entry.camera.y )
+    assert( zoom_reset() )
+    assert( camera_set_position( entry.camera.x, entry.camera.y ) )
     current = entry
 end
 
-show_map( MAPS[1] )
+show_map( __MAPS[1] )
 
-local HUD_X         = 40
-local HUD_Y         = 846
-local HUD_LINE      = 24    -- pixels between HUD lines
-local HUD_SIZE      = 16
-local PLATE_PADDING = 4     -- pixels around a line of text on its plate
-local PLATE_ALPHA   = 170   -- the plate's opacity, 0..255
 
--- A line of HUD text in "Sans" on a dark translucent plate.
-local function draw_hud_line( text, x, y, r, g, b )
-    draw_filled_rectangle( x - PLATE_PADDING, y - PLATE_PADDING,
-        measure_text( text, HUD_SIZE, sans ) + 2 * PLATE_PADDING, HUD_SIZE + 2 * PLATE_PADDING, 0, 0, 0, PLATE_ALPHA )
-    draw_text( text, x, y, HUD_SIZE, r, g, b, 255, sans )
-end
 
 -- Map 5 (tint.tmx): T cycles the "tiles tinted red" layer's tint, G steps the group's opacity -
 -- both at runtime, through tilemap_set_layer_tint / tilemap_set_layer (the map file is unchanged).
-local TINTED_LAYER   = 2       -- "tiles tinted cyan" in tint.tmx
-local GROUP_LAYER    = 10      -- "group tinted blue, opacity 0.6"
-local TINTS          = {       -- r, g, b, a; the last one is the layer's authored tint
+local __TINTED_LAYER <const> = 2       -- "tiles tinted cyan" in tint.tmx
+local __GROUP_LAYER  <const> = 10      -- "group tinted blue, opacity 0.6"
+local __TINTS        <const> = {       -- r, g, b, a; the last one is the layer's authored tint
     { 255, 255, 128, 255 }, { 128, 255, 128, 255 }, { 255, 255, 255, 255 }, { 128, 255, 255, 255 },
 }
-local ANIMATED_LAYER = 1       -- animation.tmx's "animated" tile layer (map 6)
+local __ANIMATED_LAYER <const> = 1       -- animation.tmx's "animated" tile layer (map 6)
+local __ANIMATED_CELL  <const> = { row = 2, col = 2 }    -- an animated copy of the tile
+local __STATIC_CELL    <const> = { row = 2, col = 20 }   -- the static tile next to it
 
-local GROUP_OPACITIES = { 1, 0.25, 0.6 }   -- 0..1; 0.6 is the authored value
-local tintIndex      = #TINTS
-local opacityIndex   = #GROUP_OPACITIES
+local __GROUP_OPACITIES <const> = { 1, 0.25, 0.6 }   -- 0..1; 0.6 is the authored value
+local tintIndex      = #__TINTS
+local opacityIndex   = #__GROUP_OPACITIES
 
 local function runtime_tint_keys()
     if input_is_key_released( KEY_T ) then
-        tintIndex = tintIndex % #TINTS + 1
-        tilemap_set_layer_tint( TINTED_LAYER, table.unpack( TINTS[tintIndex] ) )
+        tintIndex = tintIndex % #__TINTS + 1
+        tilemap_set_layer_tint( __TINTED_LAYER, table.unpack( __TINTS[tintIndex] ) )
     end
 
     if input_is_key_released( KEY_G ) then
-        local visible, _, offsetX, offsetY = tilemap_get_layer( GROUP_LAYER )
+        local visible, _, offsetX, offsetY = tilemap_get_layer( __GROUP_LAYER )
 
-        opacityIndex = opacityIndex % #GROUP_OPACITIES + 1
-        tilemap_set_layer( GROUP_LAYER, visible, GROUP_OPACITIES[opacityIndex], offsetX, offsetY )
+        opacityIndex = opacityIndex % #__GROUP_OPACITIES + 1
+        tilemap_set_layer( __GROUP_LAYER, visible, __GROUP_OPACITIES[opacityIndex], offsetX, offsetY )
     end
 end
 
 function on_update( dt )
 
-    for _, entry in ipairs( MAPS ) do
+    for _, entry in ipairs( __MAPS ) do
         if input_is_key_released( entry.key ) and entry ~= current then
             show_map( entry )
-            tintIndex, opacityIndex = #TINTS, #GROUP_OPACITIES   -- a reload restores the authored values
+            tintIndex, opacityIndex = #__TINTS, #__GROUP_OPACITIES   -- a reload restores the authored values
         end
     end
 
@@ -191,22 +182,22 @@ function on_update( dt )
 
     local camX, camY = camera_get_position()
 
-    draw_hud_line( current.title, HUD_X, HUD_Y, 255, 255, 255 )
+    Hud.line_from_bottom( current.title, 3, Hud.TITLE )
     local mapLine = string.format( "camera %d, %d   zoom %.2f   keys 1-6 switch maps", camX, camY, viewport_get_zoom_factor() )
 
     if current.tint then
-        local r, g, b = tilemap_get_layer_tint( TINTED_LAYER )
-        local _, groupOpacity = tilemap_get_layer( GROUP_LAYER )
+        local r, g, b = tilemap_get_layer_tint( __TINTED_LAYER )
+        local _, groupOpacity = tilemap_get_layer( __GROUP_LAYER )
 
         mapLine = string.format( "keys 1-6 maps   T: layer 2 tint %d,%d,%d   G: group opacity %g", r, g, b, groupOpacity )
     end
 
     if current.animation then
         mapLine = string.format( "keys 1-6 maps   tilemap_get_tile_frame: gid %d   object gid %d   static gid %d",
-            tilemap_get_tile_frame( 2, 2, ANIMATED_LAYER ), tilemap_get_object_tile_frame( "anim_object" ),
-            tilemap_get_tile_frame( 2, 20, ANIMATED_LAYER ) )
+            tilemap_get_tile_frame( __ANIMATED_CELL.row, __ANIMATED_CELL.col, __ANIMATED_LAYER ), tilemap_get_object_tile_frame( "anim_object" ),
+            tilemap_get_tile_frame( __STATIC_CELL.row, __STATIC_CELL.col, __ANIMATED_LAYER ) )
     end
 
-    draw_hud_line( mapLine, HUD_X, HUD_Y + HUD_LINE, 200, 200, 200 )
-    draw_hud_line( "arrows/WASD pan   PageUp/PageDown or +/- zoom   = reset zoom   Home reset", HUD_X, HUD_Y + 2 * HUD_LINE, 200, 200, 200 )
+    Hud.line_from_bottom( mapLine, 2, Hud.INFO )
+    Hud.line_from_bottom( "arrows/WASD pan   PageUp/PageDown or +/- zoom   = reset zoom   Home reset", 1, Hud.DIM )
 end
