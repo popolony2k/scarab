@@ -731,8 +731,7 @@ namespace Scarab  {
                 if( pSprite == nullptr )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                float *pLeak = new float( pSprite -> GetOpacity() );   // R1 PROOF: deliberate leak, reverted next commit
-                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( *pLeak ) );
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( pSprite -> GetOpacity() ) );
 
                 return 1;
             }
