@@ -24,6 +24,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 
@@ -67,7 +68,7 @@ namespace Scarab  {
              * casts of the timerMapPtr global - both need the exact same type,
              * not just structurally identical ones.
              */
-            typedef std :: map<int, SunLight :: Concurrent :: Timer*> TimerMap;
+            typedef std :: map<int, std :: unique_ptr<SunLight :: Concurrent :: Timer>> TimerMap;
 
             /**
              * @brief Shared helpers used by every Lua primitive API module -

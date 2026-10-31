@@ -26,6 +26,10 @@
 /** The most significant digits a float needs to round-trip through decimal text. */
 #define __FLOAT_ROUND_TRIP_DIGITS  9
 
+/** Room for a number written with "%g" (FormatNumber) and with "%.*g" (ShortestDecimal). */
+#define __NUMBER_TEXT_SIZE           64
+#define __SHORTEST_DECIMAL_TEXT_SIZE 32
+
 
 namespace Scarab  {
     namespace Engine  {
@@ -210,7 +214,7 @@ namespace Scarab  {
              */
             std :: string LuaEngineUtil :: FormatNumber( double fValue )  {
 
-                char  szBuffer[64];
+                char  szBuffer[__NUMBER_TEXT_SIZE];
 
                 snprintf( szBuffer, sizeof( szBuffer ), "%g", fValue );
 
@@ -225,7 +229,7 @@ namespace Scarab  {
              */
             double LuaEngineUtil :: ShortestDecimal( float fValue )  {
 
-                char  szBuffer[32];
+                char  szBuffer[__SHORTEST_DECIMAL_TEXT_SIZE];
 
                 for( int nDigits = 1; nDigits < __FLOAT_ROUND_TRIP_DIGITS; nDigits++ )  {
                     snprintf( szBuffer, sizeof( szBuffer ), "%.*g", nDigits, ( double ) fValue );
@@ -251,15 +255,15 @@ namespace Scarab  {
              */
             bool LuaEngineUtil :: ReadIntegerArg( lua_State* pLuaState, int nIndex, const char* szName, lua_Integer& nOut, std :: string& strError )  {
 
-                int  bIsInteger = 0;
+                int  nIsInteger = 0;
 
                 if( lua_type( pLuaState, nIndex ) == LUA_TNUMBER )
-                    nOut = lua_tointegerx( pLuaState, nIndex, &bIsInteger );
+                    nOut = lua_tointegerx( pLuaState, nIndex, &nIsInteger );
 
-                if( !bIsInteger )
+                if( !nIsInteger )
                     strError = std :: string( "argument '" ) + szName + "' must be an integer";
 
-                return bIsInteger != 0;
+                return nIsInteger != 0;
             }
 
             /** @brief Read a required integer argument that must lie in [nMin, nMax]. */

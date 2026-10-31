@@ -65,8 +65,8 @@ namespace Scarab  {
             public:
 
             FontHandle Add( std :: shared_ptr<SunLight :: Font :: IFont> pFont );
-            bool Release( FontHandle handle );
-            std :: shared_ptr<SunLight :: Font :: IFont> Resolve( FontHandle handle ) const;
+            bool Release( FontHandle hFont );
+            std :: shared_ptr<SunLight :: Font :: IFont> Resolve( FontHandle hFont ) const;
             void Clear( void );
         };
     }

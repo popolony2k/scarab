@@ -63,7 +63,7 @@ namespace Scarab  {
             typedef std :: function<void( void )> FUNCTION_STATE_HANDLER;
             typedef std :: array<FUNCTION_STATE_HANDLER, MAX_STATE_HANDLERS> FunctionStateHandlers;
 
-            uint16_t                                   m_CurrentSong;
+            uint16_t                                   m_nCurrentSong;
             uint64_t                                   m_nClearInactiveSpriteQueueMilli;
             FUNCTION_STATE_HANDLER                     m_CurrentStateHandler;
             SunLight :: Scripting :: ScriptProcessor   m_ScriptProcessorMachine;
@@ -85,10 +85,10 @@ namespace Scarab  {
             void RunScriptMachine( void );
 
             // Sound support
-            bool PlaySound( uint16_t id, bool bIgnorePlaying = false );
-            bool PauseSound( uint16_t id );
-            bool StopSound( uint16_t id );
-            bool ResumeSound( uint16_t id );
+            bool PlaySound( uint16_t nId, bool bIgnorePlaying = false );
+            bool PauseSound( uint16_t nId );
+            bool StopSound( uint16_t nId );
+            bool ResumeSound( uint16_t nId );
 
             // Script management routines
             bool LoadLuaScript( std :: string strFileName );
@@ -114,11 +114,11 @@ namespace Scarab  {
             void UseVirtualTime( void );
 
             // World listener event handler implementation
-            void OnUpdate( SunLight :: TileMap :: ITileMap& tileMap );
-            void OnStop( void );
+            void OnUpdate( SunLight :: TileMap :: ITileMap& tileMap ) override;
+            void OnStop( void ) override;
 
-            void OnCommand( SunLight :: Scripting :: Commands cmd, uint16_t nEventId );
-            void OnError( std :: string strError );
+            void OnCommand( SunLight :: Scripting :: Commands cmd, uint16_t nEventId ) override;
+            void OnError( std :: string strError ) override;
         };
     }
 }

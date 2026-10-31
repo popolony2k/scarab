@@ -22,6 +22,7 @@
 #include "lua/luaengineutil.h"
 #include <climits>
 #include <cstdio>
+#include <memory>
 
 
 #define __MAX_TIMER_NAME   50
@@ -65,7 +66,7 @@ namespace Scarab  {
 
                 lua_getglobal( pLuaState, "timerMapPtr" );
 
-                TimerMap  *pTimerMap = static_cast<TimerMap *>( lua_touserdata( pLuaState, -1 ) );
+                TimerMap*  pTimerMap = static_cast<TimerMap*>( lua_touserdata( pLuaState, -1 ) );
 
                 lua_pop( pLuaState, 1 );
 
@@ -115,14 +116,14 @@ namespace Scarab  {
                 if( pTimerMap -> find( nId ) != pTimerMap -> end() )
                     return LuaEngineUtil :: PushError( pLuaState, "timer " + std :: to_string( nId ) + " is already set (reset_timer it first)" );
 
-                SunLight :: Concurrent :: Timer* pTImer = new SunLight :: Concurrent :: Timer( nId );
+                ( *pTimerMap )[nId] = std :: make_unique<SunLight :: Concurrent :: Timer>( nId );
 
                 lua_pushvalue( pLuaState, 3 );
                 lua_setglobal( pLuaState, GetTimerName( nId ).c_str() );
 
-                pTimerMap -> insert( std :: make_pair( nId, pTImer ) );
+                SunLight :: Concurrent :: Timer*  pTimer = ( *pTimerMap )[nId].get();     // the map owns it
 
-                pTImer -> Start( SunLight :: Concurrent :: Timer :: Interval( nInterval ),
+                pTimer -> Start( SunLight :: Concurrent :: Timer :: Interval( nInterval ),
                                  [pLuaState]( int nId )  {
                                     /*
                                      * This callback runs on Timer's own
@@ -195,8 +196,7 @@ namespace Scarab  {
 
                 DeleteGlobal( pLuaState, GetTimerName( nId ).c_str() );
                 itItem -> second -> Stop();
-                delete itItem -> second;
-                pTimerMap -> erase( itItem );
+                pTimerMap -> erase( itItem );           // destroys the timer
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }

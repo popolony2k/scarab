@@ -50,9 +50,9 @@ namespace Scarab  {
                 virtual ~LuaCollisionListener( void );
 
                 void OnCollision( SunLight :: Collision :: Collider* pFirst,
-                                  SunLight :: Collision :: Collider* pSecond );
+                                  SunLight :: Collision :: Collider* pSecond ) override;
                 void OnCollision( SunLight :: Collision :: Collider* pFirst,
-                                  SunLight :: TileMap :: stTile* pSecond );
+                                  SunLight :: TileMap :: stTile* pSecond ) override;
             };
         }
     }

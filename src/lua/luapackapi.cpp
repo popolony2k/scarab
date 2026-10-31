@@ -26,6 +26,7 @@
 #include <fstream>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <vector>
 
 
@@ -43,8 +44,8 @@ namespace Scarab  {
             // not a hot runtime path, unlike SpritePool's own handle
             // scheme (packed generation+index, built for per-frame
             // reuse) which would be overkill for this.
-            static std :: map<int, mz_zip_archive *>  s_ArchiveHandles;
-            static int                                s_nNextHandle = 1;
+            static std :: map<int, std :: unique_ptr<mz_zip_archive>>  s_ArchiveHandles;
+            static int                                                 s_nNextHandle = 1;
 
             /**
              * @luaname{pack_list_directory(path) -> paths | nil, message}
@@ -186,17 +187,16 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                mz_zip_archive*  pZip = new mz_zip_archive();  // value-init zeroes it, same as memset - required by miniz's own contract
+                std :: unique_ptr<mz_zip_archive>  pZip = std :: make_unique<mz_zip_archive>();  // value-init zeroes it, same as memset - required by miniz's own contract
 
-                if( !mz_zip_writer_init_file( pZip, strPath.c_str(), 0 ) )  {
-                    delete pZip;
+                if( !mz_zip_writer_init_file( pZip.get(), strPath.c_str(), 0 ) )  {
 
                     return LuaEngineUtil :: PushError( pLuaState, "cannot create archive '" + strPath + "'" );
                 }
 
                 int  nHandle = s_nNextHandle++;
 
-                s_ArchiveHandles[nHandle] = pZip;
+                s_ArchiveHandles[nHandle] = std :: move( pZip );
 
                 lua_pushinteger( pLuaState, nHandle );
 
@@ -231,7 +231,7 @@ namespace Scarab  {
                 if( it == s_ArchiveHandles.end() )
                     return LuaEngineUtil :: PushError( pLuaState, "invalid archive handle" );
 
-                if( !mz_zip_writer_add_mem( it -> second, strEntry.c_str(), strData.data(), strData.size(), MZ_DEFAULT_COMPRESSION ) )
+                if( !mz_zip_writer_add_mem( it -> second.get(), strEntry.c_str(), strData.data(), strData.size(), MZ_DEFAULT_COMPRESSION ) )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot add '" + strEntry + "' to the archive" );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -259,12 +259,11 @@ namespace Scarab  {
                 if( it == s_ArchiveHandles.end() )
                     return LuaEngineUtil :: PushError( pLuaState, "invalid archive handle" );
 
-                mz_zip_archive*  pZip    = it -> second;
+                mz_zip_archive*  pZip    = it -> second.get();
                 bool             bResult = mz_zip_writer_finalize_archive( pZip );
 
                 mz_zip_writer_end( pZip );
-                delete pZip;
-                s_ArchiveHandles.erase( it );
+                s_ArchiveHandles.erase( it );           // frees the archive
 
                 if( !bResult )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot finalize the archive" );

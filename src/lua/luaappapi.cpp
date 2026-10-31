@@ -23,7 +23,12 @@
 #include "lua/luainputapi.h"
 #include "window/iwindow.h"
 #include <climits>
+#include <cmath>
 #include <ctime>
+
+/** A rectangle's fields (x, y, width, height) and a colour's channels (r, g, b, a). */
+#define __RECT_FIELDS     4
+#define __RGBA_CHANNELS   4
 
 extern "C"  {
   #include "lauxlib.h"
@@ -466,18 +471,18 @@ namespace Scarab  {
              */
             int LuaAppApi :: DrawFilledRectangle( lua_State* pLuaState )  {
 
-                static const char * const  aszRect[4]    = { "x", "y", "width", "height" };
-                static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
+                static const char * const  aszRect[__RECT_FIELDS]    = { "x", "y", "width", "height" };
+                static const char * const  aszChannel[__RGBA_CHANNELS] = { "r", "g", "b", "a" };
 
                 std :: string  strError;
-                int            anRect[4]    = { 0, 0, 0, 0 };
-                lua_Integer    anChannel[4] = { 0, 0, 0, 0 };
+                int            anRect[__RECT_FIELDS]    = { 0, 0, 0, 0 };
+                lua_Integer    anChannel[__RGBA_CHANNELS] = { 0, 0, 0, 0 };
 
-                for( int nArg = 0; nArg < 4; nArg++ )
+                for( int nArg = 0; nArg < __RECT_FIELDS; nArg++ )
                     if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1 + nArg, aszRect[nArg], anRect[nArg], strError ) )
                         return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                for( int nArg = 0; nArg < 4; nArg++ )
+                for( int nArg = 0; nArg < __RGBA_CHANNELS; nArg++ )
                     if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 5 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
                         return LuaEngineUtil :: PushError( pLuaState, strError );
 
@@ -760,7 +765,7 @@ namespace Scarab  {
 
                 lua_Integer  nAnchor       = lua_tointeger( pLuaState, lua_upvalueindex( 2 ) );
                 double       fElapsed      = GetElapsedOrZero( pLuaState );
-                lua_Integer  nElapsedMilli = ( lua_Integer ) ( fElapsed * fMillisPerSecond + 0.5 );
+                lua_Integer  nElapsedMilli = ( lua_Integer ) std :: llround( fElapsed * fMillisPerSecond );
 
                 lua_pushinteger( pLuaState, nAnchor + nElapsedMilli / nMillisPerSecond );
 

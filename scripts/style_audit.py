@@ -50,8 +50,11 @@ RULES = {
     "cpp-case-colon":       "case/default label without a space before its colon",
     "cpp-pointer-side":     "'*' or '&' with the name, not the type (Type *pName)",
     "cpp-undocumented-function": "function with no Doxygen comment where it is declared or defined",
+    "cpp-hungarian-param":  "parameter whose prefix doesn't match its type (main's argc/argv excepted)",
     "cpp-decl-columns":     "declarations in one block whose names don't start in one column",
     "cpp-hungarian":        "variable or member whose prefix doesn't match its type (p, sz, b, n, f, str)",
+    "cpp-magic-number":     "number outside a named constant (Lua API positions, 'return N' in src/lua, subscripts, 0/1/2/-1 excepted)",
+    "cpp-magic-number-test": "the same, in a unit test (expected values and test data are allowed there)",
     "cpp-private-const":    ".cpp constant that is not a '#define __NAME' (static const / #define without __)",
     "cpp-raw-new-delete":   "raw new/delete (ownership should be a unique_ptr)",
     "cpp-param-semicolon":  "@param line not ending with ';'",
@@ -189,6 +192,67 @@ def hungarian_mismatch(line):
     return "want " + "/".join(want)
 
 
+def parameter_mismatches(code):
+    """(line, 'Type name   (want ...)') for each parameter of a function declaration or definition whose
+    prefix doesn't fit its type - a call has no parameters to judge, so only a '(...)' followed by ';',
+    '{', ':', const or override counts."""
+    found = []
+    for m in re.finditer(r"\b[A-Za-z_]\w*\s*\(", code):
+        before = re.sub(r"(\w+\s*::\s*)+$", "", code[max(0, m.start() - 80):m.start()]).rstrip()
+        if re.search(r"\b(if|for|while|switch|return|catch|sizeof)\s*$", before) or before.endswith(( "=", "(", ")", ",", "!", "&&", "||", "?", ":" )):
+            continue                                  # a call (after '=', '(', a cast, return, ...), not a declaration
+        depth, j = 0, m.end() - 1
+        while j < len(code):
+            depth += { "(": 1, ")": -1 }.get(code[j], 0)
+            if depth == 0:
+                break
+            j += 1
+        if not re.match(r"\s*(const\s*)?(override\s*)?(=\s*0\s*)?[;{:]", code[j + 1:j + 40]):
+            continue
+        for param in re.split(r",(?![^<]*>)", code[m.end():j]):
+            param = param.split("=")[0].strip()
+            pm = re.match(r"(.*?[\w>*&])\s*([A-Za-z_]\w*)$", param) if param and param != "void" and "(" not in param else None
+            if not pm or pm.group(2) in ( "argc", "argv" ):
+                continue
+            why = hungarian_mismatch("    " + pm.group(1) + "  " + pm.group(2) + ";")
+            if why:
+                found.append(( code.count("\n", 0, m.start()) + 1, param + "   (" + why + ")" ))
+    return found
+
+
+# A call whose numbers are Lua stack or argument positions (the owner, S2): Lua's own API and Scarab's
+# argument readers, which take a position.
+LUA_POSITION_CALL = re.compile(r"\b(lua_\w+|luaL_\w+|Read\w*|CheckFunctionArg|PushTint)\s*\(")
+NUMBER = re.compile(r"(?<![\w.])-?(0[xX][0-9A-Fa-f]+|\d+(?:\.\d+)?)(?:[uUlLfF]{0,3})(?![\w.])")
+
+
+def magic_number(line, rel):
+    """Whether a code line has a number that should have been a named constant."""
+    if re.match(r"\s*#", line) or re.match(r"\s*[A-Z_][A-Z0-9_]*\s*=\s*-?\w+\s*,?\s*$", line) \
+            or re.search(r"\bconst(expr)?\b[^=]*\b\w+\s*=\s*-?[\w.]+\s*;", line):
+        return False                                  # the definition of a named constant (#define, enum value, const)
+    if rel.startswith("src/lua/") and re.match(r"\s*return\s+\d+\s*;", line):
+        return False                                  # how many results a Lua function pushes
+    spans = []
+    for m in LUA_POSITION_CALL.finditer(line):
+        depth, j = 0, m.end() - 1
+        while j < len(line):
+            depth += { "(": 1, ")": -1 }.get(line[j], 0)
+            if depth == 0:
+                break
+            j += 1
+        spans.append(( m.start(), j ))
+    for m in NUMBER.finditer(line):
+        text = m.group(1)
+        value = int(text, 16) if text.lower().startswith("0x") else float(text)
+        if value in ( 0, 1, 2 ) or m.group(0).startswith("-1"):
+            continue
+        if any(a <= m.start() <= b for a, b in spans) or re.match(r"\s*\]", line[m.end():]) and line[:m.start()].rstrip().endswith("["):
+            continue                                  # a Lua position, or an array subscript
+        return True
+    return False
+
+
 # A declaration or definition head, for the documentation rule: the name before '('.
 DOC_HEAD = re.compile(r"^\s*(?!(if|for|while|switch|catch|return|else|do)\b)(?:[\w:<>,~*&\s]*?\s)?((?:\w+\s*::\s*)*~?\w+)\s*\(")
 
@@ -278,6 +342,9 @@ def is_block_open(line):
         or re.match(r"\s*(namespace|class|struct|enum|union|else|do|try)\b", text) is not None
 
 
+# 'Type *pName' / 'Type &name': a type word, spaces, '*'/'&', then a name that ends a declarator.
+POINTER_NAME = re.compile(r"(?<![\w])[\w>]+\s+[*&]+[A-Za-z_]\w*(?=\s*[,;)=\[]|\s+:(?!:))")
+
 CPP_KEYWORDS_BEFORE_STAR = r"(return|case|throw|delete|sizeof|else|do|new|and|or|not)"
 CONTROL = r"\b(if|for|while|switch|catch)\b"
 
@@ -348,9 +415,14 @@ def cpp_findings(path, rel, add):
                 add("cpp-body-blank-line", rel, n, rawl)
         if re.match(r"\s*(case\b.*[^\s:]|default):(?!:)", line):
             add("cpp-case-colon", rel, n, rawl)
-        if re.search(r"(?<![\w])(?!" + CPP_KEYWORDS_BEFORE_STAR + r"\b)[\w>]+\s+[*&]+[A-Za-z_]\w*\s*[,;)=\[:]", line) \
-                and not re.search(r"(?:[=+\-/<>!|&?]|(?<!:):(?!:))\s*\w+\s+[*&]", line):
+        for m in POINTER_NAME.finditer(line):
+            before = line[:m.start()]
+            if re.search(r"(?:[=+\-/<>!|&?]|(?<!:):(?!:))\s*$", before) or re.search(r"\b" + CPP_KEYWORDS_BEFORE_STAR + r"\s*$", before):
+                continue                              # an expression (a * b, a & b, return *p), not a declaration
             add("cpp-pointer-side", rel, n, rawl)
+            break
+        if magic_number(line, rel):
+            add("cpp-magic-number-test" if rel.startswith("tests/") else "cpp-magic-number", rel, n, rawl)
         hungarian = hungarian_mismatch(line)
         if hungarian:
             add("cpp-hungarian", rel, n, rawl + "   (" + hungarian + ")")
@@ -362,6 +434,9 @@ def cpp_findings(path, rel, add):
                 add("cpp-private-const", rel, n, rawl)
         if re.search(r"\bnew\s+[A-Za-z_]", line) or re.search(r"\bdelete\b(?!\s*;)", line):
             add("cpp-raw-new-delete", rel, n, rawl)
+
+    for n, param in parameter_mismatches(code):
+        add("cpp-hungarian-param", rel, n, param)
 
     documented = documented_names(raw_lines, lines)
     for k, line in enumerate(lines):

@@ -61,16 +61,16 @@ TEST_CASE( "Add hands out a handle that resolves to the same font" )  {
     FontPool                                      pool;
     std :: shared_ptr<SunLight :: Font :: IFont>  pFont = std :: make_shared<FakeFont>();
 
-    FontHandle  handle = pool.Add( pFont );
+    FontHandle  hFont = pool.Add( pFont );
 
-    CHECK( handle != INVALID_FONT_HANDLE );
-    CHECK( pool.Resolve( handle ).get() == pFont.get() );
+    CHECK( hFont != INVALID_FONT_HANDLE );
+    CHECK( pool.Resolve( hFont ).get() == pFont.get() );
     CHECK( pool.Add( nullptr ) == INVALID_FONT_HANDLE );           // no font, no handle
 
-    FontHandle  other = pool.Add( std :: make_shared<FakeFont>() );
+    FontHandle  hOther = pool.Add( std :: make_shared<FakeFont>() );
 
-    CHECK( other != handle );
-    CHECK( pool.Resolve( other ).get() != pFont.get() );
+    CHECK( hOther != hFont );
+    CHECK( pool.Resolve( hOther ).get() != pFont.get() );
 }
 
 TEST_CASE( "Release drops only the pool's reference: a font still used elsewhere stays alive" )  {
@@ -79,10 +79,10 @@ TEST_CASE( "Release drops only the pool's reference: a font still used elsewhere
     std :: shared_ptr<SunLight :: Font :: IFont>  pFont = std :: make_shared<FakeFont>();
     std :: weak_ptr<SunLight :: Font :: IFont>    weak  = pFont;
 
-    FontHandle  handle = pool.Add( pFont );
+    FontHandle  hFont = pool.Add( pFont );
 
     CHECK( pFont.use_count() == 2 );                               // the test and the pool
-    CHECK( pool.Release( handle ) );
+    CHECK( pool.Release( hFont ) );
     CHECK( pFont.use_count() == 1 );                               // the pool let go ...
     CHECK_FALSE( weak.expired() );                                 // ... the other owner keeps it
 
@@ -93,38 +93,38 @@ TEST_CASE( "Release drops only the pool's reference: a font still used elsewhere
 TEST_CASE( "A released font handle never resolves again, even when its slot is reused" )  {
 
     FontPool    pool;
-    FontHandle  handle = pool.Add( std :: make_shared<FakeFont>() );
+    FontHandle  hFont = pool.Add( std :: make_shared<FakeFont>() );
 
-    REQUIRE( pool.Release( handle ) );
-    CHECK( pool.Resolve( handle ).get() == nullptr );
-    CHECK_FALSE( pool.Release( handle ) );
+    REQUIRE( pool.Release( hFont ) );
+    CHECK( pool.Resolve( hFont ).get() == nullptr );
+    CHECK_FALSE( pool.Release( hFont ) );
 
     std :: shared_ptr<SunLight :: Font :: IFont>  pNext = std :: make_shared<FakeFont>();
-    FontHandle                                    reused = pool.Add( pNext );     // takes the freed slot
+    FontHandle                                    hReused = pool.Add( pNext );     // takes the freed slot
 
-    CHECK( reused != handle );
-    CHECK( pool.Resolve( reused ).get() == pNext.get() );
-    CHECK( pool.Resolve( handle ).get() == nullptr );
-    CHECK_FALSE( pool.Release( handle ) );
-    CHECK( pool.Resolve( reused ).get() == pNext.get() );                      // the stale handle did not release it
+    CHECK( hReused != hFont );
+    CHECK( pool.Resolve( hReused ).get() == pNext.get() );
+    CHECK( pool.Resolve( hFont ).get() == nullptr );
+    CHECK_FALSE( pool.Release( hFont ) );
+    CHECK( pool.Resolve( hReused ).get() == pNext.get() );                      // the stale handle did not release it
 }
 
 TEST_CASE( "Clear releases every font the pool holds" )  {
 
     FontPool                                      pool;
     std :: weak_ptr<SunLight :: Font :: IFont>    weak;
-    FontHandle                                    handle = INVALID_FONT_HANDLE;
+    FontHandle                                    hFont = INVALID_FONT_HANDLE;
 
     {
         std :: shared_ptr<SunLight :: Font :: IFont>  pFont = std :: make_shared<FakeFont>();
 
         weak   = pFont;
-        handle = pool.Add( pFont );
+        hFont = pool.Add( pFont );
     }
 
     REQUIRE_FALSE( weak.expired() );                               // only the pool holds it now
     pool.Clear();
     CHECK( weak.expired() );
-    CHECK( pool.Resolve( handle ).get() == nullptr );
+    CHECK( pool.Resolve( hFont ).get() == nullptr );
     CHECK( pool.Resolve( INVALID_FONT_HANDLE ).get() == nullptr );
 }

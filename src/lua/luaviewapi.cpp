@@ -30,6 +30,13 @@
 #include <utility>
 #include <vector>
 
+/** A view rectangle's fields (x, y, w, h); a backdrop colour's channels, with and without its
+    optional alpha; and the alpha used when it is left out. */
+#define __RECT_FIELDS     4
+#define __RGB_CHANNELS    3
+#define __RGBA_CHANNELS   4
+#define __OPAQUE_ALPHA    255
+
 extern "C"  {
   #include "lauxlib.h"
 }
@@ -117,10 +124,10 @@ namespace Scarab  {
              */
             static bool ReadViewRect( lua_State* pLuaState, int nFirst, SunLight :: Base :: stDimension2D& rect, std :: string& strError )  {
 
-                lua_Integer                aRect[4]    = { 0, 0, 0, 0 };
-                static const char * const  aszNames[4] = { "x", "y", "w", "h" };
+                lua_Integer                aRect[__RECT_FIELDS]    = { 0, 0, 0, 0 };
+                static const char * const  aszNames[__RECT_FIELDS] = { "x", "y", "w", "h" };
 
-                for( int nArg = 0; nArg < 4; nArg++ )
+                for( int nArg = 0; nArg < __RECT_FIELDS; nArg++ )
                     if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, nFirst + nArg, aszNames[nArg], aRect[nArg], strError ) )
                         return false;
 
@@ -934,14 +941,14 @@ namespace Scarab  {
             int LuaViewApi :: ViewSetBackgroundColor( lua_State* pLuaState )  {
 
                 std :: string                  strError;
-                lua_Integer                    aChannel[4]    = { 0, 0, 0, 255 };
-                static const char * const      aszNames[4]    = { "r", "g", "b", "a" };
+                lua_Integer                    aChannel[__RGBA_CHANNELS]    = { 0, 0, 0, __OPAQUE_ALPHA };
+                static const char * const      aszNames[__RGBA_CHANNELS]    = { "r", "g", "b", "a" };
                 std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
 
                 if( !pView )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                int  nChannels = lua_isnoneornil( pLuaState, 5 ) ? 3 : 4;
+                int  nChannels = lua_isnoneornil( pLuaState, 5 ) ? __RGB_CHANNELS : __RGBA_CHANNELS;
 
                 for( int nChannel = 0; nChannel < nChannels; nChannel++ )  {
                     if( !LuaEngineUtil :: ReadIntegerArg( pLuaState, 2 + nChannel, aszNames[nChannel], aChannel[nChannel], strError ) )
@@ -1058,17 +1065,17 @@ namespace Scarab  {
                 lua_Integer  nCount = ( lua_Integer ) luaL_len( pLuaState, 2 );
 
                 for( lua_Integer nIndex = 1; nIndex <= nCount; nIndex++ )  {
-                    int          bIsInteger = 0;
+                    int          nIsInteger = 0;
                     lua_Integer  nLayerId   = 0;
 
                     lua_geti( pLuaState, 2, nIndex );
 
                     if( lua_type( pLuaState, -1 ) == LUA_TNUMBER )
-                        nLayerId = lua_tointegerx( pLuaState, -1, &bIsInteger );
+                        nLayerId = lua_tointegerx( pLuaState, -1, &nIsInteger );
 
                     lua_pop( pLuaState, 1 );
 
-                    if( !bIsInteger )
+                    if( !nIsInteger )
                         return LuaEngineUtil :: PushError( pLuaState, "layer_ids[" + std :: to_string( nIndex ) + "] must be an integer layer id" );
 
                     layerIds.push_back( ( int ) nLayerId );

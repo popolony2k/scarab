@@ -1311,7 +1311,7 @@ filesystem, and the headless and archive smoke tests already cover it).
 |---|------|--------|
 | S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts; Scarab's own guide `docs/CODE_STYLE.md` (C++ copied from sunlight, plus Lua rules) | DONE |
 | S2a | Mechanical C++ alignment (spacing, `*`/`&` side, guards, `extern "C"` braces, `@param ;`, declaration columns), proven by identical object files | DONE |
-| S2b | C++ names and code (Hungarian renames, `override`, `using namespace`, `#define __NAME` constants, named numbers, `unique_ptr`), proven by behaviour | TODO |
+| S2b | C++ names and code (Hungarian renames, `override`, `using namespace`, `#define __NAME` constants, named numbers, `unique_ptr`), proven by behaviour | DONE |
 | S2c | Lua (`__NAME <const>`, license headers, names, named numbers in samples) + a CI style check, proven by the smoke tests and a window check | TODO |
 | S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
 | S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | TODO |
@@ -1425,6 +1425,44 @@ is at 0, a CI step fails on any new finding (S2c).
   25/25 unit tests, 14 smoke tests, 19 samples headless, the docs generator.
 - **Audit after S2a:** every mechanical rule at 0; left for S2b - 24 names, 5 `using namespace`, 4
   constants, 8 `new`/`delete`.
+
+**S2b (DONE, 2026-10-31).** The C++ changes that do change object code; the audit's C++ rules are now
+all at 0 in `src/` (the guide allows `using` in a test; numbers in unit tests are test data).
+- **Names:** variables and - a new audit rule, `cpp-hungarian-param` (33 real in sunlight) -
+  parameters: `SpriteHandle handle` -> `hSprite` and `FontHandle handle` -> `hFont` (the guide's `h`
+  prefix), `handleA`/`handleB` -> `hFirst`/`hSecond`, `uint16_t id` -> `nId`, `int bIsInteger` ->
+  `nIsInteger`, `m_CurrentSong` -> `m_nCurrentSong`, and the tests' handles. Code positions only, plus each
+  `@param`; `main`'s `argc`/`argv` are C++'s own names and stay.
+- **`override`** on the 19 interface methods (`EngineHost` 4, `RendererProvider` 13, `LuaCollisionListener`
+  2) - the compiler confirms each one overrides.
+- **No `using namespace` in `src/`:** each name fully qualified, found by compiling without the directive.
+  The constant tables keep their Lua names because the namespace goes inside each file's macro
+  (`#define __CONST( name )  { #name, ( int ) SunLight :: Input :: name }`) - qualifying the argument would
+  have made the Lua global `"SunLight :: Input :: KEY_A"`. (A first pass qualified some parameter names
+  too, after the compiler's error recovery; `luatilemapapi.cpp` was redone from a clean copy with only
+  the namespace's own type names.)
+- **Constants:** `NO_CONTENT_KEY`, `NO_AUDIO_SOUND_ID`, `NO_MAP_LOADED` and a test's `PLAIN_TEXT` are
+  `#define __NAME`. Numbers named, per the owner's rule (Lua API positions stay): rectangle fields and
+  colour channels (`__RECT_FIELDS`, `__RGB_CHANNELS`, `__RGBA_CHANNELS`, `__INSET_SIDES`) for array sizes
+  and their loop bounds, text buffer sizes, `__OPAQUE_ALPHA`, and the handle's layout in
+  `spritehandle.h` as public constants (`SPRITE_HANDLE_INDEX_MASK`, `SPRITE_HANDLE_GENERATION_SHIFT`,
+  `SPRITE_HANDLE_PTR_TAG_MASK`, `SPRITE_HANDLE_PTR_VALUE_MASK`); `+ 0.5` rounding -> `std :: llround`
+  (identical for the non-negative times it rounds). Kept as they are, with the owner's reasoning: a Lua
+  function's `return N` (how many results it pushes) and subscripts of small local arrays. A new audit
+  rule, `cpp-magic-number`, encodes this (41 real in sunlight; unit tests reported apart).
+- **`std :: unique_ptr` instead of raw `new`/`delete`:** `LuaEngine`'s collision listener, the timers
+  (`TimerMap` now owns them; `~Timer` stops its own thread), and `LuaPackApi`'s open zip archives
+  (`std :: make_unique<mz_zip_archive>()` value-initialises, as miniz requires). `~LuaEngine` still releases
+  the timers and the listener explicitly before `lua_close` - a timer's thread calls back into the Lua
+  state, so leaving them to the members' own destructors (which run after the destructor's body) would
+  let them outlive it.
+- **Audit sharpened again:** the pointer rule had skipped a whole line when anything on it looked like
+  an expression (a cast like `static_cast<TimerMap *>` hid `TimerMap  *pTimerMap`) - now per match
+  (sunlight: 118 real); number literals with a type suffix (`0xFFFFFFFFULL`) were missed by the listing.
+- **Proof:** 25/25 unit tests, 14 smoke tests, the headless smoke test, 19 samples headless, the docs
+  generator; Caravellius' acceptance PASS and state fingerprint `hash=33897632`; locally under
+  AddressSanitizer the unit tests and all 35 `asan_run.py` runs (the encrypted `--pack` path included)
+  clean, and `leaks --atExit` 0 leaks for the headless smoke test and the timers and collision samples.
 
 **S4 (TODO, added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
 mixes helpers every Lua module shares with ones only one category uses. Each new engine object

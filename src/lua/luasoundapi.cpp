@@ -23,6 +23,9 @@
 #include <cstdint>
 #include <set>
 
+/** Sound id 0 means "no audio" to the song commands: a deliberate no-op. */
+#define __NO_AUDIO_SOUND_ID  0
+
 
 namespace Scarab  {
     namespace Engine  {
@@ -36,9 +39,6 @@ namespace Scarab  {
              * the first sound and still reported success).
              */
             static std :: set<int>  s_LoadedSounds;
-
-            /** @brief Sound id 0 means "no audio" to the song commands: a deliberate no-op. */
-            static const int  NO_AUDIO_SOUND_ID = 0;
 
             /**
              * @brief Read a sound id argument that must be loaded.
@@ -260,7 +260,7 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 1, "id", 0, UINT16_MAX, nSoundId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( nSoundId != NO_AUDIO_SOUND_ID && s_LoadedSounds.find( ( int ) nSoundId ) == s_LoadedSounds.end() )
+                if( nSoundId != __NO_AUDIO_SOUND_ID && s_LoadedSounds.find( ( int ) nSoundId ) == s_LoadedSounds.end() )
                     return LuaEngineUtil :: PushError( pLuaState, "sound " + std :: to_string( nSoundId ) + " is not loaded (see sound_load)" );
 
                 LuaEngineUtil :: GetScriptProcessor( pLuaState ) -> GetScriptListener() -> OnCommand( cmd, ( uint16_t ) nSoundId );

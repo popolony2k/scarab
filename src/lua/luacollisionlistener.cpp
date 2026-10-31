@@ -68,8 +68,8 @@ namespace Scarab  {
                 if( !( bFirstIsLua && bSecondIsLua ) )
                     return;
 
-                SpriteHandle  handleA = UnpackSpriteHandleFromPtr( pFirstData );
-                SpriteHandle  handleB = UnpackSpriteHandleFromPtr( pSecondData );
+                SpriteHandle  hFirst = UnpackSpriteHandleFromPtr( pFirstData );
+                SpriteHandle  hSecond = UnpackSpriteHandleFromPtr( pSecondData );
 
                 lua_getglobal( m_pLuaState, "__collision_handler" );
 
@@ -79,8 +79,8 @@ namespace Scarab  {
                     return;
                 }
 
-                lua_pushinteger( m_pLuaState, ( lua_Integer ) handleA );
-                lua_pushinteger( m_pLuaState, ( lua_Integer ) handleB );
+                lua_pushinteger( m_pLuaState, ( lua_Integer ) hFirst );
+                lua_pushinteger( m_pLuaState, ( lua_Integer ) hSecond );
 
                 if( lua_pcall( m_pLuaState, 2, 0, 0 ) != 0 )  {
                     fprintf( stderr, "Error calling collision handler: %s\n", lua_tostring( m_pLuaState, -1 ) );
@@ -101,7 +101,7 @@ namespace Scarab  {
                 if( !IsPackedSpriteHandle( pFirstData ) )
                     return;
 
-                SpriteHandle  handle = UnpackSpriteHandleFromPtr( pFirstData );
+                SpriteHandle  hSprite = UnpackSpriteHandleFromPtr( pFirstData );
 
                 lua_getglobal( m_pLuaState, "__collision_tile_handler" );
 
@@ -111,7 +111,7 @@ namespace Scarab  {
                     return;
                 }
 
-                lua_pushinteger( m_pLuaState, ( lua_Integer ) handle );
+                lua_pushinteger( m_pLuaState, ( lua_Integer ) hSprite );
                 lua_pushinteger( m_pLuaState, ( lua_Integer ) pSecond -> nGID );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.pos.x );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.pos.y );

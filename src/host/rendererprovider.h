@@ -90,21 +90,21 @@ namespace Scarab  {
             const stHeadlessSettings& GetHeadlessSettings( void ) const;
 
             // Scarab::Engine::IRendererProvider
-            SunLight :: TileMap :: ITileMap* GetTileMap( const char* szTrigger );
-            SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char* szTrigger );
-            SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void );
+            SunLight :: TileMap :: ITileMap* GetTileMap( const char* szTrigger ) override;
+            SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char* szTrigger ) override;
+            SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void ) override;
             bool CreateRenderer( const SunLight :: Renderer :: RendererConfig& config,
-                                const Scarab :: Engine :: stRendererCreateExtras& extras, std :: string* pError );
-            Origin GetOrigin( void );
-            bool IsHeadless( void );
-            SunLight :: Renderer :: RendererConfig GetDefaultConfig( void );
-            SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void );
-            void NoteWindowTitle( const std :: string& strTitle );
-            bool GetUseDefaultKeyHandler( void );
+                                const Scarab :: Engine :: stRendererCreateExtras& extras, std :: string* pError ) override;
+            Origin GetOrigin( void ) override;
+            bool IsHeadless( void ) override;
+            SunLight :: Renderer :: RendererConfig GetDefaultConfig( void ) override;
+            SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void ) override;
+            void NoteWindowTitle( const std :: string& strTitle ) override;
+            bool GetUseDefaultKeyHandler( void ) override;
             bool RegisterFont( const char* szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
-                               bool bBold, bool bItalic, const char* szTrigger );
-            bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont>& pFont );
-            bool UnregisterFont( const char* szFamily, bool bBold, bool bItalic );
+                               bool bBold, bool bItalic, const char* szTrigger ) override;
+            bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont>& pFont ) override;
+            bool UnregisterFont( const char* szFamily, bool bBold, bool bItalic ) override;
         };
     }
 }

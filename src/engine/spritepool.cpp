@@ -193,18 +193,18 @@ namespace Scarab  {
          * TextureCanvas its own always-private dimension storage instead
          * (a real sunlight-side change, not a one-line SpritePool fix).
          *
-         * @param handle The handle to release;
+         * @param hSprite The handle to release;
          */
-        bool SpritePool :: Release( SpriteHandle handle )  {
+        bool SpritePool :: Release( SpriteHandle hSprite )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return false;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return false;
 
             slot.bInUse = false;
@@ -223,20 +223,20 @@ namespace Scarab  {
         /**
          * @brief Resolve a handle to it's live Sprite object.
          *
-         * @param handle The handle to resolve;
+         * @param hSprite The handle to resolve;
          * @return Pointer to the sprite, or nullptr if the handle is invalid,
          * stale, or out of range;
          */
-        SunLight :: Sprite :: Sprite* SpritePool :: Resolve( SpriteHandle handle )  {
+        SunLight :: Sprite :: Sprite* SpritePool :: Resolve( SpriteHandle hSprite )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nullptr;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nullptr;
 
             return &slot.sprite;
@@ -246,21 +246,21 @@ namespace Scarab  {
          * @brief Get a handle's texture canvas for the given sequence id, if it
          * was previously created via GetOrCreateTexture().
          *
-         * @param handle The sprite handle;
+         * @param hSprite The sprite handle;
          * @param nSequenceId The texture sequence id;
          * @return Pointer to the texture canvas, or nullptr if the handle is
          * invalid/stale or the sequence hasn't been created yet;
          */
-        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetTexture( SpriteHandle handle, int nSequenceId )  {
+        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetTexture( SpriteHandle hSprite, int nSequenceId )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nullptr;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nullptr;
 
             auto  itTexture = slot.textures.find( nSequenceId );
@@ -274,21 +274,21 @@ namespace Scarab  {
          * lifetime of the pool (std::map node storage), safe to hand to
          * Sprite::AddTextureSequence().
          *
-         * @param handle The sprite handle;
+         * @param hSprite The sprite handle;
          * @param nSequenceId The texture sequence id;
          * @return Pointer to the texture canvas, or nullptr if the handle is
          * invalid or stale;
          */
-        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetOrCreateTexture( SpriteHandle handle, int nSequenceId )  {
+        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetOrCreateTexture( SpriteHandle hSprite, int nSequenceId )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nullptr;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nullptr;
 
             return &slot.textures[nSequenceId];
@@ -304,21 +304,21 @@ namespace Scarab  {
          * reported dimension can no longer be trusted (@see stSlot::nativeTextureSizes,
          * and Release()'s own comment above for the fully-confirmed mechanism).
          *
-         * @param handle The sprite handle;
+         * @param hSprite The sprite handle;
          * @param nSequenceId The texture sequence id;
          * @param nCurrentWidth The just-loaded texture's currently reported width;
          * @return The cached natural width, or nCurrentWidth if the handle is invalid/stale;
          */
-        int SpritePool :: GetOrCacheNativeWidth( SpriteHandle handle, int nSequenceId, int nCurrentWidth )  {
+        int SpritePool :: GetOrCacheNativeWidth( SpriteHandle hSprite, int nSequenceId, int nCurrentWidth )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nCurrentWidth;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nCurrentWidth;
 
             stNativeTextureSize&  size = slot.nativeTextureSizes[nSequenceId];
@@ -337,16 +337,16 @@ namespace Scarab  {
          * reconfigure after the first once Sprite::AddTextureSequence has
          * aliased it to the sprite.
          */
-        int SpritePool :: GetOrCacheNativeHeight( SpriteHandle handle, int nSequenceId, int nCurrentHeight )  {
+        int SpritePool :: GetOrCacheNativeHeight( SpriteHandle hSprite, int nSequenceId, int nCurrentHeight )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nCurrentHeight;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nCurrentHeight;
 
             stNativeTextureSize&  size = slot.nativeTextureSizes[nSequenceId];

@@ -40,22 +40,22 @@ namespace Scarab  {
 
         /**
          * @brief The slot index a font handle addresses.
-         * @param handle The handle;
+         * @param hFont The handle;
          * @return The 0-based slot index; -1 for INVALID_FONT_HANDLE;
          */
-        static int32_t FontHandleIndex( FontHandle handle )  {
+        static int32_t FontHandleIndex( FontHandle hFont )  {
 
-            return ( int32_t ) ( handle & __FONT_HANDLE_INDEX_MASK ) - 1;
+            return ( int32_t ) ( hFont & __FONT_HANDLE_INDEX_MASK ) - 1;
         }
 
         /**
          * @brief The generation a font handle was made with.
-         * @param handle The handle;
+         * @param hFont The handle;
          * @return The generation;
          */
-        static uint16_t FontHandleGeneration( FontHandle handle )  {
+        static uint16_t FontHandleGeneration( FontHandle hFont )  {
 
-            return ( uint16_t ) ( handle >> __FONT_HANDLE_GENERATION_SHIFT );
+            return ( uint16_t ) ( hFont >> __FONT_HANDLE_GENERATION_SHIFT );
         }
 
         /**
@@ -95,16 +95,16 @@ namespace Scarab  {
          * registered for a text-object family keeps working until its last owner lets go.
          * @return false for a handle that isn't live (never given out, or already released);
          */
-        bool FontPool :: Release( FontHandle handle )  {
+        bool FontPool :: Release( FontHandle hFont )  {
 
-            int32_t  nIndex = FontHandleIndex( handle );
+            int32_t  nIndex = FontHandleIndex( hFont );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return false;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != FontHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != FontHandleGeneration( hFont ) ) )
                 return false;
 
             slot.pFont.reset();
@@ -116,16 +116,16 @@ namespace Scarab  {
         }
 
         /** @brief The font behind a live handle, or nullptr. */
-        std :: shared_ptr<SunLight :: Font :: IFont> FontPool :: Resolve( FontHandle handle ) const  {
+        std :: shared_ptr<SunLight :: Font :: IFont> FontPool :: Resolve( FontHandle hFont ) const  {
 
-            int32_t  nIndex = FontHandleIndex( handle );
+            int32_t  nIndex = FontHandleIndex( hFont );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nullptr;
 
             const stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != FontHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != FontHandleGeneration( hFont ) ) )
                 return nullptr;
 
             return slot.pFont;
