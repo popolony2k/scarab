@@ -6,7 +6,10 @@ map loaded, sprites stay registered across a load over a loaded map, and - on Li
 where the standard library can read a child's peak memory - loading the map over itself many
 times does not grow peak memory compared with a few loads (up to sunlight v0.38.0 every such load
 leaked the whole previous map: the published Scarab v0.1.25 grew about 30 KB per load headless).
-On Windows only the functional checks run. See the Lua script's own header.
+On Windows only the functional checks run, and so under a sanitizer (SCARAB_SANITIZER set, as
+scripts/asan_run.py does): AddressSanitizer keeps freed memory in quarantine, so peak memory grows
+whatever the code does, and LeakSanitizer checks leaks there more strictly. See the Lua script's own
+header.
 
 Each run quits itself only if every check passed (exit 0); otherwise it prints each failure and
 never quits, so --max-frames runs out and scarab exits 3.
@@ -31,6 +34,8 @@ MANY_LOADS          = 1000
 MAX_GROWTH_BYTES    = 8 * 1024 * 1024
 # ru_maxrss is in bytes on macOS, in kilobytes on Linux.
 MAXRSS_UNIT         = 1 if sys.platform == "darwin" else 1024
+# Set by scripts/asan_run.py: the peak-memory comparison means nothing under AddressSanitizer.
+UNDER_SANITIZER     = bool(os.environ.get("SCARAB_SANITIZER"))
 
 
 def run(scarab, repo_root, loads):
@@ -80,7 +85,9 @@ def main():
             print("\n".join(output.splitlines()[-30:]))
             print("---------------------------------------")
 
-    if peaks[FEW_LOADS] is not None and peaks[MANY_LOADS] is not None:
+    if UNDER_SANITIZER:
+        print("[SKIP] peak memory growth: under a sanitizer (its quarantine holds freed memory; LeakSanitizer checks leaks)")
+    elif peaks[FEW_LOADS] is not None and peaks[MANY_LOADS] is not None:
         growth = peaks[MANY_LOADS] - peaks[FEW_LOADS]
         grew   = growth > MAX_GROWTH_BYTES
 
