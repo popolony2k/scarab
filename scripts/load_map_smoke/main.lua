@@ -3,7 +3,7 @@
 
         LOADS=<n> scarab --headless --fast --max-frames 200 scripts/load_map_smoke/project.json
 
-    Pins doc/MASTER_PLAN.md item V10 (sunlight BREAKAGES 40): loading a map over a loaded one.
+    Pins plans/MASTER_PLAN.md item V10 (sunlight BREAKAGES 40): loading a map over a loaded one.
       - A map that fails to parse (broken.tmx, next to this script) returns nil + the reason and
         leaves the loaded map loaded (up to sunlight v0.38.0 the old map was lost - leaked - and
         no map was left).

@@ -3,7 +3,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/blend_api_smoke/project.json
 
-    Pins the Lua side of blend modes (doc/MASTER_PLAN.md item B1): the BLEND_MODE_* constants,
+    Pins the Lua side of blend modes (plans/MASTER_PLAN.md item B1): the BLEND_MODE_* constants,
     draw_begin_blend_mode / draw_end_blend_mode, and sprite_set / clear / get_blend_mode -
     values, round trips, every error, and that a recycled sprite slot never inherits its
     previous owner's mode. A headless run cannot see colour: what each mode LOOKS like is

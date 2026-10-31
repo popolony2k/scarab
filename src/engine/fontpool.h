@@ -41,7 +41,7 @@ namespace Scarab  {
         const FontHandle INVALID_FONT_HANDLE = 0;
 
         /**
-         * @brief The fonts Lua loaded with load_font (doc/MASTER_PLAN.md item C6), one shared
+         * @brief The fonts Lua loaded with load_font (plans/MASTER_PLAN.md item C6), one shared
          * sunlight font per handle. Lua-agnostic on purpose, like SpritePool: no lua_State here.
          *
          * A slot holds a std::shared_ptr<IFont> - one owner among several (the engine while the

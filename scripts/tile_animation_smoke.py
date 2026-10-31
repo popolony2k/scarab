@@ -1,5 +1,5 @@
 """
-Smoke test for the tile animation by time and the tile frame query (doc/MASTER_PLAN.md item V13).
+Smoke test for the tile animation by time and the tile frame query (plans/MASTER_PLAN.md item V13).
 
 Runs scripts/tile_animation_smoke/main.lua headless once on resources/tilemap/animation/animation.tmx:
 every copy of an animated tile shows exactly the frame the virtual clock predicts, every frame

@@ -33,7 +33,7 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
             /**
-             * @brief Fonts and text Lua primitives (doc/MASTER_PLAN.md item C6, over sunlight I3
+             * @brief Fonts and text Lua primitives (plans/MASTER_PLAN.md item C6, over sunlight I3
              * "fonts by handle"): font handles (load_font/release_font, kept in the engine's
              * FontPool), the active font (set_font -> IDrawSurface::SetFont), fonts for the map's
              * Tiled text objects (register_font/unregister_font -> TileMapRenderer::RegisterFont/

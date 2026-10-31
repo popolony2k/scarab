@@ -20,7 +20,7 @@
 
 
 /**
- * @brief Scarab's unit tests (doctest) - doc/MASTER_PLAN.md item R2. Built with
+ * @brief Scarab's unit tests (doctest) - plans/MASTER_PLAN.md item R2. Built with
  * -DSCARAB_BUILD_TESTS=ON; see tests/CMakeLists.txt. Everything here runs without a window.
  */
 

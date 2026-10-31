@@ -1,5 +1,5 @@
 """
-Smoke test for sprite-vs-tile collisions and tile lookups (doc/MASTER_PLAN.md item V11).
+Smoke test for sprite-vs-tile collisions and tile lookups (plans/MASTER_PLAN.md item V11).
 
 Runs scripts/tile_collision_smoke/main.lua headless at zoom 1 and 3.8125: tilemap_to_tile_matrix
 and tilemap_get_tile work in map space, a sprite swept past a collision tile collides exactly

@@ -1,5 +1,5 @@
 """
-Smoke test for tilemap_load_map over a loaded map (doc/MASTER_PLAN.md item V10).
+Smoke test for tilemap_load_map over a loaded map (plans/MASTER_PLAN.md item V10).
 
 Runs scripts/load_map_smoke/main.lua headless twice: a map that fails to parse leaves the loaded
 map loaded, sprites stay registered across a load over a loaded map, and - on Linux and macOS,
@@ -30,7 +30,7 @@ MANY_LOADS          = 1000
 # Peak-memory growth allowed from FEW_LOADS to MANY_LOADS. Measured 2026-10-29 on macOS x64,
 # headless: the fixed build (sunlight a6ac4f6) grows about 0 MB, the published v0.1.25 (sunlight
 # v0.38.0, which leaked every previous map) about 30 MB - see the measurement in
-# doc/MASTER_PLAN.md item V10.
+# plans/MASTER_PLAN.md item V10.
 MAX_GROWTH_BYTES    = 8 * 1024 * 1024
 # ru_maxrss is in bytes on macOS, in kilobytes on Linux.
 MAXRSS_UNIT         = 1 if sys.platform == "darwin" else 1024

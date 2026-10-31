@@ -20,7 +20,7 @@
 
 
 /**
- * @brief LuaEngineUtil's strict argument readers and helpers (doc/MASTER_PLAN.md item D3), on a
+ * @brief LuaEngineUtil's strict argument readers and helpers (plans/MASTER_PLAN.md item D3), on a
  * bare lua_State - no engine, no window. Every Lua function reads its arguments through these, so
  * their accept/refuse rules and messages are what every script sees.
  */

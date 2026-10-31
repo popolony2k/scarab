@@ -3,7 +3,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/layer_tint_smoke/project.json
 
-    Pins doc/MASTER_PLAN.md item V12 (sunlight BREAKAGES 45 and 57, I8): tilemap_get_layer_tint /
+    Pins plans/MASTER_PLAN.md item V12 (sunlight BREAKAGES 45 and 57, I8): tilemap_get_layer_tint /
     tilemap_set_layer_tint (and their _by_name forms) on resources/tilemap/tint/tint.tmx - every
     authored Tiled "tintcolor" read back exactly, alpha included (opaque white for a layer with
     none), for tile, image, object and group layers; set then get; writing back the values read

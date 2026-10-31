@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="32" tileheight="32" infinite="0" nextlayerid="20" nextobjectid="100">
- <!-- Scarab's tint test map (doc/MASTER_PLAN.md item V12, sunlight I8): every case of a Tiled layer "tintcolor", each row
+ <!-- Scarab's tint test map (plans/MASTER_PLAN.md item V12, sunlight I8): every case of a Tiled layer "tintcolor", each row
       labelled. Tint RGB multiplies into tiles, image layers and tile objects; its alpha is ignored for drawing; shapes and text
       are never tinted; a group's tint and opacity multiply into its children. Tiles: Scarab's house tileset (one folder up). -->
  <tileset firstgid="1" source="../tileset_house.tsx"/>

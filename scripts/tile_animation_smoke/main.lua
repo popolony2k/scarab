@@ -3,7 +3,7 @@
 
         scarab --headless --fast --max-frames 400 scripts/tile_animation_smoke/project.json
 
-    Pins doc/MASTER_PLAN.md item V13 (sunlight I11, BREAKAGES 44 and 60): a Tiled tile animation runs BY
+    Pins plans/MASTER_PLAN.md item V13 (sunlight I11, BREAKAGES 44 and 60): a Tiled tile animation runs BY
     TIME - the frame shown is the time since tilemap_load_map, modulo the cycle, walked through the
     durations - read with tilemap_get_tile_frame / tilemap_get_object_tile_frame on
     resources/tilemap/animation/animation.tmx (one tile animating over gids 1 / 6 / 11 for

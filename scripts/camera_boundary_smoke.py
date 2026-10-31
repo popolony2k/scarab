@@ -7,7 +7,7 @@ with a scroll step that divides none of the distances to the map's far edges, th
 must stop EXACTLY on the far edge (a partial last step) and come back EXACTLY to the
 origin - on the default view at Scarab's default zoom (3.8125), through both the old
 camera_move_* globals and view_move_camera_*, and on an extra view at zoom 1.0.
-See the Lua script's own header, and doc/MASTER_PLAN.md item V1.
+See the Lua script's own header, and plans/MASTER_PLAN.md item V1.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.

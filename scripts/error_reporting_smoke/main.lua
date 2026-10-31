@@ -3,7 +3,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/error_reporting_smoke/project.json
 
-    Pins doc/MASTER_PLAN.md item D3: every Lua function that can fail reports it as
+    Pins plans/MASTER_PLAN.md item D3: every Lua function that can fail reports it as
     `nil, "message"` (never a Lua error, never a silent no-op or a "safe" value), a function with
     nothing else to return returns `true`, and arguments are checked strictly (a wrong type, a
     missing argument, a fractional number where an integer is expected, a value out of range or

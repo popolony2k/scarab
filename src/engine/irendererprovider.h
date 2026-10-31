@@ -43,14 +43,14 @@ namespace Scarab  {
              * Install sunlight's own default camera/zoom key and gamepad bindings (arrow
              * keys, PageUp/Down, Home/End, and the matching gamepad buttons) -
              * renderer_create's use_default_key_handler. Out of RendererConfig because
-             * sunlight removed its own equivalent field (doc/MASTER_PLAN.md item D1):
+             * sunlight removed its own equivalent field (plans/MASTER_PLAN.md item D1):
              * installing a preset is an action, not a setting.
              */
             bool                         bUseDefaultKeyHandler = false;
 
             /*
              * The default view's preferred zoom POSITION - what zoom_reset returns to,
-             * renderer_create's preferred_zoom (doc/MASTER_PLAN.md item D2). Empty (left
+             * renderer_create's preferred_zoom (plans/MASTER_PLAN.md item D2). Empty (left
              * out) keeps sunlight's own default. RendererConfig has a current zoom
              * (nZoomPos) but no preferred one.
              */
