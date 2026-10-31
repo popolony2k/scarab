@@ -1313,7 +1313,7 @@ filesystem, and the headless and archive smoke tests already cover it).
 | S2a | Mechanical C++ alignment (spacing, `*`/`&` side, guards, `extern "C"` braces, `@param ;`, declaration columns), proven by identical object files | DONE |
 | S2b | C++ names and code (Hungarian renames, `override`, `using namespace`, `#define __NAME` constants, named numbers, `unique_ptr`), proven by behaviour | DONE |
 | S2c | Lua (`__NAME <const>`, license headers, names, named numbers in samples) + a CI style check, proven by the smoke tests and a window check | DONE |
-| S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | TODO |
+| S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | DONE |
 | S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | TODO |
 
 **S1 (DONE, 2026-10-31).** The owner widened it (2026-10-31): Lua gets rules too, so Scarab now has its
@@ -1494,6 +1494,19 @@ all at 0 in `src/` (the guide allows `using` in a test; numbers in unit tests ar
   build (the C++ documentation rule reads sunlight's headers from `build/_deps`).
 - **Proof:** 14 smoke tests, the headless smoke test, 19 samples headless, the docs generator, and all
   35 `asan_run.py` runs clean.
+
+**S3 (DONE, 2026-10-31).** `CLAUDE.md`'s "Code style (existing convention - match it, don't fix it)"
+is now "Code style": `docs/CODE_STYLE.md` is the reference for C++ and Lua, new and touched code follows
+it, and `scripts/style_audit.py --check` (CI, Linux) enforces it; `-- lint: allow <rule> (why)` marks an
+exception. The bullets the guide now covers became a short summary of the most-hit rules (the owner
+chose a summary over a bare pointer: `CLAUDE.md` is loaded every session, the guide is not), which also
+writes in the rules this plan reserved for S3 - include rather than forward-declare, never
+forward-declare an external library's class - and `#define __NAME` for file-private constants. The old
+Doxygen bullet ("don't add commentary the surrounding code doesn't already have") contradicted S2a's
+"every function has a Doxygen comment" and now follows the guide. The project rules (`@luaname`,
+`@luaconstants`, `nil, "message"`, the zlib header) stay as they were. Build and CI sections: the "no
+linter, match the existing style" line points to the guide, and the Style check step is described.
+Documentation only.
 
 **S4 (TODO, added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
 mixes helpers every Lua module shares with ones only one category uses. Each new engine object
