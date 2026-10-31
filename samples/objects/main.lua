@@ -40,16 +40,16 @@
 
 -- The layout sunlight's sample uses (the map's frame object matches it):
 -- a 1000 x 800 viewport at (40, 40), zoom 1.0, the camera at (100, 100).
-local VIEWPORT     = { x = 40, y = 40, w = 1000, h = 800 }
-local START_CAMERA = { x = 100, y = 100 }
-local SCROLL_STEP  = 4    -- map pixels per frame while an arrow key is held
+local __VIEWPORT     <const> = { x = 40, y = 40, w = 1000, h = 800 }
+local __START_CAMERA <const> = { x = 100, y = 100 }
+local __SCROLL_STEP  <const> = 4    -- map pixels per frame while an arrow key is held
 
 local renderer, err = renderer_create{
     title          = "Scarab - objects sample",
-    viewport       = VIEWPORT,
+    viewport       = __VIEWPORT,
     zoom           = 1.0,
     preferred_zoom = 1.0,
-    scroll_step    = { w = SCROLL_STEP, h = SCROLL_STEP },
+    scroll_step    = { w = __SCROLL_STEP, h = __SCROLL_STEP },
 }
 assert( renderer, err )
 
@@ -59,24 +59,12 @@ sp_wait( 1 )
 
 assert( tilemap_load_map( "resources/tilemap/objects/objects.tmx", MAP_ALIGNMENT_TOP_LEFT ) )
 
--- One font, one load: the map's "Sans" text objects and the HUD below.
-local sans = assert( load_font( "resources/fonts/caravellius8x8.fnt" ) )
-assert( register_font( "Sans", sans ) )
+-- One font, one load: the map's "Sans" text objects use the HUD's own font.
+local Hud = dofile( "samples/shared/hud.lua" )
 
-camera_set_position( START_CAMERA.x, START_CAMERA.y )
+assert( register_font( "Sans", Hud.font() ) )
 
-local HUD_X         = 40
-local HUD_Y         = 852
-local HUD_SIZE      = 16
-local PLATE_PADDING = 4     -- pixels around a line of text on its plate
-local PLATE_ALPHA   = 170   -- the plate's opacity, 0..255
-
--- A line of HUD text in "Sans" on a dark translucent plate.
-local function draw_hud_line( text, x, y, r, g, b )
-    draw_filled_rectangle( x - PLATE_PADDING, y - PLATE_PADDING,
-        measure_text( text, HUD_SIZE, sans ) + 2 * PLATE_PADDING, HUD_SIZE + 2 * PLATE_PADDING, 0, 0, 0, PLATE_ALPHA )
-    draw_text( text, x, y, HUD_SIZE, r, g, b, 255, sans )
-end
+assert( camera_set_position( __START_CAMERA.x, __START_CAMERA.y ) )
 
 function on_update( dt )
 
@@ -106,12 +94,11 @@ function on_update( dt )
 
     if input_is_key_released( KEY_HOME ) then
         zoom_reset()
-        camera_set_position( START_CAMERA.x, START_CAMERA.y )
+        camera_set_position( __START_CAMERA.x, __START_CAMERA.y )
     end
 
     local camX, camY = camera_get_position()
 
-    draw_hud_line( string.format( "objects sample - camera %d, %d   zoom %.2f", camX, camY, viewport_get_zoom_factor() ),
-        HUD_X, HUD_Y, 255, 255, 255 )
-    draw_hud_line( "arrows/WASD pan   PageUp/PageDown or +/- zoom   = reset zoom   Home reset", HUD_X, HUD_Y + 28, 200, 200, 200 )
+    Hud.line_from_bottom( string.format( "objects sample - camera %d, %d   zoom %.2f", camX, camY, viewport_get_zoom_factor() ), 2, Hud.TITLE )
+    Hud.line_from_bottom( "arrows/WASD pan   PageUp/PageDown or +/- zoom   = reset zoom   Home reset", 1, Hud.DIM )
 end

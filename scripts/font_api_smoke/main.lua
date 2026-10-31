@@ -38,12 +38,12 @@
 
 io.stdout:setvbuf( "line" )
 
-local REGULAR  = "resources/fonts/caravellius8x8.fnt"
-local BOLD     = "resources/fonts/caravellius8x8_bold.fnt"
-local TTF      = "resources/fonts/pressstart2p-regular.ttf"
-local MISSING  = "resources/fonts/this-font-does-not-exist.ttf"
-local SIZE     = 20
-local BAD      = 123456          -- a number that is not a live handle
+local __REGULAR <const> = "resources/fonts/caravellius8x8.fnt"
+local __BOLD    <const> = "resources/fonts/caravellius8x8_bold.fnt"
+local __TTF     <const> = "resources/fonts/pressstart2p-regular.ttf"
+local __MISSING <const> = "resources/fonts/this-font-does-not-exist.ttf"
+local __SIZE    <const> = 20
+local __BAD     <const> = 123456          -- a number that is not a live handle
 
 local failures = {}
 
@@ -62,31 +62,31 @@ function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
 -- load_font: a handle per load; every failure is nil + the reason
-local regular, err = load_font( REGULAR )
+local regular, err = load_font( __REGULAR )
 check( math.type( regular ) == "integer", "load_font( regular ) failed: " .. tostring( err ) )
-local bold = load_font( BOLD )
-local ttf  = load_font( TTF )
+local bold = load_font( __BOLD )
+local ttf  = load_font( __TTF )
 check( math.type( bold ) == "integer" and math.type( ttf ) == "integer", "load_font( bold / ttf ) failed" )
 check( regular ~= bold and bold ~= ttf and regular ~= ttf, "load_font gave the same handle twice" )
-expect_error( "load missing", "cannot load font '" .. MISSING .. "'", load_font( MISSING ) )
+expect_error( "load missing", "cannot load font '" .. __MISSING .. "'", load_font( __MISSING ) )
 expect_error( "load number", "load_font expects a path", load_font( 5 ) )
 expect_error( "load none", "load_font expects a path", load_font() )
 
 -- set_font: a handle, a path (load + select), nil (built-in); failures keep the active font
 check( set_font( regular ) == true, "set_font( handle ) failed" )
-check( set_font( TTF ) == true, "set_font( path ) failed" )
+check( set_font( __TTF ) == true, "set_font( path ) failed" )
 check( set_font( nil ) == true, "set_font( nil ) failed" )
-expect_error( "set missing path", "cannot load font '" .. MISSING .. "'", set_font( MISSING ) )
-expect_error( "set bad handle", "invalid font handle", set_font( BAD ) )
+expect_error( "set missing path", "cannot load font '" .. __MISSING .. "'", set_font( __MISSING ) )
+expect_error( "set bad handle", "invalid font handle", set_font( __BAD ) )
 expect_error( "set none", "set_font expects a path, a font or nil", set_font() )
 expect_error( "set boolean", "set_font expects a path, a font or nil", set_font( true ) )
 
 -- draw_text / measure_text: the optional last argument
-check( measure_text( "Hello", SIZE ) > 0, "measure_text with the active font gave no width" )
-check( measure_text( "Hello", SIZE, regular ) > 0, "measure_text with a font gave no width" )
-check( measure_text( "", SIZE, regular ) == 0, "measure_text of an empty string is not 0" )
-expect_error( "measure bad font", "invalid font handle", measure_text( "Hello", SIZE, BAD ) )
-expect_error( "measure font as a string", "invalid font handle", measure_text( "Hello", SIZE, "x" ) )
+check( measure_text( "Hello", __SIZE ) > 0, "measure_text with the active font gave no width" )
+check( measure_text( "Hello", __SIZE, regular ) > 0, "measure_text with a font gave no width" )
+check( measure_text( "", __SIZE, regular ) == 0, "measure_text of an empty string is not 0" )
+expect_error( "measure bad font", "invalid font handle", measure_text( "Hello", __SIZE, __BAD ) )
+expect_error( "measure font as a string", "invalid font handle", measure_text( "Hello", __SIZE, "x" ) )
 
 -- register_font / unregister_font: by handle and by slot
 check( register_font( "Sans", regular ) == true, "register_font( Sans, regular ) failed" )
@@ -95,7 +95,7 @@ check( register_font( "Sans", regular, false, true ) == true, "register_font( Sa
 check( register_font( "Sans", regular ) == true, "registering the same slot again must replace it" )
 expect_error( "register empty family", "non-empty string", register_font( "", regular ) )
 expect_error( "register number family", "non-empty string", register_font( 7, regular ) )
-expect_error( "register bad font", "invalid font handle", register_font( "Sans", BAD ) )
+expect_error( "register bad font", "invalid font handle", register_font( "Sans", __BAD ) )
 expect_error( "register no font", "invalid font handle", register_font( "Sans" ) )
 expect_error( "register bold string", "'bold' must be a boolean", register_font( "Sans", regular, "yes" ) )
 expect_error( "register italic number", "'italic' must be a boolean", register_font( "Sans", regular, false, 1 ) )
@@ -105,26 +105,26 @@ expect_error( "unregister slot twice", "not registered", unregister_font( "Sans"
 check( unregister_font( regular ) == true, "unregister_font( regular ) failed (it fills Sans and Sans italic)" )
 expect_error( "unregister font twice", "not registered", unregister_font( regular ) )
 expect_error( "unregister slot gone", "not registered", unregister_font( "Sans", false, true ) )
-expect_error( "unregister bad", "unregister_font expects a font or a family", unregister_font( BAD ) )
+expect_error( "unregister bad", "unregister_font expects a font or a family", unregister_font( __BAD ) )
 expect_error( "unregister bold string", "'bold' must be a boolean", unregister_font( "Sans", "yes" ) )
 
 -- release_font: drops only the handle - a font still active or registered keeps working
 check( register_font( "Mono", ttf ) == true, "register_font( Mono, ttf ) failed" )
 check( set_font( ttf ) == true, "set_font( ttf ) failed" )
-local widthBefore = measure_text( "Hello", SIZE )
+local widthBefore = measure_text( "Hello", __SIZE )
 check( release_font( ttf ) == true, "release_font( ttf ) failed" )
 expect_error( "release twice", "invalid font handle", release_font( ttf ) )
-expect_error( "released handle in draw_text", "invalid font handle", draw_text( "x", 0, 0, SIZE, 255, 255, 255, 255, ttf ) )
+expect_error( "released handle in draw_text", "invalid font handle", draw_text( "x", 0, 0, __SIZE, 255, 255, 255, 255, ttf ) )
 expect_error( "released handle in set_font", "invalid font handle", set_font( ttf ) )
-check( measure_text( "Hello", SIZE ) == widthBefore, "the active font changed when its handle was released" )
+check( measure_text( "Hello", __SIZE ) == widthBefore, "the active font changed when its handle was released" )
 check( unregister_font( "Mono" ) == true, "a released font must still be registered (unregister by family)" )
 
 -- a released slot is reused, but the old handle never resolves to the new font
-local reused = load_font( TTF )
+local reused = load_font( __TTF )
 check( math.type( reused ) == "integer" and reused ~= ttf, "a reused slot gave back the released handle " .. tostring( reused ) )
-check( measure_text( "Hello", SIZE, reused ) > 0, "the new handle in a reused slot does not work" )
-expect_error( "stale handle after reuse", "invalid font handle", measure_text( "Hello", SIZE, ttf ) )
-expect_error( "release bad", "invalid font handle", release_font( BAD ) )
+check( measure_text( "Hello", __SIZE, reused ) > 0, "the new handle in a reused slot does not work" )
+expect_error( "stale handle after reuse", "invalid font handle", measure_text( "Hello", __SIZE, ttf ) )
+expect_error( "release bad", "invalid font handle", release_font( __BAD ) )
 expect_error( "release string", "invalid font handle", release_font( "x" ) )
 
 check( release_font( regular ) == true and release_font( bold ) == true and release_font( reused ) == true,
@@ -135,8 +135,8 @@ function on_update( dt )
     frames = frames + 1
     if frames == 1 then
         -- drawing with a font handle inside a real frame
-        local font = load_font( REGULAR )
-        check( font ~= nil and draw_text( "frame", 10, 10, SIZE, 255, 255, 255, 255, font ) == true,
+        local font = load_font( __REGULAR )
+        check( font ~= nil and draw_text( "frame", 10, 10, __SIZE, 255, 255, 255, 255, font ) == true,
                "draw_text with a font failed inside a frame" )
         release_font( font )
 

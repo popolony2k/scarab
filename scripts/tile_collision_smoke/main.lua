@@ -1,4 +1,24 @@
 --[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
     Tile collision smoke test - run by scripts/tile_collision_smoke.py (and ci.yml, every platform):
 
         ZOOM=<factor> scarab --headless --fast --max-frames 2000 scripts/tile_collision_smoke/project.json
@@ -27,17 +47,17 @@
 
 io.stdout:setvbuf( "line" )
 
-local MAP          = "scripts/tile_collision_smoke/collision.tmx"
-local TEXTURE      = "resources/sprites/sunny_idle_down.png"
-local FRAMES       = 4      -- texture frames in sunny_idle_down.png: a 32x32 sprite
-local TILE_LAYER   = 1      -- "ground"
-local SPRITE_LAYER = 2      -- "sprites"
-local TILE         = 32     -- tile size, map pixels
-local ZOOM         = tonumber( os.getenv( "ZOOM" ) or "1" )
-local CAMERA       = 64     -- the camera offset of the camera phases, both axes
-local SWEEP_FROM   = 0
-local SWEEP_TO     = 260
-local HOLD_FRAMES  = 10     -- frames a still sprite is held in the call-count phases
+local __MAP          <const> = "scripts/tile_collision_smoke/collision.tmx"
+local __TEXTURE      <const> = "resources/sprites/sunny_idle_down.png"
+local __FRAMES       <const> = 4      -- texture frames in sunny_idle_down.png: a 32x32 sprite
+local __TILE_LAYER   <const> = 1      -- "ground"
+local __SPRITE_LAYER <const> = 2      -- "sprites"
+local __TILE         <const> = 32     -- tile size, map pixels
+local __ZOOM         <const> = tonumber( os.getenv( "ZOOM" ) or "1" )
+local __CAMERA       <const> = 64     -- the camera offset of the camera phases, both axes
+local __SWEEP_FROM   <const> = 0
+local __SWEEP_TO     <const> = 260
+local __HOLD_FRAMES  <const> = 10     -- frames a still sprite is held in the call-count phases
 
 local failures = {}
 
@@ -45,12 +65,12 @@ local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
 
-check( renderer_create{ zoom = ZOOM, preferred_zoom = ZOOM } ~= nil, "renderer_create failed" )
+check( renderer_create{ zoom = __ZOOM, preferred_zoom = __ZOOM } ~= nil, "renderer_create failed" )
 
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
-check( tilemap_load_map( MAP, MAP_ALIGNMENT_TOP_LEFT ) == true, MAP .. " failed to load" )
+check( tilemap_load_map( __MAP, MAP_ALIGNMENT_TOP_LEFT ) == true, __MAP .. " failed to load" )
 
 -- the lookups, in map space
 local row, col = tilemap_to_tile_matrix( 0, 0 )
@@ -63,18 +83,18 @@ row, col = tilemap_to_tile_matrix( 319, 319 )
 check( row == 9 and col == 9, "to_tile_matrix( 319, 319 ) = " .. tostring( row ) .. "," .. tostring( col ) )
 check( tilemap_to_tile_matrix( 320, 0 ) == nil, "to_tile_matrix( 320, 0 ) must be outside the map" )
 
-local gid, tx, ty, tw, th = tilemap_get_tile( 5, 5, TILE_LAYER )
-check( gid == 1 and tx == 160 and ty == 160 and tw == TILE and th == TILE,
+local gid, tx, ty, tw, th = tilemap_get_tile( 5, 5, __TILE_LAYER )
+check( gid == 1 and tx == 160 and ty == 160 and tw == __TILE and th == __TILE,
        string.format( "get_tile( 5, 5 ) = %s %s,%s %sx%s - expected gid 1 at 160,160 32x32", gid, tx, ty, tw, th ) )
 
 check( pool_register_type( "sunny", 1 ) == true, "pool_register_type failed" )
 
 local sunny = sprite_acquire( "sunny" )
 
-check( sprite_configure_texture( sunny, 0, TEXTURE, FRAMES, 0, TEXTURE_ANIMATION_MODE_MANUAL ) == true, "configure failed" )
+check( sprite_configure_texture( sunny, 0, __TEXTURE, __FRAMES, 0, TEXTURE_ANIMATION_MODE_MANUAL ) == true, "configure failed" )
 check( sprite_set_active_sequence( sunny, 0 ) == true, "set_active_sequence failed" )
-check( sprite_add_to_layer( sunny, SPRITE_LAYER ) == true, "add_to_layer failed" )
-check( collision_add_tile_rule( SPRITE_LAYER, TILE_LAYER ) == true, "collision_add_tile_rule failed" )
+check( sprite_add_to_layer( sunny, __SPRITE_LAYER ) == true, "add_to_layer failed" )
+check( collision_add_tile_rule( __SPRITE_LAYER, __TILE_LAYER ) == true, "collision_add_tile_rule failed" )
 
 local calls   = 0          -- handler calls since the last frame
 local lastHit = nil        -- the last tile handed to the handler
@@ -93,9 +113,9 @@ end ) == true, "collision_set_tile_handler failed" )
 local phases = {
     { name = "view-relative, camera 0", world = false, camera = 0, y = 160, from = 129, to = 191 },
     { name = "world-space, camera 0", world = true, camera = 0, y = 160, from = 129, to = 191 },
-    { name = "view-relative, camera 64", world = false, camera = CAMERA, y = 160 - CAMERA, from = 129 - CAMERA, to = 191 - CAMERA },
-    { name = "world-space, camera 64", world = true, camera = CAMERA, y = 160, from = 129, to = 191 },
-    { name = "world-space, camera 64, two rows away", world = true, camera = CAMERA, y = 160 - CAMERA, from = nil, to = nil },
+    { name = "view-relative, camera 64", world = false, camera = __CAMERA, y = 160 - __CAMERA, from = 129 - __CAMERA, to = 191 - __CAMERA },
+    { name = "world-space, camera 64", world = true, camera = __CAMERA, y = 160, from = 129, to = 191 },
+    { name = "world-space, camera 64, two rows away", world = true, camera = __CAMERA, y = 160 - __CAMERA, from = nil, to = nil },
     { name = "touching two tiles", world = true, camera = 0, hold = { x = 80, y = 64 }, perFrame = 2 },
     { name = "a tile with two shapes", world = true, camera = 0, hold = { x = 32, y = 256 }, perFrame = 1 },
     { name = "the far corner tile", world = true, camera = 0, hold = { x = 300, y = 300 }, perFrame = 1 },
@@ -120,7 +140,7 @@ local function start_phase()
     check( camera_set_position( current.camera, current.camera ) == true, current.name .. ": camera_set_position failed" )
 
     first, last, held, tileSeen = nil, nil, 0, nil
-    x = current.hold and current.hold.x or SWEEP_FROM
+    x = current.hold and current.hold.x or __SWEEP_FROM
 
     check( sprite_set_pos( sunny, x, current.hold and current.hold.y or current.y ) == true, current.name .. ": set_pos failed" )
     calls = 0
@@ -136,7 +156,7 @@ local function finish_phase()
                           tostring( first ), tostring( last ), tostring( current.from ), tostring( current.to ) ) )
 
     if current.from then
-        check( tileSeen and tileSeen.gid == 1 and tileSeen.x == 160 and tileSeen.y == 160 and tileSeen.w == TILE and tileSeen.h == TILE,
+        check( tileSeen and tileSeen.gid == 1 and tileSeen.x == 160 and tileSeen.y == 160 and tileSeen.w == __TILE and tileSeen.h == __TILE,
                current.name .. ": the tile handed to the handler is not gid 1 at map 160,160 32x32" )
         check( tileSeen and tileSeen.handle == sunny, current.name .. ": the handler got another handle" )
     end
@@ -161,7 +181,7 @@ function on_update( dt )
         calls = 0
         held  = held + 1
 
-        if held > HOLD_FRAMES then
+        if held > __HOLD_FRAMES then
             finish_phase()
             start_phase()
         end
@@ -175,7 +195,7 @@ function on_update( dt )
         calls = 0
         x     = x + 1
 
-        if x > SWEEP_TO then
+        if x > __SWEEP_TO then
             finish_phase()
             start_phase()
         else
@@ -187,7 +207,7 @@ function on_update( dt )
         reported = true
 
         if #failures == 0 then
-            print( "TILE COLLISION SMOKE OK zoom=" .. ZOOM )
+            print( "TILE COLLISION SMOKE OK zoom=" .. __ZOOM )
             app_quit()
         else
             for _, message in ipairs( failures ) do

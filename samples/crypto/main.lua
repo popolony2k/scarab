@@ -43,7 +43,13 @@
  Build scarab with your own key" step) to see both code paths.
 ]]
 
-app_set_name( "Scarab - crypto sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+-- The tamper test flips this byte: past the 24-byte nonce, inside the ciphertext itself.
+local __TAMPER_BYTE  <const> = 31
+local __BYTE_VALUES  <const> = 256
+
+assert( app_set_name( "Scarab - crypto sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
@@ -74,9 +80,9 @@ else
     -- ciphertext, and confirm decryption is REFUSED rather than
     -- returning silently-wrong data - crypto_secretbox's own
     -- authenticated-encryption guarantee.
-    local tampered = string.sub( encrypted, 1, 30 )
-        .. string.char( ( string.byte( encrypted, 31 ) + 1 ) % 256 )
-        .. string.sub( encrypted, 32 )
+    local tampered = string.sub( encrypted, 1, __TAMPER_BYTE - 1 )
+        .. string.char( ( string.byte( encrypted, __TAMPER_BYTE ) + 1 ) % __BYTE_VALUES )
+        .. string.sub( encrypted, __TAMPER_BYTE + 1 )
     local tamperResult = crypto_decrypt_data( tampered )
 
     if tamperResult == nil then
@@ -88,13 +94,14 @@ end
 
 function on_update( dt )
 
-    draw_text( "crypto sample", 20, 20, 24, 255, 255, 255, 255 )
-    draw_text( status, 20, 54, 18, 200, 200, 200, 255 )
+    Hud.line( "crypto sample", 1, Hud.TITLE )
+
+    local rows = Hud.lines( status, 2, Hud.INFO )
 
     if tamperStatus ~= nil then
-        draw_text( tamperStatus, 20, 82, 18, 200, 200, 200, 255 )
+        Hud.lines( tamperStatus, 2 + rows, Hud.INFO )
     end
 
-    draw_text( "Rebuild with -DSCARAB_CONTENT_KEY=<64 hex chars> to see the encrypted path (see tools/README.md).",
-        20, screen_get_height() - 34, 16, 140, 140, 140, 255 )
+    Hud.line_from_bottom( "-DSCARAB_CONTENT_KEY=<64 hex chars> shows the encrypted path", 2, Hud.DIM )
+    Hud.line_from_bottom( "(see tools/README.md)", 1, Hud.DIM )
 end

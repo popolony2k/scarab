@@ -41,51 +41,56 @@ assert( renderer, err )
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_TOP_LEFT )
+local Hud = dofile( "samples/shared/hud.lua" )
 
-local GLOW_LAYER    = 4     -- "clouds" in test.tmx: drawn before Sunny's layer
-local SUNNY_LAYER   = 5     -- "houses"
-local SUNNY_SIZE    = 32    -- one frame of sunny_idle_down.png
-local GLOW_SIZE     = 128   -- glow.png
-local SPEED         = 3     -- pixels/frame
-local SUNNY_START   = { x = 250, y = 250 }
-local SHADOW_POS    = { x = 60, y = 520 }
+assert( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_TOP_LEFT ) )
+
+local __GLOW_LAYER        <const> = 4     -- "clouds" in test.tmx: drawn before Sunny's layer
+local __SUNNY_LAYER       <const> = 5     -- "houses"
+local __SUNNY_SIZE        <const> = 32    -- one frame of sunny_idle_down.png
+local __GLOW_SIZE         <const> = 128   -- glow.png
+local __SPEED             <const> = 3     -- pixels/frame
+local __SUNNY_START       <const> = { x = 250, y = 250 }
+local __SHADOW_POS        <const> = { x = 60, y = 520 }
+local __SUNNY_FRAMES      <const> = 4     -- sunny_idle_down.png: four frames side by side
+local __SUNNY_FRAME_MILLI <const> = 100   -- per frame
 
 -- Every asset here is in resources/sprites/ - see its README.md.
-pool_register_type( "sunny", 1 )
-pool_register_type( "glow", 1 )
-pool_register_type( "shadow", 1 )
+assert( pool_register_type( "sunny", 1 ) )
+assert( pool_register_type( "glow", 1 ) )
+assert( pool_register_type( "shadow", 1 ) )
 
-local sunny  = sprite_acquire( "sunny" )
-local glow   = sprite_acquire( "glow" )
-local shadow = sprite_acquire( "shadow" )
+local sunny  = assert( sprite_acquire( "sunny" ) )
+local glow   = assert( sprite_acquire( "glow" ) )
+local shadow = assert( sprite_acquire( "shadow" ) )
 
-sprite_configure_texture( sunny, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
-sprite_set_active_sequence( sunny, 0 )
-sprite_configure_texture( glow, 0, "resources/sprites/glow.png", 1, 0, TEXTURE_ANIMATION_MODE_MANUAL, 0 )
-sprite_set_active_sequence( glow, 0 )
-sprite_configure_texture( shadow, 0, "resources/sprites/shadow.png", 1, 0, TEXTURE_ANIMATION_MODE_MANUAL, 0 )
-sprite_set_active_sequence( shadow, 0 )
+assert( sprite_configure_texture( sunny, 0, "resources/sprites/sunny_idle_down.png", __SUNNY_FRAMES, 0,
+    TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, __SUNNY_FRAME_MILLI ) )
+assert( sprite_set_active_sequence( sunny, 0 ) )
+assert( sprite_configure_texture( glow, 0, "resources/sprites/glow.png", 1, 0, TEXTURE_ANIMATION_MODE_MANUAL, 0 ) )
+assert( sprite_set_active_sequence( glow, 0 ) )
+assert( sprite_configure_texture( shadow, 0, "resources/sprites/shadow.png", 1, 0, TEXTURE_ANIMATION_MODE_MANUAL, 0 ) )
+assert( sprite_set_active_sequence( shadow, 0 ) )
 
 -- The shadow always multiplies: it darkens what is under it. Its PNG's
 -- transparent pixels are white on purpose - no white box may show around it.
 assert( sprite_set_blend_mode( shadow, BLEND_MODE_MULTIPLY ) )
-sprite_set_pos( shadow, SHADOW_POS.x, SHADOW_POS.y )
+assert( sprite_set_pos( shadow, __SHADOW_POS.x, __SHADOW_POS.y ) )
 
-sprite_add_to_layer( glow, GLOW_LAYER )
-sprite_add_to_layer( shadow, GLOW_LAYER )
-sprite_add_to_layer( sunny, SUNNY_LAYER )
+assert( sprite_add_to_layer( glow, __GLOW_LAYER ) )
+assert( sprite_add_to_layer( shadow, __GLOW_LAYER ) )
+assert( sprite_add_to_layer( sunny, __SUNNY_LAYER ) )
 
 -- The glow's mode, chosen by the number keys. nil = no mode of its own (it
 -- draws by whatever mode is in effect, which for a sprite is normal).
-local GLOW_MODES = {
+local __GLOW_MODES <const> = {
     { key = KEY_ONE,   mode = nil,                 name = "no mode of its own" },
     { key = KEY_TWO,   mode = BLEND_MODE_NORMAL,   name = "BLEND_MODE_NORMAL" },
     { key = KEY_THREE, mode = BLEND_MODE_ADD,      name = "BLEND_MODE_ADD" },
     { key = KEY_FOUR,  mode = BLEND_MODE_MULTIPLY, name = "BLEND_MODE_MULTIPLY" },
     { key = KEY_FIVE,  mode = BLEND_MODE_SUBTRACT, name = "BLEND_MODE_SUBTRACT" },
 }
-local DEFAULT_GLOW_MODE = 3   -- add
+local __DEFAULT_GLOW_MODE <const> = 3   -- add
 
 local glowModeName
 
@@ -98,73 +103,72 @@ local function set_glow_mode( entry )
     glowModeName = entry.name
 end
 
-set_glow_mode( GLOW_MODES[DEFAULT_GLOW_MODE] )
+set_glow_mode( __GLOW_MODES[__DEFAULT_GLOW_MODE] )
 
 -- The panels: the same red, green and blue squares (alpha 200), one panel
 -- per mode, each over its own backdrop - the sky, except the add panel,
 -- over a dark night where added colours mix instead of saturating to white.
-local PANEL        = { x = 700, y = 20, w = 280, h = 200, gap = 12 }
-local SQUARE       = 80
-local SQUARE_ALPHA = 200
-local SKY          = { 150, 205, 235 }
-local NIGHT        = { 20, 25, 55 }
-local SQUARES      = {
+local __PANEL        <const> = { x = 700, y = 20, w = 280, h = 200, gap = 12 }
+local __SQUARE       <const> = 80
+local __SQUARE_ALPHA <const> = 200
+local __SKY          <const> = { 150, 205, 235 }
+local __NIGHT        <const> = { 20, 25, 55 }
+local __SQUARES      <const> = {
     { dx = 40,  dy = 50,  color = { 230, 40, 40 } },
     { dx = 95,  dy = 85,  color = { 40, 200, 60 } },
     { dx = 150, dy = 50,  color = { 50, 80, 230 } },
 }
-local PANELS = {
-    { mode = BLEND_MODE_NORMAL,   name = "NORMAL: the squares cover each other",  backdrop = SKY },
-    { mode = BLEND_MODE_ADD,      name = "ADD: colours add up (over night)",      backdrop = NIGHT },
-    { mode = BLEND_MODE_MULTIPLY, name = "MULTIPLY: each square tints the sky",  backdrop = SKY },
-    { mode = BLEND_MODE_SUBTRACT, name = "SUBTRACT: each takes its colour out",  backdrop = SKY },
+local __PANELS <const> = {
+    { mode = BLEND_MODE_NORMAL,   name = "NORMAL: covers",    backdrop = __SKY },
+    { mode = BLEND_MODE_ADD,      name = "ADD: adds (night)", backdrop = __NIGHT },
+    { mode = BLEND_MODE_MULTIPLY, name = "MULTIPLY: tints",   backdrop = __SKY },
+    { mode = BLEND_MODE_SUBTRACT, name = "SUBTRACT: removes", backdrop = __SKY },
 }
-local LABEL_COLOR = { 255, 255, 255, 255 }
-local HUD_PLATE   = { x = 10, y = 660, w = 680, h = 120 }
+local __LABEL_INSET <const> = 6     -- pixels from a panel's corner to its label
+local __OPAQUE      <const> = 255
 
 local function draw_panels()
-    for index, panel in ipairs( PANELS ) do
-        local x = PANEL.x
-        local y = PANEL.y + ( index - 1 ) * ( PANEL.h + PANEL.gap )
+    for index, panel in ipairs( __PANELS ) do
+        local x = __PANEL.x
+        local y = __PANEL.y + ( index - 1 ) * ( __PANEL.h + __PANEL.gap )
         local b = panel.backdrop
 
-        draw_filled_rectangle( x, y, PANEL.w, PANEL.h, b[1], b[2], b[3], 255 )   -- normal: the backdrop
+        draw_filled_rectangle( x, y, __PANEL.w, __PANEL.h, b[1], b[2], b[3], __OPAQUE )   -- normal: the backdrop
 
         draw_begin_blend_mode( panel.mode )
-        for _, square in ipairs( SQUARES ) do
+        for _, square in ipairs( __SQUARES ) do
             local c = square.color
-            draw_filled_rectangle( x + square.dx, y + square.dy, SQUARE, SQUARE, c[1], c[2], c[3], SQUARE_ALPHA )
+            draw_filled_rectangle( x + square.dx, y + square.dy, __SQUARE, __SQUARE, c[1], c[2], c[3], __SQUARE_ALPHA )
         end
         draw_end_blend_mode()
 
         -- the label is drawn in normal mode, after draw_end_blend_mode, so it looks the same in every panel
-        draw_filled_rectangle( x, y, PANEL.w, 24, 0, 0, 0, 160 )
-        draw_text( panel.name, x + 6, y + 4, 16, LABEL_COLOR[1], LABEL_COLOR[2], LABEL_COLOR[3], LABEL_COLOR[4] )
+        Hud.line_at( panel.name, x + __LABEL_INSET, y + __LABEL_INSET, Hud.TITLE )
     end
 end
 
-local sunnyX, sunnyY = SUNNY_START.x, SUNNY_START.y
+local sunnyX, sunnyY = __SUNNY_START.x, __SUNNY_START.y
 
 function on_update( dt )
 
-    if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then sunnyX = sunnyX - SPEED end
-    if input_is_key_down( KEY_RIGHT ) or input_is_key_down( KEY_D ) then sunnyX = sunnyX + SPEED end
-    if input_is_key_down( KEY_UP ) or input_is_key_down( KEY_W ) then sunnyY = sunnyY - SPEED end
-    if input_is_key_down( KEY_DOWN ) or input_is_key_down( KEY_S ) then sunnyY = sunnyY + SPEED end
+    if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then sunnyX = sunnyX - __SPEED end
+    if input_is_key_down( KEY_RIGHT ) or input_is_key_down( KEY_D ) then sunnyX = sunnyX + __SPEED end
+    if input_is_key_down( KEY_UP ) or input_is_key_down( KEY_W ) then sunnyY = sunnyY - __SPEED end
+    if input_is_key_down( KEY_DOWN ) or input_is_key_down( KEY_S ) then sunnyY = sunnyY + __SPEED end
 
-    for _, entry in ipairs( GLOW_MODES ) do
+    for _, entry in ipairs( __GLOW_MODES ) do
         if input_is_key_released( entry.key ) then set_glow_mode( entry ) end
     end
 
     -- the glow is centred on Sunny (positions are top-left anchored)
     sprite_set_pos( sunny, sunnyX, sunnyY )
-    sprite_set_pos( glow, sunnyX + ( SUNNY_SIZE - GLOW_SIZE ) // 2, sunnyY + ( SUNNY_SIZE - GLOW_SIZE ) // 2 )
+    sprite_set_pos( glow, sunnyX + ( __SUNNY_SIZE - __GLOW_SIZE ) // 2, sunnyY + ( __SUNNY_SIZE - __GLOW_SIZE ) // 2 )
 
     draw_panels()
 
-    draw_filled_rectangle( HUD_PLATE.x, HUD_PLATE.y, HUD_PLATE.w, HUD_PLATE.h, 0, 0, 0, 200 )
-    draw_text( "blend sample - arrows/WASD move Sunny", 20, HUD_PLATE.y + 10, 20, 255, 255, 255, 255 )
-    draw_text( "glow: 1 none, 2 normal, 3 add, 4 multiply, 5 subtract", 20, HUD_PLATE.y + 40, 18, 220, 220, 220, 255 )
-    draw_text( "glow mode: " .. glowModeName, 20, HUD_PLATE.y + 66, 18, 255, 220, 120, 255 )
-    draw_text( "the shadow (bottom left) always multiplies", 20, HUD_PLATE.y + 92, 18, 220, 220, 220, 255 )
+    Hud.line_from_bottom( "blend sample - arrows/WASD move Sunny", 5, Hud.TITLE )
+    Hud.line_from_bottom( "glow: 1 none  2 normal  3 add", 4, Hud.DIM )
+    Hud.line_from_bottom( "      4 multiply  5 subtract", 3, Hud.DIM )
+    Hud.line_from_bottom( "glow mode: " .. glowModeName, 2, Hud.INFO )
+    Hud.line_from_bottom( "the shadow (bottom left) multiplies", 1, Hud.DIM )
 end

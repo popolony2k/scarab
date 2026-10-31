@@ -89,6 +89,7 @@
 -- script keeps working for form 2 (a real window, app_set_name calling
 -- successfully) too.
 if app_set_name then
+    -- lint: allow lua-unchecked-load (only the window title, and only when a window exists)
     app_set_name( "Scarab - content packer" )
 end
 

@@ -38,36 +38,42 @@
  two at a glance.
 ]]
 
-app_set_name( "Scarab - input sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+assert( app_set_name( "Scarab - input sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-input_add_gamepad( 0 )
+local __GAMEPAD <const> = 0      -- the gamepad id this sample reads
+
+assert( input_add_gamepad( __GAMEPAD ) )
 
 local screenWidth  = screen_get_width()
 local screenHeight = screen_get_height()
 
-local __SQUARE_SIZE = 40
-local __SPEED        = 6  -- pixels/frame - fine for a short demo, see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
-local __STICK_DEADZONE = 0.1  -- raw axis values jitter near 0 even when the stick is physically centered
+local __SQUARE_SIZE    <const> = 40
+local __SQUARE_COLOR   <const> = { r = 60, g = 160, b = 220 }
+local __OPAQUE         <const> = 255
+local __SPEED          <const> = 6      -- pixels/frame - fine for a short demo, see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
+local __STICK_DEADZONE <const> = 0.1    -- raw axis values jitter near 0 even when the stick is physically centered
 
-local function startPos()
+local function start_pos()
     return ( screenWidth - __SQUARE_SIZE ) / 2, ( screenHeight - __SQUARE_SIZE ) / 2
 end
 
-local squareX, squareY = startPos()
+local squareX, squareY = start_pos()
 
 function on_update( dt )
 
-    local axisX = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_X )
-    local axisY = input_get_gamepad_axis( 0, GAMEPAD_AXIS_LEFT_Y )
-    local faceDown = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN )
-    local dpadUp    = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_UP )
-    local dpadDown  = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_DOWN )
-    local dpadLeft  = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_LEFT )
-    local dpadRight = input_is_gamepad_button_down( 0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT )
+    local axisX     = input_get_gamepad_axis( __GAMEPAD, GAMEPAD_AXIS_LEFT_X )
+    local axisY     = input_get_gamepad_axis( __GAMEPAD, GAMEPAD_AXIS_LEFT_Y )
+    local faceDown  = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN )
+    local dpadUp    = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP )
+    local dpadDown  = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN )
+    local dpadLeft  = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_LEFT )
+    local dpadRight = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_RIGHT )
 
     if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then
         squareX = squareX - __SPEED
@@ -119,15 +125,17 @@ function on_update( dt )
     squareY = math.max( 0, math.min( screenHeight - __SQUARE_SIZE, squareY ) )
 
     if input_is_key_released( KEY_R ) or faceDown then
-        squareX, squareY = startPos()
+        squareX, squareY = start_pos()
     end
 
-    draw_filled_rectangle( math.floor( squareX ), math.floor( squareY ), __SQUARE_SIZE, __SQUARE_SIZE, 60, 160, 220, 255 )
+    draw_filled_rectangle( math.floor( squareX ), math.floor( squareY ), __SQUARE_SIZE, __SQUARE_SIZE,
+        __SQUARE_COLOR.r, __SQUARE_COLOR.g, __SQUARE_COLOR.b, __OPAQUE )
 
-    draw_text( "input sample - arrows/WASD, left stick, or D-pad to move; R or face-down button to reset", 20, 20, 18, 255, 255, 255, 255 )
-    draw_text( "gamepad 0 left stick: " .. string.format( "%.2f, %.2f", axisX, axisY )
-        .. "  face-down: " .. tostring( faceDown ), 20, 46, 18, 200, 200, 200, 255 )
-    draw_text( "D-pad up/down/left/right: " .. tostring( dpadUp ) .. "/" .. tostring( dpadDown )
-        .. "/" .. tostring( dpadLeft ) .. "/" .. tostring( dpadRight ), 20, 68, 18, 200, 200, 200, 255 )
-    draw_text( "(reads centered/false with no gamepad connected - that's expected, not an error)", 20, 90, 18, 150, 150, 150, 255 )
+    Hud.line( "input sample - arrows/WASD, left stick, or D-pad to move", 1, Hud.TITLE )
+    Hud.line( "R or face-down button to reset", 2, Hud.TITLE )
+    Hud.line( "gamepad " .. __GAMEPAD .. " left stick: " .. string.format( "%.2f, %.2f", axisX, axisY )
+        .. "  face-down: " .. tostring( faceDown ), 3, Hud.INFO )
+    Hud.line( "D-pad up/down/left/right: " .. tostring( dpadUp ) .. "/" .. tostring( dpadDown )
+        .. "/" .. tostring( dpadLeft ) .. "/" .. tostring( dpadRight ), 4, Hud.INFO )
+    Hud.lines( "(reads centered/false with no gamepad connected - that's expected, not an error)", 5, Hud.DIM )
 end

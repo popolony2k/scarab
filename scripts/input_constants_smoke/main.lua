@@ -63,11 +63,11 @@ check( KEY_MENU ~= KEY_R, "KEY_MENU and KEY_R are the same number (" .. tostring
 -- 2. every group: every expected constant exists, is an integer, and no two share a value.
 -- Names are checked in the order luainputapi.cpp lists them (never pairs() - see CLAUDE.md).
 local groups = split( os.getenv( "INPUT_SMOKE_NAMES" ) or "", ";" )
-local GROUP_TITLES = { "keyboard keys", "gamepad buttons", "gamepad axes", "controller types" }
+local __GROUP_TITLES <const> = { "keyboard keys", "gamepad buttons", "gamepad axes", "controller types" }
 
-check( #groups == #GROUP_TITLES, "INPUT_SMOKE_NAMES has " .. #groups .. " groups, want " .. #GROUP_TITLES .. " (run through input_constants_smoke.py)" )
+check( #groups == #__GROUP_TITLES, "INPUT_SMOKE_NAMES has " .. #groups .. " groups, want " .. #__GROUP_TITLES .. " (run through input_constants_smoke.py)" )
 
-for index, title in ipairs( GROUP_TITLES ) do
+for index, title in ipairs( __GROUP_TITLES ) do
     local names    = split( groups[index] or "", "," )
     local byValue  = {}
 

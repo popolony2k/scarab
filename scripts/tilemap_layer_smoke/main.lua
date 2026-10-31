@@ -1,4 +1,24 @@
 --[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
     Tile-map layer smoke test - run by scripts/tilemap_layer_smoke.py (and ci.yml, every
     platform):
 
@@ -21,11 +41,11 @@
 
 io.stdout:setvbuf( "line" )
 
-local OPAQUE             = 1
-local SKY                = { id = 1, name = "sky" }
-local BACKGROUND_CLOUDS  = { id = 2, name = "background_clouds", authored = 0.69 }
-local BACKGROUND         = { id = 3, name = "background", authored = 0.65 }
-local NO_SUCH_LAYER      = 999
+local __OPAQUE            <const> = 1
+local __SKY               <const> = { id = 1, name = "sky" }
+local __BACKGROUND_CLOUDS <const> = { id = 2, name = "background_clouds", authored = 0.69 }
+local __BACKGROUND        <const> = { id = 3, name = "background", authored = 0.65 }
+local __NO_SUCH_LAYER     <const> = 999
 
 local failures = {}
 
@@ -52,13 +72,13 @@ sp_wait( 1 )
 check( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_TOP_LEFT ), "resources/tilemap/test.tmx failed to load" )
 
 -- 1. the authored values, read back exactly (0.69 reads 0.69, not 176 or 0.68999999761...)
-check( opacity_of( SKY.id ) == OPAQUE, "an opaque layer reads " .. tostring( opacity_of( SKY.id ) ) .. ", want 1" )
-check( opacity_of( BACKGROUND_CLOUDS.id ) == BACKGROUND_CLOUDS.authored,
-       "background_clouds reads " .. tostring( opacity_of( BACKGROUND_CLOUDS.id ) ) .. ", want 0.69" )
-check( opacity_of( BACKGROUND.id ) == BACKGROUND.authored,
-       "background reads " .. tostring( opacity_of( BACKGROUND.id ) ) .. ", want 0.65" )
+check( opacity_of( __SKY.id ) == __OPAQUE, "an opaque layer reads " .. tostring( opacity_of( __SKY.id ) ) .. ", want 1" )
+check( opacity_of( __BACKGROUND_CLOUDS.id ) == __BACKGROUND_CLOUDS.authored,
+       "background_clouds reads " .. tostring( opacity_of( __BACKGROUND_CLOUDS.id ) ) .. ", want 0.69" )
+check( opacity_of( __BACKGROUND.id ) == __BACKGROUND.authored,
+       "background reads " .. tostring( opacity_of( __BACKGROUND.id ) ) .. ", want 0.65" )
 
-for _, layer in ipairs( { SKY, BACKGROUND_CLOUDS, BACKGROUND } ) do
+for _, layer in ipairs( { __SKY, __BACKGROUND_CLOUDS, __BACKGROUND } ) do
     local visible, opacity, offX, offY = tilemap_get_layer( layer.id )
     local visibleN, opacityN, offXN, offYN = tilemap_get_layer_by_name( layer.name )
     check( visible == visibleN and opacity == opacityN and offX == offXN and offY == offYN,
@@ -67,7 +87,7 @@ end
 
 -- 2. writing a layer's own values back changes nothing, however many times (the 0..255 integer
 -- moved an authored 0.5 to 0.502 on every write-back)
-for _, layer in ipairs( { SKY, BACKGROUND_CLOUDS, BACKGROUND } ) do
+for _, layer in ipairs( { __SKY, __BACKGROUND_CLOUDS, __BACKGROUND } ) do
     local visible, opacity, offX, offY = tilemap_get_layer( layer.id )
 
     for _ = 1, 3 do
@@ -80,31 +100,31 @@ for _, layer in ipairs( { SKY, BACKGROUND_CLOUDS, BACKGROUND } ) do
 end
 
 -- 3. exact round trips, by id and by name - 0.5 is the value the integer used to move
-for _, value in ipairs( { 0, 0.25, 0.3, 0.5, 0.65, 0.69, OPAQUE } ) do
-    check( tilemap_set_layer( SKY.id, true, value, 0, 0 ), "tilemap_set_layer( opacity " .. value .. " ) failed" )
-    check( opacity_of( SKY.id ) == value, "opacity " .. value .. " read back as " .. tostring( opacity_of( SKY.id ) ) )
+for _, value in ipairs( { 0, 0.25, 0.3, 0.5, 0.65, 0.69, __OPAQUE } ) do
+    check( tilemap_set_layer( __SKY.id, true, value, 0, 0 ), "tilemap_set_layer( opacity " .. value .. " ) failed" )
+    check( opacity_of( __SKY.id ) == value, "opacity " .. value .. " read back as " .. tostring( opacity_of( __SKY.id ) ) )
 
-    check( tilemap_set_layer_by_name( BACKGROUND.name, true, value, 0, 0 ), "tilemap_set_layer_by_name( opacity " .. value .. " ) failed" )
-    local _, byName = tilemap_get_layer_by_name( BACKGROUND.name )
+    check( tilemap_set_layer_by_name( __BACKGROUND.name, true, value, 0, 0 ), "tilemap_set_layer_by_name( opacity " .. value .. " ) failed" )
+    local _, byName = tilemap_get_layer_by_name( __BACKGROUND.name )
     check( byName == value, "by name: opacity " .. value .. " read back as " .. tostring( byName ) )
 end
 
 -- 4. outside 0..1, or not a number: refused, and the layer keeps its opacity
-check( tilemap_set_layer( SKY.id, true, 0.5, 0, 0 ), "tilemap_set_layer( 0.5 ) failed" )
-expect_error( "opacity 1.5", "argument 'opacity' must be between 0 and 1", tilemap_set_layer( SKY.id, true, 1.5, 0, 0 ) )
-expect_error( "opacity -0.1", "argument 'opacity' must be between 0 and 1", tilemap_set_layer( SKY.id, true, -0.1, 0, 0 ) )
-expect_error( "opacity 255", "argument 'opacity' must be between 0 and 1", tilemap_set_layer( SKY.id, true, 255, 0, 0 ) )
-expect_error( "opacity string", "argument 'opacity' must be a number", tilemap_set_layer( SKY.id, true, "0.5", 0, 0 ) )
-check( opacity_of( SKY.id ) == 0.5, "a refused opacity changed the layer: it reads " .. tostring( opacity_of( SKY.id ) ) )
+check( tilemap_set_layer( __SKY.id, true, 0.5, 0, 0 ), "tilemap_set_layer( 0.5 ) failed" )
+expect_error( "opacity 1.5", "argument 'opacity' must be between 0 and 1", tilemap_set_layer( __SKY.id, true, 1.5, 0, 0 ) )
+expect_error( "opacity -0.1", "argument 'opacity' must be between 0 and 1", tilemap_set_layer( __SKY.id, true, -0.1, 0, 0 ) )
+expect_error( "opacity 255", "argument 'opacity' must be between 0 and 1", tilemap_set_layer( __SKY.id, true, 255, 0, 0 ) )
+expect_error( "opacity string", "argument 'opacity' must be a number", tilemap_set_layer( __SKY.id, true, "0.5", 0, 0 ) )
+check( opacity_of( __SKY.id ) == 0.5, "a refused opacity changed the layer: it reads " .. tostring( opacity_of( __SKY.id ) ) )
 
 -- the other fields round-trip with the opacity
-check( tilemap_set_layer( SKY.id, false, 0.5, 7, -3 ), "tilemap_set_layer( false, 0.5, 7, -3 ) failed" )
-local v, o, x, y = tilemap_get_layer( SKY.id )
+check( tilemap_set_layer( __SKY.id, false, 0.5, 7, -3 ), "tilemap_set_layer( false, 0.5, 7, -3 ) failed" )
+local v, o, x, y = tilemap_get_layer( __SKY.id )
 check( v == false and o == 0.5 and x == 7 and y == -3, "fields read back as " .. tostring( v ) .. " " .. tostring( o ) .. " " .. tostring( x ) .. " " .. tostring( y ) )
 
 -- an unknown layer: nil, "message" from both a get and a set (item D3)
-local unknownGet, unknownGetErr = tilemap_get_layer( NO_SUCH_LAYER )
-local unknownSet, unknownSetErr = tilemap_set_layer( NO_SUCH_LAYER, true, OPAQUE, 0, 0 )
+local unknownGet, unknownGetErr = tilemap_get_layer( __NO_SUCH_LAYER )
+local unknownSet, unknownSetErr = tilemap_set_layer( __NO_SUCH_LAYER, true, __OPAQUE, 0, 0 )
 check( unknownGet == nil and tostring( unknownGetErr ):find( "no layer", 1, true ), "an unknown layer id must read nil, \"no layer ...\"" )
 check( unknownSet == nil and tostring( unknownSetErr ):find( "no layer", 1, true ), "writing an unknown layer id must return nil, \"no layer ...\"" )
 

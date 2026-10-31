@@ -29,7 +29,9 @@
  stop_song/resume_song, which cover both tracked forms identically.
 ]]
 
-app_set_name( "Scarab - sound sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+assert( app_set_name( "Scarab - sound sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence - nothing
@@ -37,13 +39,18 @@ app_set_name( "Scarab - sound sample" )
 -- runs from a key press, inside on_update).
 sp_wait( 1 )
 
-local __SOUND_ID = 1
+local __SOUND_ID    <const> = 1
+local __VOLUME_STEP <const> = 0.1
 
-sound_load( __SOUND_ID, "resources/sounds/stage_theme.wav" )
+-- Not asserted: with no audio device (eg. a CI machine) the load fails, and the sample still runs and
+-- says so on its HUD.
+local soundLoaded, soundError = sound_load( __SOUND_ID, "resources/sounds/stage_theme.wav" )
 
 local volume = 1.0
 
-sound_set_volume( __SOUND_ID, volume )
+if soundLoaded then
+    sound_set_volume( __SOUND_ID, volume )
+end
 
 function on_update( dt )
 
@@ -72,16 +79,24 @@ function on_update( dt )
     end
 
     if input_is_key_released( KEY_UP ) then
-        volume = math.min( 1.0, volume + 0.1 )
+        volume = math.min( 1.0, volume + __VOLUME_STEP )
         sound_set_volume( __SOUND_ID, volume )
     end
 
     if input_is_key_released( KEY_DOWN ) then
-        volume = math.max( 0.0, volume - 0.1 )
+        volume = math.max( 0.0, volume - __VOLUME_STEP )
         sound_set_volume( __SOUND_ID, volume )
     end
 
-    draw_text( "sound sample - 1/2/3 play (one-shot/looping/queued), P pause, O stop, R resume, Up/Down volume", 20, 20, 18, 255, 255, 255, 255 )
-    draw_text( "sound_is_playing: " .. tostring( sound_is_playing( __SOUND_ID ) )
-        .. "   volume: " .. string.format( "%.1f", volume ), 20, 50, 20, 200, 200, 200, 255 )
+    Hud.line( "sound sample - 1/2/3 play (one-shot/looping/queued)", 1, Hud.TITLE )
+    Hud.line( "P pause, O stop, R resume, Up/Down volume", 2, Hud.TITLE )
+
+    if not soundLoaded then
+        Hud.line( "sound_load FAILED: " .. tostring( soundError ), 3, Hud.ALERT )
+
+        return
+    end
+
+    Hud.line( "sound_is_playing: " .. tostring( sound_is_playing( __SOUND_ID ) )
+        .. "   volume: " .. string.format( "%.1f", volume ), 3, Hud.INFO )
 end

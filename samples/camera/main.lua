@@ -29,23 +29,23 @@
  camera_get_position/viewport_get_dimension/viewport_get_zoom_factor.
 ]]
 
-app_set_name( "Scarab - camera sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+-- The jump (Space) lands the camera this fraction of the way into the map.
+local __JUMP_FRACTION <const> = 1 / 4
+
+assert( app_set_name( "Scarab - camera sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER )
+assert( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER ) )
 
 -- zoom_reset (Home, =) returns to the view's PREFERRED zoom, which is separate
 -- from the current one and defaults to 1.0 - make it the zoom this sample
 -- starts at (Scarab's default, 3.8125), so a reset goes back to it.
-view_set_preferred_zoom( 0, viewport_get_zoom_factor() )
-
--- Dark text: the map's sky behind the text is light, so white/light-grey text
--- can't be read over it.
-local TITLE_COLOR = { r = 20, g = 20, b = 20, a = 255 }
-local INFO_COLOR  = { r = 50, g = 50, b = 70, a = 255 }
+assert( view_set_preferred_zoom( 0, viewport_get_zoom_factor() ) )
 
 function on_update( dt )
 
@@ -101,15 +101,16 @@ function on_update( dt )
     if input_is_key_released( KEY_SPACE ) then
         local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
 
-        camera_set_position( math.floor( mapWidth * tileWidth / 4 ), math.floor( mapHeight * tileHeight / 4 ) )
+        camera_set_position( math.floor( mapWidth * tileWidth * __JUMP_FRACTION ), math.floor( mapHeight * tileHeight * __JUMP_FRACTION ) )
     end
 
     local camX, camY = camera_get_position()
     local vpX, vpY, vpW, vpH = viewport_get_dimension()
     local zoom = viewport_get_zoom_factor()
 
-    draw_text( "camera sample - arrows/WASD pan, PageUp/PageDown or +/- zoom, = reset zoom, Home reset, Space jump", 20, 20, 20, TITLE_COLOR.r, TITLE_COLOR.g, TITLE_COLOR.b, TITLE_COLOR.a )
-    draw_text( "camera_get_position: " .. camX .. ", " .. camY, 20, 50, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
-    draw_text( "viewport_get_dimension: " .. vpX .. ", " .. vpY .. " " .. vpW .. "x" .. vpH, 20, 72, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
-    draw_text( "viewport_get_zoom_factor: " .. string.format( "%.2f", zoom ), 20, 94, 18, INFO_COLOR.r, INFO_COLOR.g, INFO_COLOR.b, INFO_COLOR.a )
+    Hud.line( "camera sample - arrows/WASD pan, PageUp/PageDown or +/- zoom", 1, Hud.TITLE )
+    Hud.line( "= reset zoom, Home reset, Space jump", 2, Hud.TITLE )
+    Hud.line( "camera_get_position: " .. camX .. ", " .. camY, 3, Hud.INFO )
+    Hud.line( "viewport_get_dimension: " .. vpX .. ", " .. vpY .. " " .. vpW .. "x" .. vpH, 4, Hud.INFO )
+    Hud.line( "viewport_get_zoom_factor: " .. string.format( "%.2f", zoom ), 5, Hud.INFO )
 end

@@ -41,7 +41,14 @@
  of scope for a small, focused sample.
 ]]
 
-app_set_name( "Scarab - scripting sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+local __WAVE_LABEL        <const> = 1       -- the label the queue loops back to
+local __WAVE_STATE        <const> = 1       -- the state id on_move_sprites_to_screen receives
+local __WAVE_PAUSE_MILLI  <const> = 2000    -- the pause after dispatching a wave
+local __CLEAR_PAUSE_MILLI <const> = 500     -- the pause once the screen is clear
+
+assert( app_set_name( "Scarab - scripting sample" ) )
 
 local waveCount = 0
 
@@ -56,15 +63,16 @@ end
 -- The queue itself: label 1, dispatch a wave, pace with sp_wait, gate on
 -- "no active enemies" (immediate here, since this sample has none), then
 -- loop back to label 1 forever.
-sp_add_label( 1 )
-sp_move_sprites_to_screen( 1 )
-sp_wait( 2000 )
-sp_wait_queue_empty()
-sp_wait( 500 )
-sp_goto_label( 1 )
+assert( sp_add_label( __WAVE_LABEL ) )
+assert( sp_move_sprites_to_screen( __WAVE_STATE ) )
+assert( sp_wait( __WAVE_PAUSE_MILLI ) )
+assert( sp_wait_queue_empty() )
+assert( sp_wait( __CLEAR_PAUSE_MILLI ) )
+assert( sp_goto_label( __WAVE_LABEL ) )
 
 function on_update( dt )
-    draw_text( "scripting sample", 20, 20, 24, 255, 255, 255, 255 )
-    draw_text( "on_move_sprites_to_screen fired: " .. waveCount .. " time(s)", 20, 54, 20, 200, 200, 200, 255 )
-    draw_text( "(queued sp_wait(2000) -> sp_wait_queue_empty() -> sp_wait(500) -> loop)", 20, 78, 18, 150, 150, 150, 255 )
+    Hud.line( "scripting sample", 1, Hud.TITLE )
+    Hud.line( "on_move_sprites_to_screen fired: " .. waveCount .. " time(s)", 2, Hud.INFO )
+    Hud.line( string.format( "(queued sp_wait(%d) -> sp_wait_queue_empty() -> sp_wait(%d) -> loop)",
+        __WAVE_PAUSE_MILLI, __CLEAR_PAUSE_MILLI ), 3, Hud.DIM )
 end

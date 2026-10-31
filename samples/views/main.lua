@@ -41,23 +41,20 @@
 -- script needs at least one, even one with nothing to sequence.
 sp_wait( 1 )
 
-local __RENDER_WIDTH   = 960
-local __RENDER_HEIGHT  = 640
-local __MINIMAP        = { x = 700, y = 20,  w = 240, h = 240 }
-local __CLOSEUP        = { x = 20,  y = 380, w = 240, h = 240 }
-local __CLOSEUP_ZOOM   = 2.0
-local __CLOUDS_LAYER   = 4     -- "clouds" in resources/tilemap/test.tmx
-local __SPRITE_LAYER   = 5     -- "houses": a layer the minimap keeps
-local __SPEED          = 3     -- map pixels per frame
-local __PLATE_PADDING  = 4     -- pixels around a line of text on its plate
-local __PLATE_ALPHA    = 170   -- the plate's opacity, 0..255
+local Hud = dofile( "samples/shared/hud.lua" )
 
--- A line of text on a dark translucent plate, readable over any background.
-local function draw_text_plate( text, x, y, size, r, g, b )
-    draw_filled_rectangle( x - __PLATE_PADDING, y - __PLATE_PADDING,
-        measure_text( text, size ) + 2 * __PLATE_PADDING, size + 2 * __PLATE_PADDING, 0, 0, 0, __PLATE_ALPHA )
-    draw_text( text, x, y, size, r, g, b, 255 )
-end
+local __RENDER_WIDTH      <const> = 960
+local __RENDER_HEIGHT     <const> = 640
+local __VIEWPORT_MARGIN   <const> = 10    -- pixels around the default view
+local __MINIMAP           <const> = { x = 700, y = 20,  w = 240, h = 240 }
+local __MINIMAP_BACKDROP  <const> = 200   -- the minimap backdrop's opacity, 0..255 (translucent black)
+local __CLOSEUP           <const> = { x = 20,  y = 320, w = 240, h = 240 }   -- clear of the HUD's bottom rows
+local __CLOSEUP_ZOOM      <const> = 2.0
+local __CLOUDS_LAYER      <const> = 4     -- "clouds" in resources/tilemap/test.tmx
+local __SPRITE_LAYER      <const> = 5     -- "houses": a layer the minimap keeps
+local __SPEED             <const> = 3     -- map pixels per frame
+local __SUNNY_FRAMES      <const> = 4     -- sunny_idle_down.png: four 32x32 frames side by side
+local __SUNNY_FRAME_MILLI <const> = 100  -- per frame; the default -1 would hold the frame
 
 -- FIRST window-needing call (see samples/renderer for why it must be first).
 local renderer, err = renderer_create{
@@ -65,7 +62,8 @@ local renderer, err = renderer_create{
     width    = __RENDER_WIDTH,
     height   = __RENDER_HEIGHT,
     draw_fps = true,
-    viewport = { x = 10, y = 10, w = __RENDER_WIDTH - 20, h = __RENDER_HEIGHT - 20 },
+    viewport = { x = __VIEWPORT_MARGIN, y = __VIEWPORT_MARGIN,
+                 w = __RENDER_WIDTH - 2 * __VIEWPORT_MARGIN, h = __RENDER_HEIGHT - 2 * __VIEWPORT_MARGIN },
     zoom     = 1.0,
 }
 
@@ -73,7 +71,7 @@ if not renderer then
     error( "cannot create the renderer: " .. err )
 end
 
-tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_TOP_LEFT )
+assert( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_TOP_LEFT ) )
 
 local mapTilesW, mapTilesH, tileW, tileH = tilemap_get_map_info()
 local mapWidth  = mapTilesW * tileW
@@ -82,22 +80,23 @@ local mapHeight = mapTilesH * tileH
 -- Extra views: plain view_create, then configure. Ids are opaque integers (0 = the default view).
 local minimap = assert( view_create( renderer, __MINIMAP.x, __MINIMAP.y, __MINIMAP.w, __MINIMAP.h ) )
 assert( view_fit_to_map( minimap ) )                        -- whole map, camera at its top-left
-view_set_background_color( minimap, 0, 0, 0, 200 )          -- translucent black backdrop
-view_show_layer( minimap, "clouds", false )                 -- this view only: the main view still shows the clouds
+assert( view_set_background_color( minimap, 0, 0, 0, __MINIMAP_BACKDROP ) )
+assert( view_show_layer( minimap, "clouds", false ) )       -- this view only: the main view still shows the clouds
 
 local closeup = assert( view_create( renderer, __CLOSEUP.x, __CLOSEUP.y, __CLOSEUP.w, __CLOSEUP.h ) )
 assert( view_set_zoom( closeup, __CLOSEUP_ZOOM ) )
 
-pool_register_type( "sunny", 1 )
+assert( pool_register_type( "sunny", 1 ) )
 
-local sunny = sprite_acquire( "sunny" )
+local sunny = assert( sprite_acquire( "sunny" ) )
 
-sprite_configure_texture( sunny, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )   -- 100 ms per frame; the default -1 would hold the frame
-sprite_set_active_sequence( sunny, 0 )
-sprite_add_to_layer( sunny, __SPRITE_LAYER )
+assert( sprite_configure_texture( sunny, 0, "resources/sprites/sunny_idle_down.png", __SUNNY_FRAMES, 0,
+    TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, __SUNNY_FRAME_MILLI ) )
+assert( sprite_set_active_sequence( sunny, 0 ) )
+assert( sprite_add_to_layer( sunny, __SPRITE_LAYER ) )
 
 local worldSpace = true
-sprite_set_world_space( sunny, worldSpace )
+assert( sprite_set_world_space( sunny, worldSpace ) )
 
 local spriteWidth, spriteHeight = sprite_get_size( sunny )
 local x, y = mapWidth // 2, mapHeight // 2
@@ -145,8 +144,9 @@ function on_update( dt )
 
     -- Each line sits on a dark translucent plate: the text crosses white clouds and the
     -- black area outside the map, and no single text colour reads over both.
-    draw_text_plate( "views sample - arrows/WASD move the sprite", 20, 20, 20, 255, 255, 255 )
-    draw_text_plate( string.format( "map position %d, %d   world space: %s   views: %d",
-        x, y, tostring( sprite_get_world_space( sunny ) ), renderer_get_view_count( renderer ) ), 20, 46, 18, 220, 220, 220 )
-    draw_text_plate( "M minimap   C close-up   L minimap clouds   Space world space (close-up loses sunny when off)   Esc quit", 20, __RENDER_HEIGHT - 30, 16, 220, 220, 220 )
+    Hud.line( "views sample - arrows/WASD move the sprite", 1, Hud.TITLE )
+    Hud.line( string.format( "map position %d, %d   views: %d", x, y, renderer_get_view_count( renderer ) ), 2, Hud.INFO )
+    Hud.line( "world space: " .. tostring( sprite_get_world_space( sunny ) ), 3, Hud.INFO )
+    Hud.line_from_bottom( "M minimap   C close-up   L minimap clouds   Esc quit", 2, Hud.DIM )
+    Hud.line_from_bottom( "Space world space (the close-up loses sunny when off)", 1, Hud.DIM )
 end

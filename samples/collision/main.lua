@@ -52,17 +52,23 @@
  monke_variants.png would come out stretched.
 ]]
 
-local PLAYER_LAYER   = 4    -- "clouds" in collision.tmx - a collider bucket here
-local OBSTACLE_LAYER = 7    -- "monke" - likewise
-local WALLS_LAYER    = 9    -- "walls": the brick tiles with a collision rectangle
-local PLAYER_START   = { x = 300, y = 320 }   -- map pixels, inside the box (cols 8-12, rows 9-11)
-local OBSTACLE_POS   = { x = 520, y = 320 }   -- outside the box, past the gap on its right
-local SPEED          = 3    -- map pixels per frame per held direction
-local ZOOM           = 3.8125   -- the zoom it starts at AND the one zoom_reset returns to (preferred_zoom)
+local __PLAYER_LAYER   <const> = 4    -- "clouds" in collision.tmx - a collider bucket here
+local __OBSTACLE_LAYER <const> = 7    -- "monke" - likewise
+local __WALLS_LAYER    <const> = 9    -- "walls": the brick tiles with a collision rectangle
+local __PLAYER_START   <const> = { x = 300, y = 320 }   -- map pixels, inside the box (cols 8-12, rows 9-11)
+local __OBSTACLE_POS   <const> = { x = 520, y = 320 }   -- outside the box, past the gap on its right
+local __SPEED          <const> = 3    -- map pixels per frame per held direction
+local __ZOOM           <const> = 3.8125   -- the zoom it starts at AND the one zoom_reset returns to (preferred_zoom)
+
+local __SUNNY_FRAMES      <const> = 4     -- sunny_idle_down.png: four 32x32 frames side by side
+local __SUNNY_FRAME_MILLI <const> = 100   -- per frame (the default -1 holds the frame)
+local __HELD_FRAME        <const> = -1    -- sprite_configure_texture's "never step" delay
+
+local Hud = dofile( "samples/shared/hud.lua" )
 
 -- The renderer is created explicitly so the reset zoom matches the start zoom: the default renderer
 -- starts at 3.8125 but its preferred zoom (what zoom_reset returns to) is 1.0.
-assert( renderer_create{ title = "Scarab - collision sample", zoom = ZOOM, preferred_zoom = ZOOM } )
+assert( renderer_create{ title = "Scarab - collision sample", zoom = __ZOOM, preferred_zoom = __ZOOM } )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
@@ -74,7 +80,7 @@ assert( pool_register_type( "sunny", 2 ) )
 local function add_sunny( pos, layerId, mode, delay )
     local handle = assert( sprite_acquire( "sunny" ) )
 
-    assert( sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", 4, 0, mode, delay ) )
+    assert( sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", __SUNNY_FRAMES, 0, mode, delay ) )
     assert( sprite_set_active_sequence( handle, 0 ) )
     assert( sprite_set_world_space( handle, true ) )
     assert( sprite_set_pos( handle, pos.x, pos.y ) )
@@ -83,16 +89,17 @@ local function add_sunny( pos, layerId, mode, delay )
     return handle
 end
 
-local player   = add_sunny( PLAYER_START, PLAYER_LAYER, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )   -- 100 ms per frame (the default -1 holds the frame)
-local obstacle = add_sunny( OBSTACLE_POS, OBSTACLE_LAYER, TEXTURE_ANIMATION_MODE_MANUAL, -1 )
+local player   = add_sunny( __PLAYER_START, __PLAYER_LAYER, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, __SUNNY_FRAME_MILLI )
+local obstacle = add_sunny( __OBSTACLE_POS, __OBSTACLE_LAYER, TEXTURE_ANIMATION_MODE_MANUAL, __HELD_FRAME )
 
-assert( collision_add_rule( PLAYER_LAYER, OBSTACLE_LAYER ) )
-assert( collision_add_tile_rule( PLAYER_LAYER, WALLS_LAYER ) )
+assert( collision_add_rule( __PLAYER_LAYER, __OBSTACLE_LAYER ) )
+assert( collision_add_tile_rule( __PLAYER_LAYER, __WALLS_LAYER ) )
 
-local frameCount            = 0
-local hitCount              = 0
-local lastHitFrame          = -1000
-local __HIT_COOLDOWN_FRAMES = 30  -- ~0.5s at 60fps - avoids counting every frame of one overlap as a separate hit
+local __HIT_COOLDOWN_FRAMES <const> = 30  -- ~0.5s at 60fps - avoids counting every frame of one overlap as a separate hit
+
+local frameCount   = 0
+local hitCount     = 0
+local lastHitFrame = -__HIT_COOLDOWN_FRAMES     -- "long enough ago": the first hit counts
 
 collision_set_handler( function( handleA, handleB )
     if ( frameCount - lastHitFrame ) >= __HIT_COOLDOWN_FRAMES then
@@ -103,7 +110,7 @@ end )
 
 -- The position before this frame's movement, and whether it was already restored this frame:
 -- the tile handler fires once per wall tile touched, the undo must happen once.
-local beforeX, beforeY = PLAYER_START.x, PLAYER_START.y
+local beforeX, beforeY = __PLAYER_START.x, __PLAYER_START.y
 local undoneFrame      = -1
 local wallStops        = 0
 
@@ -115,17 +122,6 @@ collision_set_tile_handler( function( handle, gid, x, y, width, height )
     end
 end )
 
-local TEXT_SIZE     = 20
-local PLATE_PADDING = 4     -- pixels around a line of text on its plate
-local PLATE_ALPHA   = 170   -- the plate's opacity, 0..255
-
--- A line of text on a dark translucent plate - the map behind it is mostly light sky and clouds.
-local function draw_plate_text( text, x, y, r, g, b )
-    draw_filled_rectangle( x - PLATE_PADDING, y - PLATE_PADDING, measure_text( text, TEXT_SIZE ) + 2 * PLATE_PADDING,
-                           TEXT_SIZE + 2 * PLATE_PADDING, 0, 0, 0, PLATE_ALPHA )
-    draw_text( text, x, y, TEXT_SIZE, r, g, b, 255 )
-end
-
 function on_update( dt )
 
     frameCount = frameCount + 1
@@ -134,10 +130,10 @@ function on_update( dt )
 
     beforeX, beforeY = x, y
 
-    if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then x = x - SPEED end
-    if input_is_key_down( KEY_RIGHT ) or input_is_key_down( KEY_D ) then x = x + SPEED end
-    if input_is_key_down( KEY_UP ) or input_is_key_down( KEY_W ) then y = y - SPEED end
-    if input_is_key_down( KEY_DOWN ) or input_is_key_down( KEY_S ) then y = y + SPEED end
+    if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then x = x - __SPEED end
+    if input_is_key_down( KEY_RIGHT ) or input_is_key_down( KEY_D ) then x = x + __SPEED end
+    if input_is_key_down( KEY_UP ) or input_is_key_down( KEY_W ) then y = y - __SPEED end
+    if input_is_key_down( KEY_DOWN ) or input_is_key_down( KEY_S ) then y = y + __SPEED end
 
     sprite_set_pos( player, x, y )
 
@@ -157,8 +153,8 @@ function on_update( dt )
         zoom_reset()
     end
 
-    draw_plate_text( "collision sample - walk Sunny into the brick walls, out of the gap on the right, into the other Sunny", 20, 20, 255, 255, 255 )
-    draw_plate_text( string.format( "wall stops: %d   sprite hits: %d   zoom %.2f", wallStops, hitCount, viewport_get_zoom_factor() ),
-                     20, 50, 220, 220, 220 )
-    draw_plate_text( "arrows/WASD move   PageUp/PageDown or +/- zoom   = or Home reset zoom", 20, 80, 220, 220, 220 )
+    Hud.line( "collision sample - walk Sunny into the brick walls,", 1, Hud.TITLE )
+    Hud.line( "out of the gap on the right, into the other Sunny", 2, Hud.TITLE )
+    Hud.line( string.format( "wall stops: %d   sprite hits: %d   zoom %.2f", wallStops, hitCount, viewport_get_zoom_factor() ), 3, Hud.INFO )
+    Hud.line( "arrows/WASD move   PageUp/PageDown or +/- zoom   = or Home reset zoom", 4, Hud.DIM )
 end
