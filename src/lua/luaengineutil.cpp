@@ -38,6 +38,27 @@ namespace Scarab  {
             std :: mutex LuaEngineUtil :: s_LuaMutex;
 
             /**
+             * @brief Read an engine object LuaEngine stashed as a light userdata global. Pops what it
+             * pushed, so the caller's stack is left as it was: a primitive that resolves an object
+             * and then reads further arguments would otherwise find the leftover value in their
+             * place (C6 hit this through the font pool).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The global's name;
+             * @return The pointer, or nullptr if the global is not set (or not a userdata);
+             */
+            void* LuaEngineUtil :: GetGlobalPointer( lua_State* pLuaState, const char* szName )  {
+
+                lua_getglobal( pLuaState, szName );
+
+                void*  pObject = lua_touserdata( pLuaState, -1 );
+
+                lua_pop( pLuaState, 1 );
+
+                return pObject;
+            }
+
+            /**
              * @brief Fetch the renderer provider stashed as a Lua light userdata global - the
              * one object every renderer-needing primitive reaches the renderer through, since
              * the renderer does not exist yet when the Lua engine is built (see
@@ -47,13 +68,7 @@ namespace Scarab  {
              */
             Engine :: IRendererProvider* LuaEngineUtil :: GetRendererProvider( lua_State* pLuaState )  {
 
-                lua_getglobal( pLuaState, "rendererProviderPtr" );
-
-                Engine :: IRendererProvider*  pProvider = static_cast<Engine :: IRendererProvider *>( lua_touserdata( pLuaState, -1 ) );
-
-                lua_pop( pLuaState, 1 );
-
-                return pProvider;
+                return static_cast<Engine :: IRendererProvider *>( GetGlobalPointer( pLuaState, RENDERER_PROVIDER_GLOBAL ) );
             }
 
             /**
@@ -109,82 +124,6 @@ namespace Scarab  {
             SunLight :: DrawSurface :: IDrawSurface* LuaEngineUtil :: GetDrawSurface( lua_State* pLuaState )  {
 
                 return GetRendererProvider( pLuaState ) -> GetDrawSurface( GetCallerName( pLuaState ).c_str() );
-            }
-
-            /**
-             * @brief Fetch the engine's SoundManager instance stashed as a Lua light userdata global.
-             *
-             * @param pLuaState Lua state to be used by engine call;
-             */
-            SunLight :: Sound :: SoundManager* LuaEngineUtil :: GetSoundManager( lua_State* pLuaState )  {
-
-                lua_getglobal( pLuaState, "soundManagerPtr" );
-
-                SunLight :: Sound :: SoundManager*  pObject = static_cast<SunLight :: Sound :: SoundManager *>( lua_touserdata( pLuaState, -1 ) );
-
-                lua_pop( pLuaState, 1 );
-
-                return pObject;
-            }
-
-            /**
-             * @brief Fetch the engine's SpritePool instance stashed as a Lua light userdata global.
-             *
-             * @param pLuaState Lua state to be used by engine call;
-             */
-            Engine :: SpritePool* LuaEngineUtil :: GetSpritePool( lua_State* pLuaState )  {
-
-                lua_getglobal( pLuaState, "spritePoolPtr" );
-
-                Engine :: SpritePool*  pObject = static_cast<Engine :: SpritePool *>( lua_touserdata( pLuaState, -1 ) );
-
-                lua_pop( pLuaState, 1 );
-
-                return pObject;
-            }
-
-            /**
-             * @brief Fetch the engine's ScriptProcessor instance stashed as a Lua light userdata global.
-             *
-             * @param pLuaState Lua state to be used by engine call;
-             */
-            SunLight :: Scripting :: ScriptProcessor* LuaEngineUtil :: GetScriptProcessor( lua_State* pLuaState )  {
-
-                lua_getglobal( pLuaState, "scriptProcessorPtr" );
-
-                SunLight :: Scripting :: ScriptProcessor*  pObject = static_cast<SunLight :: Scripting :: ScriptProcessor *>( lua_touserdata( pLuaState, -1 ) );
-
-                lua_pop( pLuaState, 1 );
-
-                return pObject;
-            }
-
-            /**
-             * @brief Add an one parameter command to the ScriptProcessor's queue;
-             * shared by every Lua primitive that queues a command rather than
-             * acting immediately (sp_wait, sp_move_sprites_to_screen,
-             * sp_play_song, ...).
-             *
-             * The parameter is the first argument, an integer the command's 16 bit slot can hold
-             * (0..65535) - anything else is an error and nothing is queued.
-             *
-             * @param pLuaState Lua state to be used by engine call;
-             * @param cmd The command to add to queue;
-             * @param szName The parameter's name, for the error message;
-             * @param strError Receives the reason on failure;
-             * @return true if the command was queued;
-             */
-            bool LuaEngineUtil :: AddOneParmCommandScript( lua_State* pLuaState, SunLight :: Scripting :: Commands cmd,
-                                                           const char* szName, std :: string& strError )  {
-
-                lua_Integer  nParm = 0;
-
-                if( !ReadIntegerArgInRange( pLuaState, 1, szName, 0, UINT16_MAX, nParm, strError ) )
-                    return false;
-
-                GetScriptProcessor( pLuaState ) -> AddOneParmCmd( cmd, ( uint16_t ) nParm );
-
-                return true;
             }
 
             /**

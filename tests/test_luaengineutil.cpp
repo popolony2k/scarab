@@ -215,6 +215,25 @@ TEST_CASE( "PushError and PushTrue: the nil, message / true convention" )  {
     CHECK( lua_toboolean( stack.L, -1 ) == 1 );
 }
 
+TEST_CASE( "GetGlobalPointer reads a light userdata global and leaves the stack as it was" )  {
+
+    LuaStack  stack;
+    int       nObject = 0;
+
+    lua_pushlightuserdata( stack.L, &nObject );
+    lua_setglobal( stack.L, "objectPtr" );
+
+    // An argument already on the stack, as when a primitive resolves an object before reading the rest.
+    lua_pushinteger( stack.L, 7 );
+
+    CHECK( LuaEngineUtil :: GetGlobalPointer( stack.L, "objectPtr" ) == &nObject );
+    CHECK( lua_gettop( stack.L ) == 1 );
+    CHECK( lua_tointeger( stack.L, 1 ) == 7 );
+
+    CHECK( LuaEngineUtil :: GetGlobalPointer( stack.L, "missingPtr" ) == nullptr );
+    CHECK( lua_gettop( stack.L ) == 1 );
+}
+
 TEST_CASE( "FormatNumber writes a number as a user would" )  {
 
     CHECK( LuaEngineUtil :: FormatNumber( 3.8125 ) == "3.8125" );

@@ -56,10 +56,10 @@ namespace Scarab  {
 
         // Add all globals to lua engine
         lua_pushlightuserdata( m_pLuaState, m_pScriptProcessor );
-        lua_setglobal( m_pLuaState, "scriptProcessorPtr" );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaScriptingApi :: SCRIPT_PROCESSOR_GLOBAL );
 
         lua_pushlightuserdata( m_pLuaState, &m_Timers );
-        lua_setglobal( m_pLuaState, "timerMapPtr" );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaTimerApi :: TIMER_MAP_GLOBAL );
 
         // Register the primitive API modules that only need
         // scriptProcessorPtr/timerMapPtr (both set just above) - everything
@@ -337,13 +337,13 @@ namespace Scarab  {
                                  SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory() );
 
         lua_pushlightuserdata( m_pLuaState, pRendererProvider );
-        lua_setglobal( m_pLuaState, "rendererProviderPtr" );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaEngineUtil :: RENDERER_PROVIDER_GLOBAL );
 
         lua_pushlightuserdata( m_pLuaState, pSoundManager );
-        lua_setglobal( m_pLuaState, "soundManagerPtr" );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaSoundApi :: SOUND_MANAGER_GLOBAL );
 
         lua_pushlightuserdata( m_pLuaState, pSpritePool );
-        lua_setglobal( m_pLuaState, "spritePoolPtr" );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaSpriteApi :: SPRITE_POOL_GLOBAL );
 
         lua_pushlightuserdata( m_pLuaState, pFontPool );
         lua_setglobal( m_pLuaState, Engine :: Lua :: LuaTextApi :: FONT_POOL_GLOBAL );
