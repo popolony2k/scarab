@@ -25,8 +25,7 @@
 #include <climits>
 #include <ctime>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -73,7 +72,7 @@ namespace Scarab  {
              * -- main.lua
              * app_set_name( "Caravellius" )
              */
-            int LuaAppApi :: SetAppName( lua_State *pLuaState )  {
+            int LuaAppApi :: SetAppName( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 std :: string  strName;
@@ -113,7 +112,7 @@ namespace Scarab  {
              *     end
              * end
              */
-            int LuaAppApi :: ScreenFade( lua_State *pLuaState )  {
+            int LuaAppApi :: ScreenFade( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 double         fAlpha = 0.0;
@@ -192,7 +191,7 @@ namespace Scarab  {
              * -- explicitly ask for the older borderless-windowed behavior instead
              * app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
              */
-            int LuaAppApi :: SetFullscreen( lua_State *pLuaState )  {
+            int LuaAppApi :: SetFullscreen( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 bool           bFullscreen = false;
@@ -220,7 +219,7 @@ namespace Scarab  {
              * @luaname{app_get_fullscreen()}
              * @luagroup{fullscreen}
              */
-            int LuaAppApi :: GetFullscreen( lua_State *pLuaState )  {
+            int LuaAppApi :: GetFullscreen( lua_State* pLuaState )  {
 
                 bool  bFullscreen = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetFullscreen();
 
@@ -252,7 +251,7 @@ namespace Scarab  {
              * -- halve the target frame rate at runtime
              * app_set_target_fps( app_get_target_fps() // 2 )
              */
-            int LuaAppApi :: SetTargetFps( lua_State *pLuaState )  {
+            int LuaAppApi :: SetTargetFps( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 lua_Integer    nTargetFps = 0;
@@ -272,7 +271,7 @@ namespace Scarab  {
              * @luaname{app_get_target_fps()}
              * @luagroup{target_fps}
              */
-            int LuaAppApi :: GetTargetFps( lua_State *pLuaState )  {
+            int LuaAppApi :: GetTargetFps( lua_State* pLuaState )  {
 
                 int  nTargetFps = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetTargetFPS();
 
@@ -296,7 +295,7 @@ namespace Scarab  {
              * -- main.lua
              * app_set_draw_fps( true )
              */
-            int LuaAppApi :: SetDrawFps( lua_State *pLuaState )  {
+            int LuaAppApi :: SetDrawFps( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 bool           bValue = false;
@@ -316,7 +315,7 @@ namespace Scarab  {
              * @luaname{app_get_draw_fps()}
              * @luagroup{draw_fps}
              */
-            int LuaAppApi :: GetDrawFps( lua_State *pLuaState )  {
+            int LuaAppApi :: GetDrawFps( lua_State* pLuaState )  {
 
                 bool  bDrawFPS = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetDrawFPS();
 
@@ -348,7 +347,7 @@ namespace Scarab  {
              * -- main.lua
              * app_set_window_resizeable( false )
              */
-            int LuaAppApi :: SetWindowResizeable( lua_State *pLuaState )  {
+            int LuaAppApi :: SetWindowResizeable( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 bool           bValue = false;
@@ -368,7 +367,7 @@ namespace Scarab  {
              * @luaname{app_get_window_resizeable()}
              * @luagroup{window_resizeable}
              */
-            int LuaAppApi :: GetWindowResizeable( lua_State *pLuaState )  {
+            int LuaAppApi :: GetWindowResizeable( lua_State* pLuaState )  {
 
                 bool  bResizeable = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowResizeable();
 
@@ -406,7 +405,7 @@ namespace Scarab  {
              * @luaexample
              * app_set_stretch_to_fill( true )   -- fill the window completely, no letterboxing
              */
-            int LuaAppApi :: SetStretchToFill( lua_State *pLuaState )  {
+            int LuaAppApi :: SetStretchToFill( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 bool           bValue = false;
@@ -426,7 +425,7 @@ namespace Scarab  {
              * @luaname{app_get_stretch_to_fill()}
              * @luagroup{stretch_to_fill}
              */
-            int LuaAppApi :: GetStretchToFill( lua_State *pLuaState )  {
+            int LuaAppApi :: GetStretchToFill( lua_State* pLuaState )  {
 
                 bool  bStretchToFill = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetStretchToFill();
 
@@ -465,7 +464,7 @@ namespace Scarab  {
              * draw_filled_rectangle( x, y, width, height, 40, 40, 40, 255 )
              * draw_filled_rectangle( x, y, math.floor( width * fraction ), height, 220, 40, 40, 255 )
              */
-            int LuaAppApi :: DrawFilledRectangle( lua_State *pLuaState )  {
+            int LuaAppApi :: DrawFilledRectangle( lua_State* pLuaState )  {
 
                 static const char * const  aszRect[4]    = { "x", "y", "width", "height" };
                 static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
@@ -513,7 +512,7 @@ namespace Scarab  {
              * against these, not against anything that varies with the
              * actual window.
              */
-            int LuaAppApi :: GetScreenWidth( lua_State *pLuaState )  {
+            int LuaAppApi :: GetScreenWidth( lua_State* pLuaState )  {
 
                 lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowWidth() );
 
@@ -526,7 +525,7 @@ namespace Scarab  {
              * @luaname{screen_get_height() -> height}
              * @luagroup{screen_dimensions}
              */
-            int LuaAppApi :: GetScreenHeight( lua_State *pLuaState )  {
+            int LuaAppApi :: GetScreenHeight( lua_State* pLuaState )  {
 
                 lua_pushinteger( pLuaState, LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetWindowHeight() );
 
@@ -573,7 +572,7 @@ namespace Scarab  {
              *     app_set_fullscreen( true, FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED )
              * end
              */
-            int LuaAppApi :: GetPlatform( lua_State *pLuaState )  {
+            int LuaAppApi :: GetPlatform( lua_State* pLuaState )  {
 
                 #if defined( _WIN32 )
                     lua_pushinteger( pLuaState, LuaAppApi :: PLATFORM_WINDOWS );
@@ -609,7 +608,7 @@ namespace Scarab  {
              *   end
              * end
              */
-            int LuaAppApi :: Quit( lua_State *pLuaState )  {
+            int LuaAppApi :: Quit( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetDrawSurface( pLuaState ) -> RequestExit();
 
@@ -637,7 +636,7 @@ namespace Scarab  {
              * -- Lua code decides what ESC does instead
              * app_set_exit_key( KEY_NULL )
              */
-            int LuaAppApi :: SetExitKey( lua_State *pLuaState )  {
+            int LuaAppApi :: SetExitKey( lua_State* pLuaState )  {
 
                 std :: string                     strError;
                 SunLight :: Input :: KeyboardKey  key = SunLight :: Input :: KeyboardKey :: KEY_NULL;
@@ -657,7 +656,7 @@ namespace Scarab  {
              * @luaname{app_get_exit_key()}
              * @luagroup{exit_key}
              */
-            int LuaAppApi :: GetExitKey( lua_State *pLuaState )  {
+            int LuaAppApi :: GetExitKey( lua_State* pLuaState )  {
 
                 SunLight :: Input :: KeyboardKey  key = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetExitKey();
 
@@ -703,7 +702,7 @@ namespace Scarab  {
              *   draw_text( text:sub( 1, shown ), 16, 16, 16, 255, 255, 255, 255 )
              * end
              */
-            int LuaAppApi :: GetTime( lua_State *pLuaState )  {
+            int LuaAppApi :: GetTime( lua_State* pLuaState )  {
 
                 double  fElapsed = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> GetElapsedTime();
 
@@ -719,9 +718,9 @@ namespace Scarab  {
              * they peek at the draw surface instead of asking for one (which would create the
              * default renderer).
              */
-            static double GetElapsedOrZero( lua_State *pLuaState )  {
+            static double GetElapsedOrZero( lua_State* pLuaState )  {
 
-                SunLight :: DrawSurface :: IDrawSurface  *pSurface = LuaEngineUtil :: GetRendererProvider( pLuaState ) -> PeekDrawSurface();
+                SunLight :: DrawSurface :: IDrawSurface*  pSurface = LuaEngineUtil :: GetRendererProvider( pLuaState ) -> PeekDrawSurface();
 
                 return pSurface ? pSurface -> GetElapsedTime() : 0.0;
             }
@@ -735,7 +734,7 @@ namespace Scarab  {
              * os.time() keeps returning a plausible absolute time rather
              * than a bare offset.
              */
-            int LuaAppApi :: VirtualOsTime( lua_State *pLuaState )  {
+            int LuaAppApi :: VirtualOsTime( lua_State* pLuaState )  {
 
                 if( !lua_isnoneornil( pLuaState, 1 ) )  {
                     int  nArgs = lua_gettop( pLuaState );
@@ -774,7 +773,7 @@ namespace Scarab  {
              * bears no relation to the null renderer's virtual timeline;
              * this returns that timeline's own elapsed seconds instead.
              */
-            int LuaAppApi :: VirtualOsClock( lua_State *pLuaState )  {
+            int LuaAppApi :: VirtualOsClock( lua_State* pLuaState )  {
 
                 lua_pushnumber( pLuaState, GetElapsedOrZero( pLuaState ) );
 
@@ -803,7 +802,7 @@ namespace Scarab  {
              * from a background thread - in headless mode, don't call
              * os.time()/os.clock() inside a set_timer callback.
              */
-            void LuaAppApi :: InstallVirtualClock( lua_State *pLuaState )  {
+            void LuaAppApi :: InstallVirtualClock( lua_State* pLuaState )  {
 
                 lua_getglobal( pLuaState, "os" );
 
@@ -830,7 +829,7 @@ namespace Scarab  {
              * mirrors LuaTilemapApi::RegisterEnums's own MAP_ALIGNMENT_*
              * pattern for a small, engine-defined enum exposed to Lua.
              */
-            void LuaAppApi :: RegisterEnums( lua_State *pLuaState )  {
+            void LuaAppApi :: RegisterEnums( lua_State* pLuaState )  {
 
 
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aFullscreenStrategies,
@@ -855,7 +854,7 @@ namespace Scarab  {
             /**
              * @brief Register the application-level Lua-callable functions.
              */
-            void LuaAppApi :: Register( lua_State *pLuaState )  {
+            void LuaAppApi :: Register( lua_State* pLuaState )  {
 
                 RegisterEnums( pLuaState );
 

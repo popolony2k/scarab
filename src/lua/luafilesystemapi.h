@@ -21,8 +21,7 @@
 #ifndef __LUAFILESYSTEMAPI_H__
 #define __LUAFILESYSTEMAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -50,14 +49,14 @@ namespace Scarab  {
              */
             class LuaFileSystemApi  {
 
-                static int DoFile( lua_State *pLuaState );
+                static int DoFile( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUAFILESYSTEMAPI_H__ */
+#endif /* __LUAFILESYSTEMAPI_H__ */

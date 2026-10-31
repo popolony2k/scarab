@@ -23,8 +23,7 @@
 
 #include <vector>
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -71,12 +70,12 @@ namespace Scarab  {
              */
             class LuaCryptoApi  {
 
-                static int EncryptData( lua_State *pLuaState );
-                static int DecryptData( lua_State *pLuaState );
+                static int EncryptData( lua_State* pLuaState );
+                static int DecryptData( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
 
                 /**
                  * @brief Attempt to decrypt a buffer that may have been
@@ -95,7 +94,7 @@ namespace Scarab  {
                  * @param data The raw bytes read from disk - may be
                  * plaintext (an unencrypted game, or this build has no
                  * key configured at all) or a genuine
-                 * crypto_encrypt_data-produced blob.
+                 * crypto_encrypt_data-produced blob;
                  * @param out Receives the decrypted bytes on success;
                  * left untouched on failure.
                  * @return true if data was successfully decrypted (this
@@ -113,10 +112,10 @@ namespace Scarab  {
                  * plaintext, surfacing as an ordinary Lua/JSON parse
                  * error rather than a dedicated "wrong key" message.
                  */
-                static bool TryDecryptBytes( const std :: vector<unsigned char> &data, std :: vector<unsigned char> &out );
+                static bool TryDecryptBytes( const std :: vector<unsigned char>& data, std :: vector<unsigned char>& out );
             };
         }
     }
 }
 
-#endif  /* __LUACRYPTOAPI_H__ */
+#endif /* __LUACRYPTOAPI_H__ */

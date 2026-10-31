@@ -81,7 +81,7 @@ enum __EngineStateHandlers  {
  * @param strVirtualPath A virtual path;
  * @return Everything before the last '/', or "" if there isn't one;
  */
-static std :: string GetVirtualParentPath( const std :: string &strVirtualPath )  {
+static std :: string GetVirtualParentPath( const std :: string& strVirtualPath )  {
 
     std :: string :: size_type  nSlash = strVirtualPath.find_last_of( '/' );
 
@@ -98,7 +98,7 @@ static std :: string GetVirtualParentPath( const std :: string &strVirtualPath )
  * here keeps the built path itself clean rather than relying on that
  * tolerance.
  */
-static std :: string JoinVirtualPath( const std :: string &strDir, const std :: string &strRelative )  {
+static std :: string JoinVirtualPath( const std :: string& strDir, const std :: string& strRelative )  {
 
     std :: string  strCleanRelative = ( !strRelative.empty() && strRelative.front() == '/' ) ? strRelative.substr( 1 ) : strRelative;
 
@@ -116,7 +116,7 @@ namespace Scarab  {
          * actually pointed the program at (see ResolveEntryScript).
          * @param strFileName The already-resolved script file path to load;
          */
-        bool EngineHost :: LoadLuaScript( std :: string strFileName ) {
+        bool EngineHost :: LoadLuaScript( std :: string strFileName )  {
 
             if( !m_LuaEngine.RunFile( strFileName ) )  {
                 OnError( "Error executing stage Lua script => " + strFileName );
@@ -180,7 +180,7 @@ namespace Scarab  {
             std :: string strExtension = entryPath.extension().string();
 
             if( strExtension == ".zip" )  {
-                const std :: string  &strAppDir = m_LuaEngine.GetApplicationDirectory();
+                const std :: string&  strAppDir = m_LuaEngine.GetApplicationDirectory();
 
                 if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strEntryArg, strAppDir, false ) )  {
                     OnError( "Error mounting archive => " + strEntryArg );
@@ -195,7 +195,7 @@ namespace Scarab  {
                     return true;
                 }
 
-                std :: string  strEntryJsonPath = strInnerEntryPath;
+                std :: string                 strEntryJsonPath = strInnerEntryPath;
                 std :: vector<unsigned char>  data;
 
                 if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strEntryJsonPath, data ) )  {
@@ -337,7 +337,7 @@ namespace Scarab  {
          * @brief Must be implemented to provide sprite sound handling.
          * @param id The sound id to play;
          * @param bIgnorePlaying If set will ignore if player is playing any sound and will
-         * play again (cutting current playing).
+         * play again (cutting current playing);
          */
         bool EngineHost :: PlaySound( uint16_t id, bool bIgnorePlaying )  {
 
@@ -466,11 +466,11 @@ namespace Scarab  {
          * @param strEntryArg The entry argument main.cpp requires on the
          * command line (a .lua script path or a .json project file) -
          * resolved later, from RunEntryScript, since a failure
-         * there already has a normal fatal-error path to report through.
+         * there already has a normal fatal-error path to report through;
          */
-        EngineHost :: EngineHost( Scarab :: Host :: RendererProvider *pRendererProvider,
+        EngineHost :: EngineHost( Scarab :: Host :: RendererProvider* pRendererProvider,
                                  std :: string strEntryArg,
-                                 std :: string strEntryOverride )  : m_LuaEngine( &m_ScriptProcessorMachine ) {
+                                 std :: string strEntryOverride )  : m_LuaEngine( &m_ScriptProcessorMachine )  {
 
             m_CurrentStateHandler   = nullptr;
             m_nClearInactiveSpriteQueueMilli = 0;
@@ -499,7 +499,7 @@ namespace Scarab  {
              * default), this host listens to its frame updates, and the Lua
              * bridge attaches its collision listener to it.
              */
-            pRendererProvider -> SetCreatedHook( [this]( SunLight :: Renderer :: TileMapRenderer &renderer )  {
+            pRendererProvider -> SetCreatedHook( [this]( SunLight :: Renderer :: TileMapRenderer& renderer )  {
                 renderer.AddTileMapListener( this );
                 m_LuaEngine.AttachToTileMap( renderer );
             } );
@@ -562,6 +562,7 @@ namespace Scarab  {
          * unloading GPU textures after the context is already gone.
          */
         void EngineHost :: OnStop( void )  {
+
             m_SpritePool.Clear();
             m_FontPool.Clear();      // Lua's font handles, the same rule (plans/MASTER_PLAN.md item C6)
         }
@@ -569,12 +570,12 @@ namespace Scarab  {
         /**
          * @brief Must be implemented to respond STOP_SONG_CMD command;
          *
-         * @param cmd The command received/
+         * @param cmd The command received/;
          * @param nEventId The event id;
          */
         void EngineHost :: OnCommand( SunLight :: Scripting :: Commands cmd, uint16_t nEventId )  {
 
-            switch ( cmd )  {
+            switch( cmd )  {
 
                 case SunLight :: Scripting :: Commands :: LOAD_STAGE_CMD :
                     /*
@@ -618,7 +619,7 @@ namespace Scarab  {
                     m_CurrentSong = nEventId;
                 case  SunLight :: Scripting :: Commands :: PLAY_SONG_DIRECT_CMD :
 
-                    if( !PlaySound( nEventId ) ) {
+                    if( !PlaySound( nEventId ) )  {
                         char szMsg[50];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error playing song id [%d]", nEventId );
@@ -645,7 +646,7 @@ namespace Scarab  {
                     if( nEventId == m_CurrentSong )
                         m_CurrentSong = __SOUND_ID_NO_AUDIO;
 
-                    if( !StopSound( nEventId ) ) {
+                    if( !StopSound( nEventId ) )  {
                         char szMsg[50];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error stopping song id [%d]", nEventId );
@@ -669,7 +670,7 @@ namespace Scarab  {
                     if( nEventId == m_CurrentSong )
                         m_CurrentSong = __SOUND_ID_NO_AUDIO;
 
-                    if( !PauseSound( nEventId ) ) {
+                    if( !PauseSound( nEventId ) )  {
                         char szMsg[50];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error pausing song id [%d]", nEventId );
@@ -688,7 +689,7 @@ namespace Scarab  {
                     if( m_CurrentSong == __SOUND_ID_NO_AUDIO )
                         m_CurrentSong = nEventId;
 
-                    if( !ResumeSound( nEventId ) ) {
+                    if( !ResumeSound( nEventId ) )  {
                         char szMsg[50];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error resuming song id [%d]", nEventId );
@@ -696,7 +697,7 @@ namespace Scarab  {
                     }
                 break;
 
-            default:
+            default :
                 break;
             }
 
@@ -707,7 +708,7 @@ namespace Scarab  {
          *
          * @param strError The engine error message received;
          */
-        void EngineHost :: OnError( std :: string strError ) {
+        void EngineHost :: OnError( std :: string strError )  {
 
             m_strLastError = strError;
 

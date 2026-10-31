@@ -24,8 +24,7 @@
 #include "filesystem/filesystemfactory.h"
 #include <nlohmann/json.hpp>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -38,10 +37,10 @@ namespace Scarab  {
              * @brief Recursively push a JSON value onto the Lua stack as its
              * equivalent Lua value (a table for objects/arrays, a scalar otherwise).
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @param value The JSON value to convert and push;
              */
-            static void PushJsonValue( lua_State *pLuaState, const nlohmann :: json &value )  {
+            static void PushJsonValue( lua_State* pLuaState, const nlohmann :: json& value )  {
 
                 if( value.is_object() )  {
                     lua_newtable( pLuaState );
@@ -56,7 +55,7 @@ namespace Scarab  {
 
                     int   nIndex = 1;
 
-                    for( const nlohmann :: json &item : value )  {
+                    for( const nlohmann :: json& item : value )  {
                         PushJsonValue( pLuaState, item );
                         lua_rawseti( pLuaState, -2, nIndex++ );
                     }
@@ -86,7 +85,7 @@ namespace Scarab  {
              * from the in-memory byte range ReadFile() returns - no
              * std::ifstream/temporary buffer needed.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number of return data (if any - required by lua engine)
              *
              * @luaname{load_json(path) -> table | nil, message}
@@ -135,7 +134,7 @@ namespace Scarab  {
              * to plain JSON if it doesn't apply (no key configured, or
              * the file just isn't encrypted).
              */
-            int LuaJsonApi :: LoadJson( lua_State *pLuaState )  {
+            int LuaJsonApi :: LoadJson( lua_State* pLuaState )  {
 
                 std :: string                 strError;
                 std :: string                 strPath;
@@ -162,7 +161,7 @@ namespace Scarab  {
 
                     PushJsonValue( pLuaState, jsonData );
                 }
-                catch( const nlohmann :: json :: parse_error &ex )  {
+                catch( const nlohmann :: json :: parse_error& ex )  {
                     return LuaEngineUtil :: PushError( pLuaState, "cannot parse '" + strPath + "': " + ex.what() );
                 }
 
@@ -172,9 +171,9 @@ namespace Scarab  {
             /**
              * @brief Register the JSON bridge Lua-callable functions.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              */
-            void LuaJsonApi :: Register( lua_State *pLuaState )  {
+            void LuaJsonApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "load_json", LuaJsonApi :: LoadJson );
             }

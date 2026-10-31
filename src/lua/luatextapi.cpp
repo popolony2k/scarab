@@ -34,11 +34,11 @@ namespace Scarab  {
              * FONT_POOL_GLOBAL. Pops what it pushed: the font functions read optional arguments
              * after resolving a handle, and a leftover value would sit in their place (found in C6).
              */
-            static Engine :: FontPool* GetFontPool( lua_State *pLuaState )  {
+            static Engine :: FontPool* GetFontPool( lua_State* pLuaState )  {
 
                 lua_getglobal( pLuaState, LuaTextApi :: FONT_POOL_GLOBAL );
 
-                Engine :: FontPool  *pFontPool = static_cast<Engine :: FontPool *>( lua_touserdata( pLuaState, -1 ) );
+                Engine :: FontPool*  pFontPool = static_cast<Engine :: FontPool *>( lua_touserdata( pLuaState, -1 ) );
 
                 lua_pop( pLuaState, 1 );
 
@@ -50,8 +50,8 @@ namespace Scarab  {
              * none or nil means "the active font", which is reported as a null pFont and true.
              * @return false (with strError set) for anything else that is not a live handle;
              */
-            static bool ReadOptionalFontArg( lua_State *pLuaState, int nIndex,
-                                             std :: shared_ptr<SunLight :: Font :: IFont> &pFont, std :: string &strError )  {
+            static bool ReadOptionalFontArg( lua_State* pLuaState, int nIndex,
+                                             std :: shared_ptr<SunLight :: Font :: IFont>& pFont, std :: string& strError )  {
 
                 pFont.reset();
 
@@ -73,7 +73,7 @@ namespace Scarab  {
              * @brief A required font-handle argument: a live handle from load_font.
              * @return The font, or nullptr (with strError set);
              */
-            static std :: shared_ptr<SunLight :: Font :: IFont> ReadFontArg( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+            static std :: shared_ptr<SunLight :: Font :: IFont> ReadFontArg( lua_State* pLuaState, int nIndex, std :: string& strError )  {
 
                 std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
 
@@ -91,7 +91,7 @@ namespace Scarab  {
              * @brief A required, non-empty family name (register_font/unregister_font).
              * @return The name, or nullptr (with strError set);
              */
-            static const char* ReadFamilyArg( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+            static const char* ReadFamilyArg( lua_State* pLuaState, int nIndex, std :: string& strError )  {
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TSTRING || lua_rawlen( pLuaState, nIndex ) == 0 )  {
                     strError = "the family must be a non-empty string (as Tiled's fontfamily spells it)";
@@ -123,13 +123,13 @@ namespace Scarab  {
              * set_font( sans )                -- draw_text uses it ...
              * register_font( "Sans", sans )   -- ... and so do the map's "Sans" text objects
              */
-            int LuaTextApi :: LoadFont( lua_State *pLuaState )  {
+            int LuaTextApi :: LoadFont( lua_State* pLuaState )  {
 
                 if( lua_type( pLuaState, 1 ) != LUA_TSTRING )
                     return LuaEngineUtil :: PushError( pLuaState, "load_font expects a path" );
 
-                const char                                    *szPath = lua_tostring( pLuaState, 1 );
-                std :: shared_ptr<SunLight :: Font :: IFont>  pFont   = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> LoadFont( szPath );
+                const char*                                    szPath = lua_tostring( pLuaState, 1 );
+                std :: shared_ptr<SunLight :: Font :: IFont>   pFont   = LuaEngineUtil :: GetDrawSurface( pLuaState ) -> LoadFont( szPath );
 
                 if( !pFont )
                     return LuaEngineUtil :: PushError( pLuaState, std :: string( "cannot load font '" ) + szPath + "'" );
@@ -148,7 +148,7 @@ namespace Scarab  {
              * @luaname{release_font(font) -> true | nil, message}
              * @luagroup{font_handles}
              */
-            int LuaTextApi :: ReleaseFont( lua_State *pLuaState )  {
+            int LuaTextApi :: ReleaseFont( lua_State* pLuaState )  {
 
                 if( !lua_isinteger( pLuaState, 1 ) ||
                     !GetFontPool( pLuaState ) -> Release( ( FontHandle ) lua_tointeger( pLuaState, 1 ) ) )
@@ -181,14 +181,14 @@ namespace Scarab  {
              * set_font( sans )                                                    -- select a loaded font
              * set_font( nil )                                                     -- back to the built-in font
              */
-            int LuaTextApi :: SetFont( lua_State *pLuaState )  {
+            int LuaTextApi :: SetFont( lua_State* pLuaState )  {
 
-                std :: string                                 strError;
-                std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
-                SunLight :: DrawSurface :: IDrawSurface       *pSurface = LuaEngineUtil :: GetDrawSurface( pLuaState );
+                std :: string                                  strError;
+                std :: shared_ptr<SunLight :: Font :: IFont>   pFont;
+                SunLight :: DrawSurface :: IDrawSurface*       pSurface = LuaEngineUtil :: GetDrawSurface( pLuaState );
 
                 if( lua_type( pLuaState, 1 ) == LUA_TSTRING )  {
-                    const char  *szPath = lua_tostring( pLuaState, 1 );
+                    const char*  szPath = lua_tostring( pLuaState, 1 );
 
                     pFont = pSurface -> LoadFont( szPath );
 
@@ -233,12 +233,12 @@ namespace Scarab  {
              * register_font( "Sans", sans )         -- "Sans" regular
              * register_font( "Sans", bold, true )   -- "Sans" bold
              */
-            int LuaTextApi :: RegisterFont( lua_State *pLuaState )  {
+            int LuaTextApi :: RegisterFont( lua_State* pLuaState )  {
 
-                std :: string  strError;
-                bool           bBold   = false;
-                bool           bItalic = false;
-                const char     *szFamily = ReadFamilyArg( pLuaState, 1, strError );
+                std :: string   strError;
+                bool            bBold   = false;
+                bool            bItalic = false;
+                const char*     szFamily = ReadFamilyArg( pLuaState, 1, strError );
 
                 if( szFamily == nullptr )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -270,16 +270,16 @@ namespace Scarab  {
              * unregister_font( sans )                    -- every slot "sans" fills
              * unregister_font( "Sans", true, false )     -- only "Sans" bold
              */
-            int LuaTextApi :: UnregisterFont( lua_State *pLuaState )  {
+            int LuaTextApi :: UnregisterFont( lua_State* pLuaState )  {
 
                 std :: string                 strError;
-                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                Engine :: IRendererProvider*  pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
                 bool                          bRemoved  = false;
 
                 if( lua_type( pLuaState, 1 ) == LUA_TSTRING )  {
-                    bool        bBold    = false;
-                    bool        bItalic  = false;
-                    const char  *szFamily = ReadFamilyArg( pLuaState, 1, strError );
+                    bool         bBold    = false;
+                    bool         bItalic  = false;
+                    const char*  szFamily = ReadFamilyArg( pLuaState, 1, strError );
 
                     if( szFamily == nullptr ||
                         !LuaEngineUtil :: ReadOptionalBooleanArg( pLuaState, 2, "bold", false, bBold, strError ) ||
@@ -309,7 +309,7 @@ namespace Scarab  {
              * converts one wherever it expects a string, so `draw_text( score, ... )` works), and
              * the size a whole number of pixels, at least 1.
              */
-            static bool ReadTextArgs( lua_State *pLuaState, int nTextIndex, int nSizeIndex, std :: string &strText, int &nSize, std :: string &strError )  {
+            static bool ReadTextArgs( lua_State* pLuaState, int nTextIndex, int nSizeIndex, std :: string& strText, int& nSize, std :: string& strError )  {
 
                 lua_Integer  nValue = 0;
 
@@ -320,7 +320,7 @@ namespace Scarab  {
 
                 // lua_tolstring converts a number argument in place; it is a copy of the caller's value
                 size_t       nLength = 0;
-                const char  *szText  = lua_tolstring( pLuaState, nTextIndex, &nLength );
+                const char*  szText  = lua_tolstring( pLuaState, nTextIndex, &nLength );
 
                 strText.assign( szText, nLength );
 
@@ -362,7 +362,7 @@ namespace Scarab  {
              * element only stays on screen for as long as something
              * keeps calling `draw_text` for it each frame.
              */
-            int LuaTextApi :: DrawText( lua_State *pLuaState )  {
+            int LuaTextApi :: DrawText( lua_State* pLuaState )  {
 
                 static const char * const  aszChannel[4] = { "r", "g", "b", "a" };
 
@@ -422,7 +422,7 @@ namespace Scarab  {
              * local width = measure_text( text, 24 )
              * local x     = screen_get_width() - width - 20  -- flush to the right edge, with a 20px margin
              */
-            int LuaTextApi :: MeasureText( lua_State *pLuaState )  {
+            int LuaTextApi :: MeasureText( lua_State* pLuaState )  {
 
                 std :: string                                 strError;
                 std :: shared_ptr<SunLight :: Font :: IFont>  pFont;
@@ -443,7 +443,7 @@ namespace Scarab  {
             /**
              * @brief Register the text/font Lua-callable functions.
              */
-            void LuaTextApi :: Register( lua_State *pLuaState )  {
+            void LuaTextApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "load_font", LuaTextApi :: LoadFont );
                 lua_register( pLuaState, "release_font", LuaTextApi :: ReleaseFont );

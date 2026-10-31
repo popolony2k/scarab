@@ -22,8 +22,7 @@
 #include "engine/spritehandle.h"
 #include "tilemap/tilemapdefs.h"
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -37,7 +36,7 @@ namespace Scarab  {
              *
              * @param pLuaState Lua state used to invoke the registered handlers;
              */
-            LuaCollisionListener :: LuaCollisionListener( lua_State *pLuaState )  {
+            LuaCollisionListener :: LuaCollisionListener( lua_State* pLuaState )  {
 
                 m_pLuaState = pLuaState;
             }
@@ -58,13 +57,13 @@ namespace Scarab  {
              * Phase 9). The check is kept as a defensive guard rather than
              * assumed away.
              */
-            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                                      SunLight :: Collision :: Collider *pSecond )  {
+            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                                      SunLight :: Collision :: Collider* pSecond )  {
 
-                void  *pFirstData  = pFirst -> GetPtrData();
-                void  *pSecondData = pSecond -> GetPtrData();
-                bool  bFirstIsLua  = IsPackedSpriteHandle( pFirstData );
-                bool  bSecondIsLua = IsPackedSpriteHandle( pSecondData );
+                void*  pFirstData  = pFirst -> GetPtrData();
+                void*  pSecondData = pSecond -> GetPtrData();
+                bool   bFirstIsLua  = IsPackedSpriteHandle( pFirstData );
+                bool   bSecondIsLua = IsPackedSpriteHandle( pSecondData );
 
                 if( !( bFirstIsLua && bSecondIsLua ) )
                     return;
@@ -94,10 +93,10 @@ namespace Scarab  {
              * check as the collider-to-collider overload, dispatching to the
              * handler registered via collision_set_tile_handler.
              */
-            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                                      SunLight :: TileMap :: stTile *pSecond )  {
+            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                                      SunLight :: TileMap :: stTile* pSecond )  {
 
-                void  *pFirstData = pFirst -> GetPtrData();
+                void*  pFirstData = pFirst -> GetPtrData();
 
                 if( !IsPackedSpriteHandle( pFirstData ) )
                     return;

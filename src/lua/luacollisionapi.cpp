@@ -34,7 +34,7 @@ namespace Scarab  {
              * ("argument 'layerB' must be between 0 and 254") rather than a plain refusal that reads
              * like "the rule is already declared".
              */
-            static bool ReadCollisionLayerArg( lua_State *pLuaState, int nIndex, const char *szName, int &nLayerId, std :: string &strError )  {
+            static bool ReadCollisionLayerArg( lua_State* pLuaState, int nIndex, const char* szName, int& nLayerId, std :: string& strError )  {
 
                 lua_Integer  nValue = 0;
 
@@ -69,7 +69,7 @@ namespace Scarab  {
              * collision_add_rule(LAYER_PLAYER_SHIP, LAYER_ENEMIES_SHIPS)
              * collision_add_rule(LAYER_PLAYER_SHIP_BULLETS, LAYER_ENEMIES_SHIPS)
              */
-            int LuaCollisionApi :: AddRule( lua_State *pLuaState )  {
+            int LuaCollisionApi :: AddRule( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nLayerA = 0;
@@ -106,7 +106,7 @@ namespace Scarab  {
              * viewport's origin, and world-space sprites got the camera added -
              * and Scarab's handler never ran at all.
              */
-            int LuaCollisionApi :: AddTileRule( lua_State *pLuaState )  {
+            int LuaCollisionApi :: AddTileRule( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nLayerId     = 0;
@@ -158,7 +158,7 @@ namespace Scarab  {
              *   end
              * end)
              */
-            int LuaCollisionApi :: SetHandler( lua_State *pLuaState )  {
+            int LuaCollisionApi :: SetHandler( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -203,7 +203,7 @@ namespace Scarab  {
              *   end
              * end)
              */
-            int LuaCollisionApi :: SetTileHandler( lua_State *pLuaState )  {
+            int LuaCollisionApi :: SetTileHandler( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
@@ -219,7 +219,7 @@ namespace Scarab  {
             /**
              * @brief Register the collision Lua-callable functions.
              */
-            void LuaCollisionApi :: Register( lua_State *pLuaState )  {
+            void LuaCollisionApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "collision_add_rule", LuaCollisionApi :: AddRule );
                 lua_register( pLuaState, "collision_add_tile_rule", LuaCollisionApi :: AddTileRule );

@@ -27,16 +27,32 @@
 namespace Scarab  {
     namespace Engine  {
 
+        /**
+         * @brief Pack a slot index and its generation into a font handle (the same packing as SpriteHandle).
+         * @param nIndex The slot's 0-based index (stored + 1, so a handle is never 0);
+         * @param nGeneration The slot's current generation;
+         * @return The handle;
+         */
         static FontHandle MakeFontHandle( uint32_t nIndex, uint16_t nGeneration )  {
 
             return ( ( ( FontHandle ) nGeneration ) << __FONT_HANDLE_GENERATION_SHIFT ) | ( ( nIndex + 1 ) & __FONT_HANDLE_INDEX_MASK );
         }
 
+        /**
+         * @brief The slot index a font handle addresses.
+         * @param handle The handle;
+         * @return The 0-based slot index; -1 for INVALID_FONT_HANDLE;
+         */
         static int32_t FontHandleIndex( FontHandle handle )  {
 
             return ( int32_t ) ( handle & __FONT_HANDLE_INDEX_MASK ) - 1;
         }
 
+        /**
+         * @brief The generation a font handle was made with.
+         * @param handle The handle;
+         * @return The generation;
+         */
         static uint16_t FontHandleGeneration( FontHandle handle )  {
 
             return ( uint16_t ) ( handle >> __FONT_HANDLE_GENERATION_SHIFT );

@@ -21,8 +21,7 @@
 #ifndef __LUAVIEWAPI_H__
 #define __LUAVIEWAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -68,50 +67,50 @@ namespace Scarab  {
              */
             class LuaViewApi  {
 
-                static int ViewCreate( lua_State *pLuaState );
-                static int ViewDestroy( lua_State *pLuaState );
-                static int ViewSetZoom( lua_State *pLuaState );
-                static int ViewGetZoom( lua_State *pLuaState );
-                static int ViewSetPreferredZoom( lua_State *pLuaState );
-                static int ViewGetPreferredZoom( lua_State *pLuaState );
-                static int ViewSetZoomLimits( lua_State *pLuaState );
-                static int ViewGetZoomLimits( lua_State *pLuaState );
-                static int ViewSetZoomEnabled( lua_State *pLuaState );
-                static int ViewGetZoomEnabled( lua_State *pLuaState );
-                static int ViewZoomIn( lua_State *pLuaState );
-                static int ViewZoomOut( lua_State *pLuaState );
-                static int ViewZoomReset( lua_State *pLuaState );
-                static int ViewSetDimension( lua_State *pLuaState );
-                static int ViewGetDimension( lua_State *pLuaState );
-                static int ViewSetScrollStep( lua_State *pLuaState );
-                static int ViewGetScrollStep( lua_State *pLuaState );
-                static int ViewSetCameraPosition( lua_State *pLuaState );
-                static int ViewGetCameraPosition( lua_State *pLuaState );
-                static int ViewMoveCameraUp( lua_State *pLuaState );
-                static int ViewMoveCameraDown( lua_State *pLuaState );
-                static int ViewMoveCameraLeft( lua_State *pLuaState );
-                static int ViewMoveCameraRight( lua_State *pLuaState );
-                static int ViewResetCamera( lua_State *pLuaState );
-                static int ViewSetVisible( lua_State *pLuaState );
-                static int ViewGetVisible( lua_State *pLuaState );
-                static int ViewSetDrawOrder( lua_State *pLuaState );
-                static int ViewGetDrawOrder( lua_State *pLuaState );
-                static int ViewSetClearBackground( lua_State *pLuaState );
-                static int ViewGetClearBackground( lua_State *pLuaState );
-                static int ViewSetBackgroundColor( lua_State *pLuaState );
-                static int ViewUseMapBackgroundColor( lua_State *pLuaState );
-                static int ViewShowLayer( lua_State *pLuaState );
-                static int ViewShowOnlyLayers( lua_State *pLuaState );
-                static int ViewShowAllLayers( lua_State *pLuaState );
-                static int ViewIsLayerShown( lua_State *pLuaState );
-                static int ViewFitToMap( lua_State *pLuaState );
+                static int ViewCreate( lua_State* pLuaState );
+                static int ViewDestroy( lua_State* pLuaState );
+                static int ViewSetZoom( lua_State* pLuaState );
+                static int ViewGetZoom( lua_State* pLuaState );
+                static int ViewSetPreferredZoom( lua_State* pLuaState );
+                static int ViewGetPreferredZoom( lua_State* pLuaState );
+                static int ViewSetZoomLimits( lua_State* pLuaState );
+                static int ViewGetZoomLimits( lua_State* pLuaState );
+                static int ViewSetZoomEnabled( lua_State* pLuaState );
+                static int ViewGetZoomEnabled( lua_State* pLuaState );
+                static int ViewZoomIn( lua_State* pLuaState );
+                static int ViewZoomOut( lua_State* pLuaState );
+                static int ViewZoomReset( lua_State* pLuaState );
+                static int ViewSetDimension( lua_State* pLuaState );
+                static int ViewGetDimension( lua_State* pLuaState );
+                static int ViewSetScrollStep( lua_State* pLuaState );
+                static int ViewGetScrollStep( lua_State* pLuaState );
+                static int ViewSetCameraPosition( lua_State* pLuaState );
+                static int ViewGetCameraPosition( lua_State* pLuaState );
+                static int ViewMoveCameraUp( lua_State* pLuaState );
+                static int ViewMoveCameraDown( lua_State* pLuaState );
+                static int ViewMoveCameraLeft( lua_State* pLuaState );
+                static int ViewMoveCameraRight( lua_State* pLuaState );
+                static int ViewResetCamera( lua_State* pLuaState );
+                static int ViewSetVisible( lua_State* pLuaState );
+                static int ViewGetVisible( lua_State* pLuaState );
+                static int ViewSetDrawOrder( lua_State* pLuaState );
+                static int ViewGetDrawOrder( lua_State* pLuaState );
+                static int ViewSetClearBackground( lua_State* pLuaState );
+                static int ViewGetClearBackground( lua_State* pLuaState );
+                static int ViewSetBackgroundColor( lua_State* pLuaState );
+                static int ViewUseMapBackgroundColor( lua_State* pLuaState );
+                static int ViewShowLayer( lua_State* pLuaState );
+                static int ViewShowOnlyLayers( lua_State* pLuaState );
+                static int ViewShowAllLayers( lua_State* pLuaState );
+                static int ViewIsLayerShown( lua_State* pLuaState );
+                static int ViewFitToMap( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUAVIEWAPI_H__ */
+#endif /* __LUAVIEWAPI_H__ */

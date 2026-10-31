@@ -102,7 +102,7 @@ namespace Scarab  {
 
             public:
 
-            EngineHost( Scarab :: Host :: RendererProvider *pRendererProvider,
+            EngineHost( Scarab :: Host :: RendererProvider* pRendererProvider,
                        std :: string strEntryArg,
                        std :: string strEntryOverride = std :: string() );
             virtual ~EngineHost( void );

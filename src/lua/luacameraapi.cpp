@@ -72,9 +72,9 @@ namespace Scarab  {
              *   end
              * end
              */
-            int LuaCameraApi :: MoveCameraUp( lua_State *pLuaState )  {
+            int LuaCameraApi :: MoveCameraUp( lua_State* pLuaState )  {
 
-                SunLight :: TileMap :: ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
                 SunLight :: TileMap :: stMapInfo  mapInfo;
 
                 /*
@@ -94,7 +94,7 @@ namespace Scarab  {
              * @luaname{camera_move_down() -> true}
              * @luagroup{panning}
              */
-            int LuaCameraApi :: MoveCameraDown( lua_State *pLuaState )  {
+            int LuaCameraApi :: MoveCameraDown( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> MoveCameraDown();
 
@@ -105,9 +105,9 @@ namespace Scarab  {
              * @luaname{camera_move_left() -> true | nil, message}
              * @luagroup{panning}
              */
-            int LuaCameraApi :: MoveCameraLeft( lua_State *pLuaState )  {
+            int LuaCameraApi :: MoveCameraLeft( lua_State* pLuaState )  {
 
-                SunLight :: TileMap :: ITileMap  *pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
                 SunLight :: TileMap :: stMapInfo  mapInfo;
 
                 /*
@@ -127,7 +127,7 @@ namespace Scarab  {
              * @luaname{camera_move_right() -> true}
              * @luagroup{panning}
              */
-            int LuaCameraApi :: MoveCameraRight( lua_State *pLuaState )  {
+            int LuaCameraApi :: MoveCameraRight( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> MoveCameraRight();
 
@@ -139,7 +139,7 @@ namespace Scarab  {
              * @luadoc
              * Reset the camera to the map's default position.
              */
-            int LuaCameraApi :: ResetCamera( lua_State *pLuaState )  {
+            int LuaCameraApi :: ResetCamera( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ResetCamera();
 
@@ -161,7 +161,7 @@ namespace Scarab  {
              * local x, y, w, h = tilemap_get_object_by_name("SubBossIntervalStart")
              * camera_set_position(x, y)
              */
-            int LuaCameraApi :: SetCameraPosition( lua_State *pLuaState )  {
+            int LuaCameraApi :: SetCameraPosition( lua_State* pLuaState )  {
 
                 std :: string  strError;
                 int            nX = 0;
@@ -188,7 +188,7 @@ namespace Scarab  {
              * @luaexample
              * local x, y = camera_get_position()
              */
-            int LuaCameraApi :: GetCameraPosition( lua_State *pLuaState )  {
+            int LuaCameraApi :: GetCameraPosition( lua_State* pLuaState )  {
 
                 int  nX, nY;
 
@@ -209,7 +209,7 @@ namespace Scarab  {
              * zoom_out()
              * zoom_reset()
              */
-            int LuaCameraApi :: ZoomIn( lua_State *pLuaState )  {
+            int LuaCameraApi :: ZoomIn( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ZoomIn();
 
@@ -220,7 +220,7 @@ namespace Scarab  {
              * @luaname{zoom_out() -> true}
              * @luagroup{zoom}
              */
-            int LuaCameraApi :: ZoomOut( lua_State *pLuaState )  {
+            int LuaCameraApi :: ZoomOut( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ZoomOut();
 
@@ -231,7 +231,7 @@ namespace Scarab  {
              * @luaname{zoom_reset() -> true}
              * @luagroup{zoom}
              */
-            int LuaCameraApi :: ResetZoom( lua_State *pLuaState )  {
+            int LuaCameraApi :: ResetZoom( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> ResetZoom();
 
@@ -258,7 +258,7 @@ namespace Scarab  {
              * local x, y, w, h = viewport_get_dimension()
              * print(("viewport: %d,%d %dx%d"):format(x, y, w, h))
              */
-            int LuaCameraApi :: GetViewportDimension( lua_State *pLuaState )  {
+            int LuaCameraApi :: GetViewportDimension( lua_State* pLuaState )  {
 
                 SunLight :: Base :: stDimension2D&  dim = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetViewport().GetDimension2D();
 
@@ -277,7 +277,7 @@ namespace Scarab  {
              * @luaexample
              * local zoom = viewport_get_zoom_factor()
              */
-            int LuaCameraApi :: GetViewportZoomFactor( lua_State *pLuaState )  {
+            int LuaCameraApi :: GetViewportZoomFactor( lua_State* pLuaState )  {
 
                 float  fZoomFactor = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetViewport().GetZoomProperties().fZoomFactor;
 
@@ -289,7 +289,7 @@ namespace Scarab  {
             /**
              * @brief Register the camera/viewport Lua-callable functions.
              */
-            void LuaCameraApi :: Register( lua_State *pLuaState )  {
+            void LuaCameraApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "camera_move_up", LuaCameraApi :: MoveCameraUp );
                 lua_register( pLuaState, "camera_move_down", LuaCameraApi :: MoveCameraDown );

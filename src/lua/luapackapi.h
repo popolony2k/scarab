@@ -21,8 +21,7 @@
 #ifndef __LUAPACKAPI_H__
 #define __LUAPACKAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -64,19 +63,19 @@ namespace Scarab  {
              */
             class LuaPackApi  {
 
-                static int ListDirectory( lua_State *pLuaState );
-                static int ReadFile( lua_State *pLuaState );
-                static int WriteFile( lua_State *pLuaState );
-                static int CreateArchive( lua_State *pLuaState );
-                static int AddEntry( lua_State *pLuaState );
-                static int CloseArchive( lua_State *pLuaState );
+                static int ListDirectory( lua_State* pLuaState );
+                static int ReadFile( lua_State* pLuaState );
+                static int WriteFile( lua_State* pLuaState );
+                static int CreateArchive( lua_State* pLuaState );
+                static int AddEntry( lua_State* pLuaState );
+                static int CloseArchive( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUAPACKAPI_H__ */
+#endif /* __LUAPACKAPI_H__ */

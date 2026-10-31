@@ -46,7 +46,7 @@
 
 
 namespace Scarab  {
-  namespace Lua {
+  namespace Lua  {
 
     /**
      * @brief Register all C++ calls to lua engine;
@@ -313,10 +313,10 @@ namespace Scarab  {
      * @param pSpritePool Pointer to the engine's sprite pool instance;
      * @param pFontPool Pointer to the engine's font pool (load_font's handles);
      */
-    void LuaEngine :: Init( Engine :: IRendererProvider *pRendererProvider,
-                           SunLight :: Sound :: SoundManager *pSoundManager,
-                           Engine :: SpritePool *pSpritePool,
-                           Engine :: FontPool *pFontPool )  {
+    void LuaEngine :: Init( Engine :: IRendererProvider* pRendererProvider,
+                           SunLight :: Sound :: SoundManager* pSoundManager,
+                           Engine :: SpritePool* pSpritePool,
+                           Engine :: FontPool* pFontPool )  {
 
         std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
 
@@ -373,7 +373,7 @@ namespace Scarab  {
      *
      * @param tileMap The just-created renderer's tile map;
      */
-    void LuaEngine :: AttachToTileMap( SunLight :: TileMap :: ITileMap &tileMap )  {
+    void LuaEngine :: AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap )  {
 
         tileMap.GetCollisionManager().AddCollisionListener( m_pCollisionListener );
     }
@@ -411,7 +411,7 @@ namespace Scarab  {
      * @param pScriptProcessor Pointer to an initialized script processor;
      *
      */
-    LuaEngine :: LuaEngine( SunLight :: Scripting :: ScriptProcessor *pScriptProcessor )  {
+    LuaEngine :: LuaEngine( SunLight :: Scripting :: ScriptProcessor* pScriptProcessor )  {
 
         m_pScriptProcessor  = pScriptProcessor;
         m_pLuaState         = luaL_newstate();
@@ -432,7 +432,7 @@ namespace Scarab  {
     LuaEngine :: ~LuaEngine( void )  {
 
         for( auto timer : m_Timers )  {
-            SunLight :: Concurrent :: Timer *pTimer = timer.second;
+            SunLight :: Concurrent :: Timer* pTimer = timer.second;
 
             delete pTimer;
         }

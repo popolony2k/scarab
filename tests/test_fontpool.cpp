@@ -58,7 +58,7 @@ class FakeFont : public SunLight :: Font :: IFont  {
 
 TEST_CASE( "Add hands out a handle that resolves to the same font" )  {
 
-    FontPool                                pool;
+    FontPool                                      pool;
     std :: shared_ptr<SunLight :: Font :: IFont>  pFont = std :: make_shared<FakeFont>();
 
     FontHandle  handle = pool.Add( pFont );
@@ -75,7 +75,7 @@ TEST_CASE( "Add hands out a handle that resolves to the same font" )  {
 
 TEST_CASE( "Release drops only the pool's reference: a font still used elsewhere stays alive" )  {
 
-    FontPool                                pool;
+    FontPool                                      pool;
     std :: shared_ptr<SunLight :: Font :: IFont>  pFont = std :: make_shared<FakeFont>();
     std :: weak_ptr<SunLight :: Font :: IFont>    weak  = pFont;
 
@@ -100,7 +100,7 @@ TEST_CASE( "A released font handle never resolves again, even when its slot is r
     CHECK_FALSE( pool.Release( handle ) );
 
     std :: shared_ptr<SunLight :: Font :: IFont>  pNext = std :: make_shared<FakeFont>();
-    FontHandle                              reused = pool.Add( pNext );     // takes the freed slot
+    FontHandle                                    reused = pool.Add( pNext );     // takes the freed slot
 
     CHECK( reused != handle );
     CHECK( pool.Resolve( reused ).get() == pNext.get() );
@@ -111,9 +111,9 @@ TEST_CASE( "A released font handle never resolves again, even when its slot is r
 
 TEST_CASE( "Clear releases every font the pool holds" )  {
 
-    FontPool                                pool;
+    FontPool                                      pool;
     std :: weak_ptr<SunLight :: Font :: IFont>    weak;
-    FontHandle                              handle = INVALID_FONT_HANDLE;
+    FontHandle                                    handle = INVALID_FONT_HANDLE;
 
     {
         std :: shared_ptr<SunLight :: Font :: IFont>  pFont = std :: make_shared<FakeFont>();

@@ -81,9 +81,9 @@ namespace Scarab  {
                  * a recycled slot don't compute a frame width from stale/aliased
                  * data.
                  */
-                std :: map<int, stNativeTextureSize>                  nativeTextureSizes;
-                std :: string                                         strTypeTag;
-                uint16_t                                              nGeneration;
+                std :: map<int, stNativeTextureSize>                   nativeTextureSizes;
+                std :: string                                          strTypeTag;
+                uint16_t                                               nGeneration;
                 bool                                                   bInUse;
             };
 
@@ -101,10 +101,10 @@ namespace Scarab  {
             SpritePool( void );
             ~SpritePool( void );
 
-            bool RegisterType( const std :: string &strTypeTag, uint32_t nCapacity );
-            bool HasType( const std :: string &strTypeTag ) const;
+            bool RegisterType( const std :: string& strTypeTag, uint32_t nCapacity );
+            bool HasType( const std :: string& strTypeTag ) const;
             uint32_t GetSlotCount( void ) const;
-            SpriteHandle Acquire( const std :: string &strTypeTag );
+            SpriteHandle Acquire( const std :: string& strTypeTag );
             bool Release( SpriteHandle handle );
             SunLight :: Sprite :: Sprite* Resolve( SpriteHandle handle );
             SunLight :: Canvas :: TextureCanvas* GetTexture( SpriteHandle handle, int nSequenceId );
@@ -116,4 +116,4 @@ namespace Scarab  {
     }
 }
 
-#endif  /* __SPRITEPOOL_H__ */
+#endif /* __SPRITEPOOL_H__ */

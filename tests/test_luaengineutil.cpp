@@ -31,8 +31,7 @@
 #include "doctest/doctest.h"
 #include "lua/luaengineutil.h"
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -43,11 +42,17 @@ class LuaStack  {
 
     public:
 
-    lua_State  *L;
+    lua_State*  L;
 
+    /**
+     * @brief Open a fresh Lua state with an empty stack.
+     */
     LuaStack( void ) : L( luaL_newstate() )  {
     }
 
+    /**
+     * @brief Close the Lua state.
+     */
     ~LuaStack( void )  {
 
         lua_close( L );
@@ -59,8 +64,8 @@ static const stNamedConstant  s_aColors[] = { { "COLOR_RED", 1 }, { "COLOR_BLUE"
 
 TEST_CASE( "ReadIntegerArg: a whole number in, anything else refused with the argument's name" )  {
 
-    LuaStack     stack;
-    lua_Integer  nValue = 0;
+    LuaStack       stack;
+    lua_Integer    nValue = 0;
     std :: string  strError;
 
     lua_pushinteger( stack.L, 7 );           // 1
@@ -83,9 +88,9 @@ TEST_CASE( "ReadIntegerArg: a whole number in, anything else refused with the ar
 
 TEST_CASE( "ReadIntegerArgInRange and ReadIntArg check the range, inclusive" )  {
 
-    LuaStack     stack;
-    lua_Integer  nValue = 0;
-    int          nInt   = 0;
+    LuaStack       stack;
+    lua_Integer    nValue = 0;
+    int            nInt   = 0;
     std :: string  strError;
 
     lua_pushinteger( stack.L, 0 );
@@ -108,8 +113,8 @@ TEST_CASE( "ReadIntegerArgInRange and ReadIntArg check the range, inclusive" )  
 
 TEST_CASE( "ReadOptionalIntegerArg: nil or absent gives the default, a bad value is still refused" )  {
 
-    LuaStack     stack;
-    lua_Integer  nValue = 0;
+    LuaStack       stack;
+    lua_Integer    nValue = 0;
     std :: string  strError;
 
     lua_pushnil( stack.L );
@@ -128,8 +133,8 @@ TEST_CASE( "ReadOptionalIntegerArg: nil or absent gives the default, a bad value
 
 TEST_CASE( "ReadNumberArg and ReadNumberArgInRange: NaN and out-of-range numbers are refused" )  {
 
-    LuaStack  stack;
-    double    fValue = 0.0;
+    LuaStack       stack;
+    double         fValue = 0.0;
     std :: string  strError;
 
     lua_pushnumber( stack.L, 0.25 );
@@ -150,8 +155,8 @@ TEST_CASE( "ReadNumberArg and ReadNumberArgInRange: NaN and out-of-range numbers
 
 TEST_CASE( "ReadBooleanArg, ReadStringArg and CheckFunctionArg accept their own type only" )  {
 
-    LuaStack  stack;
-    bool      bValue = false;
+    LuaStack       stack;
+    bool           bValue = false;
     std :: string  strValue;
     std :: string  strError;
 
@@ -180,8 +185,8 @@ TEST_CASE( "ReadBooleanArg, ReadStringArg and CheckFunctionArg accept their own 
 
 TEST_CASE( "ReadConstantArg accepts only a value of its constant group" )  {
 
-    LuaStack  stack;
-    int       nValue = 0;
+    LuaStack       stack;
+    int            nValue = 0;
     std :: string  strError;
 
     lua_pushinteger( stack.L, 4 );

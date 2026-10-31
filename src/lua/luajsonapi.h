@@ -21,8 +21,7 @@
 #ifndef __LUAJSONAPI_H__
 #define __LUAJSONAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -41,14 +40,14 @@ namespace Scarab  {
              */
             class LuaJsonApi  {
 
-                static int LoadJson( lua_State *pLuaState );
+                static int LoadJson( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUAJSONAPI_H__ */
+#endif /* __LUAJSONAPI_H__ */

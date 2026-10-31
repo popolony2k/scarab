@@ -49,6 +49,8 @@ RULES = {
     "cpp-body-blank-line":  "function body not starting with a blank line",
     "cpp-case-colon":       "case/default label without a space before its colon",
     "cpp-pointer-side":     "'*' or '&' with the name, not the type (Type *pName)",
+    "cpp-undocumented-function": "function with no Doxygen comment where it is declared or defined",
+    "cpp-decl-columns":     "declarations in one block whose names don't start in one column",
     "cpp-hungarian":        "variable or member whose prefix doesn't match its type (p, sz, b, n, f, str)",
     "cpp-private-const":    ".cpp constant that is not a '#define __NAME' (static const / #define without __)",
     "cpp-raw-new-delete":   "raw new/delete (ownership should be a unique_ptr)",
@@ -187,6 +189,56 @@ def hungarian_mismatch(line):
     return "want " + "/".join(want)
 
 
+# A declaration or definition head, for the documentation rule: the name before '('.
+DOC_HEAD = re.compile(r"^\s*(?!(if|for|while|switch|catch|return|else|do)\b)(?:[\w:<>,~*&\s]*?\s)?((?:\w+\s*::\s*)*~?\w+)\s*\(")
+
+# Function names documented in some header (filled before the C++ files are read): a method that
+# implements an interface may rely on the interface's comment.
+DOCUMENTED_IN_HEADERS = set()
+
+
+def doc_before(raw_lines, k):
+    """Whether the code at line k is preceded (blank lines aside) by the end of a comment."""
+    j = k - 1
+    while j >= 0 and raw_lines[j].strip() == "":
+        j -= 1
+    return j >= 0 and raw_lines[j].strip().endswith("*/")
+
+
+def documented_names(raw_lines, code_lines):
+    """The names of the functions declared or defined with a comment right before them."""
+    names = set()
+    for k, line in enumerate(code_lines):
+        m = DOC_HEAD.match(line)
+        if m and doc_before(raw_lines, k):
+            names.add(re.sub(r"\s+", "", m.group(2)).split("::")[-1])
+    return names
+
+
+# One declaration: indentation, a type (words, '::', template arguments, '*'/'&'), then the name.
+DECL_LINE = re.compile(r"^(\s*)((?:const\s+|static\s+|unsigned\s+|constexpr\s+)*[A-Za-z_][\w]*(?:\s*::\s*\w+)*(?:<[^;=()]*>)?(?:\s*[*&]+)?)(\s+)([*&]*[A-Za-z_]\w*)\s*(=|;|\[|\{)")
+
+
+def declaration_blocks(lines):
+    """Runs of 2+ consecutive declarations at one indentation: (first line index, set of name columns)."""
+    blocks, k = [], 0
+    while k < len(lines):
+        run, indent = [], None
+        while k < len(lines):
+            m = DECL_LINE.match(lines[k])
+            if not m or re.match(r"\s*(return|delete|else|case|goto|using|typedef|throw|new)\b", lines[k]) \
+                    or lines[k].rstrip().endswith( ( ",", "(" ) ) \
+                    or m.group(2).strip() in ("return", "else", "delete", "case") or ( indent is not None and m.group(1) != indent ):
+                break
+            indent = m.group(1)
+            run.append( ( k, len(m.group(1)) + len(m.group(2)) + len(m.group(3)) ) )
+            k += 1
+        if len(run) >= 2:
+            blocks.append( ( run[0][0], { c for _, c in run } ) )
+        k += 1 if not run else 0
+    return blocks
+
+
 # A function definition's head: an optional return type, a name (Class :: Name too), '(' -
 # never a line that continues an expression or a condition.
 FUNCTION_HEAD = re.compile(r"\s*(?![(&|!])(?!(if|for|while|switch|catch|return|else|do)\b)[\w:<>,~*&\s]*[\w~]\s*\(")
@@ -206,6 +258,13 @@ def scope_misspaced(line):
         if not before.endswith(" ") or not after.startswith(" "):
             return True
     return False
+
+
+def is_bare_block(lines, k):
+    """A lone '{' that opens a bare scope block (the line before ends a statement or a block, or is
+    blank) - the guide has no line for it to end, so it stays alone."""
+    prev = next( ( l.strip() for l in reversed( lines[:k] ) if l.strip() ), "" )
+    return prev == "" or prev.endswith( ";" ) or prev.endswith( "{" ) or prev.endswith( "}" )
 
 
 def is_block_open(line):
@@ -278,7 +337,7 @@ def cpp_findings(path, rel, add):
             add("cpp-keyword-paren", rel, n, rawl)
         if is_block_open(line) and not re.search(r"\S  \{$", line.rstrip()):
             add("cpp-brace-spacing", rel, n, rawl)
-        if stripped == "{":
+        if stripped == "{" and not is_bare_block( lines, k ):
             add("cpp-brace-own-line", rel, n, rawl)
         if re.search(r"\}\s*else\b", line):
             add("cpp-else-same-line", rel, n, rawl)
@@ -289,8 +348,8 @@ def cpp_findings(path, rel, add):
                 add("cpp-body-blank-line", rel, n, rawl)
         if re.match(r"\s*(case\b.*[^\s:]|default):(?!:)", line):
             add("cpp-case-colon", rel, n, rawl)
-        if re.search(r"(?<![\w])(?!" + CPP_KEYWORDS_BEFORE_STAR + r"\b)[\w>]+\s+[*&]+[A-Za-z_]\w*\s*[,;)=\[]", line) \
-                and not re.search(r"[=+\-/<>!|&?:]\s*\w+\s+[*&]", line):
+        if re.search(r"(?<![\w])(?!" + CPP_KEYWORDS_BEFORE_STAR + r"\b)[\w>]+\s+[*&]+[A-Za-z_]\w*\s*[,;)=\[:]", line) \
+                and not re.search(r"(?:[=+\-/<>!|&?]|(?<!:):(?!:))\s*\w+\s+[*&]", line):
             add("cpp-pointer-side", rel, n, rawl)
         hungarian = hungarian_mismatch(line)
         if hungarian:
@@ -303,6 +362,23 @@ def cpp_findings(path, rel, add):
                 add("cpp-private-const", rel, n, rawl)
         if re.search(r"\bnew\s+[A-Za-z_]", line) or re.search(r"\bdelete\b(?!\s*;)", line):
             add("cpp-raw-new-delete", rel, n, rawl)
+
+    documented = documented_names(raw_lines, lines)
+    for k, line in enumerate(lines):
+        if not re.search(r"\)\s*(const\s*)?(override\s*)?\s*\{\s*$", line) or re.search(CONTROL, line) \
+                or re.search(r"\]\s*\(", line) or not FUNCTION_HEAD.match(line) or line.strip().startswith(("else", "do")):
+            continue
+        prev = next((l.strip() for l in reversed(lines[:k]) if l.strip()), "")
+        if prev.endswith(("(", ",", "&&", "||", ":")) or re.match(r"\s*TEST_CASE\b", line):
+            continue                                  # the second line of a condition or a call, not a function
+        m = re.search(r"((?:\w+\s*::\s*)*~?\w+)\s*\(", line)
+        name = re.sub(r"\s+", "", m.group(1)).split("::")[-1]
+        if not doc_before(raw_lines, k) and name not in documented and name not in DOCUMENTED_IN_HEADERS:
+            add("cpp-undocumented-function", rel, k + 1, raw_lines[k])
+
+    for start, column_set in declaration_blocks(lines):
+        if len(column_set) > 1:
+            add("cpp-decl-columns", rel, start + 1, raw_lines[start])
 
     for k, rawl in enumerate(raw_lines):
         if "@param" in rawl:
@@ -372,6 +448,13 @@ def main():
 
     def add(rule, rel, n, text):
         findings[rule].append((rel, n, text.strip()[:110]))
+
+    # Scarab's headers and the sunlight it builds against (an interface Scarab implements is documented there).
+    header_roots = [cpp_root] if cpp_root else [os.path.join(REPO_ROOT, "src"), os.path.join(REPO_ROOT, "tests"),
+                                                os.path.join(REPO_ROOT, "build", "_deps", "sunlight-src", "src")]
+    for path in [p for root in header_roots for p in glob.glob(os.path.join(root, "**", "*.h"), recursive=True)]:
+        raw = open(path, encoding="utf-8", errors="replace").read()
+        DOCUMENTED_IN_HEADERS.update(documented_names(raw.split("\n"), blank_cpp(raw).split("\n")))
 
     if cpp_root:
         roots = [(cpp_root, os.path.abspath(cpp_root))]

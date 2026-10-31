@@ -269,6 +269,28 @@ The rules Scarab's code relies on, beyond formatting (each one in `CLAUDE.md`):
   behaviour is pinned by a headless smoke test (`scripts/*_smoke.py`); a bug fix comes with a test
   shown to fail on the old code.
 
+### Documentation (Scarab)
+
+Scarab's own addition to the comment rule above:
+
+- **Every function has a Doxygen comment** - not only public methods: an `inline` helper in a header,
+  a file-local `static` function in a `.cpp`, a class's private helpers, and `main`. It is written once,
+  where the function is declared or where it is defined; a method that implements an interface may rely
+  on the interface's comment. It has a `@brief`, a `@param` for each parameter and a `@return` when the
+  function returns a value, each ending with `;`:
+
+```cpp
+/**
+ * @brief The slot index a handle addresses.
+ * @param handle The handle;
+ * @return The 0-based slot index; -1 for INVALID_SPRITE_HANDLE;
+ */
+inline int32_t SpriteHandleIndex( SpriteHandle handle )  {
+```
+
+- A Lua-callable function's comment also carries its `@luaname`/`@luadoc`/`@luaexample` tags, which
+  generate the published Lua API reference (`CLAUDE.md`).
+
 ## Lua
 
 ### Files

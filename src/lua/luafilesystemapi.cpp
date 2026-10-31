@@ -25,8 +25,7 @@
 #include <string>
 #include <vector>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -64,7 +63,7 @@ namespace Scarab  {
              * which wouldn't run C++ destructors for anything still alive
              * on this stack frame at that point.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return Number of values the loaded chunk itself returned
              * (required by the Lua C API calling convention);
              *
@@ -94,9 +93,9 @@ namespace Scarab  {
              * -- runs identically whether the game is a loose directory or a mounted .zip
              * dofile( BASE_PATH .. "scripts/stages/1st_stage_corsair.lua" )
              */
-            int LuaFileSystemApi :: DoFile( lua_State *pLuaState )  {
+            int LuaFileSystemApi :: DoFile( lua_State* pLuaState )  {
 
-                const char  *szFileName = lua_tostring( pLuaState, 1 );
+                const char*  szFileName = lua_tostring( pLuaState, 1 );
 
                 if( !szFileName )
                     return luaL_error( pLuaState, "dofile: expected a file name" );
@@ -139,9 +138,9 @@ namespace Scarab  {
              * AFTER luaL_openlibs() - it's replacing that library's own
              * dofile, not adding a new global.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              */
-            void LuaFileSystemApi :: Register( lua_State *pLuaState )  {
+            void LuaFileSystemApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "dofile", LuaFileSystemApi :: DoFile );
             }

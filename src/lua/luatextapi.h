@@ -21,8 +21,7 @@
 #ifndef __LUATEXTAPI_H__
 #define __LUATEXTAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -56,23 +55,23 @@ namespace Scarab  {
              */
             class LuaTextApi  {
 
-                static int LoadFont( lua_State *pLuaState );
-                static int ReleaseFont( lua_State *pLuaState );
-                static int SetFont( lua_State *pLuaState );
-                static int RegisterFont( lua_State *pLuaState );
-                static int UnregisterFont( lua_State *pLuaState );
-                static int DrawText( lua_State *pLuaState );
-                static int MeasureText( lua_State *pLuaState );
+                static int LoadFont( lua_State* pLuaState );
+                static int ReleaseFont( lua_State* pLuaState );
+                static int SetFont( lua_State* pLuaState );
+                static int RegisterFont( lua_State* pLuaState );
+                static int UnregisterFont( lua_State* pLuaState );
+                static int DrawText( lua_State* pLuaState );
+                static int MeasureText( lua_State* pLuaState );
 
                 public:
 
                 // The Lua global LuaEngine::Init stashes the engine's FontPool in (a light userdata).
-                static constexpr const char  *FONT_POOL_GLOBAL = "fontPoolPtr";
+                static constexpr const char*  FONT_POOL_GLOBAL = "fontPoolPtr";
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUATEXTAPI_H__ */
+#endif /* __LUATEXTAPI_H__ */

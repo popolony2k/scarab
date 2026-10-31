@@ -36,7 +36,7 @@ namespace Scarab  {
              * @param strError Receives the reason on failure;
              * @return true if the value is a valid mode;
              */
-            bool LuaBlendApi :: ReadBlendMode( lua_State *pLuaState, int nIndex, SunLight :: Base :: BlendMode &mode, std :: string &strError )  {
+            bool LuaBlendApi :: ReadBlendMode( lua_State* pLuaState, int nIndex, SunLight :: Base :: BlendMode& mode, std :: string& strError )  {
 
                 if( !lua_isinteger( pLuaState, nIndex ) )  {
                     strError = "expected a BLEND_MODE_* constant";
@@ -81,7 +81,7 @@ namespace Scarab  {
              *     draw_text( "HUD", 20, 20, 20, 20, 20, 20, 255 )                   -- normal again
              * end
              */
-            int LuaBlendApi :: BeginBlendMode( lua_State *pLuaState )  {
+            int LuaBlendApi :: BeginBlendMode( lua_State* pLuaState )  {
 
                 SunLight :: Base :: BlendMode  mode = SunLight :: Base :: BLEND_MODE_NORMAL;
                 std :: string                  strError;
@@ -98,7 +98,7 @@ namespace Scarab  {
              * @luaname{draw_end_blend_mode() -> true}
              * @luagroup{scoped_blend}
              */
-            int LuaBlendApi :: EndBlendMode( lua_State *pLuaState )  {
+            int LuaBlendApi :: EndBlendMode( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: GetDrawSurface( pLuaState ) -> EndBlendMode();
 
@@ -109,7 +109,7 @@ namespace Scarab  {
              * @brief Register the BLEND_MODE_* constants - sunlight's SunLight::Base::BlendMode,
              * one to one.
              */
-            void LuaBlendApi :: RegisterEnums( lua_State *pLuaState )  {
+            void LuaBlendApi :: RegisterEnums( lua_State* pLuaState )  {
 
                 /**
                  * @luaconstants{Blend modes}
@@ -132,7 +132,7 @@ namespace Scarab  {
              * @brief Register the blend-mode Lua-callable functions and constants. Needs no
              * renderer: the draw functions reach it only when called.
              */
-            void LuaBlendApi :: Register( lua_State *pLuaState )  {
+            void LuaBlendApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "draw_begin_blend_mode", LuaBlendApi :: BeginBlendMode );
                 lua_register( pLuaState, "draw_end_blend_mode", LuaBlendApi :: EndBlendMode );

@@ -27,8 +27,7 @@
 #include <mutex>
 #include <string>
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -49,8 +48,8 @@ namespace Scarab  {
              * @brief A named integer constant, used to register enum values as Lua globals.
              */
             struct stNamedConstant  {
-                const char  *szName;
-                int         nValue;
+                const char*  szName;
+                int          nValue;
             };
 
             /**
@@ -59,8 +58,8 @@ namespace Scarab  {
              * form, which is what nearly every constant group is.
              */
             struct stNamedRealConstant  {
-                const char  *szName;
-                double      fValue;
+                const char*  szName;
+                double       fValue;
             };
 
             /**
@@ -109,39 +108,39 @@ namespace Scarab  {
                  */
                 static std :: mutex                       s_LuaMutex;
 
-                static Engine :: IRendererProvider* GetRendererProvider( lua_State *pLuaState );
-                static void EnsureRenderer( lua_State *pLuaState );
-                static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State *pLuaState );
-                static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State *pLuaState );
-                static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State *pLuaState );
-                static Engine :: SpritePool* GetSpritePool( lua_State *pLuaState );
-                static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State *pLuaState );
-                static bool AddOneParmCommandScript( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd, const char *szName, std :: string &strError );
-                static void RegisterConstants( lua_State *pLuaState, const stNamedConstant *pTable, size_t nCount );
-                static void RegisterRealConstants( lua_State *pLuaState, const stNamedRealConstant *pTable, size_t nCount );
-                static int PushError( lua_State *pLuaState, const std :: string &strMessage );
-                static int PushTrue( lua_State *pLuaState );
+                static Engine :: IRendererProvider* GetRendererProvider( lua_State* pLuaState );
+                static void EnsureRenderer( lua_State* pLuaState );
+                static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State* pLuaState );
+                static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State* pLuaState );
+                static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State* pLuaState );
+                static Engine :: SpritePool* GetSpritePool( lua_State* pLuaState );
+                static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State* pLuaState );
+                static bool AddOneParmCommandScript( lua_State* pLuaState, SunLight :: Scripting :: Commands cmd, const char* szName, std :: string& strError );
+                static void RegisterConstants( lua_State* pLuaState, const stNamedConstant* pTable, size_t nCount );
+                static void RegisterRealConstants( lua_State* pLuaState, const stNamedRealConstant* pTable, size_t nCount );
+                static int PushError( lua_State* pLuaState, const std :: string& strMessage );
+                static int PushTrue( lua_State* pLuaState );
                 static std :: string FormatNumber( double fValue );
                 static double ShortestDecimal( float fValue );
-                static bool ReadIntegerArg( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer &nOut, std :: string &strError );
-                static bool ReadIntegerArgInRange( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer nMin, lua_Integer nMax,
-                                                   lua_Integer &nOut, std :: string &strError );
-                static bool ReadIntArg( lua_State *pLuaState, int nIndex, const char *szName, int &nOut, std :: string &strError );
-                static bool ReadOptionalIntegerArg( lua_State *pLuaState, int nIndex, const char *szName, lua_Integer nDefault,
-                                                    lua_Integer &nOut, std :: string &strError );
-                static bool ReadNumberArg( lua_State *pLuaState, int nIndex, const char *szName, double &fOut, std :: string &strError );
-                static bool ReadNumberArgInRange( lua_State *pLuaState, int nIndex, const char *szName, double fMin, double fMax,
-                                                  double &fOut, std :: string &strError );
-                static bool ReadBooleanArg( lua_State *pLuaState, int nIndex, const char *szName, bool &bOut, std :: string &strError );
-                static bool ReadOptionalBooleanArg( lua_State *pLuaState, int nIndex, const char *szName, bool bDefault,
-                                                    bool &bOut, std :: string &strError );
-                static bool ReadStringArg( lua_State *pLuaState, int nIndex, const char *szName, std :: string &strOut, std :: string &strError );
-                static bool CheckFunctionArg( lua_State *pLuaState, int nIndex, const char *szName, std :: string &strError );
-                static bool ReadConstantArg( lua_State *pLuaState, int nIndex, const char *szName, const stNamedConstant *pTable,
-                                             size_t nCount, const char *szGroup, int &nOut, std :: string &strError );
+                static bool ReadIntegerArg( lua_State* pLuaState, int nIndex, const char* szName, lua_Integer& nOut, std :: string& strError );
+                static bool ReadIntegerArgInRange( lua_State* pLuaState, int nIndex, const char* szName, lua_Integer nMin, lua_Integer nMax,
+                                                   lua_Integer& nOut, std :: string& strError );
+                static bool ReadIntArg( lua_State* pLuaState, int nIndex, const char* szName, int& nOut, std :: string& strError );
+                static bool ReadOptionalIntegerArg( lua_State* pLuaState, int nIndex, const char* szName, lua_Integer nDefault,
+                                                    lua_Integer& nOut, std :: string& strError );
+                static bool ReadNumberArg( lua_State* pLuaState, int nIndex, const char* szName, double& fOut, std :: string& strError );
+                static bool ReadNumberArgInRange( lua_State* pLuaState, int nIndex, const char* szName, double fMin, double fMax,
+                                                  double& fOut, std :: string& strError );
+                static bool ReadBooleanArg( lua_State* pLuaState, int nIndex, const char* szName, bool& bOut, std :: string& strError );
+                static bool ReadOptionalBooleanArg( lua_State* pLuaState, int nIndex, const char* szName, bool bDefault,
+                                                    bool& bOut, std :: string& strError );
+                static bool ReadStringArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strOut, std :: string& strError );
+                static bool CheckFunctionArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strError );
+                static bool ReadConstantArg( lua_State* pLuaState, int nIndex, const char* szName, const stNamedConstant* pTable,
+                                             size_t nCount, const char* szGroup, int& nOut, std :: string& strError );
             };
         }
     }
 }
 
-#endif  /* __LUAENGINEUTIL_H__ */
+#endif /* __LUAENGINEUTIL_H__ */

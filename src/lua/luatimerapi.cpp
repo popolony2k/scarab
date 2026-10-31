@@ -49,10 +49,10 @@ namespace Scarab  {
             /**
              * @brief Delete global variable declared in Lua or through set_global call.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @param szVarName The variable name that will be removed;
              */
-            void LuaTimerApi :: DeleteGlobal( lua_State *pLuaState, const char *szVarName )  {
+            void LuaTimerApi :: DeleteGlobal( lua_State* pLuaState, const char* szVarName )  {
 
                 lua_pushnil( pLuaState );
                 lua_setglobal( pLuaState, szVarName );
@@ -61,7 +61,7 @@ namespace Scarab  {
             /**
              * @brief Fetch the timer map stashed as a Lua light userdata global.
              */
-            static TimerMap* GetTimerMap( lua_State *pLuaState )  {
+            static TimerMap* GetTimerMap( lua_State* pLuaState )  {
 
                 lua_getglobal( pLuaState, "timerMapPtr" );
 
@@ -76,7 +76,7 @@ namespace Scarab  {
              * @brief Add a timer event handling function that will be triggered
              * to a Lua routine passed by parameter;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{set_timer(id, intervalMilli, callback) -> true | nil, message}
@@ -100,12 +100,12 @@ namespace Scarab  {
              *   print("ticks: " .. shotsFired)
              * end)
              */
-            int LuaTimerApi :: SetTimer( lua_State *pLuaState )  {
+            int LuaTimerApi :: SetTimer( lua_State* pLuaState )  {
 
-                std :: string  strError;
-                int            nId       = 0;
-                lua_Integer    nInterval = 0;
-                TimerMap       *pTimerMap = GetTimerMap( pLuaState );
+                std :: string   strError;
+                int             nId       = 0;
+                lua_Integer     nInterval = 0;
+                TimerMap*       pTimerMap = GetTimerMap( pLuaState );
 
                 if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "id", nId, strError ) ||
                     !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 2, "intervalMilli", 1, INT_MAX, nInterval, strError ) ||
@@ -115,15 +115,15 @@ namespace Scarab  {
                 if( pTimerMap -> find( nId ) != pTimerMap -> end() )
                     return LuaEngineUtil :: PushError( pLuaState, "timer " + std :: to_string( nId ) + " is already set (reset_timer it first)" );
 
-                SunLight :: Concurrent :: Timer *pTImer = new SunLight :: Concurrent :: Timer( nId );
+                SunLight :: Concurrent :: Timer* pTImer = new SunLight :: Concurrent :: Timer( nId );
 
                 lua_pushvalue( pLuaState, 3 );
                 lua_setglobal( pLuaState, GetTimerName( nId ).c_str() );
 
-                pTimerMap -> insert( std :: make_pair( nId, pTImer) );
+                pTimerMap -> insert( std :: make_pair( nId, pTImer ) );
 
-                pTImer -> Start( SunLight :: Concurrent :: Timer:: Interval( nInterval ),
-                                 [pLuaState](int nId ) {
+                pTImer -> Start( SunLight :: Concurrent :: Timer :: Interval( nInterval ),
+                                 [pLuaState]( int nId )  {
                                     /*
                                      * This callback runs on Timer's own
                                      * background thread - lua_State isn't
@@ -167,7 +167,7 @@ namespace Scarab  {
             /**
              * @brief Remove a timer previously added by SetTimer;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
              * @luaname{reset_timer(id) -> true | nil, message}
@@ -179,11 +179,11 @@ namespace Scarab  {
              * @luaexample
              * reset_timer(1)
              */
-            int LuaTimerApi :: ResetTimer( lua_State *pLuaState )  {
+            int LuaTimerApi :: ResetTimer( lua_State* pLuaState )  {
 
-                std :: string  strError;
-                int            nId       = 0;
-                TimerMap       *pTimerMap = GetTimerMap( pLuaState );
+                std :: string   strError;
+                int             nId       = 0;
+                TimerMap*       pTimerMap = GetTimerMap( pLuaState );
 
                 if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "id", nId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -204,7 +204,7 @@ namespace Scarab  {
             /**
              * @brief Register the timer Lua-callable functions.
              */
-            void LuaTimerApi :: Register( lua_State *pLuaState )  {
+            void LuaTimerApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "set_timer", LuaTimerApi :: SetTimer );
                 lua_register( pLuaState, "reset_timer", LuaTimerApi :: ResetTimer );

@@ -21,8 +21,7 @@
 #ifndef __LUACOLLISIONAPI_H__
 #define __LUACOLLISIONAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -49,17 +48,17 @@ namespace Scarab  {
              */
             class LuaCollisionApi  {
 
-                static int AddRule( lua_State *pLuaState );
-                static int AddTileRule( lua_State *pLuaState );
-                static int SetHandler( lua_State *pLuaState );
-                static int SetTileHandler( lua_State *pLuaState );
+                static int AddRule( lua_State* pLuaState );
+                static int AddTileRule( lua_State* pLuaState );
+                static int SetHandler( lua_State* pLuaState );
+                static int SetTileHandler( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUACOLLISIONAPI_H__ */
+#endif /* __LUACOLLISIONAPI_H__ */

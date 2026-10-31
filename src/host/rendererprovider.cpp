@@ -33,8 +33,8 @@ namespace Scarab  {
          * created implicitly (today's hardcoded values, see main.cpp);
          * @param headless What the command line asked of --headless;
          */
-        RendererProvider :: RendererProvider( const SunLight :: Renderer :: RendererConfig &defaults,
-                                              const stHeadlessSettings &headless )  {
+        RendererProvider :: RendererProvider( const SunLight :: Renderer :: RendererConfig& defaults,
+                                              const stHeadlessSettings& headless )  {
 
             m_DefaultConfig          = defaults;
             m_EffectiveConfig        = defaults;
@@ -77,14 +77,14 @@ namespace Scarab  {
          * the renderer exists and is Start()ed (stRendererCreateExtras): sunlight's default
          * camera/zoom bindings, and the default view's preferred zoom. Defaults to none of
          * them - what the implicitly-created default renderer always gets, since
-         * GetOrCreateDefault never passes this.
+         * GetOrCreateDefault never passes this;
          * @return true if the renderer exists now, false (with *pError set) if not;
          */
-        bool RendererProvider :: Create( const SunLight :: Renderer :: RendererConfig &config,
+        bool RendererProvider :: Create( const SunLight :: Renderer :: RendererConfig& config,
                                          Origin origin,
-                                         const std :: string &strTrigger,
-                                         std :: string *pError,
-                                         const Scarab :: Engine :: stRendererCreateExtras &extras )  {
+                                         const std :: string& strTrigger,
+                                         std :: string* pError,
+                                         const Scarab :: Engine :: stRendererCreateExtras& extras )  {
 
             if( m_pRenderer )  {
                 if( pError )
@@ -153,7 +153,7 @@ namespace Scarab  {
          * the entry script has finished, so a game that never asked for a
          * window-needing primitive still gets its one renderer to run on.
          */
-        void RendererProvider :: EnsureCreated( const char *szTrigger )  {
+        void RendererProvider :: EnsureCreated( const char* szTrigger )  {
 
             GetOrCreateDefault( szTrigger );
         }
@@ -163,7 +163,7 @@ namespace Scarab  {
          * yet. A failure to create even the default one is fatal: nothing can
          * run without a renderer, and callers dereference the result.
          */
-        SunLight :: Renderer :: TileMapRenderer* RendererProvider :: GetOrCreateDefault( const char *szTrigger )  {
+        SunLight :: Renderer :: TileMapRenderer* RendererProvider :: GetOrCreateDefault( const char* szTrigger )  {
 
             if( !m_pRenderer )  {
                 std :: string  strError;
@@ -189,12 +189,12 @@ namespace Scarab  {
             return m_Headless;
         }
 
-        SunLight :: TileMap :: ITileMap* RendererProvider :: GetTileMap( const char *szTrigger )  {
+        SunLight :: TileMap :: ITileMap* RendererProvider :: GetTileMap( const char* szTrigger )  {
 
             return GetOrCreateDefault( szTrigger );
         }
 
-        SunLight :: DrawSurface :: IDrawSurface* RendererProvider :: GetDrawSurface( const char *szTrigger )  {
+        SunLight :: DrawSurface :: IDrawSurface* RendererProvider :: GetDrawSurface( const char* szTrigger )  {
 
             return GetOrCreateDefault( szTrigger );
         }
@@ -210,8 +210,8 @@ namespace Scarab  {
          * default, created implicitly - names the primitive that needed a window first, since
          * that call, not this one, is what to move below renderer_create.
          */
-        bool RendererProvider :: CreateRenderer( const SunLight :: Renderer :: RendererConfig &config,
-                                                 const Scarab :: Engine :: stRendererCreateExtras &extras, std :: string *pError )  {
+        bool RendererProvider :: CreateRenderer( const SunLight :: Renderer :: RendererConfig& config,
+                                                 const Scarab :: Engine :: stRendererCreateExtras& extras, std :: string* pError )  {
 
             if( m_pRenderer )  {
                 if( pError )  {
@@ -253,7 +253,7 @@ namespace Scarab  {
          * @brief Keep the effective configuration's title current: app_set_name changes the
          * live window title, and sunlight has no getter for it to read back.
          */
-        void RendererProvider :: NoteWindowTitle( const std :: string &strTitle )  {
+        void RendererProvider :: NoteWindowTitle( const std :: string& strTitle )  {
 
             m_EffectiveConfig.strTitle = strTitle;
         }
@@ -264,18 +264,18 @@ namespace Scarab  {
             return m_bUseDefaultKeyHandler;
         }
 
-        bool RendererProvider :: RegisterFont( const char *szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
-                                               bool bBold, bool bItalic, const char *szTrigger )  {
+        bool RendererProvider :: RegisterFont( const char* szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
+                                               bool bBold, bool bItalic, const char* szTrigger )  {
 
             return GetOrCreateDefault( szTrigger ) -> RegisterFont( szFamily, std :: move( pFont ), bBold, bItalic );
         }
 
-        bool RendererProvider :: UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont> &pFont )  {
+        bool RendererProvider :: UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont>& pFont )  {
 
             return m_pRenderer ? m_pRenderer -> UnregisterFont( pFont ) : false;
         }
 
-        bool RendererProvider :: UnregisterFont( const char *szFamily, bool bBold, bool bItalic )  {
+        bool RendererProvider :: UnregisterFont( const char* szFamily, bool bBold, bool bItalic )  {
 
             return m_pRenderer ? m_pRenderer -> UnregisterFont( szFamily, bBold, bItalic ) : false;
         }
