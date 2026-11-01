@@ -1684,7 +1684,7 @@ accurate once the features it describes are actually settled, not before.
 |---|------|--------|
 | T1 | A full documentation pass once every other phase's changes have landed | TODO |
 | T2 | Simplify `README.md` | TODO |
-| T3 | Every source file and script carries the project's copyright/license notice | TODO |
+| T3 | Every source file and script carries the project's copyright/license notice | DONE |
 
 **T1.** Scope: `README.md`; the generated Lua API reference's own source comments
 (`@luadoc`/`@luaexample` tags in `src/lua/`); `samples/*/docs/README.md`; `CLAUDE.md`'s own
@@ -1725,6 +1725,24 @@ Scope, to settle when the item starts:
 - Whether to add a CI check, like the `lua-api-docs` hard fail, so a new file without the
   notice fails CI instead of being found by eye again.
 - Write the rule into `CLAUDE.md` for every file kind it covers, not only `src/`.
+
+**T3 done (2026-10-31).** Measured again before starting (tracked files, `resources/` aside): the `.cpp`/`.h`
+(58) and `.lua` (35) files all had it - S2c had added the five Lua ones listed above - but 14 of 19 `.py`
+files, the 3 workflows, `Doxyfile`, `scripts/lsan.supp` and `tests/CMakeLists.txt` did not, and the root
+`CMakeLists.txt` had only the copyright line. The 2026-10-23 count had also called `style_audit.py` covered
+by mistake: it matched the audit's own search string. The owner's decisions:
+- **Covered:** every code, script, build and config file that takes a comment - C++, Lua, Python, CMake,
+  the workflows, `Doxyfile`, `lsan.supp`. **Exempt:** `.md`, JSON (no comments), `.gitignore`, and
+  `resources/` (per-folder license READMEs). The notice was added to those 21 files, in a `#` block after
+  any shebang, like `generate_lua_api_docs.py` already had it.
+- **CI check:** `style_audit.py` checks the WHOLE notice (`has_notice`: every line of `docs/HEADER.txt`, in
+  order, comment markers aside, near the top) - for `cpp-license` and `lua-license` too, which before only
+  looked for the copyright line (and so passed the root `CMakeLists.txt`'s truncated notice). A new rule,
+  `script-license`, covers the `#` kinds through `SCRIPT_GLOBS`; it runs in the existing Style check step.
+  Shown failing on a removed line in a script, a Lua file and a C++ header.
+- **Rule** in `CLAUDE.md` for every kind, and the README's License line.
+- **Proof the files still work:** every `.py` compiles, the three workflows parse as YAML, Doxygen gives the
+  same 5 (pre-existing) warnings before and after, CMake reconfigures, build, unit tests and smoke tests pass.
 
 ## Process
 

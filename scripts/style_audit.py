@@ -1,3 +1,22 @@
+#
+# Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+#
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+#
 """
 Style audit - counts how far Scarab's code is from docs/CODE_STYLE.md (plans/MASTER_PLAN.md item S1).
 
@@ -27,15 +46,19 @@ from collections import defaultdict
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HEADER_FILE = os.path.join(REPO_ROOT, "docs", "HEADER.txt")
-LICENSE_MARKER = "Copyright (c) since 2021 by PopolonY2k"
+NOTICE_SEARCH_LINES = 40                  # the notice must start within a file's first lines (after a shebang or a title)
 
 CPP_DIRS = ["src", "tests"]
 LUA_DIRS = ["samples", "scripts", "tools"]
+# Script, build and config files that take '#' comments (docs/CODE_STYLE.md, plans/MASTER_PLAN.md item T3). Documents
+# (.md), JSON (no comments) and resources/ (its own per-folder licenses) are exempt.
+SCRIPT_GLOBS = ["scripts/**/*.py", "tools/**/*.py", "scripts/**/*.supp", ".github/workflows/*.yml",
+                "CMakeLists.txt", "src/**/CMakeLists.txt", "tests/**/CMakeLists.txt", "Doxyfile"]
 EXAMPLES_PER_RULE = 2
 
 RULES = {
     # C++ - docs/CODE_STYLE.md, "C++"
-    "cpp-license":          "C++ file without the zlib license header",
+    "cpp-license":          "C++ file without the full zlib license notice (docs/HEADER.txt)",
     "cpp-guard":            "include guard not __FILE_H__ / closing #endif not '#endif /* __FILE_H__ */'",
     "cpp-own-header-first": ".cpp whose first #include is not its own header, by its path from src/",
     "cpp-tab":              "tab character",
@@ -64,7 +87,7 @@ RULES = {
     "cpp-raw-new-delete":   "raw new/delete (ownership should be a unique_ptr)",
     "cpp-param-semicolon":  "@param line not ending with ';'",
     # Lua - docs/CODE_STYLE.md, "Lua"
-    "lua-license":          "Lua file without the zlib license header",
+    "lua-license":          "Lua file without the full zlib license notice (docs/HEADER.txt)",
     "lua-tab":              "tab character",
     "lua-paren-spacing":    "no space after '(' or before ')' in a call or definition",
     "lua-const-prefix":     "top-level private constant without the __ prefix (local NAME = ...)",
@@ -76,6 +99,9 @@ RULES = {
     "lua-single-quotes":    "single-quoted string that holds no double quote",
     "lua-magic-number":     "number literal other than 0, 1, -1, 2 outside a constant (samples and tools)",
     "lua-magic-number-test":"the same, in a smoke test (expected values are allowed there)",
+
+    # Other files - plans/MASTER_PLAN.md item T3
+    "script-license":       "script, build or config file without the full zlib license notice (docs/HEADER.txt)",
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -356,6 +382,34 @@ CPP_KEYWORDS_BEFORE_STAR = r"(return|case|throw|delete|sizeof|else|do|new|and|or
 CONTROL = r"\b(if|for|while|switch|catch)\b"
 
 
+def notice_text(line):
+    """A line with its comment markers ('/*', '*', '*/', '#', '--[[', '--', ']]') and spaces taken off."""
+    text = line.strip()
+    for marker in ("/*", "--[[", "--", "#", "*/", "*", "]]"):
+        if text.startswith(marker):
+            text = text[len(marker):].strip()
+    for marker in ("*/", "]]"):
+        if text.endswith(marker):
+            text = text[:-len(marker)].strip()
+    return text
+
+
+NOTICE = [t for t in (notice_text(l) for l in open(HEADER_FILE, encoding="utf-8").read().split("\n")) if t]
+
+
+def has_notice(raw_lines):
+    """True if the license notice's every line appears, in order and unbroken, near the top of the file - whatever
+    the language's comment style. Only the copyright line is not enough: a truncated notice is still missing."""
+    text = [t for t in (notice_text(l) for l in raw_lines[:NOTICE_SEARCH_LINES]) if t]
+    return any(text[i:i + len(NOTICE)] == NOTICE for i in range(len(text) - len(NOTICE) + 1))
+
+
+def script_findings(path, rel, add):
+    raw_lines = open(path, encoding="utf-8", errors="replace").read().split("\n")
+    if not has_notice(raw_lines):
+        add("script-license", rel, 1, raw_lines[0])
+
+
 def cpp_findings(path, rel, add):
     raw = open(path, encoding="utf-8", errors="replace").read()
     code = blank_cpp(raw)
@@ -364,7 +418,7 @@ def cpp_findings(path, rel, add):
     is_header = path.endswith(".h")
     base = os.path.splitext(os.path.basename(path))[0]
 
-    if LICENSE_MARKER not in "\n".join(raw_lines[:5]):
+    if not has_notice(raw_lines):
         add("cpp-license", rel, 1, raw_lines[0])
 
     if is_header:
@@ -498,7 +552,7 @@ def lua_findings(path, rel, add_finding):
         add_finding(rule, rel, n, text)
     is_test = rel.startswith("scripts/")
 
-    if LICENSE_MARKER not in "\n".join(raw_lines[:5]):
+    if not has_notice(raw_lines):
         add("lua-license", rel, 1, raw_lines[0])
 
     in_constant = 0                                   # brace depth inside a multi-line constant's definition
@@ -581,6 +635,9 @@ def main():
         for d in LUA_DIRS:
             for path in sorted(glob.glob(os.path.join(REPO_ROOT, d, "**", "*.lua"), recursive=True)):
                 lua_findings(path, os.path.relpath(path, REPO_ROOT), add)
+        for pattern in SCRIPT_GLOBS:
+            for path in sorted(glob.glob(os.path.join(REPO_ROOT, pattern), recursive=True)):
+                script_findings(path, os.path.relpath(path, REPO_ROOT), add)
 
     if list_rule:
         for rel, n, text in findings.get(list_rule, []):

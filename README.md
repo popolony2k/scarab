@@ -194,4 +194,4 @@ Small, focused Lua scripts under [samples/](samples/) that each demonstrate one 
 
 ## License :scroll:
 
-Scarab is licensed under the [zlib License](LICENSE) — permissive, no attribution required at runtime, alterations must be marked as such. Every `.cpp`/`.h` file under `src/` carries the license notice at its top (see [docs/HEADER.txt](docs/HEADER.txt) for the exact text new files should start with).
+Scarab is licensed under the [zlib License](LICENSE) — permissive, no attribution required at runtime, alterations must be marked as such. Every source, script, build and config file carries the license notice at its top (see [docs/HEADER.txt](docs/HEADER.txt) for the exact text; CI checks it).
