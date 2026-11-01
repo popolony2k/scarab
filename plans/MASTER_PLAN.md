@@ -1049,13 +1049,66 @@ that.
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
-| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | Whether/when to expose any of this to Lua - a real product decision, not a breakage fix |
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **PLANNED (2026-10-31), split into C1a and C1b** - starts after sunlight's next pin; see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
+
+**C1 (PLANNED 2026-10-31 with the owner; not started - waits for sunlight's next pin).** Lua can poll
+keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
+sunlight's controller layer reaches Lua. Left out on purpose: sunlight's key/button event handlers and
+input dispatch mode (Lua games poll each frame; D1 covers the default key handler). Split by the owner:
+
+**C1a - pure input (first):**
+- **Connected pads and hot-plug:** `input_get_connected_gamepads()` -> `{ {id=0, name="..."}, ... }`,
+  `input_is_gamepad_available(id)`, `input_get_gamepad_name(id)`,
+  `input_set_gamepad_connection_handler(fn(id, connected))` - `ControllerManager::GetConnectedGamepads`/
+  `SetGamepadConnectionHandler`; it polls every slot 0..MAX_GAMEPAD_COUNT-1, so a pad never added is still
+  reported. The handler runs on the main thread inside the frame, like the collision handler.
+- **Dead zones - the owner's decision, after comparing engines:** game engines apply a stick dead zone by
+  default with an opt-out (XNA/MonoGame `GetState` vs `GamePadDeadZone.None`, Unity `GetAxis`/`GetAxisRaw`
+  and the Input System's stick processor, Unreal's per-axis/Enhanced Input dead zone, Godot actions, Phaser's
+  0.1 `threshold`); low-level libraries (SDL, GLFW, raylib, LOVE) return raw values. Scarab is the engine
+  layer, so:
+  - `input_get_gamepad_axis(pad, axis)` becomes the AUTOMATIC read: the pad/axis dead zone applied (a value
+    strictly inside it reads 0, sunlight's rule; no rescaling). Default 0.1, as sunlight's
+    `DEFAULT_AXIS_DEADZONE`.
+  - NEW `input_get_gamepad_axis_raw(pad, axis)`: the raw value, for games that filter themselves (radial
+    dead zone, curves, calibration). The owner chose this pair (Unity's naming) over keeping the default
+    raw with a `_filtered` extension, so the obvious call is the one that doesn't drift.
+  - `input_set_axis_deadzone(pad, axis, value)` / `input_get_axis_deadzone(pad, axis)` - stored in
+    `ControllerManager` (sunlight applies it only in its own axis-to-D-pad dispatch, never to a raw read,
+    which is why the Lua read must apply it). They tune the automatic read only.
+  - A behaviour change for `input_get_gamepad_axis` (values in (-0.1, 0.1) now read 0): logged in
+    `CARAVELLIUS_BREAKAGES`. Caravellius is unaffected (its `pausemenu.lua` already treats |v| < 0.1 as 0).
+  - Later, not in C1: a radial (whole-stick) dead zone and rescaling past the threshold.
+- **Player slots:** `input_claim_player_slot(slot, pad)`, `input_release_player_slot(slot)`,
+  `input_get_gamepad_for_slot(slot)`, `input_get_slot_for_gamepad(pad)` - a `PlayerSlotManager` Scarab owns.
+
+**C1b - action map and rumble (after C1a):**
+- **Action map:** `input_bind_action_key(name, key)`, `input_bind_action_button(name, button)`,
+  `input_bind_action_axis(name, axis, direction)`, `input_unbind_action(name)`,
+  `input_get_action_binding(name)`, `input_is_action_active(name, pad[, threshold])`,
+  `input_save_action_map(path)`, `input_load_action_map(path)` - an `ActionMap` Scarab owns. **Found while
+  planning:** sunlight's `ActionMap::Load` reads with a raw `std::ifstream` (`actionmap.cpp:226`), so a
+  bindings file inside a `.zip` or an encrypted pack can't be loaded (the `.tsx` bug's shape). Reported to
+  sunlight (sunlight-42, 2026-10-31, owner-approved), asking `Load` to read through `IFileSystem`; `Save` to
+  a real OS path stays as it is. C1b uses the pin that fixes it.
+- **Rumble:** `input_is_rumble_supported(pad)`, `input_set_rumble(pad, left, right, seconds)`,
+  `input_stop_rumble(pad)` - `GamepadHapticsFactory` (SDL2); Scarab calls its `Update()` once per frame;
+  headless uses the null backend (never rumbles).
+
+**Tests and sample (each part):** every function `nil, "message"` with `@luaname` docs and rows in
+`error_reporting_smoke`; a new headless `scripts/input_api_smoke.py` (no pads under the null input: empty
+pad list, slot logic in full - claim, conflict, release, both lookups -, dead-zone round trips and the
+automatic-vs-raw reads, action-map binding and a save -> load round trip, rumble "unsupported", argument
+errors); doctests for any pure logic Scarab adds; `samples/input` extended (live pad list on hot-plug,
+players 1 and 2 claiming pads by a button press, a rebindable "jump" saved to a file, a rumble key, a
+dead-zone slider showing automatic vs raw); a window check with the owner and a real gamepad with rumble
+(hot-plug and rumble can only be seen by hand).
 
 **C6 (DONE, 2026-10-24 - tested by the owner in a real window, reviewed and approved; promoted by the owner 2026-10-24, done right before V5, out of phase order;
 reshaped the same day into "fonts by handle").**
