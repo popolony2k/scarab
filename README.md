@@ -1,8 +1,33 @@
 # Scarab
 
-A thin, game-agnostic C++17 host for 2D games scripted entirely in Lua, run from a script, project file, or single bundled `.zip` archive. Scarab owns the window/render loop, resource loading, and the Lua-callable primitive API; the game itself — every enemy, the player, config/stage bootstrap, everything — lives entirely in Lua, with no C++ game logic anywhere in this repo.
+<div align="center">
+<img src="docs/images/scarab_logo.png" alt="Scarab logo" title="scarab">
 
-Licensed under the [zlib License](LICENSE), the same license `sunlight` (the engine Scarab is built on) uses.
+[![CI](https://github.com/popolony2k/scarab/actions/workflows/ci.yml/badge.svg)](https://github.com/popolony2k/scarab/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/popolony2k/scarab)](https://github.com/popolony2k/scarab/releases/latest)
+[![License: zlib](https://img.shields.io/badge/license-zlib-blue.svg)](https://github.com/popolony2k/scarab/blob/main/LICENSE)
+
+`Scarab` is an open source host for 2D games written entirely in Lua. It owns the window, the render loop and resource loading, and gives the game a Lua API for maps, sprites, collisions, input, sound and text; the game itself - every enemy, the player, its stages - is Lua, with no C++ to write.
+
+It is built on [sunlight](https://github.com/popolony2k/sunlight), the C++17 library for 2D games from [Tiled](https://www.mapeditor.org/) maps.
+</div>
+
+## Table of Contents :pushpin:
+* [Lua API reference](https://popolony2k.github.io/scarab/lua-api/) :book:
+* [C++ reference](https://popolony2k.github.io/scarab/) :gear:
+* [License](https://github.com/popolony2k/scarab/blob/main/LICENSE) (zlib) :page_facing_up:
+* [Motivation](#motivation-bulb)
+* [Features](#features-sparkles)
+* [Requirements](#requirements-memo)
+* [HowTo](#howto-hammer)
+    - [Building](#building)
+    - [Running a game](#running-a-game)
+    - [Headless mode](#headless-mode)
+    - [Running tests](#running-tests)
+    - [Content encryption](#content-encryption)
+    - [Configuring VSCode](#configuring-vscode)
+* [Samples](#samples-video_game)
+* [Shared resources](#shared-resources-art)
 
 ## Motivation :bulb:
 
@@ -10,188 +35,160 @@ Scarab started as a personal project with a simple goal: build a game called **C
 
 Read the full story, in the author's own words: [*From a Transforming Ship to a Transforming Engine*](https://www.popolony2k.com.br/from-a-transforming-ship-to-a-transforming-engine/). The Scarab side of that story is its own article: [*The Beetle That Carried the Light*](https://www.popolony2k.com.br/the-beetle-that-carried-the-light/).
 
-## Table of Contents :pushpin:
-* [Lua API reference](#lua-api-reference-book) :book:
-* [Scarab Class Documentation](#scarab-class-documentation-gear) :gear:
-* [Repository layout](#repository-layout-package) :package:
-* [Prerequisites](#prerequisites-memo) :memo:
-* [Building](#building-hammer) :hammer:
-    - [Lua backend option](#lua-backend-option)
-    - [VSCode setup](#vscode-setup)
-* [Running](#running-rocket) :rocket:
-    - [Headless mode](#headless-mode)
-* [Content encryption](#content-encryption-lock) :lock:
-* [Samples](#samples-video_game) :video_game:
-* [Shared resources](#shared-resources-art) :art:
-* [License](#license-scroll) :scroll:
+## Features :sparkles:
 
-## Lua API reference :book:
+* **Games in Lua only:** one `scarab` executable runs any game; which one is chosen at launch by a `project.json`, a `.lua` script or a single `.zip` bundle.
+* **Renderer and views:** create the window with your own settings (size, zoom, viewport, FPS, fullscreen), and show one world in several views at once - a minimap, a close-up.
+* **Tiled maps:** tile, image, group and object layers, tile animation, tile/text/shape/point objects with rotation and opacity, layer opacity and tint at runtime, external tilesets.
+* **Sprites:** pooled, animated sprites on map layers or with no map at all, in screen or map (world) space, with opacity, tint and blend modes.
+* **Collisions:** sprite-to-sprite and sprite-to-tile rules with a Lua handler.
+* **Input:** keyboard and gamepads.
+* **Sound and sequencing:** sound effects and songs, timers, and a queued command processor for stage intros and waves.
+* **Text:** TrueType/OpenType and BMFont fonts by handle, measured and drawn as a HUD.
+* **Errors you can read:** every Lua function that can fail returns `nil, "message"`, never a crash or a silent no-op.
+* **Headless runs:** a mode with no window and a virtual clock, for CI and automated playthroughs.
+* **Content encryption:** pack a game into an encrypted `.zip` only your own build can open.
 
-Every Lua-callable primitive the engine exposes to game scripts — camera, input, tile map, sound, sprites, collision, JSON loading, script sequencing, timers, and the callbacks the engine calls back into Lua — is published at **[popolony2k.github.io/scarab/lua-api/](https://popolony2k.github.io/scarab/lua-api/)**, one page per category with runnable examples, rebuilt on every push to `main`. This is the engine's own generic API surface — it documents nothing about any specific game's own Lua modules, since none live in this repo. Generated straight from `@luaname`/`@luadoc`/`@luaexample` tags on each primitive's own C++ doc comment in [src/lua/](src/lua/) (see [scripts/generate_lua_api_docs.py](scripts/generate_lua_api_docs.py)), not hand-written separately — [docs/lua-api/README.md](docs/lua-api/README.md) is the one page still hand-written (an index with no single-primitive anchor to tag), also serving as that site's own landing page.
+## Requirements :memo:
 
-## Scarab Class Documentation :gear:
+* **CMake 3.24** or later, and a **C++17 compiler** (Clang on macOS, GCC on Linux, MSVC on Windows).
+* **zlib** - Ubuntu/Debian: `apt-get install zlib1g-dev`; macOS: [MacPorts](https://www.macports.org/) or [Homebrew](https://brew.sh/); Windows: see vcpkg below.
+* **vcpkg (Windows only)** - `vcpkg install zlib:x64-windows libiconv:x64-windows`, with `VCPKG_ROOT` set.
+* **raylib's dependencies on Linux** - on Ubuntu/Debian:
+  ```shell
+  apt-get install libasound2-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev \
+                  libxcursor-dev libxinerama-dev libwayland-dev libxkbcommon-dev
+  ```
+  Other distributions: raylib's [wiki](https://github.com/raysan5/raylib/wiki/Working-on-GNU-Linux).
 
-The C++ source itself — every class/method/param under `src/`, generated from its own `/** @brief */` comments via Doxygen (see [Doxyfile](Doxyfile)) — is published at **[popolony2k.github.io/scarab](https://popolony2k.github.io/scarab/)**, rebuilt on every push to `main` ([.github/workflows/doxygen.yml](.github/workflows/doxygen.yml)), alongside the Lua API reference above at the same site (`/lua-api/`). Unlike `sunlight`, Scarab isn't consumed as a library — nothing links against these classes from outside this repo — so this is a structure reference for working on Scarab's own C++, not a public API surface. It also doesn't (and can't) know that a method like `LuaAppApi::GetPlatform` is registered into Lua under a different name (`app_get_platform`), since that mapping only exists in a runtime `lua_register()` call; the Lua API reference above is the one built specifically to document that mapping.
+Everything else - sunlight (with raylib, libtmx, libxml2, PhysFS and SDL2), Lua, nlohmann/json, CLI11, libsodium and miniz - is fetched automatically when CMake configures.
 
-## Repository layout :package:
+## HowTo :hammer:
 
-```
-scarab/
-├── CMakeLists.txt          # fetches sunlight/raylib/tmx/Lua/nlohmann_json/CLI11, builds the scarab executable from src/
-├── src/
-│   ├── main.cpp / main.h      # entry point, window/viewport setup, CLI11 argument parsing
-│   ├── host/                  # EngineHost: thin engine state machine only, all game logic lives in Lua
-│   ├── lua/                   # Lua scripting engine glue - LuaEngine + every Lua-callable primitive (camera/input/tilemap/sound/sprite/collision/JSON/filesystem)
-│   └── engine/                # game-agnostic sprite pool (SpritePool/SpriteHandle) - the one piece with no Lua dependency
-├── docs/
-│   ├── lua-api/            # the one hand-written page (README.md) - see "Lua API reference" above
-│   ├── vscode/.vscode/     # tracked .vscode sample - see "VSCode setup" below
-│   └── README-DEBUG.txt   # debug build flags
-├── samples/                # pure-Lua sample games, one per Lua API category - see "Samples" below
-├── resources/               # open-source shared assets (fonts, ...) - see "Shared resources" below
-└── CMakePresets.json       # default/windows-vcpkg presets (only real platform-conditional CMake config)
-```
-
-Scarab is a standalone engine — it has no bundled game and can't render anything on its own without one pointed at it via the entry-point argument (see "Running" below). A real game built on Scarab (for example, **Caravellius**, a vertical-scrolling space shooter, in its own separate repo) depends on it via CMake `FetchContent`, the same way Scarab itself depends on `sunlight` below.
-
-The **sunlight** engine itself is not vendored here — it's pulled in via CMake `FetchContent` from `github.com/popolony2k/sunlight` (see the root [CMakeLists.txt](CMakeLists.txt)). It wraps [raylib](https://www.raylib.com/) (rendering/input/audio) and [libtmx](https://github.com/baylej/tmx.git) (Tiled map loading) behind its own `SunLight::*` namespaces (renderer, canvas/sprite, collision, input, sound, scripting).
-
-## Prerequisites :memo:
-
-- CMake 3.24+
-- A C++17 compiler (Clang on macOS, GCC on Linux, MSVC on Windows)
-- System zlib
-- On Linux, raylib's own system dependencies (see raylib's wiki) must be installed first
-
-All other dependencies (sunlight, raylib, libtmx, libxml2, Lua, nlohmann/json, CLI11) are fetched automatically at configure time.
-
-## Building :hammer:
+### Building
 
 ```shell
 cmake -B build -S .
 cmake --build build -j 4
 ```
 
-For a debug build with symbols:
+On Windows, configure with `cmake --preset windows-vcpkg` instead (it points CMake at vcpkg's toolchain). For debug symbols, add `-DCMAKE_C_FLAGS="-g2" -DCMAKE_CXX_FLAGS="-g2"`. Lua is built from [walterschell/Lua](https://github.com/walterschell/Lua) by default; the `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` alternative does not work yet - see [docs/lua-integration.md](docs/lua-integration.md).
+
+### Running a game
+
+`scarab` needs an entry point and refuses to start without one. From the repo root, the smallest game there is:
 
 ```shell
-cmake -B build -S . -DCMAKE_C_FLAGS="-g2" -DCMAKE_CXX_FLAGS="-g2"
+./build/scarab samples/hello-world/project.json
 ```
 
-The `scarab` target — the executable is engine-branded, not game-branded, since it's built entirely from Scarab's own C++ (the game it runs is determined at launch by the entry-point argument, not compiled in) — links against `sunlight`, `nlohmann_json`, `CLI11`, and Lua, and a post-build step (`scarab_copy_binaries`) copies the raylib/tmx/libxml2/sunlight shared libraries next to the executable, since they're required at runtime.
-
-### Lua backend option
-
-By default Lua is built from `walterschell/Lua` (CMake-friendly fork). `-DSCARAB_USE_OFFICIAL_LUA_FTP=ON` selects an official-Lua-5.4.6-tarball backend instead, but **it does not currently work on any platform** (it needs a system Lua development package on top of the tarball, and has no Windows/MSVC build path, and CI never builds it) — it is kept as the starting point for a future plan to make the official Lua the only integration, working on macOS, Linux and Windows. See [docs/lua-integration.md](docs/lua-integration.md) for the verified findings and that plan.
-
-On Windows, `libxml2`/`tmx` link vcpkg's `iconv`/`zlib` dynamically, so configure with `cmake --preset windows-vcpkg` instead (needs `VCPKG_ROOT` set in the environment) — see the `CMakePresets.json` preset and `CLAUDE.md`'s Build section for details.
-
-### VSCode setup
-
-The repo root's `.vscode` folder is **gitignored** — it's local, per-developer state. The tracked source of truth is [docs/vscode/.vscode](docs/vscode/README.md); copy its contents into a `.vscode` folder at the repo root to get started, and copy any `.vscode` change you want to keep back into that folder rather than leaving it only in your local copy. See [docs/vscode/README.md](docs/vscode/README.md) for the per-OS `settings.<os>.json` variants and the recommended extension that auto-swaps them in.
-
-## Running :rocket:
-
-The built `scarab` executable **requires** a command-line argument naming the entry point — a `.json` project file, a `.lua` script directly, or a single bundled `.zip` archive — and refuses to start (printing a usage message, no window opened) without one. Argument parsing is CLI11, so `--help` is always available, and so is `--version`/`-v` (prints both Scarab's own version and the exact pinned sunlight version, e.g. `scarab v0.1.2 (sunlight v0.17.1)`):
-
-```shell
-cd build
-./scarab project.json
-```
-
-A project file just names the first Lua file to run:
+A project file names the first Lua file to run, relative to the project file itself, so a project can move as a whole:
 
 ```json
-{ "main_script": "src/main.lua" }
+{ "main_script": "main.lua" }
 ```
 
-`main_script` resolves relative to the project file's own directory, so a whole project (executable + its own resources + `project.json`) stays relocatable as a unit. You can also skip the project file and point directly at a `.lua` entry script: `./scarab src/main.lua`.
-
-A whole project can also be packaged into a single self-contained `.zip` and run the same way: `./scarab game.zip`. `--entry`/`-e <path>` names the actual entry point when it's not simply `project.json` at the archive's own root — either another `.json` project file inside the archive, or a `.lua` path to run directly with no project-file indirection at all.
-
-Every resource read (Lua `dofile`/`load_json`, texture/sound/tilemap loading, the entry script/project-file reads themselves) routes through a mount-based filesystem abstraction (PhysFS-backed) — a loose directory or a real archive read identically, so the same project runs unchanged either way.
+You can also run a script directly (`./build/scarab main.lua`) or a whole game packed into one archive (`./build/scarab game.zip`, which runs the `project.json` at its root; `--entry`/`-e <path>` names another). Loose folders and archives read the same way. `--help` lists every option, and `--version` prints the Scarab, sunlight and Lua versions.
 
 ### Headless mode
 
-`--headless` runs a game on sunlight's **null renderer**: no window, no GPU and no display needed — meant for automated runs (CI smoke tests, acceptance runs) on machines that can't open one. It takes the same entry point as a normal run:
+`--headless` runs a game with no window, no GPU and no display - for CI and automated runs:
 
 ```shell
-# real-time paced (60 fps), no window
-./scarab --headless game.zip
-
-# as fast as the game logic runs, stop after 18000 frames no matter what
-./scarab --headless --fast --max-frames 18000 project.json
+./build/scarab --headless --fast --max-frames 18000 project.json
 ```
 
 | Option | Meaning |
 |---|---|
-| `--headless` | Use the null renderer. Mutually exclusive with `--pack`. |
-| `--fast` | Don't pace frames to the target FPS — run as fast as the game logic allows. The virtual clock is unchanged, so a 300-second game timeline finishes in a few seconds of wall time. Needs `--headless`. |
-| `--max-frames N` | Stop after `N` frames — a safety net so a hung game fails the run instead of hanging CI. Needs `--headless`. |
-| `--max-frames-ok` | Treat reaching the `--max-frames` budget as success. Needs `--max-frames`. |
+| `--headless` | No window (sunlight's null renderer). Input reads as nothing pressed; audio still plays if there is a device. |
+| `--fast` | Don't wait for the frame rate: a 5-minute game timeline runs in seconds. Needs `--headless`. |
+| `--max-frames N` | Stop after `N` frames, so a hung game fails the run instead of hanging it. Needs `--headless`. |
+| `--max-frames-ok` | Reaching `--max-frames` counts as success (a plain "run N frames" check). |
 
-**Exit codes.** `0` when the game ended itself with `app_quit()`; `1` on a fatal engine or Lua error, as always; `3` when the `--max-frames` budget ran out before the game called `app_quit()` (a hang, or a budget that's too short) — unless `--max-frames-ok` is given, for a plain "run N frames" smoke test.
+The exit code is `0` when the game quits itself with `app_quit()`, `1` on a fatal error, and `3` when `--max-frames` ran out first. Time is virtual: each frame is exactly `1 / FPS`, and `app_get_time()`, `sp_wait`, animations and Lua's `os.time()`/`os.clock()` follow it; `set_timer` stays on real time.
 
-**Time is virtual.** Each frame advances the clock by exactly `1 / target FPS`. `app_get_time()`, `sp_wait`, sprite frame animation and tile animation all follow it, and so do Lua's own `os.time()` and `os.clock()` (Scarab replaces them in headless mode; `os.time()` keeps whole-second resolution, so use `app_get_time()` for sub-second cues). What does **not** follow it: `set_timer` callbacks still run on real time, and calling `os.time()`/`os.clock()` from inside one is unsafe in headless mode (they read engine state — see the `set_timer` callback rule in `CLAUDE.md`). Audio is unaffected (a real audio device is still used if one exists), and input reads as "nothing pressed" — every key/button is up and every gamepad axis is `0.0`.
+### Running tests
 
-## Content encryption :lock:
-
-A game's own loose source directory (every Lua script and asset) can be packed into a single `.zip`, encrypted with a shared secret compiled into one specific build of `scarab` — only that same build can read it back. This is **deterrence, not unbreakable DRM**: the goal is raising the bar past "just unzip it," not defeating a determined reverse-engineer with the key-extraction tools and time to go after a native binary.
-
-**This is entirely opt-in, and off by default** for anyone building from source — a plain, unencrypted `.zip`/loose directory keeps working exactly as it always has, on any build, keyed or not. Scarab's own official public releases *do* ship with a real key configured, but not a private one — see the disclosure right below before relying on this for anything real.
-
-### AS-IS: OFFICIAL RELEASE BINARIES USE A SHARED KEY, NOT A PRIVATE ONE — EDUCATIONAL USE ONLY
-
-Every official `scarab` release (the archives on the [Releases](https://github.com/popolony2k/scarab/releases) page) is built with a real `SCARAB_CONTENT_KEY` — but that key is **not private, and never will be**. It's derived fresh for each release version (see [`release.yml`](.github/workflows/release.yml) for the exact mechanism — an HMAC of a persistent, never-compiled-in salt and the release's own tag name), so it changes from version to version, and — deliberately — is identical across all 4 platform archives of the *same* version, so content packed with one platform's official release opens correctly on another platform's official release of that same version. **Anyone can extract this key from the binary itself** (`strings`, a disassembler, a few minutes of effort) — this was never meant to be secret, and no amount of cryptographic derivation changes that once a value is compiled into something publicly downloadable.
-
-This exists purely so you can try the full `--pack` → encrypt → run workflow using a downloaded binary alone, with nothing to build from source. **It provides zero real protection.** Every official release binary prints a reminder of exactly this, on every single invocation:
-
-```text
-WARNING: this scarab build was compiled with a SHARED, PUBLIC content-encryption key ...
-```
-
-**This is provided as-is, for education and experimentation only.** If you — an individual, a team, or a company — want to use Scarab's content encryption for real, for anything beyond trying the feature out, you **must build your own copy of `scarab` from source**, providing your own `SCARAB_CONTENT_KEY` kept genuinely private (a local gitignored file, your own CI's secret store, or any other method that never exposes it) — see "Generating and storing your own key" right below. This applies equally whether it's a hobby project or a commercial release; the public release key is not, and was never intended to be, a substitute for that.
-
-Quick example — build with a key, pack a game, run it:
+Unit tests are opt-in, using [doctest](https://github.com/doctest/doctest):
 
 ```shell
-# 1. Generate a key (32 random bytes, hex-encoded) and build scarab with it
-python3 -c "import secrets; print(secrets.token_hex(32))"
-cmake -B build -S . -DSCARAB_CONTENT_KEY=<the 64 hex characters just generated>
+cmake -B build -S . -DSCARAB_BUILD_TESTS=ON
 cmake --build build -j 4
-
-# 2. Pack a game's own source directory into an encrypted .zip
-echo '{ "source_dir": "/path/to/my_game_source", "output": "/path/to/my_game.zip" }' > pack-config.json
-./build/scarab --pack pack-config.json
-
-# 3. Run it - only this same build (same key) can read it back
-./build/scarab /path/to/my_game.zip
+./build/scarab_tests
 ```
 
-See [tools/README.md](tools/README.md) for the full packaging workflow (including the direct-invocation alternative to `--pack`), and the [`crypto`](https://popolony2k.github.io/scarab/lua-api/crypto.html)/[`pack`](https://popolony2k.github.io/scarab/lua-api/pack.html) Lua API reference pages for the underlying primitives, if you're scripting your own packaging step instead of using `tools/pack.lua` directly.
+The Lua API is covered by headless smoke tests, one script each: `python3 scripts/<name>_smoke.py build/scarab`. CI runs both on Linux, macOS (arm64 and x64) and Windows, plus everything under AddressSanitizer, and a style check of [docs/CODE_STYLE.md](docs/CODE_STYLE.md).
 
-### Generating and storing your own key
+### Content encryption
 
-* Generate one **per game/project** (`python3 -c "import secrets; print(secrets.token_hex(32))"`, or any tool producing 32 random bytes as 64 hex characters) — never reuse Scarab's own docs/example values (there aren't any real ones checked into this repo; every example above is a placeholder) as an actual production key.
+A game's folder can be packed into one `.zip` encrypted with a key compiled into your own build of `scarab`; only that build can read it. It is opt-in, and it is deterrence, not unbreakable DRM: it raises the bar past "just unzip it".
 
-* **Never commit a real key to version control** — not in a `CMakeCache.txt`, not in a script, not in a CI config file checked into the repo. Keep it in a local, gitignored file (matching this repo's own `/pack-config.json` gitignore entry, itself never containing a real key either — only paths) or your CI provider's own secret store.
+> [!WARNING]
+> **AS-IS: official release binaries use a SHARED key, not a private one - for trying the feature out only.** Every official release is built with a key derived per version (the same on all platforms of that version, so a pack made with one opens on the others), which anyone can extract from the binary, and each one prints a warning saying so. It gives **no real protection**. To protect a real game, hobby or commercial, **build `scarab` yourself with your own private key** (see [tools/README.md](tools/README.md) for how to make and keep one).
 
-* For CI (e.g. GitHub Actions), pass it as a repository/environment secret exposed as an environment variable, then forward that into the `cmake` configure step — never typed into the workflow file itself:
+```shell
+python3 -c "import secrets; print(secrets.token_hex(32))"            # 1. make a key
+cmake -B build -S . -DSCARAB_CONTENT_KEY=<the 64 hex characters>      #    and build with it
+cmake --build build -j 4
+./build/scarab --pack pack-config.json                                # 2. pack a game folder
+./build/scarab my_game.zip                                            # 3. run it
+```
 
-  ```yaml
-  - run: cmake -B build -S . -DSCARAB_CONTENT_KEY=${{ secrets.GAME_CONTENT_KEY }}
-  ```
+[tools/README.md](tools/README.md) has the whole packaging workflow; the [crypto](https://popolony2k.github.io/scarab/lua-api/crypto.html) and [pack](https://popolony2k.github.io/scarab/lua-api/pack.html) reference pages cover the Lua functions behind it.
 
-* Losing the key permanently locks you out of every `.zip` packed with it just as much as it locks out anyone else — there's no recovery mechanism, by design (a recoverable key would be a weaker one). Treat it with the same care as a code-signing certificate or a production database credential.
+### Configuring VSCode
+
+The repo's `.vscode` folder is local and gitignored; copy the tracked one from [docs/vscode/](docs/vscode/README.md), which also explains the per-OS settings files.
 
 ## Samples :video_game:
 
-Small, focused Lua scripts under [samples/](samples/) that each demonstrate one corner of the [Lua API reference](https://popolony2k.github.io/scarab/lua-api/) at a time — starting from [hello-world](samples/hello-world/docs/README.md) (the smallest possible Scarab game) and then one sample per API category (`app`, `text`, `timers`, `input`, `tilemap`, `camera`, `sprite`, `collision`, `scripting`, `sound`, `json`), mirroring how sunlight's own [samples](https://github.com/popolony2k/sunlight/tree/main/samples) work — adapted for an engine where the entire game is Lua, so every sample here is just a `project.json` + `.lua` script run directly against the built `scarab` executable, nothing to compile. See [samples/README.md](samples/README.md) for the full, up-to-date list.
+Each sample is a `project.json` and a Lua script, run from the repo root with nothing to compile:
+
+```shell
+./build/scarab samples/sprite/project.json
+```
+
+[samples/README.md](samples/README.md) explains how they are run and the style they follow.
+
+### Getting started
+
+* [hello-world](samples/hello-world/docs/README.md) — the smallest Scarab game: a window and one line of text.
+* [tilemap](samples/tilemap/docs/README.md) — loads a Tiled map and reports its size; no sprites.
+* [sprite](samples/sprite/docs/README.md) — builds on `tilemap` with an animated sprite you move.
+* [collision](samples/collision/docs/README.md) — builds on `sprite`: walls made of map tiles, and a second sprite to bump into.
+
+### Window, renderer and views
+
+* [app](samples/app/docs/README.md) — window toggles: fullscreen, the FPS counter, resizing, letterbox or stretch, target FPS, a fade.
+* [renderer](samples/renderer/docs/README.md) — `renderer_create` with your own settings, read back live, and the default view's zoom and camera.
+* [camera](samples/camera/docs/README.md) — scrolling and zooming over a map.
+* [views](samples/views/docs/README.md) — one world in three views: the main picture, a minimap and a close-up following the sprite.
+
+### Maps, objects and drawing
+
+* [objects](samples/objects/docs/README.md) — Tiled tile objects and text objects.
+* [shapes](samples/shapes/docs/README.md) — shape and point objects, rotation, opacity, layer tint and tile animation, on five maps.
+* [blend](samples/blend/docs/README.md) — blend modes on sprites and on drawn panels.
+* [mapless](samples/mapless/docs/README.md) — sprites with no map loaded at all, for a title screen or a menu.
+
+### Text and input
+
+* [text](samples/text/docs/README.md) — fonts by handle and HUD text layout.
+* [input](samples/input/docs/README.md) — keyboard and gamepad reading.
+
+### Sequencing, timers and sound
+
+* [scripting](samples/scripting/docs/README.md) — a repeating wave cycle built from queued `sp_*` commands.
+* [timers](samples/timers/docs/README.md) — two background timers at different rates.
+* [sound](samples/sound/docs/README.md) — sound effects and the three ways to play a song.
+
+### Data and packaging
+
+* [json](samples/json/docs/README.md) — `load_json`, a config file read into a Lua table.
+* [crypto](samples/crypto/docs/README.md) — the encryption functions behind content packing, and what tampering does.
 
 ## Shared resources :art:
 
-[resources/](resources/) is a permanent, open-source shared-assets area shipped with Scarab itself — not scoped to `samples/` alone. It's free for this repo's own samples to draw on, and for any community game built on Scarab to use directly, the same way a game already depends on Scarab itself via `FetchContent`. Everything in it carries clear licensing/attribution in its own subfolder README (e.g. [resources/fonts/README.md](resources/fonts/README.md)) — either an original asset contributed to this repo, or a real open-license third-party one (SIL OFL, CC0, etc.) fetched and credited under its own real name/license text, never silently relicensed or renamed to obscure where it came from.
+[resources/](resources/) holds open-source assets (fonts, sprites, maps, sounds) that the samples use and any game built on Scarab may use too; each folder's README gives its license and origin.
 
-## License :scroll:
-
-Scarab is licensed under the [zlib License](LICENSE) — permissive, no attribution required at runtime, alterations must be marked as such. Every source, script, build and config file carries the license notice at its top (see [docs/HEADER.txt](docs/HEADER.txt) for the exact text; CI checks it).
+Scarab is licensed under the [zlib License](LICENSE); every source, script, build and config file carries the notice at its top ([docs/HEADER.txt](docs/HEADER.txt); CI checks it).

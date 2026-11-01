@@ -4,7 +4,7 @@ Lua-based tooling for Scarab itself, run via `scarab.exe` the same way any game 
 
 ## pack.lua — content encryption packaging tool
 
-See the root [README.md](../README.md#content-encryption-lock)'s own "Content encryption" section for the full design. Encrypts a game's own loose source directory (Lua scripts + every asset) into a single `.zip` bundle, using a shared secret compiled into *this specific build* of `scarab` — only that same build can decrypt what it packs. This is deterrence, not unbreakable DRM.
+See the root [README.md](../README.md#content-encryption)'s own "Content encryption" section for the full design. Encrypts a game's own loose source directory (Lua scripts + every asset) into a single `.zip` bundle, using a shared secret compiled into *this specific build* of `scarab` — only that same build can decrypt what it packs. This is deterrence, not unbreakable DRM.
 
 Two equivalent ways to run it — `--pack` (recommended) needs no `cd` into this repo at all; the direct form is the underlying mechanism `--pack` is sugar for, useful for e.g. scripting a build from inside this repo's own tree.
 
@@ -21,7 +21,19 @@ A 64-character hex string decodes to the 32 raw bytes `crypto_secretbox` needs. 
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-**Never commit a real key to version control.** Keep it in a local, gitignored file or a CI secret, not typed into any tracked file.
+Keeping your key:
+
+* Generate one **per game/project**, and never use a value from any documentation as a real key (every example here is a placeholder).
+* **Never commit a real key to version control** - not in a `CMakeCache.txt`, a script or a CI config file in the repo. Keep it in a local, gitignored file (this repo's own `pack-config.json` is gitignored, and holds only paths) or in your CI provider's secret store.
+* In CI (e.g. GitHub Actions), pass it as a repository or environment secret and forward it to the configure step, never typed into the workflow file:
+
+  ```yaml
+  - run: cmake -B build -S . -DSCARAB_CONTENT_KEY=${{ secrets.GAME_CONTENT_KEY }}
+  ```
+
+* Losing the key locks you out of every `.zip` packed with it, just as it locks out anyone else - there is no recovery, by design (a recoverable key would be a weaker one). Treat it like a code-signing certificate.
+
+Official release binaries are built with a **shared, public** key, for trying the feature out only - see the root [README.md](../README.md#content-encryption)'s warning.
 
 ### 2. Write a `pack-config.json`
 
