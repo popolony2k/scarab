@@ -21,6 +21,7 @@
 #include "host/enginehost.h"
 #include "lua/luacryptoapi.h"
 #include "filesystem/filesystemfactory.h"
+#include "filesystem/filepath.h"
 #include <chrono>
 #include <fstream>
 #include <filesystem>
@@ -69,58 +70,6 @@ enum __EngineStateHandlers  {
     STATE_INIT_ENGINE,
     STATE_STAGE_RUNNING
 };
-
-/**
- * @brief Directory-of-a-virtual-path, for the .zip branch of @see
- * Scarab::Host::EngineHost::ResolveEntryScript only - a virtual path
- * inside an archive always uses '/' regardless of platform (matches
- * SunLight::FileSystem::IFileSystem's own documented contract), so this
- * deliberately does its own plain string split rather than reusing
- * std::filesystem::path (which would use '\' on Windows, not matching
- * what PhysFS itself expects for a virtual path). The .json/.lua
- * branches keep using std::filesystem::path as before - those really are
- * native OS paths, not virtual ones.
- * @param strVirtualPath A virtual path;
- * @return Everything before the last '/', or "" if there isn't one;
- */
-static std :: string GetVirtualParentPath( const std :: string& strVirtualPath )  {
-
-    std :: string :: size_type  nSlash = strVirtualPath.find_last_of( '/' );
-
-    return ( nSlash == std :: string :: npos ) ? std :: string() : strVirtualPath.substr( 0, nSlash );
-}
-
-/**
- * @brief Joins a virtual directory and a relative virtual path with '/' -
- * see @see GetVirtualParentPath for why this doesn't use
- * std::filesystem::path. Strips a leading '/' off strRelative first (a
- * user-supplied --entry/-e value is the one place this can come from,
- * eg. "--entry /main.lua") - PhysFS itself already tolerates the
- * resulting redundant "//" without one (confirmed live), but stripping it
- * here keeps the built path itself clean rather than relying on that
- * tolerance.
- */
-static std :: string JoinVirtualPath( const std :: string& strDir, const std :: string& strRelative )  {
-
-    std :: string  strCleanRelative = ( !strRelative.empty() && strRelative.front() == '/' ) ? strRelative.substr( 1 ) : strRelative;
-
-    return strDir.empty() ? strCleanRelative : ( strDir + "/" + strCleanRelative );
-}
-
-/**
- * @brief Whether a path names its own path scheme (sunlight I12: "vpath://", "hpath://", ... -
- * plans/MASTER_PLAN.md item P9). A project file's "main_script" that does is used as it stands,
- * never joined onto the project file's own directory - the rule sunlight follows for a path inside
- * a map, and the only way "scripts/x/" + "vpath://main.lua" can mean anything.
- */
-static bool HasPathScheme( const std :: string& strPath )  {
-
-    std :: string  strRest;
-
-    SunLight :: FileSystem :: IFileSystem :: SplitPath( strPath, strRest );
-
-    return strRest != strPath;
-}
 
 namespace Scarab  {
     namespace Host  {
@@ -205,7 +154,14 @@ namespace Scarab  {
                 }
 
                 std :: string  strInnerEntry = m_strEntryOverride.empty() ? "project.json" : m_strEntryOverride;
-                std :: string  strInnerEntryPath = JoinVirtualPath( strAppDir, strInnerEntry );
+                // FilePath::JoinPath keeps a leading '/' of --entry inside the folder ("/main.lua" is
+                // the archive's own main.lua), and wants the folder with its trailing '/'.
+                std :: string  strInnerEntryPath = SunLight :: FileSystem :: FilePath :: JoinPath( strAppDir + "/", strInnerEntry );
+
+                if( strInnerEntryPath.empty() )  {
+                    OnError( "Error: --entry climbs out of the archive => " + strInnerEntry );
+                    return false;
+                }
 
                 if( fs :: path( strInnerEntry ).extension() == ".lua" )  {
                     strOutScriptPath = strInnerEntryPath;
@@ -243,12 +199,7 @@ namespace Scarab  {
                     return false;
                 }
 
-                std :: string  strMainScript = projectData["main_script"].get<std :: string>();
-
-                strOutScriptPath = HasPathScheme( strMainScript ) ? strMainScript
-                                                                  : JoinVirtualPath( GetVirtualParentPath( strEntryJsonPath ), strMainScript );
-
-                return true;
+                return ResolveMainScript( strEntryJsonPath, projectData["main_script"].get<std :: string>(), strOutScriptPath );
             }
 
             if( strExtension != ".json" )  {
@@ -278,19 +229,35 @@ namespace Scarab  {
                 return false;
             }
 
-            /*
-             * generic_string(), not string(): on Windows, path::operator/ joins with
-             * a backslash ("scripts/headless_smoke\\main.lua" for a relative project
-             * file in a subdirectory), but this path is read through
-             * SunLight::FileSystem (PhysFS), whose virtual paths only treat "/" as a
-             * separator - the mixed path failed with "cannot open". Found by
-             * ci.yml's own headless smoke test, the first thing to launch a project
-             * from a subdirectory on Windows. Identical to string() elsewhere.
-             */
-            std :: string  strMainScript = projectData["main_script"].get<std :: string>();
+            return ResolveMainScript( strEffectiveJsonPath, projectData["main_script"].get<std :: string>(), strOutScriptPath );
+        }
 
-            strOutScriptPath = HasPathScheme( strMainScript ) ? strMainScript
-                                                              : ( effectiveEntryPath.parent_path() / strMainScript ).generic_string();
+        /**
+         * @brief A project file's "main_script", as the path the entry script is read from:
+         * relative to the project file's own folder, through sunlight's FilePath (plans/MASTER_PLAN.md
+         * items P9, I13 in sunlight). A "main_script" with a scheme of its own ("vpath://...") is used
+         * as it stands; backslashes become '/' - on Windows, a relative project file in a
+         * subdirectory once gave "scripts/headless_smoke\\main.lua", which the FileSystem can't
+         * read (found by ci.yml's headless smoke test); and ".." is collapsed, so one that climbs
+         * above the root is an error here rather than a path nothing can open.
+         *
+         * @param strProjectPath The project file's own path;
+         * @param strMainScript Its "main_script" value;
+         * @param strOutScriptPath Receives the entry script's path on success;
+         * @return true if "main_script" resolved to a path;
+         */
+        bool EngineHost :: ResolveMainScript( const std :: string& strProjectPath, const std :: string& strMainScript,
+                                              std :: string& strOutScriptPath )  {
+
+            std :: string  strScriptPath = SunLight :: FileSystem :: FilePath :: JoinPath( SunLight :: FileSystem :: FilePath :: ParentPath( strProjectPath ),
+                                                                                            strMainScript );
+
+            if( strScriptPath.empty() )  {
+                OnError( "Error: \"main_script\" climbs above the root => " + strMainScript + " (in " + strProjectPath + ")" );
+                return false;
+            }
+
+            strOutScriptPath = strScriptPath;
 
             return true;
         }

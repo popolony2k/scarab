@@ -4,7 +4,7 @@ Scarab has two languages: C++ (the engine layer, `src/` and `tests/`) and Lua (t
 tests, `tools/` - and every game built on Scarab, Caravellius first).
 
 - **C++** follows sunlight's guide. Its text is copied below from sunlight's `doc/CODE_STYLE.md`
-  as of sunlight commit `ef1499d` (2026-10-30, the version Scarab's pin `9789ac5` still carries), with
+  as of sunlight commit `ef1499d` (2026-10-30, the version Scarab's pin `4cb7262` still carries), with
   its headings one level down and its Design section replaced by Scarab's own; every other word is
   sunlight's, so the examples are sunlight code. When sunlight changes its guide, this copy
   is updated from it; Scarab does not change the C++ rules on its own.
