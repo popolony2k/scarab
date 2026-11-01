@@ -107,6 +107,21 @@ static std :: string JoinVirtualPath( const std :: string& strDir, const std :: 
     return strDir.empty() ? strCleanRelative : ( strDir + "/" + strCleanRelative );
 }
 
+/**
+ * @brief Whether a path names its own path scheme (sunlight I12: "vpath://", "hpath://", ... -
+ * plans/MASTER_PLAN.md item P9). A project file's "main_script" that does is used as it stands,
+ * never joined onto the project file's own directory - the rule sunlight follows for a path inside
+ * a map, and the only way "scripts/x/" + "vpath://main.lua" can mean anything.
+ */
+static bool HasPathScheme( const std :: string& strPath )  {
+
+    std :: string  strRest;
+
+    SunLight :: FileSystem :: IFileSystem :: SplitPath( strPath, strRest );
+
+    return strRest != strPath;
+}
+
 namespace Scarab  {
     namespace Host  {
 
@@ -228,7 +243,10 @@ namespace Scarab  {
                     return false;
                 }
 
-                strOutScriptPath = JoinVirtualPath( GetVirtualParentPath( strEntryJsonPath ), projectData["main_script"].get<std :: string>() );
+                std :: string  strMainScript = projectData["main_script"].get<std :: string>();
+
+                strOutScriptPath = HasPathScheme( strMainScript ) ? strMainScript
+                                                                  : JoinVirtualPath( GetVirtualParentPath( strEntryJsonPath ), strMainScript );
 
                 return true;
             }
@@ -269,7 +287,10 @@ namespace Scarab  {
              * ci.yml's own headless smoke test, the first thing to launch a project
              * from a subdirectory on Windows. Identical to string() elsewhere.
              */
-            strOutScriptPath = ( effectiveEntryPath.parent_path() / projectData["main_script"].get<std :: string>() ).generic_string();
+            std :: string  strMainScript = projectData["main_script"].get<std :: string>();
+
+            strOutScriptPath = HasPathScheme( strMainScript ) ? strMainScript
+                                                              : ( effectiveEntryPath.parent_path() / strMainScript ).generic_string();
 
             return true;
         }
