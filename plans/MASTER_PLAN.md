@@ -33,7 +33,9 @@ V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile 
 V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, group tint and opacity), and
 in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1 float, exact round trips),
 and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and tint), and in V13 to
-`56a73cd4de2868fe30e124e79340ea19d71feae7` (I11, tile animation by time and the frame query, with the 0 ms fix).
+`56a73cd4de2868fe30e124e79340ea19d71feae7` (I11, tile animation by time and the frame query, with the 0 ms fix),
+and in P9 to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (I12, path schemes and writing in the FileSystem, with
+Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePath`).
 
 ## Phase P: pin & plumbing
 
@@ -48,6 +50,7 @@ and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and
 | P6 | Re-pin to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (sunlight's I5: CollisionManager checks every layer id, `Clear()`/`RemoveAll()` work; sunlight BREAKAGES entry 54) | DONE |
 | P7 | Re-pin to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (sunlight's I9: layer opacity is a 0..1 float with exact round trips, `SetScreenFade` clamped; sunlight BREAKAGES entry 58) and move Lua's layer opacity to 0..1 | DONE |
 | P8 | Re-pin to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (sunlight's I10: sprite opacity and tint; sunlight BREAKAGES entry 59) and expose them to Lua (`sprite_set/get_opacity`, `sprite_set/get_tint`) | DONE |
+| P9 | Re-pin to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (sunlight's I12: path schemes, writing and `ActionMap` through the FileSystem, BREAKAGES 61; and I13: `FilePath`, BREAKAGES 62) - the pin C1 waits for; Scarab's entry-path helpers replaced by sunlight's | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -265,6 +268,62 @@ so nothing to change.
 - **Docs:** new "Opacity and tint" group in the sprite reference.
 - **Caravellius:** calls none of them; acceptance PASS, fingerprint `hash=33897632`. Breakage entry 18
   (informational).
+
+**P9 (DONE, 2026-11-01).** sunlight I12 (PR #239), grown out of Scarab's C1 planning: sunlight's
+`ActionMap::Load` read with a raw `std::ifstream`, so bindings in a `.zip`/encrypted pack couldn't load
+(reported 2026-10-31). The owner made it broader in sunlight: **path schemes** on every
+`IFileSystem` read, write and check - none, `vpath://` or `virtualpath://` for a virtual path (mounts,
+archives, the read filter; the default, so every existing path means what it did), `hpath://` or
+`hostpath://` for a real OS path, any other `<letters>://` refused; `WriteFile` + `SetWriteDirectory`
+(a virtual write goes into a real folder mounted ahead of every mount) + `SetWriteFilter`;
+`SetHostPathEnabled`; `ActionMap::Load`/`Save` through it. BREAKAGES 61 breaks only an `IFileSystem`
+implementer and an `ActionMap` caller passing a plain OS path - Scarab is neither, so no code changed.
+- **A bug found by Scarab's test, fixed by sunlight before the pin:** on the first pin, `6a039ec`, a
+  MAP could not be loaded through a scheme - `ExternalResources::JoinVirtualPath` collapsed the `://`
+  of `vpath://` (and `hpath:///abs`) into `:/`, so every path inside the map (external `.tsx`/`.tx`,
+  and through `TextureLoaderCallback` every tileset image) lost its scheme: `test.tmx` failed with
+  "cannot open extern tileset 'vpath://...'", and `shapes/rotation.tmx` (no external tileset) failed
+  silently. Reported with the owner's OK; sunlight fixed it (PR #241, `9789ac5`: the path helpers split
+  the scheme off with `IFileSystem::SplitPath`, work on the rest, put it back; five new tests), and
+  Scarab took the fix - `6a039ec` was never committed here.
+- **New `scripts/path_scheme_smoke.py`** (+ `scripts/path_scheme_smoke/`; ci.yml, all 4 platforms; and
+  `asan_run.py` picks it up): a plain path, `vpath://`, `virtualpath://`, `hpath://` and `hostpath://`
+  each load the same file through Scarab's own loaders (`load_json`, `dofile`) and a sunlight one
+  (`tilemap_load_map` on `test.tmx`, external tilesets included); `foo://` is refused. The driver passes
+  the repo's absolute path for the host paths. **Shown failing on both old pins:** on `6a039ec` the two
+  map cases; on the published v0.1.25 (sunlight v0.38.0) every scheme case (11 failures).
+- **Lua-visible change:** a path that looks like `<letters>://...` is now a scheme - an unknown one is
+  refused (`nil, "cannot open ..."` / a `dofile` error) instead of being taken as a file name, and
+  `hpath://` reaches a real OS file through every loader. Host paths stay ON: Scarab opens Lua's
+  standard libraries, so `io.open` already reaches any OS file - turning `hpath://` off would not make
+  a sandbox (that would be its own Phase C item). Caravellius uses no such paths: no breakage entry.
+- **One Scarab fix, found while checking the docs:** a project file's `main_script` with a scheme was
+  glued onto the project file's folder (`scripts/x/vpath://main.lua`), so the game failed to start.
+  `EngineHost::ResolveEntryScript` now uses a scheme-carrying `main_script` as it stands (`HasPathScheme`,
+  both the `.json` and the `.zip` branch) - sunlight's own rule for a path inside a map. The smoke test
+  runs a second time from `scheme_project.json` (`"main_script": "vpath://..."`); shown failing without
+  the fix, and the `.zip` branch checked by hand with a scheme `project.json` in an archive. The
+  COMMAND-LINE entry point stays an OS path (CLI11 checks it exists; `scarab vpath://...` exits 105).
+- **Then sunlight I13 (PR #243, `4cb7262`, BREAKAGES 62), at Scarab's request (owner-approved):** that fix
+  showed Scarab kept its own copy of sunlight's path rules (`GetVirtualParentPath`/`JoinVirtualPath` in
+  `enginehost.cpp`, not scheme-aware). Asked sunlight to make its scheme-aware helpers public rather than
+  have Scarab include the map loader's internals; sunlight's owner placed them in a new stateless
+  **`FilePath`** (`SplitPath`, `ParentPath` - trailing '/' kept -, `JoinPath`, `ToVirtualPath`), and made
+  `IFileSystem` a pure interface again, with the shared behaviour in a new `BaseFileSystem`. For Scarab:
+  `IFileSystem::ToVirtualPath` -> `FilePath::ToVirtualPath` (`main.cpp`, `luaengine.cpp`), and
+  `EngineHost`'s three helpers (and the `HasPathScheme` bridge) are gone -
+  `ResolveEntryScript`'s `.json` and `.zip` branches both go through a new `EngineHost::ResolveMainScript`
+  = `FilePath::JoinPath( FilePath::ParentPath( project ), main_script )`, and the in-archive `--entry` is
+  `JoinPath( APP_DIR + "/", entry )` (a leading '/' stays inside the folder, as sunlight documents - no more
+  stripping). `JoinPath` also turns backslashes into '/', which replaces the `generic_string()` Windows
+  fix, and gives "" for a ".." above the root, now reported ("main_script climbs above the root"). Both
+  pins were kept on one local branch and shipped as ONE PR (the owner's choice), so `9789ac5` was never
+  merged on its own. Checked by hand: default `project.json`, `--entry /main.lua`, `--entry main.lua`,
+  `--entry sub/game.json` with `../main.lua`, a scheme `main_script` in a `.zip`, and the error cases.
+- **Not used yet:** writing (`WriteFile`/`SetWriteDirectory`) - C1b decides the game's write directory.
+- **Proof:** clean build, 26/26 unit tests (also under ASan), 15 smoke tests, the headless smoke test,
+  19 samples headless, all 36 `asan_run.py` runs, the docs generator, style check 0; Caravellius'
+  acceptance PASS and fingerprint `hash=33897632`.
 
 ## Phase D: design items
 

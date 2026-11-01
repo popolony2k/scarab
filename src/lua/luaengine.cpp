@@ -42,6 +42,7 @@
 #include "engine/spritepool.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
+#include "filesystem/filepath.h"
 #include <vector>
 
 
@@ -321,7 +322,7 @@ namespace Scarab  {
         std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
 
         /*
-         * IFileSystem::ToVirtualPath() of the real application directory,
+         * FilePath::ToVirtualPath() of the real application directory,
          * not that raw real-OS-path value itself - main.cpp mounts that
          * same real directory at this exact virtual-path conversion of
          * itself (not at itself), since a raw Windows path is illegal as
@@ -333,7 +334,7 @@ namespace Scarab  {
          * deterministic conversion, so they agree without needing to
          * coordinate explicitly.
          */
-        m_strAppDirectory = SunLight :: FileSystem :: IFileSystem :: ToVirtualPath(
+        m_strAppDirectory = SunLight :: FileSystem :: FilePath :: ToVirtualPath(
                                  SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory() );
 
         lua_pushlightuserdata( m_pLuaState, pRendererProvider );

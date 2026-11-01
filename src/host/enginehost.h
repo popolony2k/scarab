@@ -94,6 +94,7 @@ namespace Scarab  {
             bool LoadLuaScript( std :: string strFileName );
             bool RunLuaScriptMainEntryPoint( void );
             bool ResolveEntryScript( const std :: string& strEntryArg, std :: string& strOutScriptPath );
+            bool ResolveMainScript( const std :: string& strProjectPath, const std :: string& strMainScript, std :: string& strOutScriptPath );
 
             // Machine state handlers
             void FatalErrorHandler( void );

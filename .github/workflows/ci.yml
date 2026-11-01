@@ -393,6 +393,20 @@ jobs:
           python scripts/layer_tint_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "layer tint smoke test exited with code $LASTEXITCODE" }
 
+      # Path schemes (sunlight I12): a plain path, vpath://, virtualpath://, hpath:// and hostpath://
+      # load the same file through load_json, dofile and tilemap_load_map (a map with external
+      # tilesets), and an unknown scheme is refused - plans/MASTER_PLAN.md item P9.
+      - name: Path scheme smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/path_scheme_smoke.py build/scarab
+
+      - name: Path scheme smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/path_scheme_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "path scheme smoke test exited with code $LASTEXITCODE" }
+
       # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
       # rejection, two sprites sharing a texture keeping their own values, a recycled slot
       # starting opaque and untinted - plans/MASTER_PLAN.md item P8.

@@ -40,6 +40,7 @@
 #include "renderer/tilemaprenderer.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
+#include "filesystem/filepath.h"
 
 
 /**
@@ -292,7 +293,7 @@ int main( int argc, char** argv )  {
      * SunLight::FileSystem.
      */
     std :: string  strAppDir        = SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory();
-    std :: string  strVirtualAppDir = SunLight :: FileSystem :: IFileSystem :: ToVirtualPath( strAppDir );
+    std :: string  strVirtualAppDir = SunLight :: FileSystem :: FilePath :: ToVirtualPath( strAppDir );
 
     if( !strPackConfigPath.empty() )  {
 
@@ -347,7 +348,7 @@ int main( int argc, char** argv )  {
     /*
      * Mounts the executable's own real directory (Mount()'s source
      * argument, safe in whatever native OS format GetApplicationDirectory()
-     * returns) at that same directory's own IFileSystem::ToVirtualPath()
+     * returns) at that same directory's own FilePath::ToVirtualPath()
      * equivalent - NOT at the real path itself. PHYSFS_mount()'s
      * destination/mountPoint argument must already be a legal virtual path
      * (see IFileSystem's own "virtual path" contract, ifilesystem.h); a raw
