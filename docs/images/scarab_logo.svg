@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Scarab's TEMPORARY logo (plans/MASTER_PLAN.md item T2), drawn to match sunlight's sunny.png:
+  200x200, a glossy creature over italic blue lettering. A scarab carrying the light - a small sun
+  held above its head. To be replaced by a team-made logo; render with
+  rsvg-convert -w 200 -h 200 scarab_logo.svg -o scarab_logo.png
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="sun" cx="0.4" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#fffbe0"/>
+      <stop offset="0.45" stop-color="#ffd23a"/>
+      <stop offset="1" stop-color="#e8890c"/>
+    </radialGradient>
+    <radialGradient id="shell" cx="0.35" cy="0.3" r="0.85">
+      <stop offset="0" stop-color="#7ff0d0"/>
+      <stop offset="0.35" stop-color="#1fa58e"/>
+      <stop offset="0.75" stop-color="#0d5f6e"/>
+      <stop offset="1" stop-color="#083347"/>
+    </radialGradient>
+    <radialGradient id="head" cx="0.4" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#5fd6c0"/>
+      <stop offset="0.6" stop-color="#127a78"/>
+      <stop offset="1" stop-color="#0a3d4e"/>
+    </radialGradient>
+    <linearGradient id="letters" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e3eeff"/>
+      <stop offset="0.5" stop-color="#8fb4ff"/>
+      <stop offset="1" stop-color="#4d7fe0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- the sun it carries, with short rays -->
+  <g transform="translate(100 34)">
+    <g stroke="#f2a51c" stroke-width="4" stroke-linecap="round">
+      <line x1="0" y1="-30" x2="0" y2="-22"/>
+      <line x1="21" y1="-21" x2="16" y2="-16"/>
+      <line x1="-21" y1="-21" x2="-16" y2="-16"/>
+      <line x1="30" y1="0" x2="22" y2="0"/>
+      <line x1="-30" y1="0" x2="-22" y2="0"/>
+    </g>
+    <circle r="18" fill="url(#sun)"/>
+  </g>
+
+  <!-- front legs holding the sun -->
+  <g fill="none" stroke="#0a3d4e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M86 70 L70 58 L80 44"/>
+    <path d="M114 70 L130 58 L120 44"/>
+    <!-- middle and back legs -->
+    <path d="M68 98 L44 90 L34 102"/>
+    <path d="M132 98 L156 90 L166 102"/>
+    <path d="M72 122 L48 134 L44 150"/>
+    <path d="M128 122 L152 134 L156 150"/>
+  </g>
+
+  <!-- head, with its toothed clypeus -->
+  <path d="M78 76 Q80 58 100 56 Q120 58 122 76 Z" fill="url(#head)"/>
+  <path d="M84 60 L88 54 L92 59 L96 53 L100 58 L104 53 L108 59 L112 54 L116 60" fill="none"
+        stroke="#0a3d4e" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="90" cy="68" r="2.6" fill="#05202a"/>
+  <circle cx="110" cy="68" r="2.6" fill="#05202a"/>
+
+  <!-- pronotum and wing cases -->
+  <ellipse cx="100" cy="87" rx="34" ry="14" fill="url(#shell)"/>
+  <path d="M100 95 C56 95 56 154 100 164 C144 154 144 95 100 95 Z" fill="url(#shell)"/>
+  <line x1="100" y1="98" x2="100" y2="160" stroke="#062a3a" stroke-width="2"/>
+  <!-- gloss -->
+  <ellipse cx="82" cy="118" rx="8" ry="18" fill="#ffffff" opacity="0.28" transform="rotate(12 86 116)"/>
+  <ellipse cx="92" cy="83" rx="9" ry="4" fill="#ffffff" opacity="0.3"/>
+
+  <!-- lettering, in sunlight's style -->
+  <text x="100" y="192" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="30"
+        font-weight="bold" font-style="italic" letter-spacing="1" fill="url(#letters)"
+        stroke="#2f5fbf" stroke-width="1">SCARAB</text>
+</svg>

@@ -1683,7 +1683,7 @@ accurate once the features it describes are actually settled, not before.
 | # | Item | Status |
 |---|------|--------|
 | T1 | A full documentation pass once every other phase's changes have landed | TODO |
-| T2 | Simplify `README.md` | TODO |
+| T2 | Simplify `README.md` | DONE |
 | T3 | Every source file and script carries the project's copyright/license notice | DONE |
 
 **T1.** Scope: `README.md`; the generated Lua API reference's own source comments
@@ -1699,6 +1699,26 @@ whatever makes it feel polluted is density or structure, not length alone. sunli
 `README.md` can be used as a base. Scope, left open: what moves out (to `CLAUDE.md`, to a
 dedicated `docs/` file, or is dropped), what stays, and the target structure - discussed in
 full when this item starts, not decided here.
+
+**T2 done (2026-10-31).** Rewritten on sunlight's own `README.md` as the model (the owner's choice): a centred
+header with a logo, CI/release/license badges and a two-line pitch; a table of contents whose first entries
+are the external references (Lua API, C++ reference, license); **Features**, **Requirements** (each
+dependency with its install command, taken from `ci.yml`), **HowTo** (building, running a game, headless
+mode, running tests - new, content encryption, VSCode) and **Samples** grouped by topic, all 19 with one
+line each (the old text named 11). Kept: the owner's Motivation, and the content-encryption AS-IS warning,
+shortened but still prominent (a GitHub warning box). Measured: 2733 words -> 1574 (sunlight's: 1391).
+- **Dropped:** the repository layout (stale, and `CLAUDE.md` covers the architecture), and the internals
+  explained to readers (how the API reference is generated, the `lua_register` name mapping, the post-build
+  copy step, the mount-based filesystem). **Corrected:** the `--version` example, the sample list, the
+  license line (T3).
+- **Moved:** the content key's safe-keeping (per-game keys, never committed, CI secrets, no recovery) to
+  `tools/README.md`, next to the packaging steps it belongs to. Links to the old `#running-rocket` and
+  `#content-encryption-lock` anchors (4 files) repointed.
+- **Logo:** the owner asked for a temporary Scarab logo the size of sunlight's Sunny (200x200), to be replaced
+  by a team-made one: `docs/images/scarab_logo.svg` (source, marked temporary) and its render
+  `scarab_logo.png` - a glossy scarab holding up a small sun, over italic blue lettering in sunlight's style.
+  Kept out of `resources/`, which is the shared game-asset area.
+- **Deleted:** `docs/README-DEBUG.txt` (only the debug-flags line, which the README and `CLAUDE.md` have).
 
 **T3 (TODO, added 2026-10-23 at the owner's request).** The owner noticed that some scripts,
 and maybe some source code, don't carry the project's copyright/license notice

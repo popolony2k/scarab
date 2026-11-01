@@ -10,7 +10,7 @@ From the repo root:
 ./build/scarab samples/hello-world/project.json
 ```
 
-**Not** `cd build && ./scarab ../samples/hello-world/project.json` — a `..`-relative entry path fails (`cannot open ../samples/hello-world/main.lua`), since the mount-based filesystem every resource load routes through (see the root [README.md](../../../README.md#running-rocket)) rejects `..` path segments. Run from the repo root as shown above, or pass an absolute path instead.
+**Not** `cd build && ./scarab ../samples/hello-world/project.json` — a `..`-relative entry path fails (`cannot open ../samples/hello-world/main.lua`), since the mount-based filesystem every resource load routes through (see the root [README.md](../../../README.md#running-a-game)) rejects `..` path segments. Run from the repo root as shown above, or pass an absolute path instead.
 
 ## What it shows
 

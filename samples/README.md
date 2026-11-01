@@ -10,7 +10,7 @@ From the repo root:
 ./build/scarab samples/<sample-name>/project.json
 ```
 
-**Not** `cd build && ./scarab ../samples/<sample-name>/project.json` — a `..`-relative entry path fails outright (the mount-based filesystem every resource load routes through, see the root [README.md](../README.md#running-rocket), rejects `..` path segments). Run from the repo root as shown above, or pass an absolute path instead.
+**Not** `cd build && ./scarab ../samples/<sample-name>/project.json` — a `..`-relative entry path fails outright (the mount-based filesystem every resource load routes through, see the root [README.md](../README.md#running-a-game), rejects `..` path segments). Run from the repo root as shown above, or pass an absolute path instead.
 
 ## Shared code and style
 
@@ -43,6 +43,6 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
 * [sound](sound/docs/README.md) — direct one-shot, direct looping, and queued song forms side by side, plus pause/stop/resume/volume
 * [json](json/docs/README.md) — `load_json`, walking a small nested object/array config file into an equivalent Lua table
-* [crypto](crypto/docs/README.md) — `crypto_encrypt_data`/`crypto_decrypt_data`: an encrypt → decrypt roundtrip, and a tamper test showing the authenticated-encryption failure mode; behavior depends on whether the running `scarab` was built with a real `SCARAB_CONTENT_KEY` (see the root [README.md](../README.md#content-encryption-lock)'s own "Content encryption" section)
+* [crypto](crypto/docs/README.md) — `crypto_encrypt_data`/`crypto_decrypt_data`: an encrypt → decrypt roundtrip, and a tamper test showing the authenticated-encryption failure mode; behavior depends on whether the running `scarab` was built with a real `SCARAB_CONTENT_KEY` (see the root [README.md](../README.md#content-encryption)'s own "Content encryption" section)
 
 Every Lua API category listed above now has a sample, except **Pack** (`pack_*`, `LuaPackApi`) — its own worked example is [tools/pack.lua](../tools/README.md), run via `scarab --pack <config.json>` rather than kept as a `samples/pack` here; packaging is a dev-time tool operating on real native OS paths (deliberately unmounted, see `tools/README.md`), not something that fits this repo's usual "opens a window, draws something" sample shape.
