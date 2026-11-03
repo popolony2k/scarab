@@ -104,6 +104,7 @@ namespace Scarab  {
                 static void EnsureRenderer( lua_State* pLuaState );
                 static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State* pLuaState );
                 static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State* pLuaState );
+                static SunLight :: Input :: IControllerManager* GetControllerManager( lua_State* pLuaState );
                 static void RegisterConstants( lua_State* pLuaState, const stNamedConstant* pTable, size_t nCount );
                 static void RegisterRealConstants( lua_State* pLuaState, const stNamedRealConstant* pTable, size_t nCount );
                 static int PushError( lua_State* pLuaState, const std :: string& strMessage );

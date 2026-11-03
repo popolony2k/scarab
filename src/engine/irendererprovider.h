@@ -28,6 +28,7 @@
 #include "tilemap/itilemap.h"
 #include "drawsurface/idrawsurface.h"
 #include "font/ifont.h"
+#include "input/icontrollermanager.h"
 
 namespace Scarab  {
     namespace Engine  {
@@ -98,6 +99,13 @@ namespace Scarab  {
              * if none exists yet - see @link GetTileMap.
              */
             virtual SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char* szTrigger ) = 0;
+
+            /**
+             * @brief The renderer's controller manager (connected pads, hot-plug, dead zones) -
+             * on the concrete renderer only, not on ITileMap; creates the default renderer first
+             * if none exists yet - see @link GetTileMap.
+             */
+            virtual SunLight :: Input :: IControllerManager* GetControllerManager( const char* szTrigger ) = 0;
 
             /**
              * @brief The draw surface if a renderer already exists, else

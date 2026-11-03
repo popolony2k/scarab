@@ -253,6 +253,14 @@ expect_error( "gamepad button", "unknown GAMEPAD_BUTTON_* value 999", input_is_g
 expect_error( "gamepad axis", "unknown GAMEPAD_AXIS_* value 999", input_get_gamepad_axis, 0, 999 )
 expect_error( "add gamepad", "argument 'gamepadId'", input_add_gamepad, -1 )
 expect_true( "add gamepad", input_add_gamepad, 0 )
+expect_error( "axis raw", "unknown GAMEPAD_AXIS_* value 999", input_get_gamepad_axis_raw, 0, 999 )
+expect_error( "pad available", "argument 'gamepadId'", input_is_gamepad_available, 10 )
+expect_error( "pad name", "argument 'gamepadId'", input_get_gamepad_name, -1 )
+expect_error( "connection handler", "argument 'fn' must be a function", input_set_gamepad_connection_handler, 42 )
+expect_error( "deadzone range", "argument 'deadzone' must be between 0 and 1", input_set_axis_deadzone, 0, GAMEPAD_AXIS_LEFT_X, 1.5 )
+expect_error( "deadzone trigger", "argument 'axis' must be a stick axis", input_get_axis_deadzone, 0, GAMEPAD_AXIS_LEFT_TRIGGER )
+expect_error( "slot negative", "argument 'slot'", input_claim_player_slot, -1, 0 )
+expect_error( "slot fraction", "argument 'slot' must be an integer", input_get_gamepad_for_slot, 1.5 )
 
 -- timers
 expect_error( "timer interval", "argument 'intervalMilli' must be between 1", set_timer, __TIMER_ID, 0, function() end )

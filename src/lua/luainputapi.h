@@ -28,6 +28,7 @@ extern "C"  {
 }
 
 #include "input/iinputhandler.h"
+#include "input/icontrollermanager.h"
 
 
 namespace Scarab  {
@@ -38,10 +39,11 @@ namespace Scarab  {
              *
              * @luacategory{Input}
              * @luadoc
-             * All input functions poll current state once per call —
-             * there's no event/callback model for input (unlike
-             * collisions, which do have a callback — see [collision.md](collision.md)).
-             * Call these from your own per-frame update function.
+             * The keys, buttons and sticks are polled: each function reads the
+             * current state once per call, so call them from your own per-frame
+             * update. The one event is a gamepad being connected or disconnected
+             * (`input_set_gamepad_connection_handler`). Player slots map a
+             * game's own player numbers to gamepads.
              *
              * Every constant below (see the bottom of this page) is
              * registered as a plain Lua global (an integer) — no
@@ -58,13 +60,29 @@ namespace Scarab  {
                 static int IsGamepadButtonDown( lua_State* pLuaState );
                 static int IsGamepadButtonUp( lua_State* pLuaState );
                 static int GetGamepadAxisMovement( lua_State* pLuaState );
+                static int GetGamepadAxisRaw( lua_State* pLuaState );
                 static int AddGamepad( lua_State* pLuaState );
+                static int GetConnectedGamepads( lua_State* pLuaState );
+                static int IsGamepadAvailable( lua_State* pLuaState );
+                static int GetGamepadName( lua_State* pLuaState );
+                static int SetGamepadConnectionHandler( lua_State* pLuaState );
+                static int SetAxisDeadzone( lua_State* pLuaState );
+                static int GetAxisDeadzone( lua_State* pLuaState );
+                static int ClaimPlayerSlot( lua_State* pLuaState );
+                static int ReleasePlayerSlot( lua_State* pLuaState );
+                static int GetGamepadForSlot( lua_State* pLuaState );
+                static int GetSlotForGamepad( lua_State* pLuaState );
 
                 static void RegisterEnums( lua_State* pLuaState );
 
                 public:
 
+                // The Lua global LuaEngine::Init stashes its PlayerSlotManager in (a light userdata).
+                static constexpr const char*  PLAYER_SLOTS_GLOBAL = "playerSlotsPtr";
+
                 static void Register( lua_State* pLuaState );
+                static float ApplyDeadzone( float fValue, float fDeadzone );
+                static void InstallConnectionHandler( lua_State* pLuaState, SunLight :: Input :: IControllerManager& controllerManager );
                 static bool ReadKeyArg( lua_State* pLuaState, int nIndex, const char* szName,
                                         SunLight :: Input :: KeyboardKey& key, std :: string& strError );
             };

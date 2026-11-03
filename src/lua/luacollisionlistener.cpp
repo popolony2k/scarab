@@ -21,6 +21,9 @@
 #include "lua/luacollisionlistener.h"
 #include "engine/spritehandle.h"
 #include "tilemap/tilemapdefs.h"
+#include "lua/luaengineutil.h"
+#include <cstdio>
+#include <mutex>
 
 extern "C"  {
   #include "lauxlib.h"
@@ -71,6 +74,14 @@ namespace Scarab  {
                 SpriteHandle  hFirst = UnpackSpriteHandleFromPtr( pFirstData );
                 SpriteHandle  hSecond = UnpackSpriteHandleFromPtr( pSecondData );
 
+                /*
+                 * sunlight dispatches collisions from TileMapRenderer::Run's HandleUserCollisions, after
+                 * on_update has returned and released the Lua mutex - so this takes it, like every other
+                 * C++ entry into the Lua state. Without it a set_timer callback (whose background thread
+                 * runs whenever the mutex is free) could run Lua at the same time as this handler.
+                 */
+                std :: lock_guard<std :: mutex>  lock( LuaEngineUtil :: s_LuaMutex );
+
                 lua_getglobal( m_pLuaState, "__collision_handler" );
 
                 if( !lua_isfunction( m_pLuaState, -1 ) )  {
@@ -102,6 +113,8 @@ namespace Scarab  {
                     return;
 
                 SpriteHandle  hSprite = UnpackSpriteHandleFromPtr( pFirstData );
+
+                std :: lock_guard<std :: mutex>  lock( LuaEngineUtil :: s_LuaMutex );     // see the collider-to-collider overload
 
                 lua_getglobal( m_pLuaState, "__collision_tile_handler" );
 

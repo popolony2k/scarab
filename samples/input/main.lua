@@ -21,15 +21,19 @@
 --[[
  input - keyboard and gamepad reading (docs/lua-api/input.html).
 
- Moves a plain rectangle (no sprite yet - see the "sprite" sample) around
- the screen with the arrow keys/WASD, gamepad 0's left stick (with a
- deadzone, the same pattern input_is_gamepad_button_down's own doc
- example uses), or it's D-pad, and resets it's position on a keyboard
- key release or a gamepad face-down button press. input_add_gamepad
- must be called once, at startup, before any gamepad_* primitive
- reports real state for that id - it's harmless to call this and then
- read gamepad state every frame even with no gamepad actually
- connected, everything just reads as centered/not-pressed.
+ Two squares, one per player. The keyboard (arrows/WASD) always drives
+ player 1. A gamepad joins by pressing A (GAMEPAD_BUTTON_RIGHT_FACE_DOWN):
+ it claims the next free player slot (input_claim_player_slot), and from
+ then on its left stick and D-pad drive that player's square; B
+ (RIGHT_FACE_RIGHT) leaves the slot again. Unplugging a pad keeps its
+ slot - plugged back in, it is still that player.
+
+ The HUD lists the connected pads (input_get_connected_gamepads) and the
+ last hot-plug event (input_set_gamepad_connection_handler, which also
+ reports the pads already connected at start-up). For player 1's pad it
+ shows the stick both ways: input_get_gamepad_axis applies the pad's dead
+ zone (a stick at rest reads exactly 0), input_get_gamepad_axis_raw does
+ not; [ and ] change that dead zone for every pad.
 
  NOTE: raylib's own gamepad button naming (which this engine's
  GAMEPAD_BUTTON_* constants mirror exactly) calls the D-pad
@@ -46,96 +50,166 @@ assert( app_set_name( "Scarab - input sample" ) )
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-local __GAMEPAD <const> = 0      -- the gamepad id this sample reads
-
-assert( input_add_gamepad( __GAMEPAD ) )
+local __PLAYERS        <const> = 2      -- player slots 1 and 2
+local __PAD_COUNT      <const> = 10     -- pad ids 0..9
+local __SQUARE_SIZE    <const> = 40
+local __SQUARE_COLORS  <const> = { { r = 60, g = 160, b = 220 }, { r = 230, g = 140, b = 50 } }
+local __OPAQUE         <const> = 255
+local __SPEED          <const> = 6      -- pixels/frame - fine for a short demo, see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
+local __DEADZONE_STEP  <const> = 0.05
+local __DEADZONE_START <const> = 0.1    -- the engine's default
+local __STICKS         <const> = { GAMEPAD_AXIS_LEFT_X, GAMEPAD_AXIS_LEFT_Y, GAMEPAD_AXIS_RIGHT_X, GAMEPAD_AXIS_RIGHT_Y }
+local __PAD_ROW        <const> = 5      -- the first HUD row of the pad list
 
 local screenWidth  = screen_get_width()
 local screenHeight = screen_get_height()
+local deadzone     = __DEADZONE_START
+local lastEvent    = "none yet"
 
-local __SQUARE_SIZE    <const> = 40
-local __SQUARE_COLOR   <const> = { r = 60, g = 160, b = 220 }
-local __OPAQUE         <const> = 255
-local __SPEED          <const> = 6      -- pixels/frame - fine for a short demo, see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
-local __STICK_DEADZONE <const> = 0.1    -- raw axis values jitter near 0 even when the stick is physically centered
-
-local function start_pos()
-    return ( screenWidth - __SQUARE_SIZE ) / 2, ( screenHeight - __SQUARE_SIZE ) / 2
+-- Player n's square starts at the n-th third of the screen's width.
+local function start_pos( player )
+    return screenWidth * player / ( __PLAYERS + 1 ) - __SQUARE_SIZE / 2, ( screenHeight - __SQUARE_SIZE ) / 2
 end
 
-local squareX, squareY = start_pos()
+local squares = {}
+
+for player = 1, __PLAYERS do
+    local x, y = start_pos( player )
+
+    squares[player] = { x = x, y = y }
+end
+
+-- Every connect and disconnect; the first frame reports the pads already plugged in.
+assert( input_set_gamepad_connection_handler( function( gamepadId, connected )
+    lastEvent = "pad " .. gamepadId .. ( connected and " connected" or " disconnected" )
+end ) )
+
+local function set_deadzone( value )
+    deadzone = math.max( 0, math.min( 1, value ) )
+
+    for pad = 0, __PAD_COUNT - 1 do
+        for _, axis in ipairs( __STICKS ) do
+            input_set_axis_deadzone( pad, axis, deadzone )
+        end
+    end
+end
+
+-- The first slot no pad holds, or nil.
+local function free_slot()
+    for player = 1, __PLAYERS do
+        if input_get_gamepad_for_slot( player ) == false then return player end
+    end
+
+    return nil
+end
+
+local function move( square, dx, dy )
+    square.x = math.max( 0, math.min( screenWidth - __SQUARE_SIZE, square.x + dx ) )
+    square.y = math.max( 0, math.min( screenHeight - __SQUARE_SIZE, square.y + dy ) )
+end
+
+local function keyboard_step()
+    local dx, dy = 0, 0
+
+    if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then dx = dx - __SPEED end
+    if input_is_key_down( KEY_RIGHT ) or input_is_key_down( KEY_D ) then dx = dx + __SPEED end
+    if input_is_key_down( KEY_UP ) or input_is_key_down( KEY_W ) then dy = dy - __SPEED end
+    if input_is_key_down( KEY_DOWN ) or input_is_key_down( KEY_S ) then dy = dy + __SPEED end
+
+    return dx, dy
+end
+
+-- A pad's step: the stick (the automatic read: 0 inside the dead zone, so no threshold here)
+-- plus the D-pad, a digital input.
+local function pad_step( pad )
+    local dx = input_get_gamepad_axis( pad, GAMEPAD_AXIS_LEFT_X ) * __SPEED
+    local dy = input_get_gamepad_axis( pad, GAMEPAD_AXIS_LEFT_Y ) * __SPEED
+
+    if input_is_gamepad_button_down( pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT ) then dx = dx - __SPEED end
+    if input_is_gamepad_button_down( pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT ) then dx = dx + __SPEED end
+    if input_is_gamepad_button_down( pad, GAMEPAD_BUTTON_LEFT_FACE_UP ) then dy = dy - __SPEED end
+    if input_is_gamepad_button_down( pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN ) then dy = dy + __SPEED end
+
+    return dx, dy
+end
 
 function on_update( dt )
 
-    local axisX     = input_get_gamepad_axis( __GAMEPAD, GAMEPAD_AXIS_LEFT_X )
-    local axisY     = input_get_gamepad_axis( __GAMEPAD, GAMEPAD_AXIS_LEFT_Y )
-    local faceDown  = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_RIGHT_FACE_DOWN )
-    local dpadUp    = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_UP )
-    local dpadDown  = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_DOWN )
-    local dpadLeft  = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_LEFT )
-    local dpadRight = input_is_gamepad_button_down( __GAMEPAD, GAMEPAD_BUTTON_LEFT_FACE_RIGHT )
+    local pads = input_get_connected_gamepads()
 
-    if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then
-        squareX = squareX - __SPEED
+    -- Joining and leaving
+    for _, pad in ipairs( pads ) do
+        local slot = input_get_slot_for_gamepad( pad.id )
+
+        if slot == false and input_is_gamepad_button_down( pad.id, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) then
+            local player = free_slot()
+
+            if player then
+                input_claim_player_slot( player, pad.id )
+            end
+        elseif slot ~= false and input_is_gamepad_button_down( pad.id, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT ) then
+            input_release_player_slot( slot )
+        end
     end
 
-    if input_is_key_down( KEY_RIGHT ) or input_is_key_down( KEY_D ) then
-        squareX = squareX + __SPEED
+    if input_is_key_released( KEY_LEFT_BRACKET ) then set_deadzone( deadzone - __DEADZONE_STEP ) end
+    if input_is_key_released( KEY_RIGHT_BRACKET ) then set_deadzone( deadzone + __DEADZONE_STEP ) end
+
+    -- Movement: the keyboard is always player 1; each claimed pad drives its own player.
+    move( squares[1], keyboard_step() )
+
+    for player = 1, __PLAYERS do
+        local pad = input_get_gamepad_for_slot( player )
+
+        if pad ~= false and input_is_gamepad_available( pad ) then
+            move( squares[player], pad_step( pad ) )
+        end
     end
 
-    if input_is_key_down( KEY_UP ) or input_is_key_down( KEY_W ) then
-        squareY = squareY - __SPEED
+    if input_is_key_released( KEY_R ) then
+        for player = 1, __PLAYERS do
+            squares[player].x, squares[player].y = start_pos( player )
+        end
     end
 
-    if input_is_key_down( KEY_DOWN ) or input_is_key_down( KEY_S ) then
-        squareY = squareY + __SPEED
+    for player = 1, __PLAYERS do
+        local color = __SQUARE_COLORS[player]
+
+        draw_filled_rectangle( math.floor( squares[player].x ), math.floor( squares[player].y ), __SQUARE_SIZE, __SQUARE_SIZE,
+            color.r, color.g, color.b, __OPAQUE )
     end
 
-    -- Same movement, driven by the left stick instead - deadzone first,
-    -- since a raw axis value jitters near 0 even when physically centered.
-    if math.abs( axisX ) > __STICK_DEADZONE then
-        squareX = squareX + ( axisX * __SPEED )
+    -- HUD
+    Hud.line( "input sample - arrows/WASD move player 1 (blue); a pad's A joins, B leaves", 1, Hud.TITLE )
+    Hud.line( string.format( "R resets   [ / ] stick dead zone: %.2f", deadzone ), 2, Hud.TITLE )
+
+    local players = {}
+
+    for player = 1, __PLAYERS do
+        local pad = input_get_gamepad_for_slot( player )
+        local who = ( pad == false ) and "press A on a pad" or ( "pad " .. pad .. ( input_is_gamepad_available( pad ) and "" or " (unplugged)" ) )
+
+        players[#players + 1] = "player " .. player .. ": " .. who
     end
 
-    if math.abs( axisY ) > __STICK_DEADZONE then
-        squareY = squareY + ( axisY * __SPEED )
+    Hud.line( table.concat( players, "   " ), 3, Hud.INFO )
+    Hud.line( "last hot-plug event: " .. lastEvent, 4, Hud.INFO )
+
+    if #pads == 0 then
+        Hud.line( "no gamepad connected", __PAD_ROW, Hud.DIM )
+    else
+        for index, pad in ipairs( pads ) do
+            local slot = input_get_slot_for_gamepad( pad.id )
+
+            Hud.line( "pad " .. pad.id .. ": " .. pad.name .. ( slot == false and "" or ( "  (player " .. slot .. ")" ) ), __PAD_ROW + index - 1, Hud.DIM )
+        end
     end
 
-    -- Same movement again, driven by the D-pad - a digital input, so no
-    -- deadzone needed, just plain input_is_gamepad_button_down checks,
-    -- the same shape as the keyboard's own arrow-key handling above.
-    if dpadLeft then
-        squareX = squareX - __SPEED
+    local firstPad = input_get_gamepad_for_slot( 1 )
+
+    if firstPad ~= false then
+        Hud.line_from_bottom( string.format( "player 1 stick: automatic %.2f, %.2f   raw %.2f, %.2f",
+            input_get_gamepad_axis( firstPad, GAMEPAD_AXIS_LEFT_X ), input_get_gamepad_axis( firstPad, GAMEPAD_AXIS_LEFT_Y ),
+            input_get_gamepad_axis_raw( firstPad, GAMEPAD_AXIS_LEFT_X ), input_get_gamepad_axis_raw( firstPad, GAMEPAD_AXIS_LEFT_Y ) ), 1, Hud.INFO )
     end
-
-    if dpadRight then
-        squareX = squareX + __SPEED
-    end
-
-    if dpadUp then
-        squareY = squareY - __SPEED
-    end
-
-    if dpadDown then
-        squareY = squareY + __SPEED
-    end
-
-    -- Keep the square fully on screen.
-    squareX = math.max( 0, math.min( screenWidth - __SQUARE_SIZE, squareX ) )
-    squareY = math.max( 0, math.min( screenHeight - __SQUARE_SIZE, squareY ) )
-
-    if input_is_key_released( KEY_R ) or faceDown then
-        squareX, squareY = start_pos()
-    end
-
-    draw_filled_rectangle( math.floor( squareX ), math.floor( squareY ), __SQUARE_SIZE, __SQUARE_SIZE,
-        __SQUARE_COLOR.r, __SQUARE_COLOR.g, __SQUARE_COLOR.b, __OPAQUE )
-
-    Hud.line( "input sample - arrows/WASD, left stick, or D-pad to move", 1, Hud.TITLE )
-    Hud.line( "R or face-down button to reset", 2, Hud.TITLE )
-    Hud.line( "gamepad " .. __GAMEPAD .. " left stick: " .. string.format( "%.2f, %.2f", axisX, axisY )
-        .. "  face-down: " .. tostring( faceDown ), 3, Hud.INFO )
-    Hud.line( "D-pad up/down/left/right: " .. tostring( dpadUp ) .. "/" .. tostring( dpadDown )
-        .. "/" .. tostring( dpadLeft ) .. "/" .. tostring( dpadRight ), 4, Hud.INFO )
-    Hud.lines( "(reads centered/false with no gamepad connected - that's expected, not an error)", 5, Hud.DIM )
 end

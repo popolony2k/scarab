@@ -29,7 +29,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [app](app/docs/README.md) — window/app-level basics: fullscreen, the FPS counter, window resizing, letterbox vs. stretch-to-fill, target FPS, a startup fade, a simple HUD bar
 * [text](text/docs/README.md) — HUD-style text layout: `measure_text`-based right-alignment, `screen_get_width`/`height`, `set_font`'s documented graceful-failure behavior, and two real custom-font loads (Press Start 2P and `caravellius8x8` — see [resources/fonts/](../resources/fonts/README.md))
 * [timers](timers/docs/README.md) — two independent background timers, and the "callbacks run on a background thread" gotcha handled correctly
-* [input](input/docs/README.md) — keyboard and gamepad reading: a rectangle moved with the keyboard, live gamepad axis/button state
+* [input](input/docs/README.md) — keyboard and gamepads for two players: pads joining player slots, hot-plug, and the stick dead zone (automatic vs raw reads)
 * [tilemap](tilemap/docs/README.md) — loading a Tiled `.tmx` map, reporting its dimensions — the minimal map-on-screen sample, no sprites (map shared from [resources/tilemap/](../resources/tilemap/README.md))
 * [camera](camera/docs/README.md) — scrolling/zooming the camera (keyboard pan/zoom + an absolute `camera_set_position` jump) over the same map `tilemap` loads
 * [sprite](sprite/docs/README.md) — acquiring/configuring/moving an animated sprite (sunlight's own "sunny" character), built on `tilemap/`

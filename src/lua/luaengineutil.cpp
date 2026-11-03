@@ -127,6 +127,18 @@ namespace Scarab  {
             }
 
             /**
+             * @brief The renderer's controller manager (connected pads, hot-plug, dead zones) -
+             * creating the default renderer first if the script has not created one yet (see
+             * IRendererProvider::GetControllerManager).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             */
+            SunLight :: Input :: IControllerManager* LuaEngineUtil :: GetControllerManager( lua_State* pLuaState )  {
+
+                return GetRendererProvider( pLuaState ) -> GetControllerManager( GetCallerName( pLuaState ).c_str() );
+            }
+
+            /**
              * @brief Push `nil, message` and return the count - the failure convention of the
              * Lua primitives that report errors (plans/MASTER_PLAN.md items B1, D3): a script reads
              * it with `local ok, err = f( ... )`, and it never raises a Lua error.

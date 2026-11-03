@@ -407,6 +407,20 @@ jobs:
           python scripts/path_scheme_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "path scheme smoke test exited with code $LASTEXITCODE" }
 
+      # Controllers (C1a): no pads headless, stick dead zones per pad and axis, the automatic
+      # and raw stick reads, the connection handler, and the player slots in full -
+      # plans/MASTER_PLAN.md item C1a.
+      - name: Input API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/input_api_smoke.py build/scarab
+
+      - name: Input API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/input_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "input API smoke test exited with code $LASTEXITCODE" }
+
       # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
       # rejection, two sprites sharing a texture keeping their own values, a recycled slot
       # starting opaque and untinted - plans/MASTER_PLAN.md item P8.

@@ -34,8 +34,9 @@ Usage:
     style_audit.py --check                 # CI: exit 1 on any finding of an enforced rule (every rule but
                                            # the "-test" ones, which only report what tests may do)
 
-The C++ documentation rule reads sunlight's headers from build/_deps/sunlight-src (an interface's
-comment covers its implementations), so run it after a CMake configure.
+The C++ documentation rule wants a comment on every function where it is defined (an inline one in
+its header), interface overrides included - Scarab's own rule, not sunlight's, so it reports a lot on
+--cpp-root sunlight, which documents in its headers.
 """
 
 import glob
@@ -77,7 +78,7 @@ RULES = {
     "cpp-body-blank-line":  "function body not starting with a blank line",
     "cpp-case-colon":       "case/default label without a space before its colon",
     "cpp-pointer-side":     "'*' or '&' with the name, not the type (Type *pName)",
-    "cpp-undocumented-function": "function with no Doxygen comment where it is declared or defined",
+    "cpp-undocumented-function": "function with no Doxygen comment of its own where it is defined (overrides too)",
     "cpp-hungarian-param":  "parameter whose prefix doesn't match its type (main's argc/argv excepted)",
     "cpp-decl-columns":     "declarations in one block whose names don't start in one column",
     "cpp-hungarian":        "variable or member whose prefix doesn't match its type (p, sz, b, n, f, str)",
@@ -288,11 +289,6 @@ def magic_number(line, rel):
 
 # A declaration or definition head, for the documentation rule: the name before '('.
 DOC_HEAD = re.compile(r"^\s*(?!(if|for|while|switch|catch|return|else|do)\b)(?:[\w:<>,~*&\s]*?\s)?((?:\w+\s*::\s*)*~?\w+)\s*\(")
-
-# Function names documented in some header (filled before the C++ files are read): a method that
-# implements an interface may rely on the interface's comment.
-DOCUMENTED_IN_HEADERS = set()
-
 
 def doc_before(raw_lines, k):
     """Whether the code at line k is preceded (blank lines aside) by the end of a comment."""
@@ -505,11 +501,15 @@ def cpp_findings(path, rel, add):
                 or re.search(r"\]\s*\(", line) or not FUNCTION_HEAD.match(line) or line.strip().startswith(("else", "do")):
             continue
         prev = next((l.strip() for l in reversed(lines[:k]) if l.strip()), "")
-        if prev.endswith(("(", ",", "&&", "||", ":")) or re.match(r"\s*TEST_CASE\b", line):
+        continuation = prev.endswith(("(", ",", "&&", "||", ":")) and not re.match(r"(public|protected|private)\s*:$", prev)
+        if continuation or re.match(r"\s*TEST_CASE\b", line):
             continue                                  # the second line of a condition or a call, not a function
         m = re.search(r"((?:\w+\s*::\s*)*~?\w+)\s*\(", line)
         name = re.sub(r"\s+", "", m.group(1)).split("::")[-1]
-        if not doc_before(raw_lines, k) and name not in documented and name not in DOCUMENTED_IN_HEADERS:
+        # Its own comment, right where it is defined - an override too: its implementation's details (what
+        # it creates, what it never does) are not in the interface's comment (the owner, C1a). A header may
+        # define an inline function documented where the class declares it.
+        if not doc_before(raw_lines, k) and not ( is_header and name in documented ):
             add("cpp-undocumented-function", rel, k + 1, raw_lines[k])
 
     for start, column_set in declaration_blocks(lines):
@@ -613,13 +613,6 @@ def main():
 
     def add(rule, rel, n, text):
         findings[rule].append((rel, n, text.strip()[:110]))
-
-    # Scarab's headers and the sunlight it builds against (an interface Scarab implements is documented there).
-    header_roots = [cpp_root] if cpp_root else [os.path.join(REPO_ROOT, "src"), os.path.join(REPO_ROOT, "tests"),
-                                                os.path.join(REPO_ROOT, "build", "_deps", "sunlight-src", "src")]
-    for path in [p for root in header_roots for p in glob.glob(os.path.join(root, "**", "*.h"), recursive=True)]:
-        raw = open(path, encoding="utf-8", errors="replace").read()
-        DOCUMENTED_IN_HEADERS.update(documented_names(raw.split("\n"), blank_cpp(raw).split("\n")))
 
     if cpp_root:
         roots = [(cpp_root, os.path.abspath(cpp_root))]
