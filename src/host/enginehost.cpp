@@ -487,11 +487,13 @@ namespace Scarab  {
             /*
              * Whatever renderer the provider creates (explicitly or the
              * default), this host listens to its frame updates, and the Lua
-             * bridge attaches its collision listener to it.
+             * bridge attaches its collision listener and its gamepad hot-plug
+             * handler to it.
              */
             pRendererProvider -> SetCreatedHook( [this]( SunLight :: Renderer :: TileMapRenderer& renderer )  {
                 renderer.AddTileMapListener( this );
                 m_LuaEngine.AttachToTileMap( renderer );
+                m_LuaEngine.AttachToControllerManager( renderer.GetControllerManager() );
             } );
 
             // Engine state handlers setup

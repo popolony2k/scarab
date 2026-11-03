@@ -1108,7 +1108,7 @@ that.
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
-| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **PLANNED (2026-10-31), split into C1a and C1b** - starts after sunlight's next pin; see below |
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b planned** (action map + rumble, needs the write-directory decision); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
@@ -1116,7 +1116,7 @@ that.
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
 
-**C1 (PLANNED 2026-10-31 with the owner; not started - waits for sunlight's next pin).** Lua can poll
+**C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
 keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
 sunlight's controller layer reaches Lua. Left out on purpose: sunlight's key/button event handlers and
 input dispatch mode (Lua games poll each frame; D1 covers the default key handler). Split by the owner:
@@ -1146,6 +1146,55 @@ input dispatch mode (Lua games poll each frame; D1 covers the default key handle
   - Later, not in C1: a radial (whole-stick) dead zone and rescaling past the threshold.
 - **Player slots:** `input_claim_player_slot(slot, pad)`, `input_release_player_slot(slot)`,
   `input_get_gamepad_for_slot(slot)`, `input_get_slot_for_gamepad(pad)` - a `PlayerSlotManager` Scarab owns.
+
+**C1a done (2026-11-02).** As planned, with what the work found:
+- **Plumbing:** `IRendererProvider::GetControllerManager` (the controller manager is on the concrete
+  renderer only) and `LuaEngineUtil::GetControllerManager` (renderer access, creates the default renderer
+  like `GetTileMap`); `LuaEngine` owns a `SunLight::Input::PlayerSlotManager` (global
+  `LuaInputApi::PLAYER_SLOTS_GLOBAL`, renderer-free); the renderer-created hook also calls
+  `LuaEngine::AttachToControllerManager`, which installs the hot-plug handler. 14 new or changed Lua
+  functions, all `nil, "message"`, with `@luaname` docs.
+- **Decisions made while implementing** (the owner reviewed them): the dead zone applies to the four
+  STICK axes only - a trigger rests at -1, so a dead zone around 0 would cut its travel, and sunlight does
+  the same; `input_set/get_axis_deadzone` refuse a trigger. "No pad" / "no slot" from the two slot lookups
+  is `false`, never `nil` (which means an error). Slots are 0 or more (`-1` is sunlight's
+  `NO_SLOT_ASSOCIATION`).
+- **Found:** `input_add_gamepad`'s doc said a pad must be registered before it is read - wrong, reads go
+  straight to raylib for any pad; `AddGamePad` only feeds sunlight's own dispatch, which only the default
+  key handler uses. Doc corrected. And the OS numbers pads in connection order, so the same pad got a
+  different id in two launches - the slot doc now says never to hard-code "pad 0 = player 1".
+- **A race fixed on the way (owner: fix it in this branch):** `LuaCollisionListener::OnCollision` (both
+  overloads) called into Lua WITHOUT `s_LuaMutex`, while sunlight dispatches collisions after `on_update`
+  has released it - so a `set_timer` callback (which runs whenever the mutex is free) could run Lua at the
+  same time. Both overloads now take the lock (safe: `HandleUserCollisions` is the only dispatch site and
+  never runs under the lock; the timer only `try_lock`s). **Proof, ThreadSanitizer** (`build-tsan/`, a
+  temporary probe: 1 ms timer + a collision handler firing every frame, real time): with the lock 0 reports
+  twice (1500 collision calls, ~15500 timer ticks); without it 59 data races
+  (`OnCollision` vs the timer callback, both in `lua_pcall`) and a crash (exit 134).
+- **Tests:** `tests/test_deadzone.cpp` (`LuaInputApi::ApplyDeadzone`, the rule; failed on a `<=` mutation);
+  new `scripts/input_api_smoke.py` (ci.yml, all 4 platforms, and `asan_run.py`): no pads headless, the
+  handler accepted, dead zones per pad and axis with round trips and trigger refusal, automatic and raw
+  reads, the slots in full (claim, conflict, replace, release, lookups), that slots and the handler create
+  no renderer, every error - failed on v0.1.25 and on a mutated claim; 8 new rows in `error_reporting_smoke`.
+- **`samples/input` rewritten:** two players, pads joining slots with A and leaving with B, the live pad
+  list and last hot-plug event, automatic vs raw stick values, `[`/`]` changing the dead zone.
+  **Window check with the owner, two real pads (Xbox Wireless, DUALSHOCK 4):** names listed, connect and
+  disconnect reported (macOS's own "Controller Disconnected" at the same moment), a slot kept across unplug
+  and replug, B/A leaving and rejoining, at rest raw `0.02` -> automatic `0.00`, and at dead zone 0.25 raw
+  `0.29, -0.04` -> automatic `0.29, 0.00` (past it unchanged, inside it zeroed).
+- **Caravellius:** breakage entry 21 (informational): every one of its 9 stick reads already applies its
+  own 0.1 dead zone with the same rule, so nothing it reads changes; acceptance PASS, fingerprint
+  `hash=33897632`.
+- **Also in this branch, at the owner's request:** every function in `src/host/rendererprovider.cpp` got
+  its own full comment - CI had passed it, because the guide let an override rely on its interface's
+  comment. The owner then made the rule strict: **every function definition has its own comment, interface
+  overrides included** (an implementation has details its interface can't know). `docs/CODE_STYLE.md` and
+  `style_audit.py`'s `cpp-undocumented-function` changed (it no longer reads sunlight's headers); measured
+  first, the strict rule found only `tests/test_fontpool.cpp`'s stand-in font - and fixing the audit's
+  blind spot for a function right after `public:` (taken for a line continuation) added one more there;
+  all four documented. Shown catching an override with its comment removed (`IsHeadless`).
+- **Proof:** clean build, unit tests (also under ASan), 16 smoke tests, the headless smoke test, 19 samples
+  headless, all 37 `asan_run.py` runs, style check 0, the docs generator.
 
 **C1b - action map and rumble (after C1a):**
 - **Action map:** `input_bind_action_key(name, key)`, `input_bind_action_button(name, button)`,

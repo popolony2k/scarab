@@ -54,7 +54,9 @@ namespace Scarab  {
          * @brief Set the function called with every renderer right after it
          * is created and before its window opens - where the engine host
          * registers itself as the tile-map listener and the Lua bridge
-         * attaches its collision listener.
+         * attaches its collision listener and its gamepad hot-plug handler.
+         *
+         * @param hook The function to call with each new renderer;
          */
         void RendererProvider :: SetCreatedHook( CreatedHook hook )  {
 
@@ -152,6 +154,8 @@ namespace Scarab  {
          * @brief Create the default renderer if none exists yet - called when
          * the entry script has finished, so a game that never asked for a
          * window-needing primitive still gets its one renderer to run on.
+         *
+         * @param szTrigger What needed the renderer, kept for a later renderer_create's error;
          */
         void RendererProvider :: EnsureCreated( const char* szTrigger )  {
 
@@ -162,6 +166,10 @@ namespace Scarab  {
          * @brief The renderer, creating the default one first if none exists
          * yet. A failure to create even the default one is fatal: nothing can
          * run without a renderer, and callers dereference the result.
+         *
+         * @param szTrigger The primitive that needs a window (may be null), kept so a later
+         * renderer_create can name it;
+         * @return The renderer, never null;
          */
         SunLight :: Renderer :: TileMapRenderer* RendererProvider :: GetOrCreateDefault( const char* szTrigger )  {
 
@@ -177,28 +185,69 @@ namespace Scarab  {
             return m_pRenderer.get();
         }
 
-        /** @brief The renderer, or nullptr if none exists yet (never creates one). */
+        /**
+         * @brief The renderer, if one exists - never creates one.
+         *
+         * @return The renderer, or nullptr if none exists yet;
+         */
         SunLight :: Renderer :: TileMapRenderer* RendererProvider :: GetRenderer( void )  {
 
             return m_pRenderer.get();
         }
 
-        /** @brief What the command line asked of --headless. */
+        /**
+         * @brief What the command line asked of --headless.
+         *
+         * @return The --headless, --fast and --max-frames settings;
+         */
         const stHeadlessSettings& RendererProvider :: GetHeadlessSettings( void ) const  {
 
             return m_Headless;
         }
 
+        /**
+         * @brief The renderer as a tile map, creating the default renderer (and opening its
+         * window) first if none exists yet.
+         *
+         * @param szTrigger The primitive that needs it, kept for a later renderer_create's error;
+         * @return The tile map, never null;
+         */
         SunLight :: TileMap :: ITileMap* RendererProvider :: GetTileMap( const char* szTrigger )  {
 
             return GetOrCreateDefault( szTrigger );
         }
 
+        /**
+         * @brief The renderer as a draw surface (screen-space text, rectangles, window state),
+         * creating the default renderer first if none exists yet.
+         *
+         * @param szTrigger The primitive that needs it, kept for a later renderer_create's error;
+         * @return The draw surface, never null;
+         */
         SunLight :: DrawSurface :: IDrawSurface* RendererProvider :: GetDrawSurface( const char* szTrigger )  {
 
             return GetOrCreateDefault( szTrigger );
         }
 
+        /**
+         * @brief The renderer's controller manager (connected pads, hot-plug, dead zones) - on
+         * the concrete renderer only, not on ITileMap - creating the default renderer first if
+         * none exists yet.
+         *
+         * @param szTrigger The primitive that needs it, kept for a later renderer_create's error;
+         * @return The controller manager, never null;
+         */
+        SunLight :: Input :: IControllerManager* RendererProvider :: GetControllerManager( const char* szTrigger )  {
+
+            return &GetOrCreateDefault( szTrigger ) -> GetControllerManager();
+        }
+
+        /**
+         * @brief The draw surface if a renderer exists - never creates one, for readers that must
+         * not open a window as a side effect (the headless os.time/os.clock overrides).
+         *
+         * @return The draw surface, or nullptr if no renderer exists yet;
+         */
         SunLight :: DrawSurface :: IDrawSurface* RendererProvider :: PeekDrawSurface( void )  {
 
             return m_pRenderer.get();
@@ -209,6 +258,11 @@ namespace Scarab  {
          * already exists" says which of the two ways it got there, and - when it was the
          * default, created implicitly - names the primitive that needed a window first, since
          * that call, not this one, is what to move below renderer_create.
+         *
+         * @param config The requested configuration;
+         * @param extras What renderer_create asks for beyond the configuration (see Create);
+         * @param pError Receives the reason on failure (may be null);
+         * @return true if the renderer was created;
          */
         bool RendererProvider :: CreateRenderer( const SunLight :: Renderer :: RendererConfig& config,
                                                  const Scarab :: Engine :: stRendererCreateExtras& extras, std :: string* pError )  {
@@ -229,21 +283,45 @@ namespace Scarab  {
             return Create( config, ORIGIN_CREATED, "", pError, extras );
         }
 
+        /**
+         * @brief How the current renderer came to exist - renderer_get_current's answer.
+         *
+         * @return ORIGIN_NONE (no renderer yet), ORIGIN_CREATED (renderer_create) or
+         * ORIGIN_LAZY_DEFAULT (the first window-needing call);
+         */
         RendererProvider :: Origin RendererProvider :: GetOrigin( void )  {
 
             return m_Origin;
         }
 
+        /**
+         * @brief Whether the process runs --headless, which forces the null backend.
+         *
+         * @return true under --headless;
+         */
         bool RendererProvider :: IsHeadless( void )  {
 
             return m_Headless.bEnabled;
         }
 
+        /**
+         * @brief The configuration a renderer gets when none is asked for (main.h's defaults),
+         * the base renderer_create's options are applied to.
+         *
+         * @return The default configuration;
+         */
         SunLight :: Renderer :: RendererConfig RendererProvider :: GetDefaultConfig( void )  {
 
             return m_DefaultConfig;
         }
 
+        /**
+         * @brief The configuration the current renderer was created with, --headless applied, and
+         * the title kept current (NoteWindowTitle) - what renderer_get_config reads where
+         * sunlight has no live getter.
+         *
+         * @return The effective configuration (the default one before any renderer exists);
+         */
         SunLight :: Renderer :: RendererConfig RendererProvider :: GetEffectiveConfig( void )  {
 
             return m_EffectiveConfig;
@@ -252,29 +330,64 @@ namespace Scarab  {
         /**
          * @brief Keep the effective configuration's title current: app_set_name changes the
          * live window title, and sunlight has no getter for it to read back.
+         *
+         * @param strTitle The title just set;
          */
         void RendererProvider :: NoteWindowTitle( const std :: string& strTitle )  {
 
             m_EffectiveConfig.strTitle = strTitle;
         }
 
-        /** @brief What CreateRenderer's extras.bUseDefaultKeyHandler was last given. */
+        /**
+         * @brief Whether the renderer got sunlight's default camera/zoom key bindings
+         * (renderer_create's use_default_key_handler).
+         *
+         * @return What CreateRenderer's extras.bUseDefaultKeyHandler was last given;
+         */
         bool RendererProvider :: GetUseDefaultKeyHandler( void )  {
 
             return m_bUseDefaultKeyHandler;
         }
 
+        /**
+         * @brief Register a font for a Tiled text-object family and style
+         * (TileMapRenderer::RegisterFont, on the concrete renderer only), creating the default
+         * renderer first if none exists yet.
+         *
+         * @param szFamily The font family a map's text objects name;
+         * @param pFont The loaded font;
+         * @param bBold The bold style slot;
+         * @param bItalic The italic style slot;
+         * @param szTrigger The primitive that needs it, kept for a later renderer_create's error;
+         * @return true if the font was registered;
+         */
         bool RendererProvider :: RegisterFont( const char* szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
                                                bool bBold, bool bItalic, const char* szTrigger )  {
 
             return GetOrCreateDefault( szTrigger ) -> RegisterFont( szFamily, std :: move( pFont ), bBold, bItalic );
         }
 
+        /**
+         * @brief Unregister a font from every family and style slot it fills. Never creates a
+         * renderer: with none, there is nothing registered.
+         *
+         * @param pFont The font to unregister;
+         * @return true if it was registered anywhere;
+         */
         bool RendererProvider :: UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont>& pFont )  {
 
             return m_pRenderer ? m_pRenderer -> UnregisterFont( pFont ) : false;
         }
 
+        /**
+         * @brief Unregister whatever font fills one family and style slot. Never creates a
+         * renderer: with none, there is nothing registered.
+         *
+         * @param szFamily The font family;
+         * @param bBold The bold style slot;
+         * @param bItalic The italic style slot;
+         * @return true if the slot held a font;
+         */
         bool RendererProvider :: UnregisterFont( const char* szFamily, bool bBold, bool bItalic )  {
 
             return m_pRenderer ? m_pRenderer -> UnregisterFont( szFamily, bBold, bItalic ) : false;

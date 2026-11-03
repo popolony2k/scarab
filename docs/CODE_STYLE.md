@@ -274,10 +274,12 @@ The rules Scarab's code relies on, beyond formatting (each one in `CLAUDE.md`):
 Scarab's own addition to the comment rule above:
 
 - **Every function has a Doxygen comment** - not only public methods: an `inline` helper in a header,
-  a file-local `static` function in a `.cpp`, a class's private helpers, and `main`. It is written once,
-  where the function is declared or where it is defined; a method that implements an interface may rely
-  on the interface's comment. It has a `@brief`, a `@param` for each parameter and a `@return` when the
-  function returns a value, each ending with `;`:
+  a file-local `static` function in a `.cpp`, a class's private helpers, and `main`. It is written where
+  the function is defined (an `inline` one may carry it where its class declares it). **A method that
+  implements an interface has its own comment too** (the owner, C1a): its implementation's details - what
+  it creates, what it never does, which error it reports - are not in the interface's comment. It has a
+  `@brief`, a `@param` for each parameter and a `@return` when the function returns a value, each ending
+  with `;`:
 
 ```cpp
 /**

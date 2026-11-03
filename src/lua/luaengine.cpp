@@ -349,6 +349,9 @@ namespace Scarab  {
         lua_pushlightuserdata( m_pLuaState, pFontPool );
         lua_setglobal( m_pLuaState, Engine :: Lua :: LuaTextApi :: FONT_POOL_GLOBAL );
 
+        lua_pushlightuserdata( m_pLuaState, &m_PlayerSlots );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaInputApi :: PLAYER_SLOTS_GLOBAL );
+
         lua_pushstring( m_pLuaState, m_strAppDirectory.c_str() );
         lua_setglobal( m_pLuaState, "APP_DIR" );
 
@@ -377,6 +380,18 @@ namespace Scarab  {
     void LuaEngine :: AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap )  {
 
         tileMap.GetCollisionManager().AddCollisionListener( m_pCollisionListener.get() );
+    }
+
+    /**
+     * @brief Install the gamepad hot-plug handler on a renderer's controller manager (see
+     * LuaInputApi::InstallConnectionHandler). Called by the renderer provider's created-hook,
+     * next to AttachToTileMap - the controller manager lives on the concrete renderer only.
+     *
+     * @param controllerManager The just-created renderer's controller manager;
+     */
+    void LuaEngine :: AttachToControllerManager( SunLight :: Input :: IControllerManager& controllerManager )  {
+
+        Engine :: Lua :: LuaInputApi :: InstallConnectionHandler( m_pLuaState, controllerManager );
     }
 
     /**

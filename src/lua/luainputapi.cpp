@@ -21,9 +21,20 @@
 #include "lua/luainputapi.h"
 #include "lua/luaengineutil.h"
 #include "input/iinputhandler.h"
+#include "input/playerslotmanager.h"
+#include <climits>
+#include <cstdio>
+#include <mutex>
+#include <vector>
 
 
 #define __CONST( name )  { #name, ( int ) SunLight :: Input :: name }
+
+/** The Lua global input_set_gamepad_connection_handler keeps its function in. */
+#define __CONNECTION_HANDLER_GLOBAL  "__gamepad_connection_handler"
+
+/** A dead zone is a distance from the stick's centre: 0 (none) to 1 (the whole travel). */
+#define __MAX_AXIS_DEADZONE          1.0
 
 
 namespace Scarab  {
@@ -204,6 +215,72 @@ namespace Scarab  {
                 return true;
             }
 
+            /**
+             * @brief Read a GAMEPAD_AXIS_* constant argument.
+             */
+            static bool ReadAxisArg( lua_State* pLuaState, int nIndex, SunLight :: Input :: GamepadAxis& axis, std :: string& strError )  {
+
+                int  nAxis = 0;
+
+                if( !LuaEngineUtil :: ReadConstantArg( pLuaState, nIndex, "axis", s_aGamepadAxis, sizeof( s_aGamepadAxis ) / sizeof( s_aGamepadAxis[0] ),
+                                                       "GAMEPAD_AXIS_*", nAxis, strError ) )
+                    return false;
+
+                axis = ( SunLight :: Input :: GamepadAxis ) nAxis;
+
+                return true;
+            }
+
+            /**
+             * @brief Whether an axis is a stick's (LEFT_X/Y, RIGHT_X/Y) - the ones a dead zone applies
+             * to. A trigger rests at -1, not at the centre, so a dead zone around 0 would cut its travel
+             * in the middle; sunlight applies its dead zones to the sticks only, too.
+             */
+            static bool IsStickAxis( SunLight :: Input :: GamepadAxis axis )  {
+
+                return ( axis == SunLight :: Input :: GAMEPAD_AXIS_LEFT_X ) || ( axis == SunLight :: Input :: GAMEPAD_AXIS_LEFT_Y ) ||
+                       ( axis == SunLight :: Input :: GAMEPAD_AXIS_RIGHT_X ) || ( axis == SunLight :: Input :: GAMEPAD_AXIS_RIGHT_Y );
+            }
+
+            /** @brief Read a gamepad id and a stick axis (arguments 1 and 2) - a trigger axis is refused. */
+            static bool ReadStickArgs( lua_State* pLuaState, int& nGamePadId, SunLight :: Input :: GamepadAxis& axis, std :: string& strError )  {
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) || !ReadAxisArg( pLuaState, 2, axis, strError ) )
+                    return false;
+
+                if( !IsStickAxis( axis ) )  {
+                    strError = "argument 'axis' must be a stick axis (GAMEPAD_AXIS_LEFT_X/_Y, GAMEPAD_AXIS_RIGHT_X/_Y): "
+                               "a dead zone does not apply to a trigger";
+                    return false;
+                }
+
+                return true;
+            }
+
+            /** @brief Read a player slot number argument: 0 or more (the game's own numbering). */
+            static bool ReadSlotArg( lua_State* pLuaState, int nIndex, int& nSlot, std :: string& strError )  {
+
+                lua_Integer  nValue = 0;
+
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, nIndex, "slot", 0, INT_MAX, nValue, strError ) )
+                    return false;
+
+                nSlot = ( int ) nValue;
+
+                return true;
+            }
+
+            /**
+             * @brief The engine's player slots, stashed by LuaEngine::Init as the light userdata global
+             * PLAYER_SLOTS_GLOBAL.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             */
+            static SunLight :: Input :: PlayerSlotManager* GetPlayerSlots( lua_State* pLuaState )  {
+
+                return static_cast<SunLight :: Input :: PlayerSlotManager *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaInputApi :: PLAYER_SLOTS_GLOBAL ) );
+            }
+
             /** @brief Read a gamepad id and a GAMEPAD_BUTTON_* constant (arguments 1 and 2). */
             static bool ReadGamepadButtonArgs( lua_State* pLuaState, int& nGamePadId, SunLight :: Input :: GamepadButton& button, std :: string& strError )  {
 
@@ -295,27 +372,29 @@ namespace Scarab  {
              * @luagroup{gamepad}
              * @luaheading{Gamepad}
              * @luadoc
-             * A gamepad must be registered with `input_add_gamepad` once
-             * (typically at startup) before any
-             * `input_is_gamepad_button_*`/`input_get_gamepad_axis` call
-             * for that id will report real state.
+             * Any connected pad can be read by its id (`0` to `9`) - no
+             * registration needed. A stick read through
+             * `input_get_gamepad_axis` has the pad's **dead zone** applied: a
+             * worn stick at rest reads a little off centre (`0.04`, `-0.07`),
+             * and a value strictly inside the dead zone (default `0.1`) reads
+             * exactly `0`, so a game needs no threshold of its own.
+             * `input_get_gamepad_axis_raw` gives the value as the pad reports
+             * it, for a game that filters it itself (a round dead zone, a
+             * curve, calibration). Triggers are always returned as they are:
+             * they rest at `-1`, not at the centre.
              * @luaexample
              * input_is_gamepad_button_down(gamepadId, button) -> down
              * input_is_gamepad_button_up(gamepadId, button) -> up
-             * input_get_gamepad_axis(gamepadId, axis) -> value   -- -1.0 .. 1.0
-             * input_add_gamepad(gamepadId)                        -- register a gamepad id so it's actually polled
-             *
-             * input_add_gamepad(0)
+             * input_get_gamepad_axis(gamepadId, axis) -> value       -- -1.0 .. 1.0, the dead zone applied
+             * input_get_gamepad_axis_raw(gamepadId, axis) -> value   -- -1.0 .. 1.0, as the pad reports it
              *
              * function Player.update(dt)
              *   if input_is_gamepad_button_down(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT) then
              *     -- move left
              *   end
              *
-             *   -- analog stick, with a deadzone - raw axis values jitter near 0 even
-             *   -- when the stick is physically centered
-             *   local axisX = input_get_gamepad_axis(0, GAMEPAD_AXIS_LEFT_X)
-             *   if axisX < -0.1 then
+             *   -- a stick at rest reads 0 here, whatever its wear
+             *   if input_get_gamepad_axis(0, GAMEPAD_AXIS_LEFT_X) < 0 then
              *     -- move left
              *   end
              * end
@@ -353,31 +432,77 @@ namespace Scarab  {
             }
 
             /**
+             * @brief A stick value with a dead zone applied - sunlight's own rule (ControllerManager's
+             * dispatch): strictly inside (-fDeadzone, fDeadzone) reads 0, exactly at the edge or past
+             * it the value is returned unchanged (no rescaling). A dead zone of 0 changes nothing.
+             *
+             * @param fValue The stick value, -1 to 1;
+             * @param fDeadzone The dead zone, 0 to 1;
+             * @return The value the automatic read returns;
+             */
+            float LuaInputApi :: ApplyDeadzone( float fValue, float fDeadzone )  {
+
+                return ( ( fValue > -fDeadzone ) && ( fValue < fDeadzone ) ) ? 0.0f : fValue;
+            }
+
+            /**
+             * @brief A stick or trigger, with the pad's dead zone applied to a stick (plans/MASTER_PLAN.md
+             * item C1a): a value strictly inside the dead zone reads 0, sunlight's own rule
+             * (ControllerManager's dispatch); outside it, the value is returned unchanged (no rescaling).
+             *
              * @luaname{input_get_gamepad_axis(gamepadId, axis) -> value | nil, message}
              * @luagroup{gamepad}
              */
             int LuaInputApi :: GetGamepadAxisMovement( lua_State* pLuaState )  {
 
-                std :: string  strError;
-                int            nGamePadId = 0;
-                int            nAxis      = 0;
+                std :: string                      strError;
+                int                                nGamePadId = 0;
+                SunLight :: Input :: GamepadAxis   axis       = SunLight :: Input :: GAMEPAD_AXIS_LEFT_X;
 
-                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) ||
-                    !LuaEngineUtil :: ReadConstantArg( pLuaState, 2, "axis", s_aGamepadAxis, sizeof( s_aGamepadAxis ) / sizeof( s_aGamepadAxis[0] ),
-                                                       "GAMEPAD_AXIS_*", nAxis, strError ) )
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) || !ReadAxisArg( pLuaState, 2, axis, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                lua_pushnumber( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().GetGamepadAxisMovement( nGamePadId, ( SunLight :: Input :: GamepadAxis ) nAxis ) );
+                float  fValue = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().GetGamepadAxisMovement( nGamePadId, axis );
+
+                if( IsStickAxis( axis ) )
+                    fValue = ApplyDeadzone( fValue, LuaEngineUtil :: GetControllerManager( pLuaState ) -> GetAxisDeadzone( nGamePadId, axis ) );
+
+                lua_pushnumber( pLuaState, fValue );
 
                 return 1;
             }
 
             /**
-             * @brief Register a gamepad id with the tile map so it's polled for
-             * button/axis state - mirrors the old EngineHost::InitializeGamePads.
+             * @brief A stick or trigger exactly as the pad reports it - no dead zone.
+             *
+             * @luaname{input_get_gamepad_axis_raw(gamepadId, axis) -> value | nil, message}
+             * @luagroup{gamepad}
+             */
+            int LuaInputApi :: GetGamepadAxisRaw( lua_State* pLuaState )  {
+
+                std :: string                      strError;
+                int                                nGamePadId = 0;
+                SunLight :: Input :: GamepadAxis   axis       = SunLight :: Input :: GAMEPAD_AXIS_LEFT_X;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) || !ReadAxisArg( pLuaState, 2, axis, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().GetGamepadAxisMovement( nGamePadId, axis ) );
+
+                return 1;
+            }
+
+            /**
+             * @brief Add a gamepad id to sunlight's own input dispatch (the handlers
+             * `use_default_key_handler` installs) - mirrors the old EngineHost::InitializeGamePads.
+             * Reading a pad through the functions above needs no registration.
              *
              * @luaname{input_add_gamepad(gamepadId) -> true | nil, message}
              * @luagroup{gamepad}
+             * @luadoc
+             * Adds a pad to the engine's own input dispatch, which only the
+             * default key handler (`renderer_create{ use_default_key_handler = true }`)
+             * uses. Reading a pad with the functions above does not need it.
              */
             int LuaInputApi :: AddGamepad( lua_State* pLuaState )  {
 
@@ -390,6 +515,320 @@ namespace Scarab  {
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> AddGamePad( nGamePadId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Every gamepad connected right now, as an array of { id, name } tables.
+             *
+             * @luaname{input_get_connected_gamepads() -> pads}
+             * @luagroup{pads}
+             * @luaheading{Connected gamepads}
+             * @luadoc
+             * Which pads are plugged in, and when that changes. A pad id is
+             * `0` to `9`; `name` is what the pad's driver calls it. Headless
+             * runs never see a pad.
+             *
+             * `input_set_gamepad_connection_handler(fn)` calls
+             * `fn(gamepadId, connected)` once each time a pad is plugged in
+             * (`connected` true) or unplugged (false), on the main thread,
+             * at the start of a frame before `on_update`. The first frame
+             * reports every pad that was already connected at start-up, so
+             * one handler set from the entry script covers both (one set later
+             * only hears later changes - read `input_get_connected_gamepads`
+             * then). Registering it needs no window, like
+             * `collision_set_handler`; a second call replaces the first.
+             * @luaexample
+             * input_get_connected_gamepads() -> pads    -- { { id = 0, name = "Xbox Controller" }, ... }
+             * input_is_gamepad_available(gamepadId) -> connected
+             * input_get_gamepad_name(gamepadId) -> name -- "" when nothing is connected there
+             *
+             * input_set_gamepad_connection_handler(function(gamepadId, connected)
+             *   if connected then
+             *     print("pad " .. gamepadId .. " connected: " .. input_get_gamepad_name(gamepadId))
+             *   else
+             *     print("pad " .. gamepadId .. " lost")    -- a good moment to pause the game
+             *   end
+             * end)
+             */
+            int LuaInputApi :: GetConnectedGamepads( lua_State* pLuaState )  {
+
+                std :: vector<SunLight :: Input :: stGamepadInfo>  pads = LuaEngineUtil :: GetControllerManager( pLuaState ) -> GetConnectedGamepads();
+
+                lua_createtable( pLuaState, ( int ) pads.size(), 0 );
+
+                for( size_t nPad = 0; nPad < pads.size(); nPad++ )  {
+                    lua_createtable( pLuaState, 0, 2 );
+                    lua_pushinteger( pLuaState, pads[nPad].nGamePadId );
+                    lua_setfield( pLuaState, -2, "id" );
+                    lua_pushstring( pLuaState, pads[nPad].szName ? pads[nPad].szName : "" );
+                    lua_setfield( pLuaState, -2, "name" );
+                    lua_rawseti( pLuaState, -2, ( lua_Integer ) nPad + 1 );
+                }
+
+                return 1;
+            }
+
+            /**
+             * @luaname{input_is_gamepad_available(gamepadId) -> connected | nil, message}
+             * @luagroup{pads}
+             */
+            int LuaInputApi :: IsGamepadAvailable( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nGamePadId = 0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler().IsGamepadAvailable( nGamePadId ) );
+
+                return 1;
+            }
+
+            /**
+             * @brief A pad's name as its driver reports it, or "" if nothing is connected at that id.
+             *
+             * @luaname{input_get_gamepad_name(gamepadId) -> name | nil, message}
+             * @luagroup{pads}
+             */
+            int LuaInputApi :: GetGamepadName( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nGamePadId = 0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: Input :: IInputHandler&  input  = LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler();
+                const char*                          szName = input.IsGamepadAvailable( nGamePadId ) ? input.GetGamepadName( nGamePadId ) : nullptr;
+
+                lua_pushstring( pLuaState, szName ? szName : "" );
+
+                return 1;
+            }
+
+            /**
+             * @brief Keep the Lua function input_set_gamepad_connection_handler names; the C++
+             * handler that calls it is installed once per renderer (InstallConnectionHandler).
+             *
+             * @luaname{input_set_gamepad_connection_handler(fn) -> true | nil, message}
+             * @luagroup{pads}
+             */
+            int LuaInputApi :: SetGamepadConnectionHandler( lua_State* pLuaState )  {
+
+                std :: string  strError;
+
+                if( !LuaEngineUtil :: CheckFunctionArg( pLuaState, 1, "fn", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushvalue( pLuaState, 1 );
+                lua_setglobal( pLuaState, __CONNECTION_HANDLER_GLOBAL );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Make a renderer's controller manager report pad connections to the Lua handler
+             * (if one is set). sunlight calls it from ControllerManager::Update, on the main thread,
+             * between frames' Lua calls - not inside one - so it takes the Lua mutex itself, like every
+             * other C++ entry into the Lua state (a set_timer callback may be waiting for it).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param controllerManager The renderer's controller manager;
+             */
+            void LuaInputApi :: InstallConnectionHandler( lua_State* pLuaState, SunLight :: Input :: IControllerManager& controllerManager )  {
+
+                controllerManager.SetGamepadConnectionHandler( [pLuaState]( int nGamePadId, bool bConnected )  {
+                    std :: lock_guard<std :: mutex>  lock( LuaEngineUtil :: s_LuaMutex );
+
+                    lua_getglobal( pLuaState, __CONNECTION_HANDLER_GLOBAL );
+
+                    if( !lua_isfunction( pLuaState, -1 ) )  {
+                        lua_pop( pLuaState, 1 );
+                        return;
+                    }
+
+                    lua_pushinteger( pLuaState, nGamePadId );
+                    lua_pushboolean( pLuaState, bConnected );
+
+                    if( lua_pcall( pLuaState, 2, 0, 0 ) != 0 )  {
+                        fprintf( stderr, "Error calling gamepad connection handler: %s\n", lua_tostring( pLuaState, -1 ) );
+                        lua_pop( pLuaState, 1 );
+                    }
+                } );
+            }
+
+            /**
+             * @luaname{input_set_axis_deadzone(gamepadId, axis, deadzone) -> true | nil, message}
+             * @luagroup{deadzone}
+             * @luaheading{Stick dead zones}
+             * @luadoc
+             * The dead zone `input_get_gamepad_axis` applies to one stick axis
+             * of one pad: a value strictly inside `(-deadzone, deadzone)`
+             * reads `0`. `deadzone` is `0` (none - the automatic read is then
+             * the raw value) to `1`; the default is `0.1`. Stick axes only
+             * (`GAMEPAD_AXIS_LEFT_X/_Y`, `GAMEPAD_AXIS_RIGHT_X/_Y`): a trigger
+             * is refused, since it rests at `-1`. A game's "stick
+             * sensitivity" setting is one call per axis.
+             * @luaexample
+             * for _, axis in ipairs({ GAMEPAD_AXIS_LEFT_X, GAMEPAD_AXIS_LEFT_Y }) do
+             *   input_set_axis_deadzone(0, axis, 0.15)     -- a worn stick
+             * end
+             * print(input_get_axis_deadzone(0, GAMEPAD_AXIS_LEFT_X))   --> 0.15
+             */
+            int LuaInputApi :: SetAxisDeadzone( lua_State* pLuaState )  {
+
+                std :: string                      strError;
+                int                                nGamePadId = 0;
+                SunLight :: Input :: GamepadAxis   axis       = SunLight :: Input :: GAMEPAD_AXIS_LEFT_X;
+                double                             fDeadzone  = 0.0;
+
+                if( !ReadStickArgs( pLuaState, nGamePadId, axis, strError ) ||
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 3, "deadzone", 0.0, __MAX_AXIS_DEADZONE, fDeadzone, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                LuaEngineUtil :: GetControllerManager( pLuaState ) -> SetAxisDeadzone( nGamePadId, axis, ( float ) fDeadzone );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief A stick axis's dead zone, as the shortest decimal of the float sunlight keeps
+             * (so 0.15 reads back 0.15).
+             *
+             * @luaname{input_get_axis_deadzone(gamepadId, axis) -> deadzone | nil, message}
+             * @luagroup{deadzone}
+             */
+            int LuaInputApi :: GetAxisDeadzone( lua_State* pLuaState )  {
+
+                std :: string                      strError;
+                int                                nGamePadId = 0;
+                SunLight :: Input :: GamepadAxis   axis       = SunLight :: Input :: GAMEPAD_AXIS_LEFT_X;
+
+                if( !ReadStickArgs( pLuaState, nGamePadId, axis, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( LuaEngineUtil :: GetControllerManager( pLuaState ) -> GetAxisDeadzone( nGamePadId, axis ) ) );
+
+                return 1;
+            }
+
+            /**
+             * @luaname{input_claim_player_slot(slot, gamepadId) -> true | nil, message}
+             * @luagroup{slots}
+             * @luaheading{Player slots}
+             * @luadoc
+             * A slot is the game's own player number (`0` or more - `1` for
+             * player 1, say); claiming one ties a pad to it. A pad belongs to
+             * one slot at a time: claiming a pad another slot holds is an
+             * error naming that slot. Claiming a new pad for a slot that holds
+             * one frees the old pad; claiming the same pair again is fine.
+             * Unplugging a pad does NOT free its slot - plugged back in, it is
+             * still that player; free it with `input_release_player_slot`
+             * (eg. from the connection handler, if your game wants that). No
+             * window is needed.
+             *
+             * `input_get_gamepad_for_slot` and `input_get_slot_for_gamepad`
+             * return `false` when there is none.
+             *
+             * **Don't hard-code "pad 0 = player 1"**: the system numbers pads
+             * in the order they connect, so the same pad can get a different
+             * id on the next launch (seen with two pads: an Xbox pad was 0 in
+             * one run and 1 in the next). Let a button press claim the slot,
+             * as below.
+             * @luaexample
+             * -- "press A to join": the first pad that presses A becomes player 1, the next player 2
+             * local nextPlayer = 1
+             *
+             * function on_update(dt)
+             *   for _, pad in ipairs(input_get_connected_gamepads()) do
+             *     if input_get_slot_for_gamepad(pad.id) == false
+             *        and input_is_gamepad_button_down(pad.id, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) then
+             *       input_claim_player_slot(nextPlayer, pad.id)
+             *       nextPlayer = nextPlayer + 1
+             *     end
+             *   end
+             * end
+             */
+            int LuaInputApi :: ClaimPlayerSlot( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nSlot      = 0;
+                int            nGamePadId = 0;
+
+                if( !ReadSlotArg( pLuaState, 1, nSlot, strError ) || !ReadGamepadIdArg( pLuaState, 2, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: Input :: PlayerSlotManager*  pSlots = GetPlayerSlots( pLuaState );
+
+                if( !pSlots -> ClaimSlot( nSlot, nGamePadId ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "gamepad " + std :: to_string( nGamePadId ) + " is already claimed by slot " +
+                                                                  std :: to_string( pSlots -> GetSlotForGamepad( nGamePadId ) ) );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Free the pad a slot holds (nothing to do if it holds none).
+             *
+             * @luaname{input_release_player_slot(slot) -> true | nil, message}
+             * @luagroup{slots}
+             */
+            int LuaInputApi :: ReleasePlayerSlot( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nSlot = 0;
+
+                if( !ReadSlotArg( pLuaState, 1, nSlot, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                GetPlayerSlots( pLuaState ) -> ReleaseSlot( nSlot );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{input_get_gamepad_for_slot(slot) -> gamepadId | false | nil, message}
+             * @luagroup{slots}
+             */
+            int LuaInputApi :: GetGamepadForSlot( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nSlot = 0;
+
+                if( !ReadSlotArg( pLuaState, 1, nSlot, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                int  nGamePadId = GetPlayerSlots( pLuaState ) -> GetGamepadForSlot( nSlot );
+
+                if( nGamePadId == NO_SLOT_ASSOCIATION )
+                    lua_pushboolean( pLuaState, 0 );
+                else
+                    lua_pushinteger( pLuaState, nGamePadId );
+
+                return 1;
+            }
+
+            /**
+             * @luaname{input_get_slot_for_gamepad(gamepadId) -> slot | false | nil, message}
+             * @luagroup{slots}
+             */
+            int LuaInputApi :: GetSlotForGamepad( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nGamePadId = 0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                int  nSlot = GetPlayerSlots( pLuaState ) -> GetSlotForGamepad( nGamePadId );
+
+                if( nSlot == NO_SLOT_ASSOCIATION )
+                    lua_pushboolean( pLuaState, 0 );
+                else
+                    lua_pushinteger( pLuaState, nSlot );
+
+                return 1;
             }
 
             /**
@@ -415,7 +854,18 @@ namespace Scarab  {
                 lua_register( pLuaState, "input_is_gamepad_button_down", LuaInputApi :: IsGamepadButtonDown );
                 lua_register( pLuaState, "input_is_gamepad_button_up", LuaInputApi :: IsGamepadButtonUp );
                 lua_register( pLuaState, "input_get_gamepad_axis", LuaInputApi :: GetGamepadAxisMovement );
+                lua_register( pLuaState, "input_get_gamepad_axis_raw", LuaInputApi :: GetGamepadAxisRaw );
                 lua_register( pLuaState, "input_add_gamepad", LuaInputApi :: AddGamepad );
+                lua_register( pLuaState, "input_get_connected_gamepads", LuaInputApi :: GetConnectedGamepads );
+                lua_register( pLuaState, "input_is_gamepad_available", LuaInputApi :: IsGamepadAvailable );
+                lua_register( pLuaState, "input_get_gamepad_name", LuaInputApi :: GetGamepadName );
+                lua_register( pLuaState, "input_set_gamepad_connection_handler", LuaInputApi :: SetGamepadConnectionHandler );
+                lua_register( pLuaState, "input_set_axis_deadzone", LuaInputApi :: SetAxisDeadzone );
+                lua_register( pLuaState, "input_get_axis_deadzone", LuaInputApi :: GetAxisDeadzone );
+                lua_register( pLuaState, "input_claim_player_slot", LuaInputApi :: ClaimPlayerSlot );
+                lua_register( pLuaState, "input_release_player_slot", LuaInputApi :: ReleasePlayerSlot );
+                lua_register( pLuaState, "input_get_gamepad_for_slot", LuaInputApi :: GetGamepadForSlot );
+                lua_register( pLuaState, "input_get_slot_for_gamepad", LuaInputApi :: GetSlotForGamepad );
 
                 RegisterEnums( pLuaState );
             }

@@ -38,19 +38,29 @@ class FakeFont : public SunLight :: Font :: IFont  {
 
     public:
 
+    /**
+     * @brief Always valid: the pool's own checks are what's under test, not the font.
+     * @return true;
+     */
     bool IsValid( void ) const override  {
 
         return true;
     }
 
+    /**
+     * @brief Measures nothing - no test reads a width.
+     * @return 0;
+     */
     int MeasureText( const char*, int ) override  {
 
         return 0;
     }
 
+    /** @brief Draws nothing - no window exists in a unit test. */
     void DrawText( const char*, int, int, int, SunLight :: Base :: stColor ) override  {
     }
 
+    /** @brief Draws nothing - no window exists in a unit test. */
     void DrawTextRotated( const char*, int, int, int, float, SunLight :: Base :: stColor ) override  {
     }
 };

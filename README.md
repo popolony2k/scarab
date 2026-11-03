@@ -42,7 +42,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
 * **Tiled maps:** tile, image, group and object layers, tile animation, tile/text/shape/point objects with rotation and opacity, layer opacity and tint at runtime, external tilesets.
 * **Sprites:** pooled, animated sprites on map layers or with no map at all, in screen or map (world) space, with opacity, tint and blend modes.
 * **Collisions:** sprite-to-sprite and sprite-to-tile rules with a Lua handler.
-* **Input:** keyboard and gamepads.
+* **Input:** keyboard and gamepads, hot-plug, player slots, and stick dead zones applied for you.
 * **Sound and sequencing:** sound effects and songs, timers, and a queued command processor for stage intros and waves.
 * **Text:** TrueType/OpenType and BMFont fonts by handle, measured and drawn as a HUD.
 * **Errors you can read:** every Lua function that can fail returns `nil, "message"`, never a crash or a silent no-op.
@@ -174,7 +174,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 ### Text and input
 
 * [text](samples/text/docs/README.md) — fonts by handle and HUD text layout.
-* [input](samples/input/docs/README.md) — keyboard and gamepad reading.
+* [input](samples/input/docs/README.md) — keyboard and gamepads for two players: player slots, hot-plug and stick dead zones.
 
 ### Sequencing, timers and sound
 

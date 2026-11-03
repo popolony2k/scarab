@@ -35,6 +35,8 @@ extern "C"  {
 #include "engine/spritepool.h"
 #include "lua/luacollisionlistener.h"
 #include "engine/fontpool.h"
+#include "input/icontrollermanager.h"
+#include "input/playerslotmanager.h"
 #include <string>
 #include <cstdint>
 #include <memory>
@@ -73,6 +75,7 @@ namespace Scarab  {
             SunLight :: Scripting :: ScriptProcessor*                 m_pScriptProcessor;
             Engine :: Lua :: TimerMap                                 m_Timers;
             std :: unique_ptr<Engine :: Lua :: LuaCollisionListener>  m_pCollisionListener;
+            SunLight :: Input :: PlayerSlotManager                    m_PlayerSlots;   // input_claim_player_slot & co (C1a)
             std :: string                                             m_strAppDirectory;
 
             void RegisterCalls( void );
@@ -93,6 +96,7 @@ namespace Scarab  {
                       Engine :: SpritePool* pSpritePool,
                       Engine :: FontPool* pFontPool );
             void AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap );
+            void AttachToControllerManager( SunLight :: Input :: IControllerManager& controllerManager );
             void InstallVirtualClock( void );
         };
     }
