@@ -1144,7 +1144,7 @@ that.
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
-| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); then **C1c** (a general save-file API); see below |
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); then **C1c** (a general save-file API, PLANNED 2026-11-04); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
@@ -1309,9 +1309,69 @@ FileSystem - the bindings-in-a-`.zip` bug reported while planning C1, fixed ther
 - **Proof:** clean build, 32 unit tests (also under ASan), 17 smoke tests, the headless smoke test, 20 samples
   headless, 39/39 `asan_run.py` runs, style check 0, the docs generator.
 
-**C1c - a general save-file API (after C1b; the owner: its own item).** `save_json( path, table )` & co. on
-C1b's save directory, for options and high scores; JSON because Scarab owns the format. Planned when C1b is
-done.
+**C1c - a general save-file API (PLANNED and approved 2026-11-04 with the owner; pin `b778188` = P10 has what it needs:
+sunlight I14's atomic, durable `WriteFile` and `IFileSystem::RemoveFile`, both asked for by Scarab for
+this item).** Any Scarab game can keep options, high scores and save slots as JSON in C1b's save directory.
+Scarab owns the format, so it is JSON.
+- **Functions** (a new module, `src/lua/luasaveapi.{h,cpp}`, its own reference page `save.html`; every
+  failure is `nil, "message"`):
+  - `save_write( name, table ) -> true` writes the table as pretty-printed JSON (2-space indent), through
+    sunlight's atomic `WriteFile` (a crash never leaves a half-written save).
+  - `save_read( name ) -> table` reads a save back, ONLY from the save directory.
+  - The names are short and say nothing about the format (owner, 2026-11-04); the docs say every save is JSON.
+  - `save_exists( name ) -> boolean` is true only for a FILE (sunlight's `Exists` is also true for a folder).
+  - `save_delete( name ) -> true` uses sunlight's `RemoveFile`; a missing save is `nil, "no save named ..."`.
+- **Save names:** relative, `/`-separated (`"options.json"`, `"slots/1.json"`), each part checked like the
+  save-directory name (letters, digits, `-` `_` `.`); no `.`/`..` part, no scheme, no leading `/`, and never
+  ending in `.tmp` (sunlight's temp-file suffix). So a save can never leave the save directory, which is
+  what C8's sandbox will want anyway. With no save directory every call is `nil, "no save directory ..."`.
+- **Reading only the save directory:** a plain path through `ReadFile` also finds a file of the same name in
+  the CWD mount of a loose run, but never in a `.zip` (at `APP_DIR`). So loose and packed games would behave
+  differently. Scarab reads and checks a save through `hpath://<save folder>/<name>`; that path is built by
+  Scarab, never taken from Lua. Writes and deletes stay plain virtual paths, which sunlight keeps inside the
+  write directory. C8 must keep these internal host paths working when it restricts the Lua-supplied ones.
+- **Lua -> JSON (strict; a refusal names where in the table, eg. `"value.scores[3]: ..."`):**
+  - A table whose keys are exactly `1..n` becomes an array. A table with only string keys becomes an object.
+    An empty table becomes `{}`.
+  - Refused:
+    - mixed keys, holes (`{1, nil, 3}`), or any other kind of key (a float, a boolean, a table);
+    - functions, userdata and threads;
+    - a table met twice on the same branch (a cycle);
+    - nesting deeper than a named limit (64);
+    - NaN and infinity;
+    - a string that is not valid UTF-8.
+  - Lua integers stay JSON integers and floats stay floats (`3.0` writes `3.0`), so `save_read` gives
+    back the same Lua types. Object keys come out sorted, so the same table always writes the same bytes on
+    every launch, whatever Lua's per-launch hash order (see the `pairs()` gotcha).
+  - JSON -> Lua is `load_json`'s existing conversion, shared rather than copied.
+- **Not in C1c (owner, 2026-11-04):** `save_list()` for a "load game" menu. sunlight has no listing call;
+  it would be asked for (like `RemoveFile`) when a game needs save slots.
+- **Saves are plain** (C1b's decision): never encrypted, even when the game itself is an encrypted pack.
+- **Tests:**
+  - doctests for the converter (on a bare `lua_State`, every accepted and refused case) and for the save-name
+    rules;
+  - a new headless `scripts/save_api_smoke.py` (ci.yml on all 4 platforms, `asan_run.py`; always
+    `--save-dir` plus a fake home):
+    - round trip of every value type;
+    - the exact bytes written (indent, sorted keys), identical across two launches;
+    - every refusal;
+    - no save directory;
+    - names with subfolders;
+    - a `.tmp` name refused, and no `.tmp` left behind after a save;
+    - a FOLDER with a save's name: `save_exists` false;
+    - delete then `save_exists` false, delete of a missing save;
+    - a shipped file of the same name never read as a save, from a loose folder, a `.zip` and an encrypted
+      pack;
+  - each test shown failing (the v0.1.25 binary has none of these functions; mutations for the converter
+    and the name rules);
+  - rows in `error_reporting_smoke`.
+- **Sample:** a new `samples/saves`:
+  - options (volume, fullscreen) and a high-score table, saved on a key press;
+  - restart, and they are still there;
+  - a key deletes the save and shows the defaults again.
+  - Window check with the owner (save, quit, relaunch).
+- **Caravellius:** nothing breaks (all new); an informational breakage entry. Its `score.lua` could keep a
+  high score with `save_write` later, which is Caravellius' choice.
 
 **Tests and sample (each part):** every function `nil, "message"` with `@luaname` docs and rows in
 `error_reporting_smoke`; a new headless `scripts/input_api_smoke.py` (no pads under the null input: empty
@@ -1508,7 +1568,7 @@ discouraged. It must be planned against every function it touches before anythin
   sandbox is refused. Lua's own failure convention (`io.open` returns `nil, "message"`) already matches
   Scarab's.
 - **Remove** - the function no longer exists (calling it is "attempt to call a nil value").
-- **New function** - a safe Scarab equivalent (eg. C1c's `save_json`), with the original removed; code using
+- **New function** - a safe Scarab equivalent (eg. C1c's `save_write`), with the original removed; code using
   the original must be rewritten. A new function alone is no sandbox: the original would still go around it.
 
 A first proposal, not decided: OVERRIDE `io.open` (reads inside the game's files, writes inside the save
