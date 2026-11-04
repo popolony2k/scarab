@@ -421,6 +421,21 @@ jobs:
           python scripts/input_api_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "input API smoke test exited with code $LASTEXITCODE" }
 
+      # Save directory, action map and rumble (C1b): every function under --save-dir, the
+      # --save-dir > app_set_save_directory > project.json priority under a fake home, no save
+      # directory, and a game's shipped defaults + a save from a .zip and an encrypted pack -
+      # plans/MASTER_PLAN.md item C1b.
+      - name: Action map smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/action_map_smoke.py build/scarab --require-encrypted
+
+      - name: Action map smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/action_map_smoke.py build/Release/scarab.exe --require-encrypted
+          if ($LASTEXITCODE -ne 0) { throw "action map smoke test exited with code $LASTEXITCODE" }
+
       # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
       # rejection, two sprites sharing a texture keeping their own values, a recycled slot
       # starting opaque and untinted - plans/MASTER_PLAN.md item P8.

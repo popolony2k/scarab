@@ -37,6 +37,9 @@ extern "C"  {
 #include "engine/fontpool.h"
 #include "input/icontrollermanager.h"
 #include "input/playerslotmanager.h"
+#include "input/actionmap.h"
+#include "input/igamepadhaptics.h"
+#include "engine/savedirectory.h"
 #include <string>
 #include <cstdint>
 #include <memory>
@@ -76,6 +79,8 @@ namespace Scarab  {
             Engine :: Lua :: TimerMap                                 m_Timers;
             std :: unique_ptr<Engine :: Lua :: LuaCollisionListener>  m_pCollisionListener;
             SunLight :: Input :: PlayerSlotManager                    m_PlayerSlots;   // input_claim_player_slot & co (C1a)
+            SunLight :: Input :: ActionMap                            m_ActionMap;     // input_bind_action_* & co (C1b)
+            std :: unique_ptr<SunLight :: Input :: IGamepadHaptics>   m_pHaptics;      // rumble (C1b): made with the renderer
             std :: string                                             m_strAppDirectory;
 
             void RegisterCalls( void );
@@ -94,9 +99,13 @@ namespace Scarab  {
             void Init( Engine :: IRendererProvider* pRendererProvider,
                       SunLight :: Sound :: SoundManager* pSoundManager,
                       Engine :: SpritePool* pSpritePool,
-                      Engine :: FontPool* pFontPool );
+                      Engine :: FontPool* pFontPool,
+                      Engine :: SaveDirectory* pSaveDirectory );
             void AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap );
             void AttachToControllerManager( SunLight :: Input :: IControllerManager& controllerManager );
+            void AttachHaptics( SunLight :: Input :: IInputHandler& inputHandler, bool bHeadless );
+            void UpdateHaptics( void );
+            void ReleaseHaptics( void );
             void InstallVirtualClock( void );
         };
     }

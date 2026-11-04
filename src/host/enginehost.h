@@ -33,6 +33,8 @@
 #include "engine/spritepool.h"
 #include "engine/fontpool.h"
 #include "host/rendererprovider.h"
+#include "engine/savedirectory.h"
+#include <nlohmann/json.hpp>
 
 
 /*
@@ -71,6 +73,7 @@ namespace Scarab  {
             Scarab :: Lua :: LuaEngine                 m_LuaEngine;
             Engine :: SpritePool                       m_SpritePool;
             Engine :: FontPool                         m_FontPool;
+            Engine :: SaveDirectory                    m_SaveDirectory;
 
             std :: string                              m_strEntryArg;
             std :: string                              m_strEntryOverride;
@@ -95,6 +98,7 @@ namespace Scarab  {
             bool RunLuaScriptMainEntryPoint( void );
             bool ResolveEntryScript( const std :: string& strEntryArg, std :: string& strOutScriptPath );
             bool ResolveMainScript( const std :: string& strProjectPath, const std :: string& strMainScript, std :: string& strOutScriptPath );
+            bool ApplyProjectSaveDirectory( const std :: string& strProjectPath, const nlohmann :: json& projectData );
 
             // Machine state handlers
             void FatalErrorHandler( void );
@@ -113,6 +117,9 @@ namespace Scarab  {
 
             // Headless (--headless) only - see LuaAppApi::InstallVirtualClock
             void UseVirtualTime( void );
+
+            // The command line's --save-dir (plans/MASTER_PLAN.md item C1b)
+            bool SetSaveDirectoryFromCommandLine( const std :: string& strRealPath, std :: string& strError );
 
             // World listener event handler implementation
             void OnUpdate( SunLight :: TileMap :: ITileMap& tileMap ) override;

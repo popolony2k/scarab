@@ -42,7 +42,8 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
 * **Tiled maps:** tile, image, group and object layers, tile animation, tile/text/shape/point objects with rotation and opacity, layer opacity and tint at runtime, external tilesets.
 * **Sprites:** pooled, animated sprites on map layers or with no map at all, in screen or map (world) space, with opacity, tint and blend modes.
 * **Collisions:** sprite-to-sprite and sprite-to-tile rules with a Lua handler.
-* **Input:** keyboard and gamepads, hot-plug, player slots, and stick dead zones applied for you.
+* **Input:** keyboard and gamepads, hot-plug, player slots, stick dead zones applied for you, rebindable actions and rumble.
+* **Saves:** a per-user save directory the game names, for settings such as its key bindings.
 * **Sound and sequencing:** sound effects and songs, timers, and a queued command processor for stage intros and waves.
 * **Text:** TrueType/OpenType and BMFont fonts by handle, measured and drawn as a HUD.
 * **Errors you can read:** every Lua function that can fail returns `nil, "message"`, never a crash or a silent no-op.
@@ -88,7 +89,7 @@ A project file names the first Lua file to run, relative to the project file its
 { "main_script": "main.lua" }
 ```
 
-You can also run a script directly (`./build/scarab main.lua`) or a whole game packed into one archive (`./build/scarab game.zip`, which runs the `project.json` at its root; `--entry`/`-e <path>` names another). Loose folders and archives read the same way. `--help` lists every option, and `--version` prints the Scarab, sunlight and Lua versions.
+You can also run a script directly (`./build/scarab main.lua`) or a whole game packed into one archive (`./build/scarab game.zip`, which runs the `project.json` at its root; `--entry`/`-e <path>` names another). Loose folders and archives read the same way. A game's saves go into a per-user folder it names (`"save_directory"` in `project.json`, or `app_set_save_directory`); `--save-dir <folder>` puts them somewhere else. `--help` lists every option, and `--version` prints the Scarab, sunlight and Lua versions.
 
 ### Headless mode
 
@@ -175,6 +176,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 
 * [text](samples/text/docs/README.md) — fonts by handle and HUD text layout.
 * [input](samples/input/docs/README.md) — keyboard and gamepads for two players: player slots, hot-plug and stick dead zones.
+* [actions](samples/actions/docs/README.md) — rebindable controls saved for the player, and gamepad rumble.
 
 ### Sequencing, timers and sound
 

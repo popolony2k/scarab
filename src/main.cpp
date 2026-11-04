@@ -254,6 +254,20 @@ int main( int argc, char** argv )  {
     pHeadlessOption -> excludes( pPackOption );
     pPackOption -> excludes( pHeadlessOption );
 
+    /*
+     * --save-dir names the real folder a game's saves go into (plans/MASTER_PLAN.md item C1b) and wins
+     * over the folder the game names itself (project.json's "save_directory", app_set_save_directory) -
+     * for tests and CI, which must not write into the user's own data folder, and for portable installs.
+     */
+    std :: string  strSaveDirectory;
+
+    CLI :: Option*  pSaveDirOption = app.add_option( "--save-dir", strSaveDirectory,
+                    "The folder the game's saves go into, instead of the one it names itself in the "
+                    "per-user data folder (created if missing)." );
+
+    pSaveDirOption -> excludes( pPackOption );
+    pPackOption -> excludes( pSaveDirOption );
+
     CLI11_PARSE( app, argc, argv );
 
     if( strEntryPath.empty() && strPackConfigPath.empty() )  {
@@ -483,6 +497,15 @@ int main( int argc, char** argv )  {
 
     Scarab :: Host :: RendererProvider  rendererProvider( MakeDefaultRendererConfig(), headlessSettings );
     Scarab :: Host :: EngineHost        engineHost( &rendererProvider, strEntryPath, strEntryOverride );
+
+    if( !strSaveDirectory.empty() )  {
+        std :: string  strError;
+
+        if( !engineHost.SetSaveDirectoryFromCommandLine( strSaveDirectory, strError ) )  {
+            fprintf( stderr, "scarab: --save-dir: %s\n", strError.c_str() );
+            return EXIT_FAILURE;
+        }
+    }
 
     if( bHeadless )
         engineHost.UseVirtualTime();

@@ -261,6 +261,12 @@ expect_error( "deadzone range", "argument 'deadzone' must be between 0 and 1", i
 expect_error( "deadzone trigger", "argument 'axis' must be a stick axis", input_get_axis_deadzone, 0, GAMEPAD_AXIS_LEFT_TRIGGER )
 expect_error( "slot negative", "argument 'slot'", input_claim_player_slot, -1, 0 )
 expect_error( "slot fraction", "argument 'slot' must be an integer", input_get_gamepad_for_slot, 1.5 )
+expect_error( "action name", "may hold only letters, digits", input_bind_action_key, "a=b", KEY_X )
+expect_error( "action key", "unknown KEY_* value 99999", input_bind_action_key, "jump", 99999 )
+expect_error( "action direction", "must be 1 or -1", input_bind_action_axis, "left", GAMEPAD_AXIS_LEFT_X, 0 )
+expect_error( "action path", "argument 'path'", input_load_action_map, 7 )
+expect_error( "save name", "may hold only letters, digits", app_set_save_directory, "a/b" )
+expect_error( "rumble strength", "argument 'right'", input_set_rumble, 0, 0, 2, 1 )
 
 -- timers
 expect_error( "timer interval", "argument 'intervalMilli' must be between 1", set_timer, __TIMER_ID, 0, function() end )
