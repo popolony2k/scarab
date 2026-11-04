@@ -1108,13 +1108,14 @@ that.
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
-| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b planned** (action map + rumble, needs the write-directory decision); see below |
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b PLANNED (2026-11-03)** (save directory, action map, rumble); then **C1c** (a general save-file API); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
+| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **Added by the owner (2026-11-03, split out of C1b).** To be planned against EVERY function it affects - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
 keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
@@ -1196,18 +1197,49 @@ input dispatch mode (Lua games poll each frame; D1 covers the default key handle
 - **Proof:** clean build, unit tests (also under ASan), 16 smoke tests, the headless smoke test, 19 samples
   headless, all 37 `asan_run.py` runs, style check 0, the docs generator.
 
-**C1b - action map and rumble (after C1a):**
-- **Action map:** `input_bind_action_key(name, key)`, `input_bind_action_button(name, button)`,
-  `input_bind_action_axis(name, axis, direction)`, `input_unbind_action(name)`,
-  `input_get_action_binding(name)`, `input_is_action_active(name, pad[, threshold])`,
-  `input_save_action_map(path)`, `input_load_action_map(path)` - an `ActionMap` Scarab owns. **Found while
-  planning:** sunlight's `ActionMap::Load` reads with a raw `std::ifstream` (`actionmap.cpp:226`), so a
-  bindings file inside a `.zip` or an encrypted pack can't be loaded (the `.tsx` bug's shape). Reported to
-  sunlight (sunlight-42, 2026-10-31, owner-approved), asking `Load` to read through `IFileSystem`; `Save` to
-  a real OS path stays as it is. C1b uses the pin that fixes it.
-- **Rumble:** `input_is_rumble_supported(pad)`, `input_set_rumble(pad, left, right, seconds)`,
-  `input_stop_rumble(pad)` - `GamepadHapticsFactory` (SDL2); Scarab calls its `Update()` once per frame;
-  headless uses the null backend (never rumbles).
+**C1b - save directory, action map and rumble (PLANNED 2026-11-03 with the owner; pin `4cb7262` has what it
+needs: sunlight I12's `IFileSystem::WriteFile`/`SetWriteDirectory`, and `ActionMap::Load`/`Save` through the
+FileSystem - the bindings-in-a-`.zip` bug reported while planning C1, fixed there).**
+- **Save directory (the owner's decisions):**
+  - A game names its folder in `project.json` (`"save_directory": "<name>"`) and/or with
+    `app_set_save_directory( name )`; when both are given, `app_set_save_directory` wins; `--save-dir <path>` on
+    the command line wins over both (tests, CI, portable installs - like `--headless`'s options winning).
+  - The per-user data folder is **Scarab's job, not sunlight's** (no sunlight request): macOS
+    `~/Library/Application Support/<name>`, Windows `%APPDATA%\<name>`, Linux `$XDG_DATA_HOME/<name>` or
+    `~/.local/share/<name>`. Scarab creates it and calls `IFileSystem::SetWriteDirectory`: mounted at the
+    virtual root ahead of every mount, so a save reads back by the same virtual path and overrides a file of
+    that name shipped in the `.zip` (user settings over defaults).
+  - The name is validated (letters, digits, `-` `_` `.`; no separator, no `..`). With no save directory a
+    save is `nil, "message"`, never a silent write elsewhere.
+  - Saves are plain (no write filter); where Scarab picks a format it is JSON (C1c).
+  - **No sandbox in C1b** (the owner: C8 plans it): C1b's save functions take a path the way sunlight's do -
+    a plain path is the save directory, `hpath://` is allowed. C8 will restrict them.
+- **Action map:** `input_bind_action_key( name, key )`, `input_bind_action_button( name, button )`,
+  `input_bind_action_axis( name, axis, direction )`, `input_unbind_action( name )`,
+  `input_get_action_binding( name ) -> type, code, direction` (new `ACTION_BINDING_*` constants),
+  `input_is_action_active( name[, gamepadId[, threshold]] )` (pad 0 and axis threshold 0.5 by default),
+  `input_save_action_map( path )` / `input_load_action_map( path )` - an `ActionMap` Scarab owns. **The file
+  keeps sunlight's own text format** (`name=TAG,code[,dir]`; the owner accepted the recommendation: it is
+  tested in sunlight, including a `.zip` and the read filter, and JSON would need Scarab to track the action
+  names, which `IActionMap` can't list).
+- **Rumble:** `input_is_rumble_supported( gamepadId )`, `input_set_rumble( gamepadId, left, right, seconds )`
+  (0..1, stops by itself), `input_stop_rumble( gamepadId )` - sunlight's `GamepadHapticsFactory` (SDL2),
+  created with the renderer and ticked once per frame (sunlight needs the tick for the timed stop); headless
+  sees no pad, so rumble reports unsupported. To check: SDL's haptics start on a CI runner with no device.
+- **Tests:** doctests for the save-name validation and the per-OS folder; a new headless
+  `scripts/action_map_smoke.py` (CI on all 4 platforms, `asan_run.py`) with `--save-dir` on a temp folder:
+  every binding type, a save -> load round trip, a default loaded from a `.zip` and from an encrypted pack, a
+  save overriding the shipped default, the `--save-dir` > `app_set_save_directory` > `project.json` priority,
+  no save directory, rumble unsupported, every error - shown failing on the old binary; rows in
+  `error_reporting_smoke`.
+- **Sample:** a new `samples/actions` - rebind "jump" by pressing a key or button, save, restart, still bound;
+  a rumble key per pad. **Window check with the owner on both pads** (Xbox Wireless, DUALSHOCK 4): rumble can
+  only be felt.
+- **Caravellius:** nothing breaks (all new) - an informational breakage entry.
+
+**C1c - a general save-file API (after C1b; the owner: its own item).** `save_json( path, table )` & co. on
+C1b's save directory, for options and high scores; JSON because Scarab owns the format. Planned when C1b is
+done.
 
 **Tests and sample (each part):** every function `nil, "message"` with `@luaname` docs and rows in
 `error_reporting_smoke`; a new headless `scripts/input_api_smoke.py` (no pads under the null input: empty
@@ -1384,6 +1416,36 @@ uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed on
     `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
     S4 follows for the others.
 - Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
+**C8 (TODO, added by the owner 2026-11-03, split out of C1b) - a sandbox for game scripts.** The owner's
+goal: a game script cannot reach anything outside its own files and its save directory - forbidden, not
+discouraged. It must be planned against every function it touches before anything changes; a first list:
+- Scarab's loaders (`load_json`, `dofile`, the entry script, every sunlight load: maps, textures, sounds,
+  fonts) and `hpath://` (on since P9).
+- Lua's own standard library: `io.*`, `os.remove`, `os.rename`, `os.tmpname`, `os.execute`, `os.getenv`,
+  `require`/`package` (which loads from the OS), `loadfile`. Checked 2026-11-02: Caravellius, the samples,
+  the smoke scripts and `tools/` use NO `io`/`os` file function (the smoke scripts do use `os.getenv` and
+  `io.stdout:setvbuf`).
+- `pack_*` (`tools/pack.lua`), which reads and writes real OS paths by design.
+- C1b's and C1c's save functions.
+- What a game legitimately needs outside: none known today - to confirm with Caravellius.
+
+**How each function is handled - three options, open until C8 is planned** (discussed 2026-11-03):
+- **Override** - the same name, a safe behaviour, as Scarab already does with `dofile` (same name and
+  arguments, read through `SunLight::FileSystem`): existing code keeps working, only what is outside the
+  sandbox is refused. Lua's own failure convention (`io.open` returns `nil, "message"`) already matches
+  Scarab's.
+- **Remove** - the function no longer exists (calling it is "attempt to call a nil value").
+- **New function** - a safe Scarab equivalent (eg. C1c's `save_json`), with the original removed; code using
+  the original must be rewritten. A new function alone is no sandbox: the original would still go around it.
+
+A first proposal, not decided: OVERRIDE `io.open` (reads inside the game's files, writes inside the save
+directory), `loadfile` and `require` (through `SunLight::FileSystem`, so modules inside a `.zip` load like
+`dofile`); REMOVE what has no safe form (`os.execute`, `io.popen`, `require`'s native C loader); KEEP the
+harmless ones (`os.time`, `os.clock`, `os.date`, `io.stdout:setvbuf`). Overriding is the better default where
+it can be done safely: Lua code written for other engines keeps working and the original can't be called
+around the sandbox. Still to decide: what "the game's own files" is exactly, how `--pack` and the smoke tests
+(`os.getenv`) keep working, whether the sandbox is on by default, and how it is tested.
 
 **C7 (TODO, added by the owner 2026-10-29 during V10; plan it together with sunlight when it
 starts, not before).** Today a renderer holds ONE map (`TileMapRenderer::m_pMap`), views are cameras
