@@ -35,7 +35,9 @@ in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1
 and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and tint), and in V13 to
 `56a73cd4de2868fe30e124e79340ea19d71feae7` (I11, tile animation by time and the frame query, with the 0 ms fix),
 and in P9 to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (I12, path schemes and writing in the FileSystem, with
-Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePath`).
+Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePath`), and in P10 to
+`b778188443842351c079b88cc8c59e87b87e2e1c` (I14, Scarab's request: atomic, durable `WriteFile` and
+`IFileSystem::RemoveFile`).
 
 ## Phase P: pin & plumbing
 
@@ -51,6 +53,7 @@ Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePat
 | P7 | Re-pin to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (sunlight's I9: layer opacity is a 0..1 float with exact round trips, `SetScreenFade` clamped; sunlight BREAKAGES entry 58) and move Lua's layer opacity to 0..1 | DONE |
 | P8 | Re-pin to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (sunlight's I10: sprite opacity and tint; sunlight BREAKAGES entry 59) and expose them to Lua (`sprite_set/get_opacity`, `sprite_set/get_tint`) | DONE |
 | P9 | Re-pin to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (sunlight's I12: path schemes, writing and `ActionMap` through the FileSystem, BREAKAGES 61; and I13: `FilePath`, BREAKAGES 62) - the pin C1 waits for; Scarab's entry-path helpers replaced by sunlight's | DONE |
+| P10 | Re-pin to `b778188443842351c079b88cc8c59e87b87e2e1c` (sunlight's I14: atomic, durable `WriteFile` and the new `IFileSystem::RemoveFile`, BREAKAGES 63) - the pin C1c builds on | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -324,6 +327,39 @@ implementer and an `ActionMap` caller passing a plain OS path - Scarab is neithe
 - **Proof:** clean build, 26/26 unit tests (also under ASan), 15 smoke tests, the headless smoke test,
   19 samples headless, all 36 `asan_run.py` runs, the docs generator, style check 0; Caravellius'
   acceptance PASS and fingerprint `hash=33897632`.
+
+**P10 (DONE, 2026-11-04).** sunlight I14 (PR #245, BREAKAGES 63), asked for by Scarab while planning C1c
+(owner-approved). Owner's decision: both the safe write and the delete belong in sunlight's `IFileSystem`,
+next to `WriteFile`, under the same path rules.
+- **What sunlight changed:**
+  - **`WriteFile` is atomic and durable on both paths** (virtual and `hpath://`). The bytes, after the write
+    filter, go to `<target>.tmp` in the same folder. They are written, flushed, synced to the disk (`fsync`
+    on POSIX, `_commit` on Windows) and closed, then renamed over the target. Any failure removes that temp
+    file, leaves the target byte-identical and returns false. A virtual write goes to the write directory's
+    real folder, and PhysFS's own path rules keep it inside that folder. `ActionMap::Save` is atomic too.
+  - **New `bool IFileSystem::RemoveFile( path )`.** It uses the same scheme handling as `WriteFile`.
+    - A virtual path removes a file inside the write directory only, never one inside a mounted archive or
+      loose folder. Because the write directory is mounted first, removing a save makes a shipped file with
+      the same name readable again.
+    - `hpath://` works only while host paths are enabled.
+    - It removes files only, never a folder.
+    - A missing file returns false.
+- **Scarab impact: none.** No Scarab class implements `IFileSystem`, so the new method costs nothing. The
+  `FilePath` functions Scarab uses changed only in comments. No Caravellius breakage entry.
+- **For C1c:**
+  - A process killed mid-write can leave `<name>.tmp` beside a save, and the next write of that name
+    replaces it. The save API should hide `*.tmp` from listings and refuse save names ending in `.tmp`.
+  - `IFileSystem::Exists` on a virtual path is also true for a FOLDER, so "is there a save" must check for
+    a file, not use `Exists` alone.
+- **Proof:**
+  - a clean reconfigure, with `--version` printing `feat/master_plan@b778188`;
+  - 32/32 unit tests, also under ASan;
+  - 17 smoke tests, plus the encrypted runs of `tileset_archive` and `action_map`;
+  - the headless smoke test;
+  - all 39 `asan_run.py` runs, both on the normal build and on the ASan build;
+  - the docs generator, and a style check with 0 findings;
+  - Caravellius' acceptance PASS and fingerprint `hash=33897632` (unchanged).
+  - Every run used a fake home: no file was written outside temp folders.
 
 ## Phase D: design items
 
