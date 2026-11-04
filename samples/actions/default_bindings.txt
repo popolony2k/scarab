@@ -1,0 +1,4 @@
+# sunlight action map
+jump=KEY:32
+left=KEY:263
+right=KEY:262

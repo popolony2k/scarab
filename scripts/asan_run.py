@@ -23,7 +23,7 @@ Run Scarab's headless checks under AddressSanitizer / LeakSanitizer (plans/MASTE
 Runs, with a scarab built with -fsanitize=address (see ci.yml's "asan" job, or CLAUDE.md's ASan recipe):
 
   1. the headless smoke test (must exit 0) and its frame-budget run (must exit 3);
-  2. every scripts/*_smoke.py driver (tileset_archive_smoke with --require-encrypted when asked);
+  2. every scripts/*_smoke.py driver (those in ENCRYPTED_DRIVERS with --require-encrypted when asked);
   3. every sample headless for SAMPLE_FRAMES frames (exit 0 or 3: a sample never quits by itself,
      so its frame budget running out is the normal end) - shutdown with live sprites, fonts and maps.
 
@@ -51,6 +51,9 @@ HEADLESS_FRAMES_OK  = 1000
 HEADLESS_FRAMES_LOW = 50
 
 
+# The drivers that also run an encrypted `scarab --pack` archive when given --require-encrypted.
+ENCRYPTED_DRIVERS = {"tileset_archive_smoke.py", "action_map_smoke.py"}
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
 
@@ -63,6 +66,7 @@ def main():
     leaks        = "--no-leaks" not in sys.argv
     repo_root    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     log_dir      = tempfile.mkdtemp(prefix="scarab-asan-")
+    save_dir     = tempfile.mkdtemp(prefix="scarab-asan-saves-")     # samples' saves - never the real per-user folder
     suppressions = os.path.join(repo_root, "scripts", "lsan.supp")
 
     env = dict(os.environ)
@@ -82,14 +86,17 @@ def main():
     for driver in sorted(glob.glob(os.path.join(repo_root, "scripts", "*_smoke.py"))):
         command = [sys.executable, driver, scarab]
 
-        if encrypted and os.path.basename(driver) == "tileset_archive_smoke.py":
+        if encrypted and os.path.basename(driver) in ENCRYPTED_DRIVERS:
             command.append("--require-encrypted")
 
         runs.append((os.path.basename(driver), command, {0}))
 
     for project in sorted(glob.glob(os.path.join(repo_root, "samples", "*", "project.json"))):
         relative = os.path.relpath(project, repo_root)
-        runs.append((relative, [scarab, "--headless", "--fast", "--max-frames", str(SAMPLE_FRAMES), relative], {0, BUDGET_EXHAUSTED}))
+        # --save-dir: a sample that names a save folder (samples/actions) must not create it in the real
+        # per-user data folder (plans/MASTER_PLAN.md item C1b)
+        runs.append((relative, [scarab, "--headless", "--fast", "--max-frames", str(SAMPLE_FRAMES),
+                                "--save-dir", save_dir, relative], {0, BUDGET_EXHAUSTED}))
 
     failed = []
 
@@ -113,6 +120,7 @@ def main():
                     print(f.read())
 
     shutil.rmtree(log_dir, ignore_errors=True)
+    shutil.rmtree(save_dir, ignore_errors=True)
     print(f"asan run: {len(runs) - len(failed)} of {len(runs)} passed" + (" - FAILED: " + ", ".join(failed) if failed else ""))
     return 1 if failed else 0
 

@@ -43,6 +43,8 @@
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
 #include "filesystem/filepath.h"
+#include "input/gamepadhapticsfactory.h"
+#include "input/nullgamepadhaptics.h"
 #include <vector>
 
 
@@ -317,7 +319,8 @@ namespace Scarab  {
     void LuaEngine :: Init( Engine :: IRendererProvider* pRendererProvider,
                            SunLight :: Sound :: SoundManager* pSoundManager,
                            Engine :: SpritePool* pSpritePool,
-                           Engine :: FontPool* pFontPool )  {
+                           Engine :: FontPool* pFontPool,
+                           Engine :: SaveDirectory* pSaveDirectory )  {
 
         std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
 
@@ -351,6 +354,17 @@ namespace Scarab  {
 
         lua_pushlightuserdata( m_pLuaState, &m_PlayerSlots );
         lua_setglobal( m_pLuaState, Engine :: Lua :: LuaInputApi :: PLAYER_SLOTS_GLOBAL );
+
+        lua_pushlightuserdata( m_pLuaState, &m_ActionMap );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaInputApi :: ACTION_MAP_GLOBAL );
+
+        // The holder, not the haptics: they are made later, with the renderer (AttachHaptics), and setting
+        // a Lua global then could race a set_timer callback - the holder's address never changes.
+        lua_pushlightuserdata( m_pLuaState, &m_pHaptics );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaInputApi :: HAPTICS_GLOBAL );
+
+        lua_pushlightuserdata( m_pLuaState, pSaveDirectory );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaAppApi :: SAVE_DIRECTORY_GLOBAL );
 
         lua_pushstring( m_pLuaState, m_strAppDirectory.c_str() );
         lua_setglobal( m_pLuaState, "APP_DIR" );
@@ -392,6 +406,41 @@ namespace Scarab  {
     void LuaEngine :: AttachToControllerManager( SunLight :: Input :: IControllerManager& controllerManager )  {
 
         Engine :: Lua :: LuaInputApi :: InstallConnectionHandler( m_pLuaState, controllerManager );
+    }
+
+    /**
+     * @brief Make the rumble backend for a new renderer (plans/MASTER_PLAN.md item C1b), from the
+     * renderer-created hook: sunlight's SDL2 haptics in a window, sunlight's null haptics under
+     * --headless - the null input sees no pad there, so nothing could rumble, and CI never starts SDL.
+     *
+     * @param inputHandler The renderer's input handler (the haptics match SDL's pads to its ids);
+     * @param bHeadless Whether the process runs --headless;
+     */
+    void LuaEngine :: AttachHaptics( SunLight :: Input :: IInputHandler& inputHandler, bool bHeadless )  {
+
+        if( bHeadless )
+            m_pHaptics = std :: make_unique<SunLight :: Input :: NullGamepadHaptics>();
+        else
+            m_pHaptics = SunLight :: Input :: GamepadHapticsFactory :: CreateGamepadHaptics( inputHandler );
+    }
+
+    /**
+     * @brief Tick the rumble backend once per frame: sunlight stops a timed rumble from this tick (SDL's
+     * own auto-stop needs an event pump nothing else runs).
+     */
+    void LuaEngine :: UpdateHaptics( void )  {
+
+        if( m_pHaptics )
+            m_pHaptics -> Update();
+    }
+
+    /**
+     * @brief Release the rumble backend, which stops any rumble still running - from EngineHost::OnStop,
+     * while the renderer (whose input handler the haptics hold) still exists.
+     */
+    void LuaEngine :: ReleaseHaptics( void )  {
+
+        m_pHaptics.reset();
     }
 
     /**

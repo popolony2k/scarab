@@ -72,6 +72,17 @@ namespace Scarab  {
                 static int ReleasePlayerSlot( lua_State* pLuaState );
                 static int GetGamepadForSlot( lua_State* pLuaState );
                 static int GetSlotForGamepad( lua_State* pLuaState );
+                static int BindActionKey( lua_State* pLuaState );
+                static int BindActionButton( lua_State* pLuaState );
+                static int BindActionAxis( lua_State* pLuaState );
+                static int UnbindAction( lua_State* pLuaState );
+                static int GetActionBinding( lua_State* pLuaState );
+                static int IsActionActive( lua_State* pLuaState );
+                static int SaveActionMap( lua_State* pLuaState );
+                static int LoadActionMap( lua_State* pLuaState );
+                static int IsRumbleSupported( lua_State* pLuaState );
+                static int SetRumble( lua_State* pLuaState );
+                static int StopRumble( lua_State* pLuaState );
 
                 static void RegisterEnums( lua_State* pLuaState );
 
@@ -80,8 +91,14 @@ namespace Scarab  {
                 // The Lua global LuaEngine::Init stashes its PlayerSlotManager in (a light userdata).
                 static constexpr const char*  PLAYER_SLOTS_GLOBAL = "playerSlotsPtr";
 
+                // The Lua globals LuaEngine::Init stashes its ActionMap in, and the HOLDER of its rumble
+                // backend (a std::unique_ptr<IGamepadHaptics>, empty until the renderer exists).
+                static constexpr const char*  ACTION_MAP_GLOBAL = "actionMapPtr";
+                static constexpr const char*  HAPTICS_GLOBAL    = "hapticsHolderPtr";
+
                 static void Register( lua_State* pLuaState );
                 static float ApplyDeadzone( float fValue, float fDeadzone );
+                static bool IsValidActionName( const std :: string& strName, std :: string& strError );
                 static void InstallConnectionHandler( lua_State* pLuaState, SunLight :: Input :: IControllerManager& controllerManager );
                 static bool ReadKeyArg( lua_State* pLuaState, int nIndex, const char* szName,
                                         SunLight :: Input :: KeyboardKey& key, std :: string& strError );

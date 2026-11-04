@@ -199,6 +199,9 @@ namespace Scarab  {
                     return false;
                 }
 
+                if( !ApplyProjectSaveDirectory( strEntryJsonPath, projectData ) )
+                    return false;
+
                 return ResolveMainScript( strEntryJsonPath, projectData["main_script"].get<std :: string>(), strOutScriptPath );
             }
 
@@ -228,6 +231,9 @@ namespace Scarab  {
                 OnError( "Error parsing project file (missing or invalid \"main_script\") => " + strEffectiveJsonPath );
                 return false;
             }
+
+            if( !ApplyProjectSaveDirectory( strEffectiveJsonPath, projectData ) )
+                return false;
 
             return ResolveMainScript( strEffectiveJsonPath, projectData["main_script"].get<std :: string>(), strOutScriptPath );
         }
@@ -482,7 +488,7 @@ namespace Scarab  {
              */
             m_bEntryScriptDone = false;
 
-            m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool, &m_FontPool );
+            m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool, &m_FontPool, &m_SaveDirectory );
 
             /*
              * Whatever renderer the provider creates (explicitly or the
@@ -490,10 +496,11 @@ namespace Scarab  {
              * bridge attaches its collision listener and its gamepad hot-plug
              * handler to it.
              */
-            pRendererProvider -> SetCreatedHook( [this]( SunLight :: Renderer :: TileMapRenderer& renderer )  {
+            pRendererProvider -> SetCreatedHook( [this, pRendererProvider]( SunLight :: Renderer :: TileMapRenderer& renderer )  {
                 renderer.AddTileMapListener( this );
                 m_LuaEngine.AttachToTileMap( renderer );
                 m_LuaEngine.AttachToControllerManager( renderer.GetControllerManager() );
+                m_LuaEngine.AttachHaptics( renderer.GetInputHandler(), pRendererProvider -> IsHeadless() );
             } );
 
             // Engine state handlers setup
@@ -528,6 +535,50 @@ namespace Scarab  {
         }
 
         /**
+         * @brief The command line's --save-dir: saves go into this real folder, whatever folder the game
+         * names itself (plans/MASTER_PLAN.md item C1b). Called by main() right after construction, before
+         * the entry script runs.
+         *
+         * @param strRealPath The folder, as the command line gives it;
+         * @param strError Receives the reason on failure;
+         * @return true if it is the save directory now;
+         */
+        bool EngineHost :: SetSaveDirectoryFromCommandLine( const std :: string& strRealPath, std :: string& strError )  {
+
+            return m_SaveDirectory.SetFromCommandLine( strRealPath, strError );
+        }
+
+        /**
+         * @brief A project file's optional "save_directory": the name of the game's save folder in the
+         * per-user data folder (plans/MASTER_PLAN.md item C1b). Applied before the entry script runs, so
+         * app_set_save_directory - called by the script, later - wins over it, and --save-dir (set earlier,
+         * from the command line) over both. A bad value is a fatal error, like a bad "main_script".
+         *
+         * @param strProjectPath The project file's path, for the error message;
+         * @param projectData The parsed project file;
+         * @return true if there is no "save_directory" or it was applied;
+         */
+        bool EngineHost :: ApplyProjectSaveDirectory( const std :: string& strProjectPath, const nlohmann :: json& projectData )  {
+
+            if( !projectData.contains( "save_directory" ) )
+                return true;
+
+            std :: string  strError;
+
+            if( !projectData["save_directory"].is_string() )  {
+                OnError( "Error in project file: \"save_directory\" must be a string => " + strProjectPath );
+                return false;
+            }
+
+            if( !m_SaveDirectory.SetByName( projectData["save_directory"].get<std :: string>(), strError ) )  {
+                OnError( "Error in project file's \"save_directory\": " + strError + " => " + strProjectPath );
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
          * Destructor. Finalize all class data.
          */
         EngineHost :: ~EngineHost( void )  {
@@ -543,6 +594,8 @@ namespace Scarab  {
 
             if( m_CurrentStateHandler )
                 m_CurrentStateHandler();
+
+            m_LuaEngine.UpdateHaptics();      // a timed rumble stops from this tick (plans/MASTER_PLAN.md item C1b)
         }
 
         /**
@@ -557,6 +610,7 @@ namespace Scarab  {
 
             m_SpritePool.Clear();
             m_FontPool.Clear();      // Lua's font handles, the same rule (plans/MASTER_PLAN.md item C6)
+            m_LuaEngine.ReleaseHaptics();   // stops any rumble, while the renderer's input handler still exists
         }
 
         /**

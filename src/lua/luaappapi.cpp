@@ -22,6 +22,7 @@
 #include "lua/luaengineutil.h"
 #include "lua/luainputapi.h"
 #include "window/iwindow.h"
+#include "engine/savedirectory.h"
 #include <climits>
 #include <cmath>
 #include <ctime>
@@ -828,6 +829,89 @@ namespace Scarab  {
             }
 
             /**
+             * @brief The engine's SaveDirectory, stashed by LuaEngine::Init as the light userdata global
+             * SAVE_DIRECTORY_GLOBAL.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return The save directory;
+             */
+            static Engine :: SaveDirectory* GetSaveDirectoryObject( lua_State* pLuaState )  {
+
+                return static_cast<Engine :: SaveDirectory *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_GLOBAL ) );
+            }
+
+            /**
+             * @brief Name the game's save folder in the OS's per-user data folder (plans/MASTER_PLAN.md item
+             * C1b); returns the real folder saves go into.
+             *
+             * @luaname{app_set_save_directory(name) -> folder | nil, message}
+             * @luagroup{save}
+             * @luaheading{Save directory}
+             * @luadoc
+             * Where the game's saves go: a folder named `name` in the OS's
+             * per-user data folder - macOS `~/Library/Application Support/<name>`,
+             * Windows `%APPDATA%\<name>`, Linux `$XDG_DATA_HOME/<name>` or
+             * `~/.local/share/<name>` - created if missing. Returns that real
+             * folder. `name` is one folder name: letters, digits and `-_.` only.
+             *
+             * A save is written with a plain path (`"bindings.txt"`): it goes
+             * into this folder, and reading that same plain path back finds it
+             * there first. Ship the game's DEFAULTS under its own folder
+             * (`APP_DIR .. "/default_bindings.txt"`, which is inside the `.zip`
+             * for a packed game) and load them when the player has no save yet -
+             * a packed game's files live under `APP_DIR`, not at the plain path.
+             *
+             * The game can also name it in its project file
+             * (`"save_directory": "<name>"`); this call wins over that. The
+             * command line's `--save-dir <folder>` wins over both (tests,
+             * portable installs): then this call changes nothing and returns
+             * that folder. No window is needed.
+             * @luaexample
+             * app_set_save_directory(name) -> folder   -- the real folder in use
+             * app_get_save_directory() -> folder       -- nil, message while there is none
+             *
+             * local folder = assert(app_set_save_directory("Caravellius"))
+             * print("saves go to " .. folder)
+             * input_save_action_map("bindings.txt")    -- into that folder
+             */
+            int LuaAppApi :: SetSaveDirectory( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "name", strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                Engine :: SaveDirectory*  pSaveDirectory = GetSaveDirectoryObject( pLuaState );
+
+                if( !pSaveDirectory -> SetByName( strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushstring( pLuaState, pSaveDirectory -> GetPath().c_str() );
+
+                return 1;
+            }
+
+            /**
+             * @brief The real folder saves go into.
+             *
+             * @luaname{app_get_save_directory() -> folder | nil, message}
+             * @luagroup{save}
+             */
+            int LuaAppApi :: GetSaveDirectory( lua_State* pLuaState )  {
+
+                const std :: string&  strPath = GetSaveDirectoryObject( pLuaState ) -> GetPath();
+
+                if( strPath.empty() )
+                    return LuaEngineUtil :: PushError( pLuaState, "no save directory: name one with app_set_save_directory "
+                                                                  "or \"save_directory\" in the project file" );
+
+                lua_pushstring( pLuaState, strPath.c_str() );
+
+                return 1;
+            }
+
+            /**
              * @brief Register app_set_fullscreen's own optional strategy
              * argument (see @link SetFullscreen) as Lua globals, same
              * names as the underlying SunLight::Window::FullscreenStrategy enum -
@@ -883,6 +967,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "app_set_exit_key", LuaAppApi :: SetExitKey );
                 lua_register( pLuaState, "app_get_exit_key", LuaAppApi :: GetExitKey );
                 lua_register( pLuaState, "app_get_time", LuaAppApi :: GetTime );
+                lua_register( pLuaState, "app_set_save_directory", LuaAppApi :: SetSaveDirectory );
+                lua_register( pLuaState, "app_get_save_directory", LuaAppApi :: GetSaveDirectory );
             }
         }
     }

@@ -22,6 +22,12 @@
 #include "lua/luaengineutil.h"
 #include "input/iinputhandler.h"
 #include "input/playerslotmanager.h"
+#include "input/actionmap.h"
+#include "input/igamepadhaptics.h"
+#include "filesystem/filepath.h"
+#include "engine/savedirectory.h"
+#include "lua/luaappapi.h"
+#include <memory>
 #include <climits>
 #include <cstdio>
 #include <mutex>
@@ -35,6 +41,15 @@
 
 /** A dead zone is a distance from the stick's centre: 0 (none) to 1 (the whole travel). */
 #define __MAX_AXIS_DEADZONE          1.0
+
+/** How far past centre a bound axis must move to make its action active, unless the call says. */
+#define __DEFAULT_ACTION_THRESHOLD   0.5
+
+/** A motor strength: 0 (off) to 1 (full). */
+#define __MAX_MOTOR_STRENGTH         1.0
+
+/** The characters an action's name may hold besides letters and digits. */
+#define __ACTION_NAME_EXTRA          "-_."
 
 
 namespace Scarab  {
@@ -183,6 +198,18 @@ namespace Scarab  {
                 __CONST( CONTROLLER_GAMEPAD ),
                 __CONST( CONTROLLER_MOUSE ),
                 __CONST( CONTROLLER_TOUCH ),
+            };
+
+            /**
+             * @luaconstants{Action binding types}
+             * @luadoc
+             * What `input_get_action_binding` reports an action is bound to.
+             */
+            static const stNamedConstant  s_aActionBindingTypes[] = {
+                __CONST( ACTION_BINDING_NONE ),
+                __CONST( ACTION_BINDING_KEY ),
+                __CONST( ACTION_BINDING_GAMEPAD_BUTTON ),
+                __CONST( ACTION_BINDING_GAMEPAD_AXIS ),
             };
 
             /**
@@ -832,6 +859,395 @@ namespace Scarab  {
             }
 
             /**
+             * @brief The engine's action map, stashed by LuaEngine::Init as ACTION_MAP_GLOBAL.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return The action map;
+             */
+            static SunLight :: Input :: ActionMap* GetActionMap( lua_State* pLuaState )  {
+
+                return static_cast<SunLight :: Input :: ActionMap *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaInputApi :: ACTION_MAP_GLOBAL ) );
+            }
+
+            /**
+             * @brief Whether an action's name is acceptable: letters, digits and "-_." only - it is written
+             * as "name=..." on its own line in the bindings file, so "=", a line break or a "#" (a comment
+             * there) would corrupt it.
+             *
+             * @param strName The name;
+             * @param strError Receives the reason when it is not acceptable;
+             * @return true if it is acceptable;
+             */
+            bool LuaInputApi :: IsValidActionName( const std :: string& strName, std :: string& strError )  {
+
+                if( strName.empty() )  {
+                    strError = "argument 'name' can't be empty";
+                    return false;
+                }
+
+                for( char c : strName )  {
+                    bool  bLetterOrDigit = ( ( c >= 'a' ) && ( c <= 'z' ) ) || ( ( c >= 'A' ) && ( c <= 'Z' ) ) || ( ( c >= '0' ) && ( c <= '9' ) );
+
+                    if( !bLetterOrDigit && ( std :: string( __ACTION_NAME_EXTRA ).find( c ) == std :: string :: npos ) )  {
+                        strError = "argument 'name' may hold only letters, digits and '" __ACTION_NAME_EXTRA "' - '" + strName + "' doesn't";
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            /** @brief Read an action's name (argument 1), checked by IsValidActionName. */
+            static bool ReadActionNameArg( lua_State* pLuaState, std :: string& strName, std :: string& strError )  {
+
+                return LuaEngineUtil :: ReadStringArg( pLuaState, 1, "name", strName, strError ) &&
+                       LuaInputApi :: IsValidActionName( strName, strError );
+            }
+
+            /**
+             * @brief Push the result of a bind: true, or the reason sunlight refused it - the input is
+             * already bound to another action (one input, one action).
+             */
+            static int PushBindResult( lua_State* pLuaState, bool bBound, const char* szInput )  {
+
+                if( !bBound )
+                    return LuaEngineUtil :: PushError( pLuaState, std :: string( "that " ) + szInput +
+                                                       " is already bound to another action - unbind that action first" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{input_bind_action_key(name, key) -> true | nil, message}
+             * @luagroup{actions}
+             * @luaheading{Actions (rebindable controls)}
+             * @luadoc
+             * An action is a name the game reads ("jump", "fire") instead of a
+             * fixed key, so a player can rebind it. Each action is bound to one
+             * input at a time - a key, a gamepad button, or a stick or trigger
+             * moved one way (`direction` `1` or `-1`); binding it again replaces
+             * the old binding. One input serves one action: binding a key that
+             * another action already has is refused. `name` is letters, digits
+             * and `-_.`. No window is needed to bind, save or load.
+             *
+             * `input_is_action_active(name[, gamepadId[, threshold]])` reads
+             * whether its input is held now: a button or axis binding on
+             * `gamepadId` (default `0`), an axis past `threshold` (default
+             * `0.5`); a key binding ignores the pad. An unbound action is never
+             * active.
+             *
+             * `input_save_action_map(path)` and `input_load_action_map(path)`
+             * keep the bindings in a text file (sunlight's own format). Save the
+             * player's bindings under a plain path: it is the game's save
+             * directory (`app_set_save_directory`), and loading the same plain
+             * path reads it back from there. Ship defaults under `APP_DIR`
+             * (inside the `.zip` for a packed game, even an encrypted one) and
+             * load them when the player has no save yet, as below. A load that
+             * fails leaves the bindings as they were.
+             * @luaexample
+             * input_bind_action_key(name, key)
+             * input_bind_action_button(name, button)
+             * input_bind_action_axis(name, axis, direction)   -- direction 1 or -1
+             * input_unbind_action(name)
+             * input_get_action_binding(name) -> type, code, direction
+             * input_is_action_active(name[, gamepadId[, threshold]]) -> active
+             * input_save_action_map(path) / input_load_action_map(path)
+             *
+             * -- the player's own bindings if they saved some, else the game's shipped defaults
+             * assert(app_set_save_directory("MyGame"))
+             * if not input_load_action_map("bindings.txt") then
+             *   assert(input_load_action_map(APP_DIR .. "/default_bindings.txt"))
+             * end
+             *
+             * -- after the player rebinds "jump" in the options menu
+             * input_bind_action_key("jump", KEY_W)
+             * assert(input_save_action_map("bindings.txt"))
+             *
+             * function on_update(dt)
+             *   if input_is_action_active("jump") then player_jump() end
+             * end
+             */
+            int LuaInputApi :: BindActionKey( lua_State* pLuaState )  {
+
+                std :: string                      strError;
+                std :: string                      strName;
+                SunLight :: Input :: KeyboardKey   key = SunLight :: Input :: KeyboardKey :: KEY_NULL;
+
+                if( !ReadActionNameArg( pLuaState, strName, strError ) || !ReadKeyArg( pLuaState, 2, "key", key, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return PushBindResult( pLuaState, GetActionMap( pLuaState ) -> BindKey( strName, key ), "key" );
+            }
+
+            /**
+             * @luaname{input_bind_action_button(name, button) -> true | nil, message}
+             * @luagroup{actions}
+             */
+            int LuaInputApi :: BindActionButton( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+                int            nButton = 0;
+
+                if( !ReadActionNameArg( pLuaState, strName, strError ) ||
+                    !LuaEngineUtil :: ReadConstantArg( pLuaState, 2, "button", s_aGamepadButtons,
+                                                       sizeof( s_aGamepadButtons ) / sizeof( s_aGamepadButtons[0] ),
+                                                       "GAMEPAD_BUTTON_*", nButton, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return PushBindResult( pLuaState, GetActionMap( pLuaState ) -> BindGamepadButton( strName, ( SunLight :: Input :: GamepadButton ) nButton ),
+                                       "button" );
+            }
+
+            /**
+             * @luaname{input_bind_action_axis(name, axis, direction) -> true | nil, message}
+             * @luagroup{actions}
+             */
+            int LuaInputApi :: BindActionAxis( lua_State* pLuaState )  {
+
+                std :: string                      strError;
+                std :: string                      strName;
+                SunLight :: Input :: GamepadAxis   axis       = SunLight :: Input :: GAMEPAD_AXIS_LEFT_X;
+                lua_Integer                        nDirection = 0;
+
+                if( !ReadActionNameArg( pLuaState, strName, strError ) || !ReadAxisArg( pLuaState, 2, axis, strError ) ||
+                    !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 3, "direction", -1, 1, nDirection, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( nDirection == 0 )
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'direction' must be 1 or -1" );
+
+                return PushBindResult( pLuaState, GetActionMap( pLuaState ) -> BindGamepadAxis( strName, axis, ( int ) nDirection ),
+                                       "axis direction" );
+            }
+
+            /**
+             * @brief Remove an action's binding (nothing to do if it has none).
+             *
+             * @luaname{input_unbind_action(name) -> true | nil, message}
+             * @luagroup{actions}
+             */
+            int LuaInputApi :: UnbindAction( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+
+                if( !ReadActionNameArg( pLuaState, strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                GetActionMap( pLuaState ) -> Unbind( strName );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief An action's binding: its type (ACTION_BINDING_*), its code (a KEY_*, GAMEPAD_BUTTON_* or
+             * GAMEPAD_AXIS_* value) and, for an axis, its direction (1 or -1; 0 otherwise).
+             *
+             * @luaname{input_get_action_binding(name) -> type, code, direction | nil, message}
+             * @luagroup{actions}
+             */
+            int LuaInputApi :: GetActionBinding( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+
+                if( !ReadActionNameArg( pLuaState, strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: Input :: stActionBinding  binding = GetActionMap( pLuaState ) -> GetBinding( strName );
+
+                lua_pushinteger( pLuaState, ( lua_Integer ) binding.type );
+                lua_pushinteger( pLuaState, binding.nCode );
+                lua_pushinteger( pLuaState, binding.nDirection );
+
+                return 3;
+            }
+
+            /**
+             * @brief Whether an action's input is held now - reads the input, so it needs the window.
+             *
+             * @luaname{input_is_action_active(name[, gamepadId[, threshold]]) -> active | nil, message}
+             * @luagroup{actions}
+             */
+            int LuaInputApi :: IsActionActive( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strName;
+                lua_Integer    nGamePadId = 0;
+                double         fThreshold = __DEFAULT_ACTION_THRESHOLD;
+
+                if( !ReadActionNameArg( pLuaState, strName, strError ) ||
+                    !LuaEngineUtil :: ReadOptionalIntegerArg( pLuaState, 2, "gamepadId", 0, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( ( nGamePadId < 0 ) || ( nGamePadId > MAX_GAMEPAD_COUNT - 1 ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'gamepadId' must be between 0 and " + std :: to_string( MAX_GAMEPAD_COUNT - 1 ) );
+
+                if( !lua_isnoneornil( pLuaState, 3 ) &&
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 3, "threshold", 0.0, __MAX_AXIS_DEADZONE, fThreshold, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, GetActionMap( pLuaState ) -> IsActionActive( strName, LuaEngineUtil :: GetTileMap( pLuaState ) -> GetInputHandler(),
+                                                                                        ( int ) nGamePadId, ( float ) fThreshold ) );
+
+                return 1;
+            }
+
+            /**
+             * @brief Save every binding to a file. A plain (virtual) path needs a save directory: the
+             * FileSystem writes a virtual path into it, and saying so is clearer than sunlight's plain false.
+             *
+             * @luaname{input_save_action_map(path) -> true | nil, message}
+             * @luagroup{actions}
+             */
+            int LuaInputApi :: SaveActionMap( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strPath;
+                std :: string  strRest;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                Engine :: SaveDirectory*  pSaveDirectory = static_cast<Engine :: SaveDirectory *>(
+                                              LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_GLOBAL ) );
+
+                if( ( SunLight :: FileSystem :: FilePath :: SplitPath( strPath, strRest ) == SunLight :: FileSystem :: FilePath :: PATH_SCHEME_VIRTUAL ) &&
+                    pSaveDirectory -> GetPath().empty() )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot save '" + strPath + "': no save directory (app_set_save_directory, "
+                                                                  "or \"save_directory\" in the project file)" );
+
+                if( !GetActionMap( pLuaState ) -> Save( strPath ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot write '" + strPath + "'" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Replace the bindings with a file's; a failure leaves them as they were.
+             *
+             * @luaname{input_load_action_map(path) -> true | nil, message}
+             * @luagroup{actions}
+             */
+            int LuaInputApi :: LoadActionMap( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                std :: string  strPath;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !GetActionMap( pLuaState ) -> Load( strPath ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot read or parse '" + strPath + "' - the bindings are unchanged" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief The rumble backend, made with the renderer (LuaEngine::AttachHaptics) - so this creates
+             * the default renderer first if none exists yet.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return The rumble backend, never null;
+             */
+            static SunLight :: Input :: IGamepadHaptics* GetHaptics( lua_State* pLuaState )  {
+
+                std :: unique_ptr<SunLight :: Input :: IGamepadHaptics>*  pHolder =
+                    static_cast<std :: unique_ptr<SunLight :: Input :: IGamepadHaptics> *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaInputApi :: HAPTICS_GLOBAL ) );
+
+                if( !*pHolder )
+                    LuaEngineUtil :: EnsureRenderer( pLuaState );
+
+                return pHolder -> get();
+            }
+
+            /**
+             * @luaname{input_is_rumble_supported(gamepadId) -> supported | nil, message}
+             * @luagroup{rumble}
+             * @luaheading{Rumble}
+             * @luadoc
+             * Make a gamepad vibrate: `left` and `right` are the two motors'
+             * strengths, `0` (off) to `1` (full), for `seconds` (more than `0`);
+             * it stops by itself, or now with `input_stop_rumble`. A pad that
+             * can't vibrate is an error from `input_set_rumble` - check
+             * `input_is_rumble_supported` first to skip the effect. Headless runs
+             * see no pad, so nothing rumbles there.
+             * @luaexample
+             * input_is_rumble_supported(gamepadId) -> supported
+             * input_set_rumble(gamepadId, left, right, seconds)
+             * input_stop_rumble(gamepadId)
+             *
+             * -- a short, strong hit when the ship is damaged
+             * if input_is_rumble_supported(pad) then
+             *   input_set_rumble(pad, 0.8, 1.0, 0.25)
+             * end
+             */
+            int LuaInputApi :: IsRumbleSupported( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nGamePadId = 0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, GetHaptics( pLuaState ) -> IsSupported( nGamePadId ) );
+
+                return 1;
+            }
+
+            /**
+             * @luaname{input_set_rumble(gamepadId, left, right, seconds) -> true | nil, message}
+             * @luagroup{rumble}
+             */
+            int LuaInputApi :: SetRumble( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nGamePadId = 0;
+                double         fLeft      = 0.0;
+                double         fRight     = 0.0;
+                double         fSeconds   = 0.0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) ||
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2, "left", 0.0, __MAX_MOTOR_STRENGTH, fLeft, strError ) ||
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 3, "right", 0.0, __MAX_MOTOR_STRENGTH, fRight, strError ) ||
+                    !LuaEngineUtil :: ReadNumberArg( pLuaState, 4, "seconds", fSeconds, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !( fSeconds > 0.0 ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'seconds' must be more than 0" );
+
+                SunLight :: Input :: IGamepadHaptics*  pHaptics = GetHaptics( pLuaState );
+
+                if( !pHaptics -> IsSupported( nGamePadId ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "gamepad " + std :: to_string( nGamePadId ) + " can't rumble "
+                                                                  "(not connected, or no motors)" );
+
+                pHaptics -> SetVibration( nGamePadId, ( float ) fLeft, ( float ) fRight, ( float ) fSeconds );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Stop a gamepad's rumble now (nothing to do if it isn't rumbling).
+             *
+             * @luaname{input_stop_rumble(gamepadId) -> true | nil, message}
+             * @luagroup{rumble}
+             */
+            int LuaInputApi :: StopRumble( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nGamePadId = 0;
+
+                if( !ReadGamepadIdArg( pLuaState, 1, nGamePadId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                GetHaptics( pLuaState ) -> Stop( nGamePadId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
              * @brief Register this module's constant groups as Lua globals (see each group's @luaconstants).
              * @param pLuaState Lua state to be used by engine call;
              */
@@ -841,6 +1257,7 @@ namespace Scarab  {
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aGamepadButtons, sizeof( s_aGamepadButtons ) / sizeof( s_aGamepadButtons[0] ) );
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aGamepadAxis, sizeof( s_aGamepadAxis ) / sizeof( s_aGamepadAxis[0] ) );
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aControllerTypes, sizeof( s_aControllerTypes ) / sizeof( s_aControllerTypes[0] ) );
+                LuaEngineUtil :: RegisterConstants( pLuaState, s_aActionBindingTypes, sizeof( s_aActionBindingTypes ) / sizeof( s_aActionBindingTypes[0] ) );
             }
 
             /**
@@ -866,6 +1283,17 @@ namespace Scarab  {
                 lua_register( pLuaState, "input_release_player_slot", LuaInputApi :: ReleasePlayerSlot );
                 lua_register( pLuaState, "input_get_gamepad_for_slot", LuaInputApi :: GetGamepadForSlot );
                 lua_register( pLuaState, "input_get_slot_for_gamepad", LuaInputApi :: GetSlotForGamepad );
+                lua_register( pLuaState, "input_bind_action_key", LuaInputApi :: BindActionKey );
+                lua_register( pLuaState, "input_bind_action_button", LuaInputApi :: BindActionButton );
+                lua_register( pLuaState, "input_bind_action_axis", LuaInputApi :: BindActionAxis );
+                lua_register( pLuaState, "input_unbind_action", LuaInputApi :: UnbindAction );
+                lua_register( pLuaState, "input_get_action_binding", LuaInputApi :: GetActionBinding );
+                lua_register( pLuaState, "input_is_action_active", LuaInputApi :: IsActionActive );
+                lua_register( pLuaState, "input_save_action_map", LuaInputApi :: SaveActionMap );
+                lua_register( pLuaState, "input_load_action_map", LuaInputApi :: LoadActionMap );
+                lua_register( pLuaState, "input_is_rumble_supported", LuaInputApi :: IsRumbleSupported );
+                lua_register( pLuaState, "input_set_rumble", LuaInputApi :: SetRumble );
+                lua_register( pLuaState, "input_stop_rumble", LuaInputApi :: StopRumble );
 
                 RegisterEnums( pLuaState );
             }

@@ -1108,7 +1108,7 @@ that.
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
-| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b PLANNED (2026-11-03)** (save directory, action map, rumble); then **C1c** (a general save-file API); see below |
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); then **C1c** (a general save-file API); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
@@ -1236,6 +1236,42 @@ FileSystem - the bindings-in-a-`.zip` bug reported while planning C1, fixed ther
   a rumble key per pad. **Window check with the owner on both pads** (Xbox Wireless, DUALSHOCK 4): rumble can
   only be felt.
 - **Caravellius:** nothing breaks (all new) - an informational breakage entry.
+
+**C1b done (2026-11-04).** As planned, with what the work found:
+- **Save directory:** `Scarab::Engine::SaveDirectory` (`src/engine/savedirectory.{h,cpp}`), owned by `EngineHost`:
+  `--save-dir` (main.cpp) > `app_set_save_directory` > `project.json`'s `"save_directory"` (read by
+  `EngineHost::ApplyProjectSaveDirectory` in both entry branches; a bad value is fatal like a bad
+  `main_script`). `app_set_save_directory` returns the folder in effect - under `--save-dir` it changes nothing
+  and says where saves go, never a silent no-op. `app_get_save_directory`. Name and per-OS folder logic are
+  pure helpers with an injectable environment (doctests).
+- **Found: a save does not shadow a file inside the game's `.zip`.** sunlight mounts the write folder at `/`;
+  Scarab mounts a `.zip` at `APP_DIR`. So the documented pattern (docs, `samples/actions`, the smoke test) is:
+  the player's file under a plain name, the shipped defaults loaded from `APP_DIR` when it is missing. Raised
+  with the owner; a sunlight mount point for the write directory is the alternative, not needed. `CLAUDE.md`
+  gotcha added.
+- **Action map:** the 8 functions + `ACTION_BINDING_*` constants; sunlight's text format kept; action names
+  checked by Scarab (`LuaInputApi::IsValidActionName`: `=`, a line break or `#` would corrupt the file).
+  sunlight refuses a binding only when the input is already another action's - reported as
+  `nil, "that key is already bound to another action ..."`.
+- **Rumble:** `LuaEngine::AttachHaptics` from the renderer-created hook - SDL2 haptics in a window, sunlight's
+  `NullGamepadHaptics` under `--headless` (no pad there anyway, and CI never starts SDL); ticked from
+  `EngineHost::OnUpdate`, released in `OnStop`. The Lua global holds the address of the `unique_ptr`, set once
+  in `Init`, so creating the haptics later never writes the Lua state outside the mutex.
+- **Tests never touch the real per-user folder** (learned the hard way: a mutated build that ignored
+  `--save-dir` created test folders in the real `~/Library/Application Support`, removed): every
+  `action_map_smoke` run points `HOME`/`APPDATA`/`XDG_DATA_HOME` at a temp folder, and `asan_run.py` gives the
+  samples a temp `--save-dir`.
+- **Tests:** `tests/test_savedirectory.cpp` (names, the per-OS folder, action names; failed on two mutations);
+  `scripts/action_map_smoke.py` (ci.yml, all 4 platforms with `--require-encrypted`; `asan_run.py`): `api`
+  under `--save-dir`, `priority` under a fake home, `nodir`, and a `.zip` and an encrypted pack each run
+  twice (shipped defaults -> save -> the save next run; the packed defaults confirmed ciphertext) - failed on
+  v0.1.25 and on a priority mutation; 6 rows in `error_reporting_smoke`.
+- **`samples/actions`** (new): actions instead of keys, R rebinds jump, S saves, D defaults, T rumble test.
+  **Window check with the owner:** rebinding jump to Left Ctrl, saving and relaunching brought it back
+  ("loaded your saved bindings"); and **T made the connected controller vibrate** (the owner).
+- **Caravellius:** breakage entry 22 (informational); acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:** clean build, 32 unit tests (also under ASan), 17 smoke tests, the headless smoke test, 20 samples
+  headless, 39/39 `asan_run.py` runs, style check 0, the docs generator.
 
 **C1c - a general save-file API (after C1b; the owner: its own item).** `save_json( path, table )` & co. on
 C1b's save directory, for options and high scores; JSON because Scarab owns the format. Planned when C1b is

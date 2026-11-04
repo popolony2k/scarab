@@ -64,10 +64,15 @@ namespace Scarab  {
                 static int GetTime( lua_State* pLuaState );
                 static int VirtualOsTime( lua_State* pLuaState );
                 static int VirtualOsClock( lua_State* pLuaState );
+                static int SetSaveDirectory( lua_State* pLuaState );
+                static int GetSaveDirectory( lua_State* pLuaState );
 
                 static void RegisterEnums( lua_State* pLuaState );
 
                 public:
+
+                // The Lua global LuaEngine::Init stashes the engine's SaveDirectory in (a light userdata).
+                static constexpr const char*  SAVE_DIRECTORY_GLOBAL = "saveDirectoryPtr";
 
                 /**
                  * @brief Host platform Scarab itself was compiled for,
