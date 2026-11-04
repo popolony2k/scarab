@@ -21,6 +21,9 @@
 #ifndef __LUAJSONAPI_H__
 #define __LUAJSONAPI_H__
 
+#include <string>
+#include <nlohmann/json.hpp>
+
 extern "C"  {
   #include "lua.h"
 }
@@ -31,8 +34,9 @@ namespace Scarab  {
         namespace Lua  {
             /**
              * @brief Generic, game-agnostic JSON <-> Lua bridge. Converts any JSON
-             * document into an equivalent Lua table, with no knowledge of any
-             * particular config schema.
+             * document into an equivalent Lua table, and a Lua table into JSON
+             * (ToJson, for the save functions of LuaSaveApi), with no knowledge of
+             * any particular schema.
              *
              * @luacategory{JSON}
              * @luadoc
@@ -44,6 +48,13 @@ namespace Scarab  {
 
                 public:
 
+                /** @brief How many tables deep a value may nest, either way (a save, or a JSON file read). */
+                static constexpr int  MAX_DEPTH = 64;
+
+                static bool PushJsonValue( lua_State* pLuaState, const nlohmann :: json& value, std :: string& strError );
+                static bool ToJson( lua_State* pLuaState, int nIndex, const std :: string& strRootName,
+                                    nlohmann :: json& out, std :: string& strError );
+                static bool IsValidUtf8( const std :: string& strText );
                 static void Register( lua_State* pLuaState );
             };
         }

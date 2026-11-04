@@ -31,6 +31,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [timers](timers/docs/README.md) — two independent background timers, and the "callbacks run on a background thread" gotcha handled correctly
 * [input](input/docs/README.md) — keyboard and gamepads for two players: pads joining player slots, hot-plug, and the stick dead zone (automatic vs raw reads)
 * [actions](actions/docs/README.md) — rebindable controls (actions bound to a key, button or stick), saved into the game's save directory and loaded back, with shipped defaults; and gamepad rumble
+* [saves](saves/docs/README.md) — a game's options and high scores kept between runs: tables saved as JSON into the save directory, read back, deleted
 * [tilemap](tilemap/docs/README.md) — loading a Tiled `.tmx` map, reporting its dimensions — the minimal map-on-screen sample, no sprites (map shared from [resources/tilemap/](../resources/tilemap/README.md))
 * [camera](camera/docs/README.md) — scrolling/zooming the camera (keyboard pan/zoom + an absolute `camera_set_position` jump) over the same map `tilemap` loads
 * [sprite](sprite/docs/README.md) — acquiring/configuring/moving an animated sprite (sunlight's own "sunny" character), built on `tilemap/`

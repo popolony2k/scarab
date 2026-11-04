@@ -276,6 +276,16 @@ expect_error( "timer twice", "timer 3 is already set", set_timer, __TIMER_ID, 10
 expect_true( "reset_timer", reset_timer, __TIMER_ID )
 expect_error( "reset_timer twice", "timer 3 is not set", reset_timer, __TIMER_ID )
 
+-- saves (this project has no save directory: a good name and value then fail for that)
+expect_error( "save_write name", "argument 'name' can't have a '..' part", save_write, "../x.json", {} )
+expect_error( "save_write value", "argument 'value' must be a table", save_write, "x.json", 5 )
+expect_error( "save_write content", "argument 'value' can't be saved: value.f is a function", save_write, "x.json", { f = print } )
+expect_error( "save_write no dir", "no save directory", save_write, "x.json", {} )
+expect_error( "save_read name", "argument 'name' must be a string", save_read, 7 )
+expect_error( "save_read no dir", "no save directory", save_read, "x.json" )
+expect_error( "save_exists name", "argument 'name' can't be empty", save_exists, "" )
+expect_error( "save_delete name", "can't end in '.tmp'", save_delete, "x.tmp" )
+
 -- json, crypto, pack
 expect_error( "json missing", "cannot open", load_json, __MISSING .. ".json" )
 expect_error( "json bad", "cannot parse", load_json, __BAD_JSON )

@@ -339,6 +339,17 @@ namespace Scarab  {
                 return true;
             }
 
+            /** @brief Check that a required argument is a table. */
+            bool LuaEngineUtil :: CheckTableArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strError )  {
+
+                if( !lua_istable( pLuaState, nIndex ) )  {
+                    strError = std :: string( "argument '" ) + szName + "' must be a table";
+                    return false;
+                }
+
+                return true;
+            }
+
             /**
              * @brief Read a required argument that must be one of a constant group's values (eg. a
              * KEY_* or a MAP_ALIGNMENT_* constant), checked against the same table that registers
