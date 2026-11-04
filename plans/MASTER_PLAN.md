@@ -1144,7 +1144,7 @@ that.
 
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
-| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); then **C1c** (a general save-file API, PLANNED 2026-11-04); see below |
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
 | C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
@@ -1372,6 +1372,57 @@ Scarab owns the format, so it is JSON.
   - Window check with the owner (save, quit, relaunch).
 - **Caravellius:** nothing breaks (all new); an informational breakage entry. Its `score.lua` could keep a
   high score with `save_write` later, which is Caravellius' choice.
+
+**C1c done (2026-11-04).** Built as planned:
+- **Code:**
+  - `src/lua/luasaveapi.{h,cpp}` holds the four functions and `IsValidSaveName`.
+  - `LuaJsonApi` gained `ToJson`, the strict Lua -> JSON conversion, plus `IsValidUtf8` and a public
+    `PushJsonValue`.
+  - `LuaEngineUtil` gained `CheckTableArg`.
+  - The docs page is `save.html`, with its `SOURCE_TO_DOC` entry and a row in the `docs/lua-api` index.
+- **Decision 1 (reading only the save folder) shown to matter:** a mutation that read a save through the plain
+  name made `save_read( "shipped.json" )` return the loose game's own file. The `.zip` scenarios still passed,
+  which is exactly the loose-vs-packed difference the decision avoids. `CLAUDE.md` gotcha added.
+- **One change to `load_json`:** the way back (`PushJsonValue`) now has the same 64-table limit and checks the
+  Lua stack. A deeper file is `nil, "cannot read ..."`; before, it could overflow Lua's stack (no
+  `lua_checkstack`). Breakage entry 23.
+- **Tests:**
+  - **`tests/test_savejson.cpp`, 7 doctests:**
+    - the converter: arrays, objects, `{}`, integers vs floats, `math.maxinteger`/`mininteger`;
+    - every refusal message, and the stack left as it was;
+    - a table shared by two branches, and the depth limit;
+    - the round trip back, with `PushJsonValue` refusing a document past the limit;
+    - UTF-8 (overlong, surrogate, above U+10FFFF, cut short);
+    - the save-name rules.
+
+    Failed on two mutations (no hole check; no `.`/`..` check). `CheckTableArg` got its own doctest.
+  - **`scripts/save_api_smoke.py`** (ci.yml on all 4 platforms with `--require-encrypted`; `asan_run.py`; a
+    fake home for every run):
+    - `api`: every function and refusal; a FOLDER named like a save; a loose game's shipped file never read
+      or deleted as a save; no `.tmp` left;
+    - `fixed`: the exact bytes, identical on two launches;
+    - `nodir`: no save directory;
+    - `spoiled`: hand-edited saves, one not JSON and one a bare number;
+    - a `.zip` and an encrypted pack, each run twice. The save on disk stays plain JSON.
+
+    Failed on the v0.1.25 binary, and on the read-path mutation.
+  - **8 rows in `error_reporting_smoke`.**
+- **`samples/saves`** (new): options (volume, FPS counter, colour) and a top-5 score table; S saves, X deletes,
+  and everything is back on the next launch.
+  **Window check with the owner, on macOS, from an empty save folder:**
+  - The first launch said `no save named ...` and showed the defaults.
+  - Changing the options and scores, then S, wrote `options.json` and `scores.json`, with no `.tmp` left.
+  - The relaunch read both back: `... loaded`, volume 9, FPS on, teal, `P1 7957`.
+  - X deleted both, and the next launch was back to the defaults.
+  - The screenshots showed the square over the save-folder line; it moved to the bottom right.
+- **Caravellius:** breakage entry 23. Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - a clean build;
+  - 40 unit tests, also under ASan;
+  - 18 smoke tests, plus the headless smoke test;
+  - 21 samples headless;
+  - 41/41 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
 
 **Tests and sample (each part):** every function `nil, "message"` with `@luaname` docs and rows in
 `error_reporting_smoke`; a new headless `scripts/input_api_smoke.py` (no pads under the null input: empty

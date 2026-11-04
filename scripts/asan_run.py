@@ -52,7 +52,7 @@ HEADLESS_FRAMES_LOW = 50
 
 
 # The drivers that also run an encrypted `scarab --pack` archive when given --require-encrypted.
-ENCRYPTED_DRIVERS = {"tileset_archive_smoke.py", "action_map_smoke.py"}
+ENCRYPTED_DRIVERS = {"tileset_archive_smoke.py", "action_map_smoke.py", "save_api_smoke.py"}
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]

@@ -125,6 +125,7 @@ namespace Scarab  {
                                                     bool& bOut, std :: string& strError );
                 static bool ReadStringArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strOut, std :: string& strError );
                 static bool CheckFunctionArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strError );
+                static bool CheckTableArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strError );
                 static bool ReadConstantArg( lua_State* pLuaState, int nIndex, const char* szName, const stNamedConstant* pTable,
                                              size_t nCount, const char* szGroup, int& nOut, std :: string& strError );
             };

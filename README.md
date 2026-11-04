@@ -43,7 +43,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
 * **Sprites:** pooled, animated sprites on map layers or with no map at all, in screen or map (world) space, with opacity, tint and blend modes.
 * **Collisions:** sprite-to-sprite and sprite-to-tile rules with a Lua handler.
 * **Input:** keyboard and gamepads, hot-plug, player slots, stick dead zones applied for you, rebindable actions and rumble.
-* **Saves:** a per-user save directory the game names, for settings such as its key bindings.
+* **Saves:** a per-user save directory the game names, and Lua tables saved there as JSON - written safely, read back as they were - for options, high scores and key bindings.
 * **Sound and sequencing:** sound effects and songs, timers, and a queued command processor for stage intros and waves.
 * **Text:** TrueType/OpenType and BMFont fonts by handle, measured and drawn as a HUD.
 * **Errors you can read:** every Lua function that can fail returns `nil, "message"`, never a crash or a silent no-op.
@@ -187,6 +187,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 ### Data and packaging
 
 * [json](samples/json/docs/README.md) — `load_json`, a config file read into a Lua table.
+* [saves](samples/saves/docs/README.md) — options and high scores kept between runs with `save_write` and `save_read`.
 * [crypto](samples/crypto/docs/README.md) — the encryption functions behind content packing, and what tampering does.
 
 ## Shared resources :art:

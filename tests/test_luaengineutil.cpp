@@ -183,6 +183,20 @@ TEST_CASE( "ReadBooleanArg, ReadStringArg and CheckFunctionArg accept their own 
     CHECK( strError == "argument 'handler' must be a function" );
 }
 
+TEST_CASE( "CheckTableArg accepts a table only" )  {
+
+    LuaStack       stack;
+    std :: string  strError;
+
+    lua_newtable( stack.L );                         // 1
+    lua_pushstring( stack.L, "{}" );                 // 2
+
+    CHECK( LuaEngineUtil :: CheckTableArg( stack.L, 1, "value", strError ) );
+    CHECK_FALSE( LuaEngineUtil :: CheckTableArg( stack.L, 2, "value", strError ) );
+    CHECK( strError == "argument 'value' must be a table" );
+    CHECK_FALSE( LuaEngineUtil :: CheckTableArg( stack.L, 3, "value", strError ) );   // absent
+}
+
 TEST_CASE( "ReadConstantArg accepts only a value of its constant group" )  {
 
     LuaStack       stack;
