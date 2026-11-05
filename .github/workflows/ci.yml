@@ -465,6 +465,20 @@ jobs:
           python scripts/sprite_tint_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "sprite tint smoke test exited with code $LASTEXITCODE" }
 
+      # sprite_set/get_z_order: a fresh 0, round trips to the C int limits, every rejection,
+      # own values per sprite, kept across a layer move and a reconfigure, a recycled slot
+      # starting at 0 - plans/MASTER_PLAN.md item C3.
+      - name: Sprite z-order smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/sprite_zorder_smoke.py build/scarab
+
+      - name: Sprite z-order smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/sprite_zorder_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "sprite z-order smoke test exited with code $LASTEXITCODE" }
+
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
       # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md

@@ -37,7 +37,8 @@ and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and
 and in P9 to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (I12, path schemes and writing in the FileSystem, with
 Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePath`), and in P10 to
 `b778188443842351c079b88cc8c59e87b87e2e1c` (I14, Scarab's request: atomic, durable `WriteFile` and
-`IFileSystem::RemoveFile`).
+`IFileSystem::RemoveFile`), and in P11 to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (I15, Scarab's report: equal
+z-orders keep the order sprites were added in).
 
 ## Phase P: pin & plumbing
 
@@ -54,6 +55,7 @@ Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePat
 | P8 | Re-pin to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (sunlight's I10: sprite opacity and tint; sunlight BREAKAGES entry 59) and expose them to Lua (`sprite_set/get_opacity`, `sprite_set/get_tint`) | DONE |
 | P9 | Re-pin to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (sunlight's I12: path schemes, writing and `ActionMap` through the FileSystem, BREAKAGES 61; and I13: `FilePath`, BREAKAGES 62) - the pin C1 waits for; Scarab's entry-path helpers replaced by sunlight's | DONE |
 | P10 | Re-pin to `b778188443842351c079b88cc8c59e87b87e2e1c` (sunlight's I14: atomic, durable `WriteFile` and the new `IFileSystem::RemoveFile`, BREAKAGES 63) - the pin C1c builds on | DONE |
+| P11 | Re-pin to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (sunlight's I15: equal z-orders keep the order sprites were added in, on every frame - Scarab's report from C3 planning, BREAKAGES 64) - done in C3's branch (owner's choice) | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -1146,7 +1148,7 @@ that.
 |---|------|------------------|-------|
 | C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
-| C3 | Sprite z-order | 37 | **PLANNED 2026-11-04** (owner's pick after C1c): `sprite_set_z_order`/`sprite_get_z_order`; see below |
+| C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
@@ -1628,7 +1630,11 @@ every view.
     value after a change.
   - **For a game:** a sprite raised for a moment (a hit flash in front) and then lowered ends up in a
     different place among its equals than before.
-  - **Reported to sunlight (sunlight-c1), owner-approved, 2026-11-04.** A likely fix, sunlight's to choose: break ties by
+  - **FIXED by sunlight as I15 (`51a3bbb`, BREAKAGES 64), pinned in P11 inside C3's branch (owner's choice):**
+    each layer's list stays in added order and every pass stable-sorts a copy, so equal z-orders always keep
+    the order they were added in (a sprite removed and added again is last among its equals). sunlight's
+    tests now change a z-order and check later frames (they fail with the old sort put back).
+  - **Reported to sunlight (sunlight-c1), owner-approved, 2026-11-04.** The fix suggested, sunlight's to choose: break ties by
     the order a sprite was added (a sequence number stored at `Add`), or sort a copy instead of the list.
 - **Tests:**
   - **Headless, a new `scripts/sprite_zorder_smoke.py`** (ci.yml on all 4 platforms, `asan_run.py`):
@@ -1658,6 +1664,44 @@ every view.
   sample list, and `CLAUDE.md`'s sprite line.
 - **Caravellius:** nothing breaks (new functions, default unchanged); an informational breakage entry. Its
   sprites keep their draw order (all 0, as today).
+
+**C3 done (2026-11-04).** Built as planned, on P11's pin `51a3bbb`, which went into the same branch (owner's choice):
+- **Code:**
+  - `LuaSpriteApi::SetZOrder`/`GetZOrder` (`ReadIntArg`, so any C `int`).
+  - `SpritePool::Release` resets the z-order to 0 (`__SPRITE_DEFAULT_Z_ORDER`).
+  - The docs promise "equal z-orders keep the order they were added in" with no caveat, since I15 makes it
+    true on every frame.
+- **Tests:**
+  - **The `test_spritepool.cpp` recycled-slot doctest** now checks the z-order too.
+  - **`scripts/sprite_zorder_smoke.py`** (ci.yml on all 4 platforms; `asan_run.py`) checks:
+    - the fresh 0;
+    - round trips of -5, 0, 1, 42, `INT_MAX` and `INT_MIN`, and that `3.0` is accepted;
+    - every rejection, which leaves the value as it was;
+    - bad and released handles;
+    - the recycled slot at 0;
+    - two sprites keeping their own values;
+    - a layer move and a reconfigure keeping the value;
+    - a change between frames;
+    - that no renderer is created.
+
+    Failed on the v0.1.25 binary (`attempt to call a nil value`) and, together with the doctest, on a
+    mutation that removed the reset.
+  - **3 rows in `error_reporting_smoke`.**
+- **`samples/zorder`** (new): four of sunlight's card images, copied into `resources/sprites/`. 1-4 bring a card
+  to the front, Shift+1-4 send it to the back, and 0 sets all to 0. A glow on a higher layer stays above them.
+  The HUD shows each z-order and the draw order. **Window check with the owner:**
+  - with z-orders 4/0/5/-1, the cards drew as the HUD's "gold < green < red < blue";
+  - after 0 the starting stack red < green < blue < gold came back, which is sunlight I15 confirmed in a window;
+  - the glow stayed on top throughout.
+  - a second, step-by-step run (launch, 1, 3, Shift+4, Shift+1) matched the expected HUD order and stacking at every step.
+- **Caravellius:** breakage entry 24 (nothing breaks). Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - a clean reconfigure, with `--version` printing `feat/master_plan@51a3bbb`;
+  - unit tests, also under ASan;
+  - 19 smoke tests, plus the headless smoke test;
+  - 22 samples headless;
+  - 43/43 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
 
 **C8 (TODO, added by the owner 2026-11-03, split out of C1b) - a sandbox for game scripts.** The owner's
 goal: a game script cannot reach anything outside its own files and its save directory - forbidden, not

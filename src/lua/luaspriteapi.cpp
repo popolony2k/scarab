@@ -1024,6 +1024,76 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Set a sprite's z-order (sunlight's Sprite::SetZOrder): which of a layer's sprites draws on
+             * top. Every frame sunlight draws a layer's sprites in ascending z-order, so a higher one draws later.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{sprite_set_z_order(handle, z) -> true | nil, message}
+             * @luagroup{sprite_z_order}
+             * @luaheading{Z-order}
+             * @luadoc
+             * Which of a layer's sprites draws on top. Every frame, the sprites of
+             * one layer are drawn in ascending **z-order**: a higher `z` draws
+             * later, so on top of the others; `0` is the default, and `z` is any
+             * integer, negative too (to send a sprite behind the rest). It orders
+             * sprites **on the same layer only**: layers still draw in their own
+             * order, so a sprite on a higher layer is always above, whatever its
+             * z-order. It applies in every view.
+             *
+             * The z-order belongs to the sprite: it is kept when the sprite moves
+             * to another layer or is configured again, and `sprite_release` resets
+             * it to `0`, so a recycled handle never stays on top by accident.
+             * Sprites with the **same** z-order always draw in the order they were
+             * added to the layer, whatever z-orders they had before (a sprite
+             * removed and added again is last among its equals - that is its new
+             * place). Failures are `nil, "message"`: `"invalid sprite handle"`,
+             * or a `z` that is not a whole number within the range of a C `int`.
+             * **Games that never call them are unchanged.**
+             * @luaexample
+             * sprite_set_z_order( shadow, -1 )      -- under the others on its layer
+             * sprite_set_z_order( flash, 10 )       -- on top ...
+             * sprite_set_z_order( flash, 0 )        -- ... and back
+             * print( sprite_get_z_order( flash ) )  -- 0
+             */
+            int LuaSpriteApi :: SetZOrder( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                int                             nZOrder = 0;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr || !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "z", nZOrder, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetZOrder( nZOrder );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Read a sprite's z-order (sunlight's Sprite::GetZOrder; 0 unless sprite_set_z_order changed it).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{sprite_get_z_order(handle) -> z | nil, message}
+             * @luagroup{sprite_z_order}
+             */
+            int LuaSpriteApi :: GetZOrder( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushinteger( pLuaState, pSprite -> GetZOrder() );
+
+                return 1;
+            }
+
+            /**
              * @brief Register this module's constant groups as Lua globals (see each group's @luaconstants).
              * @param pLuaState Lua state to be used by engine call;
              */
@@ -1055,6 +1125,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "sprite_get_opacity", LuaSpriteApi :: GetOpacity );
                 lua_register( pLuaState, "sprite_set_tint", LuaSpriteApi :: SetTint );
                 lua_register( pLuaState, "sprite_get_tint", LuaSpriteApi :: GetTint );
+                lua_register( pLuaState, "sprite_set_z_order", LuaSpriteApi :: SetZOrder );
+                lua_register( pLuaState, "sprite_get_z_order", LuaSpriteApi :: GetZOrder );
                 lua_register( pLuaState, "sprite_get_pos", LuaSpriteApi :: GetPos );
                 lua_register( pLuaState, "sprite_set_pos", LuaSpriteApi :: SetPos );
                 lua_register( pLuaState, "sprite_get_size", LuaSpriteApi :: GetSize );

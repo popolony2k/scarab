@@ -42,6 +42,7 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [objects](objects/docs/README.md) — Tiled tile objects (own size, stretched, clipped, animated, flip bits) and text objects drawn from a map, with one font loaded once and registered for the map's text objects; built on `renderer/` and `text/`
 * [shapes](shapes/docs/README.md) — Tiled shape objects and how the viewport clips them, objects turned by a Tiled rotation about their pivot, line widths and point objects scaled by zoom, per-object opacity, and layer tint changed at runtime, on five maps switched with keys 1-5; built on `objects/`
 * [mapless](mapless/docs/README.md) — sprites drawn with no map loaded at all: layer ids as grouping keys drawn in ascending id order, hidden by id through the view's layer mask (keys 1-3)
+* [zorder](zorder/docs/README.md) — which of a layer's sprites draws on top: four overlapping cards ordered by `sprite_set_z_order`, equal z-orders in the order they were added, and a higher layer above them all
 * [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
 * [sound](sound/docs/README.md) — direct one-shot, direct looping, and queued song forms side by side, plus pause/stop/resume/volume
 * [json](json/docs/README.md) — `load_json`, walking a small nested object/array config file into an equivalent Lua table

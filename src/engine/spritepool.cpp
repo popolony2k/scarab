@@ -23,6 +23,7 @@
 
 /** A sprite's opacity and tint as sunlight creates it - what Release() puts back. */
 #define __SPRITE_OPAQUE   1.0f
+#define __SPRITE_DEFAULT_Z_ORDER  0     // sunlight's Sprite default: drawn in the order added
 #define __SPRITE_NO_TINT  SunLight :: Base :: stColor { UCHAR_MAX, UCHAR_MAX, UCHAR_MAX, UCHAR_MAX }
 
 
@@ -213,6 +214,7 @@ namespace Scarab  {
             slot.sprite.ClearBlendMode();         // ... nor its blend mode (plans/MASTER_PLAN.md item B1)
             slot.sprite.SetOpacity( __SPRITE_OPAQUE );    // ... nor its opacity or tint (item P8)
             slot.sprite.SetTint( __SPRITE_NO_TINT );
+            slot.sprite.SetZOrder( __SPRITE_DEFAULT_Z_ORDER );   // ... nor its z-order (item C3): a pooled sprite never stays on top
             slot.nGeneration++;
 
             m_FreeListsByType[slot.strTypeTag].push_back( ( uint32_t ) nIndex );

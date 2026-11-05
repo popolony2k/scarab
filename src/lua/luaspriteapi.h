@@ -106,6 +106,8 @@ namespace Scarab  {
                 static int GetOpacity( lua_State* pLuaState );
                 static int SetTint( lua_State* pLuaState );
                 static int GetTint( lua_State* pLuaState );
+                static int SetZOrder( lua_State* pLuaState );
+                static int GetZOrder( lua_State* pLuaState );
                 static int SetPos( lua_State* pLuaState );
                 static int GetSize( lua_State* pLuaState );
                 static int SetCollisionInset( lua_State* pLuaState );

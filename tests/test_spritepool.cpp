@@ -32,6 +32,7 @@ using namespace Scarab :: Engine;
 
 /** An opacity and a tint no fresh sprite has, to see a recycled slot reset them. */
 #define __CHANGED_OPACITY  0.5f
+#define __CHANGED_Z_ORDER  7         // any z-order but the default 0
 #define __CHANGED_TINT     SunLight :: Base :: stColor { 1, 2, 3, 4 }
 #define __OPAQUE           1.0f
 #define __NO_TINT_CHANNEL  255
@@ -134,7 +135,7 @@ TEST_CASE( "Handles that were never handed out are refused" )  {
     CHECK( pool.Resolve( MakeSpriteHandle( SpriteHandleIndex( hSprite ), SpriteHandleGeneration( hSprite ) + 1 ) ) == nullptr );
 }
 
-TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no blend mode, opaque, untinted" )  {
+TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no blend mode, opaque, untinted, z-order 0" )  {
 
     SpritePool  pool;
 
@@ -149,6 +150,7 @@ TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no ble
     pSprite -> SetBlendMode( SunLight :: Base :: BLEND_MODE_ADD );
     pSprite -> SetOpacity( __CHANGED_OPACITY );
     pSprite -> SetTint( __CHANGED_TINT );
+    pSprite -> SetZOrder( __CHANGED_Z_ORDER );
     REQUIRE( pool.Release( hSprite ) );
 
     pSprite = pool.Resolve( pool.Acquire( "ship" ) );
@@ -158,6 +160,7 @@ TEST_CASE( "A recycled slot starts as a fresh sprite: hidden, view space, no ble
     CHECK_FALSE( pSprite -> IsWorldSpace() );
     CHECK_FALSE( pSprite -> HasBlendMode() );
     CHECK( pSprite -> GetOpacity() == __OPAQUE );
+    CHECK( pSprite -> GetZOrder() == 0 );
 
     SunLight :: Base :: stColor  tint = pSprite -> GetTint();
 
