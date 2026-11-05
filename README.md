@@ -40,7 +40,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
 * **Games in Lua only:** one `scarab` executable runs any game; which one is chosen at launch by a `project.json`, a `.lua` script or a single `.zip` bundle.
 * **Renderer and views:** create the window with your own settings (size, zoom, viewport, FPS, fullscreen), and show one world in several views at once - a minimap, a close-up.
 * **Tiled maps:** tile, image, group and object layers, tile animation, tile/text/shape/point objects with rotation and opacity, layer opacity and tint at runtime, external tilesets.
-* **Sprites:** pooled, animated sprites on map layers or with no map at all, in screen or map (world) space, with opacity, tint and blend modes.
+* **Sprites:** pooled, animated sprites on map layers or with no map at all, in screen or map (world) space, with opacity, tint, blend modes and a z-order within their layer.
 * **Collisions:** sprite-to-sprite and sprite-to-tile rules with a Lua handler.
 * **Input:** keyboard and gamepads, hot-plug, player slots, stick dead zones applied for you, rebindable actions and rumble.
 * **Saves:** a per-user save directory the game names, and Lua tables saved there as JSON - written safely, read back as they were - for options, high scores and key bindings.
@@ -171,6 +171,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 * [shapes](samples/shapes/docs/README.md) — shape and point objects, rotation, opacity, layer tint and tile animation, on five maps.
 * [blend](samples/blend/docs/README.md) — blend modes on sprites and on drawn panels.
 * [mapless](samples/mapless/docs/README.md) — sprites with no map loaded at all, for a title screen or a menu.
+* [zorder](samples/zorder/docs/README.md) — which of a layer's sprites draws on top, by z-order.
 
 ### Text and input
 
