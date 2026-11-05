@@ -1146,7 +1146,7 @@ that.
 |---|------|------------------|-------|
 | C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
-| C3 | Sprite z-order | 37 | Expose `sprite_set_z_order`? |
+| C3 | Sprite z-order | 37 | **PLANNED 2026-11-04** (owner's pick after C1c): `sprite_set_z_order`/`sprite_get_z_order`; see below |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
@@ -1599,6 +1599,65 @@ uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed on
     `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
     S4 follows for the others.
 - Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
+**C3 - sprite z-order (PLANNED 2026-11-04 with the owner; the pin `b778188` has what it needs: sunlight L3,
+BREAKAGES 37).** sunlight's `Sprite::SetZOrder( int )`/`GetZOrder()` (default 0) decide which of a LAYER's
+sprites draws on top: `SpriteRegistry::UpdateLayer` stable-sorts a layer's sprites by ascending z-order every
+frame, so a higher z-order draws later, on top. Z-order only orders sprites on the same layer; layers still
+draw in their own order, so a sprite on a higher layer is always above, whatever its z-order. It applies in
+every view.
+- **Functions** (in `LuaSpriteApi`, renderer-free like the other sprite handle functions; every failure is
+  `nil, "message"`):
+  - `sprite_set_z_order( handle, z ) -> true`, where `z` is any integer that fits a C `int`, negative included
+    (`ReadIntArg`).
+  - `sprite_get_z_order( handle ) -> z`.
+  - A bad handle or a fractional or out-of-range `z` is refused.
+- **A recycled sprite slot starts at z-order 0:** `SpritePool::Release` resets it, next to world space, blend
+  mode, opacity and tint. Without that, a pooled bullet could inherit an earlier sprite's "always on top".
+- **Kept across layers:** z-order is stored on the sprite, so moving a sprite to another layer
+  (`sprite_remove_from_layer` + `sprite_add_to_layer`) keeps it.
+- **Found while planning (2026-11-04), CONFIRMED in sunlight's own test harness:** sprites with EQUAL z-order
+  do not keep the order they were added in once any z-order has changed. sunlight's BREAKAGES entry 37 and its
+  test names say they do. The cause: `SpriteRegistry::UpdateLayer` sorts the layer's own list IN PLACE every
+  frame (`std::stable_sort`), so each frame starts from the previous frame's order.
+  - **The probe:** a temporary doctest in a scratch copy of sunlight at the pin, never committed. Add A then B,
+    both 0, and A draws first. Set A to 1, and B draws before A. Set A back to 0, and B still draws before A:
+    the added order is not restored.
+  - **Why sunlight never saw it:** its tests check ties only on the first frame from fresh sprites; its
+    `samples/zorder` only ever RAISES a card, each time to a new, always-higher value, so no two cards share a
+    value after a change.
+  - **For a game:** a sprite raised for a moment (a hit flash in front) and then lowered ends up in a
+    different place among its equals than before.
+  - **Reported to sunlight (sunlight-c1), owner-approved, 2026-11-04.** A likely fix, sunlight's to choose: break ties by
+    the order a sprite was added (a sequence number stored at `Add`), or sort a copy instead of the list.
+- **Tests:**
+  - **Headless, a new `scripts/sprite_zorder_smoke.py`** (ci.yml on all 4 platforms, `asan_run.py`):
+    - the default is 0;
+    - round trips of negative, zero, positive, `INT_MAX` and `INT_MIN`;
+    - every refusal (bad handle, a released handle, a fraction, past the `int` range, not a number);
+    - a recycled slot starts at 0;
+    - the value survives a layer move and a reconfigure (`sprite_configure_texture`);
+    - two sprites keep their own values;
+    - no renderer is created.
+
+    Shown failing on the v0.1.25 binary (the functions don't exist) and on a mutation (no reset in
+    `Release`).
+  - **Rows in `error_reporting_smoke`.**
+  - **Draw order itself can't be seen headless** (the null renderer draws nothing Lua can read). It is pinned
+    by sunlight's own tests (`test_spritezorder.cpp`, `test_spriteregistry.cpp`) and by the window check below.
+- **Sample:** a new `samples/zorder`, needing no map (layer ids as grouping keys, like `samples/mapless`):
+  - three overlapping cards (distinct colours and labels) on one layer;
+  - keys 1/2/3 bring a card to the front (the highest z-order + 1), and Shift+1/2/3 send it to the back;
+  - R resets every card to 0, which shows the tie order;
+  - a fourth sprite on a HIGHER layer that stays above all three whatever their z-order (layers order before
+    z-order);
+  - the HUD lists each card's z-order and the draw order.
+- **Window check with the owner:** front/back on each card, the higher-layer sprite always on top, and the
+  equal-z-order question above (R after a few raises).
+- **Docs:** `@luaname` docs on both functions (with the layer rule and the recycled-slot reset), the README
+  sample list, and `CLAUDE.md`'s sprite line.
+- **Caravellius:** nothing breaks (new functions, default unchanged); an informational breakage entry. Its
+  sprites keep their draw order (all 0, as today).
 
 **C8 (TODO, added by the owner 2026-11-03, split out of C1b) - a sandbox for game scripts.** The owner's
 goal: a game script cannot reach anything outside its own files and its save directory - forbidden, not
