@@ -57,6 +57,7 @@ SOURCE_TO_DOC = {
     "luarendererapi.cpp":   "renderer.md",
     "luascriptingapi.cpp":  "scripting.md",
     "luasaveapi.cpp":       "save.md",
+    "luashapeapi.cpp":      "shape.md",
     "luasoundapi.cpp":      "sound.md",
     "luaspriteapi.cpp":     "sprite.md",
     "luatextapi.cpp":       "text.md",

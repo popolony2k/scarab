@@ -243,6 +243,18 @@ namespace Scarab  {
         }
 
         /**
+         * @brief The renderer's shape surface (sunlight's IShapeSurface, which TileMapRenderer implements
+         * next to ITileMap and IDrawSurface) - creating the default renderer first if none exists yet.
+         *
+         * @param szTrigger The primitive that needs it, kept for a later renderer_create's error;
+         * @return The shape surface, never null;
+         */
+        SunLight :: DrawSurface :: IShapeSurface* RendererProvider :: GetShapeSurface( const char* szTrigger )  {
+
+            return GetOrCreateDefault( szTrigger );
+        }
+
+        /**
          * @brief The draw surface if a renderer exists - never creates one, for readers that must
          * not open a window as a side effect (the headless os.time/os.clock overrides).
          *

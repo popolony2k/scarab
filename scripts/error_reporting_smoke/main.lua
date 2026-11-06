@@ -279,6 +279,13 @@ expect_error( "timer twice", "timer 3 is already set", set_timer, __TIMER_ID, 10
 expect_true( "reset_timer", reset_timer, __TIMER_ID )
 expect_error( "reset_timer twice", "timer 3 is not set", reset_timer, __TIMER_ID )
 
+-- shapes (refused before any window)
+expect_error( "shape width", "argument 'width' must be 0 or more", shape_draw_rectangle, 0, 0, -1, 1, 0, 0, 0, 255 )
+expect_error( "shape option", "unknown option 'thikness'", shape_draw_ellipse, 0, 0, 1, 1, 0, 0, 0, 255, { thikness = 1 } )
+expect_error( "shape points", "an even count of numbers", shape_draw_polyline, 0, 0, { 1, 2, 3 }, 0, 0, 0, 255 )
+expect_error( "shape polygon", "needs at least 3 points", shape_draw_polygon, 0, 0, { 1, 2, 3, 4 }, 0, 0, 0, 255 )
+expect_error( "shape point size", "argument 'size' must be greater than 0", shape_draw_point, 0, 0, 0, 0, 0, 255, 0 )
+
 -- saves (this project has no save directory: a good name and value then fail for that)
 expect_error( "save_write name", "argument 'name' can't have a '..' part", save_write, "../x.json", {} )
 expect_error( "save_write value", "argument 'value' must be a table", save_write, "x.json", 5 )

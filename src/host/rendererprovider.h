@@ -93,6 +93,7 @@ namespace Scarab  {
             SunLight :: TileMap :: ITileMap* GetTileMap( const char* szTrigger ) override;
             SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char* szTrigger ) override;
             SunLight :: Input :: IControllerManager* GetControllerManager( const char* szTrigger ) override;
+            SunLight :: DrawSurface :: IShapeSurface* GetShapeSurface( const char* szTrigger ) override;
             SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void ) override;
             bool CreateRenderer( const SunLight :: Renderer :: RendererConfig& config,
                                 const Scarab :: Engine :: stRendererCreateExtras& extras, std :: string* pError ) override;

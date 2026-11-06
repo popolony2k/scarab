@@ -45,6 +45,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
 * **Input:** keyboard and gamepads, hot-plug, player slots, stick dead zones applied for you, rebindable actions and rumble.
 * **Saves:** a per-user save directory the game names, and Lua tables saved there as JSON - written safely, read back as they were - for options, high scores and key bindings.
 * **Sound and sequencing:** sound effects and songs, timers, and a queued command processor for stage intros and waves.
+* **Shapes:** rectangle, ellipse, polyline and polygon outlines and points, drawn from Lua in map units with a thickness and a rotation - debug hitboxes, paths, range rings.
 * **Text:** TrueType/OpenType and BMFont fonts by handle, measured and drawn as a HUD.
 * **Errors you can read:** every Lua function that can fail returns `nil, "message"`, never a crash or a silent no-op.
 * **Headless runs:** a mode with no window and a virtual clock, for CI and automated playthroughs.
@@ -169,6 +170,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 
 * [objects](samples/objects/docs/README.md) — Tiled tile objects and text objects.
 * [shapes](samples/shapes/docs/README.md) — shape and point objects, rotation, opacity, layer tint and tile animation, on five maps.
+* [surface](samples/surface/docs/README.md) — shapes drawn from Lua in map units, with or without a map.
 * [blend](samples/blend/docs/README.md) — blend modes on sprites and on drawn panels.
 * [mapless](samples/mapless/docs/README.md) — sprites with no map loaded at all, for a title screen or a menu.
 * [zorder](samples/zorder/docs/README.md) — which of a layer's sprites draws on top, by z-order.

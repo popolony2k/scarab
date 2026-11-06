@@ -38,6 +38,7 @@
 #include "lua/luapackapi.h"
 #include "lua/luablendapi.h"
 #include "lua/luasaveapi.h"
+#include "lua/luashapeapi.h"
 #include "tilemap/itilemap.h"
 #include "sound/soundmanager.h"
 #include "engine/spritepool.h"
@@ -380,6 +381,7 @@ namespace Scarab  {
         Engine :: Lua :: LuaSoundApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaSpriteApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCollisionApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaShapeApi :: Register( m_pLuaState );   // checks its arguments, then reaches the renderer
         Engine :: Lua :: LuaSaveApi :: Register( m_pLuaState );   // needs SAVE_DIRECTORY_GLOBAL, set above
 
         m_pCollisionListener = std :: make_unique<Engine :: Lua :: LuaCollisionListener>( m_pLuaState );
