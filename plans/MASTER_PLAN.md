@@ -38,7 +38,8 @@ and in P9 to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (I12, path schemes and w
 Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePath`), and in P10 to
 `b778188443842351c079b88cc8c59e87b87e2e1c` (I14, Scarab's request: atomic, durable `WriteFile` and
 `IFileSystem::RemoveFile`), and in P11 to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (I15, Scarab's report: equal
-z-orders keep the order sprites were added in).
+z-orders keep the order sprites were added in), and in P12 to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (I16, Scarab's
+report: a shape drawn outside the map pass uses the view's own camera).
 
 ## Phase P: pin & plumbing
 
@@ -56,6 +57,7 @@ z-orders keep the order sprites were added in).
 | P9 | Re-pin to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (sunlight's I12: path schemes, writing and `ActionMap` through the FileSystem, BREAKAGES 61; and I13: `FilePath`, BREAKAGES 62) - the pin C1 waits for; Scarab's entry-path helpers replaced by sunlight's | DONE |
 | P10 | Re-pin to `b778188443842351c079b88cc8c59e87b87e2e1c` (sunlight's I14: atomic, durable `WriteFile` and the new `IFileSystem::RemoveFile`, BREAKAGES 63) - the pin C1c builds on | DONE |
 | P11 | Re-pin to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (sunlight's I15: equal z-orders keep the order sprites were added in, on every frame - Scarab's report from C3 planning, BREAKAGES 64) - done in C3's branch (owner's choice) | DONE |
+| P12 | Re-pin to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (sunlight's I16: a shape drawn outside the map pass uses the view's own camera, map or no map - Scarab's report from C2 planning, BREAKAGES 65) - done in C2's branch (owner's choice) | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -1147,7 +1149,7 @@ that.
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
 | C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
-| C2 | `IShapeSurface` (shapes without a loaded map) | 38 | **PLANNED 2026-11-05** (owner's pick after C3): `shape_draw_*` for Lua; see below |
+| C2 | `IShapeSurface` (shapes without a loaded map) | 38, 65 | **DONE (2026-11-06)**, with P12 (sunlight I16): `shape_draw_*` for Lua; see below |
 | C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
@@ -1640,8 +1642,11 @@ the viewport. Uses: debug hitboxes, paths, range rings, selection boxes, simple 
     - with 0 it lands at 1010, 910;
     - opacity is not carried over (alpha 255).
   - **Why sunlight never saw it:** its tests and its `surface` sample use `IShapeSurface` only with no map.
-  - **Until the fix is pinned:** the docs say so, and the sample's map keeps a parallax-1 top layer. The Lua API
-    doesn't change either way, and a re-pin picks the fix up.
+  - **FIXED by sunlight as I16 (`ad84cca`, BREAKAGES 65), pinned in P12 inside C2's branch (owner's choice):**
+    outside layer drawing, `CurrentDrawContext` uses the active view's own camera, so the probe's three cases
+    all land at 310, 350. From `on_update` that is the default view's camera, with no opacity or tint carried
+    over. sunlight's owner also made it one rule, map or no map: with no map a shape follows the camera too
+    (before, it ignored it). Four sunlight tests fail with the old code. The Lua docs carry no caveat.
 - **Tests:**
   - **Doctests** for the pure parsing: the point list (flat pairs, odd count, too few, non-numbers, non-finite)
     and the options table (defaults, every refusal).
@@ -1670,6 +1675,49 @@ the viewport. Uses: debug hitboxes, paths, range rings, selection boxes, simple 
 - **Docs:** `@luaname` docs (with the map-units/space rule, the call-from-`on_update` rule and the parallax limit),
   the README feature list and sample list, and a `CLAUDE.md` line.
 - **Caravellius:** nothing breaks (all new); an informational breakage entry.
+
+**C2 done (2026-11-06).** Built as planned, on P12's pin `ad84cca`, which went into the same branch (owner's choice):
+- **Code:**
+  - `src/lua/luashapeapi.{h,cpp}` holds the five functions and the public parsers `ReadPoints`/`ReadOptions`.
+  - `IRendererProvider::GetShapeSurface` and `LuaEngineUtil::GetShapeSurface` reach the renderer (which
+    implements `IShapeSurface`), creating the default one only after the arguments are checked.
+  - The docs page is `shape.html`, with its `SOURCE_TO_DOC` entry and an index row. No parallax caveat, since
+    I16 is pinned.
+- **Tests:**
+  - **`tests/test_shapeargs.cpp`**, 3 doctests: the flat point list (pairs, odd count, too few points, a
+    non-number, NaN/infinity, nested pairs, extra keys, a hole) and the options table (defaults, both options,
+    every refusal), each leaving the stack as it was.
+  - **`scripts/shape_api_smoke.py`** (ci.yml on all 4 platforms; `asan_run.py`):
+    - 26 refusals across the five functions, with no renderer created by any of them;
+    - every function returning `true`, with no map and with a map loaded and the camera scrolled;
+    - thick, rotated and fractional shapes, `nil` and `{}` options, and 200 points in one frame.
+
+    Failed on the v0.1.25 binary (`attempt to call a nil value`) and, together with the doctest, on a mutation
+    that lowered the polygon minimum to 2 points.
+  - **5 rows in `error_reporting_smoke`.**
+- **`samples/surface`** (new), over `test.tmx` (scroll, zoom, `M` to unload and reload the map):
+  - every shape;
+  - a red hitbox outline around Sunny, made world-space so the sprite and the shapes share map units;
+  - a screen-space HUD and progress bar for contrast.
+
+  The sample sets its preferred zoom to the starting zoom (`view_set_preferred_zoom`, as `samples/camera` does,
+  D2), so `=`/`Home` come back to 3.81. The owner found it missing in the first window run, and confirmed both
+  resets in a second one.
+- **Window check with the owner:**
+  - at 3.81, 5.69 and 1.75 zoom, the shapes scaled with the map and thick lines stayed thick;
+  - the viewport clipped them;
+  - the hitbox stayed on Sunny;
+  - panned to camera (243, 0), the shapes kept their places on the map's art;
+  - with the map unloaded they stayed at the same screen positions, following the camera (I16's one rule);
+  - reloading put the map back under them;
+  - the HUD and the bar never moved.
+- **Caravellius:** breakage entry 25 (nothing breaks). Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - a clean reconfigure, with `--version` printing `feat/master_plan@ad84cca`;
+  - unit tests, also under ASan;
+  - 20 smoke tests, plus the headless smoke test;
+  - 45/45 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
 
 **C3 - sprite z-order (PLANNED 2026-11-04 with the owner; the pin `b778188` has what it needs: sunlight L3,
 BREAKAGES 37).** sunlight's `Sprite::SetZOrder( int )`/`GetZOrder()` (default 0) decide which of a LAYER's

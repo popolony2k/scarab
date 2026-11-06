@@ -27,6 +27,7 @@
 #include "renderer/rendererconfig.h"
 #include "tilemap/itilemap.h"
 #include "drawsurface/idrawsurface.h"
+#include "drawsurface/ishapesurface.h"
 #include "font/ifont.h"
 #include "input/icontrollermanager.h"
 
@@ -106,6 +107,14 @@ namespace Scarab  {
              * if none exists yet - see @link GetTileMap.
              */
             virtual SunLight :: Input :: IControllerManager* GetControllerManager( const char* szTrigger ) = 0;
+
+            /**
+             * @brief The renderer's shape surface (sunlight's IShapeSurface: outlines and points in map
+             * units, following the view's camera and zoom - plans/MASTER_PLAN.md item C2); on the concrete
+             * renderer only, not on ITileMap; creates the default renderer first if none exists yet - see
+             * @link GetTileMap.
+             */
+            virtual SunLight :: DrawSurface :: IShapeSurface* GetShapeSurface( const char* szTrigger ) = 0;
 
             /**
              * @brief The draw surface if a renderer already exists, else

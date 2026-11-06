@@ -479,6 +479,20 @@ jobs:
           python scripts/sprite_zorder_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "sprite z-order smoke test exited with code $LASTEXITCODE" }
 
+      # shape_draw_rectangle/_ellipse/_polyline/_polygon/_point: every kind of refusal (and no
+      # renderer created by one), then every function drawing with no map and with a map loaded -
+      # plans/MASTER_PLAN.md item C2.
+      - name: Shape API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/shape_api_smoke.py build/scarab
+
+      - name: Shape API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/shape_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "shape API smoke test exited with code $LASTEXITCODE" }
+
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
       # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md
