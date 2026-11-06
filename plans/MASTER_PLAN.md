@@ -1147,7 +1147,7 @@ that.
 | # | Item | BREAKAGES entry | Scope |
 |---|------|------------------|-------|
 | C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
-| C2 | `IShapeSurface` (shapes without a loaded map) | 38 | HUD/debug drawing - defer or take |
+| C2 | `IShapeSurface` (shapes without a loaded map) | 38 | **PLANNED 2026-11-05** (owner's pick after C3): `shape_draw_*` for Lua; see below |
 | C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
@@ -1601,6 +1601,75 @@ uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed on
     `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
     S4 follows for the others.
 - Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
+**C2 - shapes for Lua (PLANNED 2026-11-05 with the owner; the pin `51a3bbb` has what it needs: sunlight M1,
+BREAKAGES 38).** sunlight's `IShapeSurface` (on `TileMapRenderer`) draws rectangle, ellipse, polyline and
+polygon outlines and filled points, with a thickness and a rotation. It uses the same `ShapeRenderer` code that
+draws Tiled shape objects, with or without a map loaded. Unlike `draw_filled_rectangle`/`draw_text` (screen
+space, the HUD), its coordinates are **map units**: a shape follows the view's camera and zoom and is clipped to
+the viewport. Uses: debug hitboxes, paths, range rings, selection boxes, simple vector art.
+- **Functions** (a new module, `src/lua/luashapeapi.{h,cpp}`, its own reference page `shape.html`; every failure
+  is `nil, "message"`; the arguments are checked before the renderer is touched):
+  - `shape_draw_rectangle( x, y, width, height, r, g, b, a[, options] ) -> true`
+  - `shape_draw_ellipse( x, y, width, height, r, g, b, a[, options] ) -> true`
+  - `shape_draw_polyline( x, y, points, r, g, b, a[, options] ) -> true`: an open path, at least 2 points.
+  - `shape_draw_polygon( x, y, points, r, g, b, a[, options] ) -> true`: a closed path, at least 3 points.
+  - `shape_draw_point( x, y, r, g, b, a[, size] ) -> true`: a filled square, `size` in map units (default 1,
+    must be > 0).
+- **The owner's decisions (2026-11-05):**
+  - The colour is `r, g, b, a` (each 0..255), like `draw_filled_rectangle`, for consistency.
+  - `points` is a flat list `{ x1, y1, x2, y2, ... }`, as LÖVE uses, relative to `(x, y)`. An odd count, too few
+    points, or anything that is not a number is refused, naming the index.
+  - `options` is a strict table `{ thickness = 1, rotation = 0 }`, like `renderer_create`'s. An unknown key, a
+    wrong type, or a thickness <= 0 is refused.
+    - Thickness is in map units: 1 is a hairline, more is a stroked path.
+    - Rotation is in degrees, clockwise: about `(x, y)` for a rectangle, polyline and polygon, and about the
+      box's centre for an ellipse (sunlight's rules).
+  - Positions, sizes and thickness are numbers (fractions allowed, as sunlight takes doubles), but must be
+    finite.
+- **When to call them:** from `on_update`, once per frame, like the HUD. A shape is drawn over the map and the
+  sprites, once, in the default view.
+- **Found while planning (2026-11-05), CONFIRMED in sunlight's own test harness, REPORTED to sunlight
+  (sunlight-34, owner-approved):** with a map loaded, a shape drawn after the map pass takes the PARALLAX CAMERA OF
+  THE LAST LAYER sunlight drew. `CurrentDrawContext` reads `m_EffectiveLayerCameraPos`, which `DrawAllLayers` sets
+  per layer and nothing resets.
+  - **The probe:** a temporary doctest in a scratch copy of sunlight, never committed. A point at map (500, 500),
+    zoom 1, viewport origin (10, 10), camera (200, 160):
+    - with a parallax-1 top layer it lands at 310, 350 (correct);
+    - with 0.5 it lands at 660, 630;
+    - with 0 it lands at 1010, 910;
+    - opacity is not carried over (alpha 255).
+  - **Why sunlight never saw it:** its tests and its `surface` sample use `IShapeSurface` only with no map.
+  - **Until the fix is pinned:** the docs say so, and the sample's map keeps a parallax-1 top layer. The Lua API
+    doesn't change either way, and a re-pin picks the fix up.
+- **Tests:**
+  - **Doctests** for the pure parsing: the point list (flat pairs, odd count, too few, non-numbers, non-finite)
+    and the options table (defaults, every refusal).
+  - **A headless `scripts/shape_api_smoke.py`** (ci.yml on all 4 platforms, `asan_run.py`):
+    - every function returns `true` with valid arguments, with no map and with a map loaded;
+    - every refusal;
+    - a refusal never creates the renderer (`renderer_get_current() == nil`);
+    - a few frames of drawing many shapes run cleanly.
+
+    Shown failing on the v0.1.25 binary and on mutations of the parsers.
+  - **Rows in `error_reporting_smoke`.**
+  - **Drawing itself can't be seen headless** (the null renderer draws nothing a script can read). It is pinned by
+    sunlight's own shape tests and by the window check.
+- **Sample:** a new `samples/surface`, Scarab's counterpart of sunlight's `surface` sample, over a map you can
+  scroll and zoom:
+  - every shape: a thick rotating square, an ellipse ring, a rectangle, a travelling sine-wave polyline, and a row
+    of points growing in size;
+  - a hitbox outline drawn around a moving sprite;
+  - a key toggling the map off, to show the same shapes with no map;
+  - the HUD in screen space for contrast.
+- **Window check with the owner:**
+  - the shapes follow the camera and the zoom and are clipped to the viewport;
+  - thickness and rotation look right;
+  - the hitbox stays on the sprite while scrolling;
+  - with no map, the shapes are at their view positions.
+- **Docs:** `@luaname` docs (with the map-units/space rule, the call-from-`on_update` rule and the parallax limit),
+  the README feature list and sample list, and a `CLAUDE.md` line.
+- **Caravellius:** nothing breaks (all new); an informational breakage entry.
 
 **C3 - sprite z-order (PLANNED 2026-11-04 with the owner; the pin `b778188` has what it needs: sunlight L3,
 BREAKAGES 37).** sunlight's `Sprite::SetZOrder( int )`/`GetZOrder()` (default 0) decide which of a LAYER's
