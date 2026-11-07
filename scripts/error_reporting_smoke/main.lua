@@ -279,6 +279,11 @@ expect_error( "timer twice", "timer 3 is already set", set_timer, __TIMER_ID, 10
 expect_true( "reset_timer", reset_timer, __TIMER_ID )
 expect_error( "reset_timer twice", "timer 3 is not set", reset_timer, __TIMER_ID )
 
+-- layer parallax (refused before any window)
+expect_error( "parallax fx", "argument 'fx' must be a number", tilemap_set_layer_parallax, 1, "x", 1 )
+expect_error( "parallax infinite", "argument 'fy' must be a finite number", tilemap_set_layer_parallax_by_name, "sky", 1, math.huge )
+expect_error( "parallax layer", "argument 'layerId' must be an integer", tilemap_get_layer_parallax, 1.5 )
+
 -- shapes (refused before any window)
 expect_error( "shape width", "argument 'width' must be 0 or more", shape_draw_rectangle, 0, 0, -1, 1, 0, 0, 0, 255 )
 expect_error( "shape option", "unknown option 'thikness'", shape_draw_ellipse, 0, 0, 1, 1, 0, 0, 0, 255, { thikness = 1 } )

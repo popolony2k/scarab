@@ -493,6 +493,20 @@ jobs:
           python scripts/shape_api_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "shape API smoke test exited with code $LASTEXITCODE" }
 
+      # tilemap_get/set_layer_parallax (and _by_name), tilemap_get_parallax_origin: the factors and
+      # origin parallax.tmx declares, exact round trips, other layer fields untouched, every refusal,
+      # the declared values back after a reload - plans/MASTER_PLAN.md item C4.
+      - name: Layer parallax smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/layer_parallax_smoke.py build/scarab
+
+      - name: Layer parallax smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/layer_parallax_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "layer parallax smoke test exited with code $LASTEXITCODE" }
+
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
       # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md

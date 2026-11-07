@@ -1151,7 +1151,7 @@ that.
 | C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38, 65 | **DONE (2026-11-06)**, with P12 (sunlight I16): `shape_draw_*` for Lua; see below |
 | C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
-| C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **PLANNED 2026-11-06** (owner's pick after C2): `tilemap_get/set_layer_parallax` for Lua; see below |
+| C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **DONE (2026-11-07)**: `tilemap_get/set_layer_parallax` for Lua, `samples/parallax`; see below |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
@@ -1670,6 +1670,58 @@ read them and write them back untouched, so Lua has never seen them. The map's p
   collisions, shapes, screen-space sprites), the README feature and sample lists, and a `CLAUDE.md` line.
 - **Caravellius:** nothing breaks (all new; `corsair.tmx` and `cover.tmx` have no parallax, checked); an
   informational breakage entry.
+
+**C4 done (2026-11-07).** Built as planned, with nothing asked of sunlight:
+- **Code:** `LuaTilemapApi::GetLayerParallax`/`SetLayerParallax` (and `_ByName`) plus `GetParallaxOrigin`, through
+  `ITileMap::GetLayer`/`SetLayer`'s `stLayer::fParallaxX/Y`, read back with `ShortestDecimal`. A factor must be
+  finite once stored as a float, so 1e39 is refused. The setters check their arguments before the renderer.
+- **The checks, from sunlight's code and the window:**
+  - collisions are parallax-aware: a screen-space collider is tested against the layer's parallax camera;
+  - world-space sprites take their own layer's factor, not a parent group's (sunlight documents this);
+  - tile picking (`tilemap_to_tile_matrix`, `tilemap_get_tile`) stays in plain map coordinates;
+  - shapes (C2) use the view's own camera;
+  - screen-space sprites are not moved.
+
+  All of this is written into the Lua docs.
+- **Tests:**
+  - **`scripts/layer_parallax_smoke.py`** (ci.yml on all 4 platforms; `asan_run.py`), on `parallax.tmx`:
+    - 10 argument refusals before any window, with no renderer created;
+    - no map loaded;
+    - the declared factors and origin, by id and by name;
+    - exact round trips (0, 0.3/-0.7, 1.75, -1, 1e30);
+    - other fields and tint untouched, and `tilemap_set_layer` keeping the factors;
+    - refusals with a map loaded;
+    - the declared values back after a reload;
+    - frames drawn at 0 and at negative/large factors.
+
+    Failed on the v0.1.25 binary (`attempt to call a nil value`) and on a mutation that removed the finite check.
+  - **3 rows in `error_reporting_smoke`.**
+- **Map:** `resources/tilemap/parallax/` (sunlight's map, unmodified, at `ad84cca`, with a README).
+- **`samples/parallax`** (new):
+  - walking moves the camera, the map wraps on its four markers, and zoom-out is limited by `view_set_zoom_limits`;
+  - 1-4 pick a layer, `[` `]` change its factor by 0.25, 0 sets it to 0, N negates it, and R restores the map's
+    values;
+  - the HUD is three header lines after the owner found the first line cut off.
+- **Kepi (the owner's request during the window check):** Scarab's mascot got a name, **Kepi** (a softer form of
+  Khepri, the Egyptian scarab who rolls the sun; the owner's choice).
+  - It also got a sprite, `resources/sprites/kepi_idle.png`: a 128x32 strip of four 32x32 frames, the same shape
+    as Sunny's, in pixel art with the logo's palette. The idle loop bobs the sun, pulses its rays and shifts the
+    legs. It is temporary art.
+  - `samples/parallax` walks Kepi in Sunny's place.
+  - The logo was renamed `docs/images/kepi.svg`/`kepi.png`, as sunlight's README shows `sunny.png`.
+- **Window check with the owner:**
+  - each layer moved at its own speed, and buildings at 0 stayed at the same screen spots at three camera positions;
+  - clouds at -0.5 moved against the ground;
+  - `]` and R worked;
+  - the zoom-out limit held;
+  - the wrap worked;
+  - Kepi: "perfect, approved".
+- **Caravellius:** breakage entry 26 (nothing breaks). Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - unit tests, also under ASan;
+  - 21 smoke tests, plus the headless smoke test;
+  - 47/47 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
 
 **C2 - shapes for Lua (PLANNED 2026-11-05 with the owner; the pin `51a3bbb` has what it needs: sunlight M1,
 BREAKAGES 38).** sunlight's `IShapeSurface` (on `TileMapRenderer`) draws rectangle, ellipse, polyline and
@@ -2409,7 +2461,7 @@ shortened but still prominent (a GitHub warning box). Measured: 2733 words -> 15
   `#content-encryption-lock` anchors (4 files) repointed.
 - **Logo:** the owner asked for a temporary Scarab logo the size of sunlight's Sunny (200x200), to be replaced
   by a team-made one: `docs/images/scarab_logo.svg` (source, marked temporary) and its render
-  `scarab_logo.png` - a glossy scarab holding up a small sun, over italic blue lettering in sunlight's style.
+  `scarab_logo.png` (renamed `kepi.svg`/`kepi.png` in C4, after the mascot's name, Kepi, the owner's choice) - a glossy scarab holding up a small sun, over italic blue lettering in sunlight's style.
   Kept out of `resources/`, which is the shared game-asset area.
 - **Deleted:** `docs/README-DEBUG.txt` (only the debug-flags line, which the README and `CLAUDE.md` have).
 
