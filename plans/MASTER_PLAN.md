@@ -549,6 +549,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V11 | The collision lookup no longer reads a wrong tile past the map's far edge (entry 4, A6); tile collisions and lookups in map space, re-pin to `4189199` (I7, entry 56); Scarab's tile handler fixed | DONE |
 | V12 | A tile object resized away from its own tile's size takes its object layer's tint (entry 45); layer tint at runtime + group tint/opacity, re-pin to `4274ecb` (I8, entry 57) | DONE |
 | V13 | Tiled tile animations run by time, each frame once per cycle (entries 44, 60; moved here from O4); re-pin to `56a73cd4de2868fe30e124e79340ea19d71feae7` (I11) and `tilemap_get_tile_frame` / `tilemap_get_object_tile_frame` | DONE |
+| V14 | Map alignments that touch the right or bottom edge ignore the zoom (`TOP_RIGHT`, `BOTTOM_*`, `CENTER_HEIGHT_RIGHT`), and the bottom ones snap to whole unzoomed viewport heights - found in C5 planning; to plan WITH sunlight, Caravellius checked first (it relies on `CENTER_WIDTH_BOTTOM`) | TODO (owner, 2026-11-07) |
 
 **V1 (DONE, 2026-10-22 - V1d confirmed by the owner in a real window).** Not just a rename: the scroll clamp genuinely changed (the last step can now be
 partial, reaching the map's true edge where it used to stop a step short;
@@ -1115,6 +1116,24 @@ with the new sunlight features, even if it breaks Caravellius".
   `G` working, shapes and text untinted, the group's opacity on its rectangle and text.
 - `plans/CARAVELLIUS_BREAKAGES.md` entry 16.
 
+**V14 (TODO, added by the owner 2026-11-07, found while planning C5).** sunlight's `Camera::Align` (the camera
+`tilemap_load_map` sets for a `MAP_ALIGNMENT_*`) computes its right and bottom alignments without the zoom, while
+the `CENTER` variants include it.
+- **Affected:** `TOP_RIGHT`, `BOTTOM_RIGHT`, `BOTTOM_LEFT`, `CENTER_HEIGHT_RIGHT` (x), and the y of
+  `CENTER_WIDTH_BOTTOM`. The bottom ones also snap to whole UNZOOMED viewport heights
+  (`|floor(H / vpBottom) * vpBottom - H|`).
+- **Measured** at zoom 3.8125: `BOTTOM_RIGHT` on the orthogonal 20x20x32 `test.tmx` puts the camera at
+  (-600, 10), not the map's bottom-right corner (315, 404); `CENTER` gives the right (157, 202). It is the same
+  on the isometric, staggered and hexagonal maps.
+- **Related, by design (sunlight documents it):** `TOP_LEFT` sets no axis, so it keeps the previous camera rather
+  than going to 0, 0.
+- **Why it needs care:** Caravellius loads every stage with `MAP_ALIGNMENT_CENTER_WIDTH_BOTTOM` and relies on its
+  current vertical behaviour, so a fix could move its starting view.
+- **To plan with sunlight** (sunlight-db has an FYI note, with a request not to change anything from it):
+  - what each alignment should mean at any zoom;
+  - whether to fix the existing ones or add zoom-aware ones;
+  - Caravellius' acceptance and fingerprint before and after.
+
 ## Phase O: confirmed not applicable, recorded anyway
 
 Every reason below was re-checked against the code on 2026-10-23, after the pin had moved
@@ -1152,7 +1171,7 @@ that.
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38, 65 | **DONE (2026-11-06)**, with P12 (sunlight I16): `shape_draw_*` for Lua; see below |
 | C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **DONE (2026-11-07)**: `tilemap_get/set_layer_parallax` for Lua, `samples/parallax`; see below |
-| C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
+| C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **PLANNED 2026-11-07** (owner's pick after C4): isometric, staggered and hexagonal maps checked and shown; see below |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
 | C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **Added by the owner (2026-11-03, split out of C1b).** To be planned against EVERY function it affects - see below |
@@ -1603,6 +1622,63 @@ uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed on
     `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
     S4 follows for the others.
 - Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
+**C5 - non-orthogonal maps (PLANNED 2026-11-07 with the owner; sunlight E1-E2 load them, BREAKAGES 21-23).**
+sunlight draws isometric, staggered and hexagonal Tiled maps. Its own samples ship one map of each:
+`isometric.tmx` (8x6, 64x32), `staggered.tmx` (8x6, 64x48, axis y, odd) and `hexagonal.tmx` (8x6, 60x50, side
+20). Each has a `ground`, an `obstacles` (tiles with a collision shape) and a `sprites` layer. No new Lua API is
+planned: `tilemap_load_map` takes any map. C5 checks every existing function on them, shows them, and documents
+what works.
+- **Checked while planning (2026-11-07), headless on sunlight's maps:**
+  - **Works on all three:**
+    - loading, and `tilemap_get_map_info`;
+    - `tilemap_get_tile` (each cell's rectangle in map pixels, projection-aware);
+    - the camera's scroll limits;
+    - `view_fit_to_map`;
+    - world-space sprites;
+    - tile collisions: a sprite on an obstacle collides, and off the map it doesn't.
+  - **Collisions use each tile shape's BOUNDING BOX.** The obstacles' shape is a rectangle over the tile image,
+    so a sprite centred on one isometric diamond also touches the boxes of the diamonds next to it (4 hits per
+    frame among 4 adjacent obstacles, against 1 on staggered and hexagonal). Documented, not a bug.
+  - **FOUND, CONFIRMED, REPORTED to sunlight (sunlight-db, owner-approved):** tile picking is wrong on isometric
+    and staggered maps.
+    - The centre of a cell's own shape picks itself on 0 of 48 isometric cells (each gives its right
+      neighbour) and 0 of 48 staggered cells (each gives the cell below), against 48 of 48 on hexagonal.
+    - `MapToTileMatrix` inverts the cell's bounding-box corner, not the diamond. sunlight's tests check only
+      a point 1 px inside each box's corner.
+    - Until a fixed pin, the docs state the limit. The plan's picking tests are written for the right answer
+      and enabled when the fix is pinned.
+  - **Also found, not C5's (its own item V14):** right and bottom map alignments ignore the zoom.
+- **Resources:** the three maps, their tilesets and images, copied into `resources/tilemap/isometric/`,
+  `staggered/` and `hexagonal/`, each with a README giving their origin (sunlight's own samples at the pin).
+- **Tests:** a new headless `scripts/projection_smoke.py` (ci.yml on all 4 platforms, `asan_run.py`), for each
+  of the three maps:
+  - the map info and `tilemap_get_tile` rectangles for chosen cells (exact values);
+  - obstacle cells found on the `obstacles` layer;
+  - points outside the map refused by `tilemap_to_tile_matrix`;
+  - the camera's scroll limits;
+  - `view_fit_to_map`'s zoom;
+  - a world-space sprite colliding with an obstacle and not off the map;
+  - every cell's centre picking itself: hexagonal now, isometric and staggered once sunlight's fix is pinned
+    (until then the test asserts today's known-wrong answer, so the change can't go unnoticed);
+  - shown failing on a mutation.
+- **Sample:** a new `samples/projections`, switching between the three maps (keys 1/2/3):
+  - Kepi walks cell to cell (the cell's position from `tilemap_get_tile`), blocked by obstacle cells;
+  - the camera follows, with zoom;
+  - a shape outline (C2) marks the cell Kepi is on;
+  - the HUD shows the map's projection, the cell and its rectangle.
+- **Window check with the owner** on all three maps:
+  - the diamonds and hexes are drawn right;
+  - Kepi lands on cells;
+  - obstacles block;
+  - the outline matches the cell;
+  - scrolling and zoom work.
+- **Docs:**
+  - a "Map projections" part in the tile map reference page: what works, the bounding-box collisions, the
+    picking limit until the fix;
+  - the README feature list (non-orthogonal maps) and sample list;
+  - a `CLAUDE.md` line.
+- **Caravellius:** nothing breaks (its maps are orthogonal); an informational breakage entry.
 
 **C4 - layer parallax for Lua (PLANNED 2026-11-06 with the owner; the pin `ad84cca` has what it needs, nothing
 asked of sunlight).** sunlight draws each layer's Tiled `parallaxx`/`parallaxy` factor as Tiled does: a layer is
