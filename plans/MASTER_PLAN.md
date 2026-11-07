@@ -1144,13 +1144,13 @@ twice (P4, P5). Twelve held. Two did not: O4 (moved to V13) and O8 (reworded bel
 
 | # | Change | BREAKAGES entry | Why |
 |---|--------|------------------|-----|
-| O1 | Non-orthogonal maps refused | 1 | All Scarab maps are orthogonal |
+| O1 | Non-orthogonal maps refused | 1 | All Scarab maps were orthogonal when this was recorded; since C5 (2026-11-07) `resources/tilemap/` holds isometric, staggered and hexagonal maps too, all of which load |
 | O2 | `SetPixel` removed | 15 | Zero calls anywhere in Scarab (confirmed by grep across `src/`, `resources/`, `docs/`, `samples/`, `README.md`) |
 | O3 | Polyline/polygon/rectangle/ellipse width-by-zoom | 16 | No polyline/shape object in any Scarab map |
 | O4 | ~~Tile animation first-frame-double-duration fix~~ - **moved to V13** (2026-10-23) | 44 | ~~No animated tiles in any Scarab map~~ - wrong: `test.tmx`'s tilesets have animated tiles, see V13 |
 | O5 | Layer parallax placement correction | 34, 49 | No parallax in any Scarab map, sample or source (confirmed by grep) |
 | O6 | Listener dispatch reentrancy now well-defined | 42 | Scarab registers its listeners once at startup, never from inside a dispatch |
-| O7 | Isometric/staggered/hexagonal maps now load | 21-23 | All Scarab maps are orthogonal; new capability, not a requirement |
+| O7 | Isometric/staggered/hexagonal maps now load | 21-23 | All Scarab maps were orthogonal when this was recorded; new capability, not a requirement - surfaced to game authors by C5 (2026-11-07) |
 | O8 | TTF/OTF accented glyphs | 43 | Applies, harmless: `samples/text` really loads a TTF (`resources/fonts/pressstart2p-regular.ttf`; the first reason, "Scarab's docs name a TTF only as an example", was wrong, found 2026-10-23). ASCII text is drawn exactly as before, and accented letters now draw instead of `?`. Nothing to do |
 | O9 | `IEngine` gains `LoadFont`/`BeginClip`/`EndClip` | 6 | Scarab doesn't implement `IEngine` |
 | O10 | `SetWindowBackgroundColor` takes `stColor` | 10 | Nothing in Scarab calls it |
@@ -2550,6 +2550,29 @@ accurate once the features it describes are actually settled, not before.
 | T1 | A full documentation pass once every other phase's changes have landed | TODO |
 | T2 | Simplify `README.md` | DONE |
 | T3 | Every source file and script carries the project's copyright/license notice | DONE |
+| T4 | Every function in the samples has a comment of its own saying what it does (the samples are the reference for people learning Scarab), and a style rule that keeps it so | TODO (owner, 2026-11-07) |
+
+**T4 (added by the owner, 2026-11-07).** The samples are educational: people read them to learn Scarab and copy
+their patterns, so every function in them should say what it does, the way every C++ function has a Doxygen
+comment of its own (CLAUDE.md's code-style rules). Measured on 2026-11-07 (a function counts as commented when a
+`--` comment or a `--[[ ]]` block ends on the line above it, blank lines skipped): **41 of the 80 functions in
+`samples/` had no comment**, in 24 of the 26 files (`samples/hello-world` and `samples/shared/hud.lua` were the
+only complete ones). `samples/projections`' 5 were commented in C5 itself (the owner's choice), so **36 remain**:
+- `on_update` itself in 23 samples - the function every sample is built around, and the first one a reader
+  looks for;
+- helpers: `actions` (`load_bindings`), `app` (`control_line`), `blend` (`set_glow_mode`, `draw_panels`),
+  `collision` (`add_sunny`), `input` (`set_deadzone`, `move`, `keyboard_step`), `shapes` (`show_map`,
+  `runtime_tint_keys`), `sprite` (`clamp`), `timers` (`on_quarter_tick`), `views` (`clamp`).
+- **To do:**
+  - a comment for each of them, saying what the function does and anything a reader could not see from its
+    name (what it returns, when the engine calls it, which keys or buttons it reads);
+  - `on_update`'s comment says what the sample does each frame;
+  - while there, check each sample's header block and `docs/README.md` still match the code;
+  - a new Lua rule in `docs/CODE_STYLE.md` (every function in `samples/`, `tools/` and `scripts/` has a comment
+    of its own, the Lua counterpart of the C++ rule), checked by `scripts/style_audit.py` in CI and proven by
+    a mutation (a comment removed fails the check). Whether `scripts/` and `tools/` come under the rule is to
+    be decided when T4 is planned: measure them first.
+- Can be done before T1, since the samples are already settled; T1 stays last.
 
 **T1.** Scope: `README.md`; the generated Lua API reference's own source comments
 (`@luadoc`/`@luaexample` tags in `src/lua/`); `samples/*/docs/README.md`; `CLAUDE.md`'s own

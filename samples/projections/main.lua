@@ -117,12 +117,14 @@ local function map_labels()
     return table.concat( labels, "   " )
 end
 
+-- Outline a cell's footprint (its diamond, hexagon or square) in map units, in the given { r, g, b } colour.
 local function draw_cell( row, col, color )
     local x, y, w, h = footprint( row, col )
 
     assert( shape_draw_polygon( x, y, outline_points( w, h ), color[1], color[2], color[3], __OPAQUE, __OUTLINE ) )
 end
 
+-- Whether Kepi may not step onto a cell: outside the map, or a cell with a tile on the obstacles layer.
 local function is_blocked( row, col )
     if row < 0 or col < 0 or row >= rows or col >= cols then return true end
 
@@ -145,6 +147,8 @@ local function place_kepi()
                                  math.max( 0, math.floor( feetY - viewHeight / zoom / 2 ) ) ) )
 end
 
+-- Load one of __MAPS: read its size, set the preferred zoom on the first load, put Kepi on the new map's sprites
+-- layer at the map's start cell, centre the cursor on that cell and centre the camera on Kepi.
 local function load_map( entry )
     assert( tilemap_load_map( "resources/tilemap/" .. entry.name .. "/" .. entry.name .. ".tmx", MAP_ALIGNMENT_TOP_LEFT ) )
 
@@ -205,6 +209,7 @@ local function cycle_map( step )
     end
 end
 
+-- Move Kepi by dRow rows and dCol columns, unless the cell there is blocked (then say so on the HUD).
 local function try_move( dRow, dCol )
     local row, col = kepiRow + dRow, kepiCol + dCol
 
@@ -217,6 +222,9 @@ local function try_move( dRow, dCol )
     message = ""
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): read the keyboard and the first
+-- controller (map switch, Kepi's move, the cursor, zoom), keep the camera on Kepi, draw both cell outlines and
+-- the cursor, and the HUD.
 function on_update( dt )
 
     local pads = input_get_connected_gamepads()
