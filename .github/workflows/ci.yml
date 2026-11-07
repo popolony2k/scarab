@@ -507,6 +507,20 @@ jobs:
           python scripts/layer_parallax_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "layer parallax smoke test exited with code $LASTEXITCODE" }
 
+      # Isometric, staggered and hexagonal maps: map info, cell rectangles, tile picking at
+      # every cell's centre and bottom tip (sunlight I17), scroll limits and view_fit_to_map,
+      # obstacle collisions by bounding box - plans/MASTER_PLAN.md item C5.
+      - name: Map projection smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/projection_smoke.py build/scarab
+
+      - name: Map projection smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/projection_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "map projection smoke test exited with code $LASTEXITCODE" }
+
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
       # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md

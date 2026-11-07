@@ -714,6 +714,8 @@ namespace Scarab  {
 
             /**
              * @luaname{tilemap_get_tile(row, col, layerId) -> gid, x, y, width, height | nil, message}
+             * @luagroup{tiles}
+             * @luaheading{Tiles and map projections}
              * @luadoc
              * Look up a single tile by its row/column position on a given
              * layer. `gid` is the tile's Tiled global id (`0`
@@ -723,8 +725,22 @@ namespace Scarab  {
              * offset), whatever the camera or the zoom - the same rectangle a
              * tile collision reports. Returns `nil, "message"` if the layer or
              * tile position doesn't exist.
+             *
+             * **Map projections:** every function here, and the camera, views and collisions, works on
+             * Tiled's orthogonal, isometric, staggered and hexagonal maps alike (`resources/tilemap/isometric/`,
+             * `staggered/`, `hexagonal/` and `orthogonal/`, and `samples/projections`). On a non-orthogonal map the
+             * rectangle is the tile image's, placed where the projection puts the cell: the cell's own
+             * diamond or hexagon is the bottom `tileHeight` pixels of it (`tilemap_get_map_info`), and the
+             * cells overlap their neighbours' rectangles. A tile collision tests the tile shapes' bounding
+             * boxes, so a sprite near the corner of a diamond can touch an obstacle it does not cover, and
+             * on an isometric map one sprite can touch several adjacent obstacles at once.
+             * `tilemap_to_tile_matrix` picks by the cell's real outline (sunlight I17; before, on isometric
+             * and staggered maps, a cell's centre picked a neighbour), and a point inside the map's pixel
+             * rectangle but outside every cell - an isometric map's empty corners - picks no cell.
              * @luaexample
              * local gid, x, y, w, h = tilemap_get_tile(0, 0, 1)
+             * local _, _, _, tileHeight = tilemap_get_map_info()
+             * local row, col = tilemap_to_tile_matrix(x + w // 2, y + h - tileHeight // 2)   -- the cell's centre: row 0, col 0
              */
             int LuaTilemapApi :: GetTile( lua_State* pLuaState )  {
 
@@ -759,6 +775,7 @@ namespace Scarab  {
 
             /**
              * @luaname{tilemap_to_tile_matrix(mapX, mapY) -> row, col | nil, message}
+             * @luagroup{tiles}
              * @luadoc
              * Convert a **map position** (map pixels, before the camera, the
              * zoom or the viewport's origin) to a tile row/column — the inverse
@@ -767,7 +784,8 @@ namespace Scarab  {
              * position is a map position as it is; a view-relative sprite's
              * map position is its own plus the camera position
              * (`camera_get_position`). Returns `nil, "message"` if the position
-             * is outside the map or no map is loaded. Up to Scarab v0.1.25 the
+             * is outside the map (or outside every cell, on a non-orthogonal
+             * map) or no map is loaded. Up to Scarab v0.1.25 the
              * viewport's origin and the camera were added to the position
              * first, so the answer was shifted (by 10 px with the default
              * viewport) and the last strip of the map counted as outside.

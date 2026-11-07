@@ -39,7 +39,9 @@ Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePat
 `b778188443842351c079b88cc8c59e87b87e2e1c` (I14, Scarab's request: atomic, durable `WriteFile` and
 `IFileSystem::RemoveFile`), and in P11 to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (I15, Scarab's report: equal
 z-orders keep the order sprites were added in), and in P12 to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (I16, Scarab's
-report: a shape drawn outside the map pass uses the view's own camera).
+report: a shape drawn outside the map pass uses the view's own camera), and in P13 to
+`44f64a1648fa55fabc9708e6736d4368ee2bf844` (I17, Scarab's report: tile picking on non-orthogonal maps; and I18:
+the far-edge map alignments take the zoom into account).
 
 ## Phase P: pin & plumbing
 
@@ -58,6 +60,7 @@ report: a shape drawn outside the map pass uses the view's own camera).
 | P10 | Re-pin to `b778188443842351c079b88cc8c59e87b87e2e1c` (sunlight's I14: atomic, durable `WriteFile` and the new `IFileSystem::RemoveFile`, BREAKAGES 63) - the pin C1c builds on | DONE |
 | P11 | Re-pin to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (sunlight's I15: equal z-orders keep the order sprites were added in, on every frame - Scarab's report from C3 planning, BREAKAGES 64) - done in C3's branch (owner's choice) | DONE |
 | P12 | Re-pin to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (sunlight's I16: a shape drawn outside the map pass uses the view's own camera, map or no map - Scarab's report from C2 planning, BREAKAGES 65) - done in C2's branch (owner's choice) | DONE |
+| P13 | Re-pin to `44f64a1648fa55fabc9708e6736d4368ee2bf844` (sunlight's I17: tile picking by the cell's real diamond or hexagon on isometric, staggered and hexagonal maps - Scarab's report from C5 planning, BREAKAGES 66; and I18: the far-edge map alignments take the zoom into account, BREAKAGES 67, which closes V14) - done in C5's branch (owner's choice) | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -549,7 +552,7 @@ argument checks; (6) one PR, reviewed "by average".
 | V11 | The collision lookup no longer reads a wrong tile past the map's far edge (entry 4, A6); tile collisions and lookups in map space, re-pin to `4189199` (I7, entry 56); Scarab's tile handler fixed | DONE |
 | V12 | A tile object resized away from its own tile's size takes its object layer's tint (entry 45); layer tint at runtime + group tint/opacity, re-pin to `4274ecb` (I8, entry 57) | DONE |
 | V13 | Tiled tile animations run by time, each frame once per cycle (entries 44, 60; moved here from O4); re-pin to `56a73cd4de2868fe30e124e79340ea19d71feae7` (I11) and `tilemap_get_tile_frame` / `tilemap_get_object_tile_frame` | DONE |
-| V14 | Map alignments that touch the right or bottom edge ignore the zoom (`TOP_RIGHT`, `BOTTOM_*`, `CENTER_HEIGHT_RIGHT`), and the bottom ones snap to whole unzoomed viewport heights - found in C5 planning; to plan WITH sunlight, Caravellius checked first (it relies on `CENTER_WIDTH_BOTTOM`) | TODO (owner, 2026-11-07) |
+| V14 | Map alignments that touch the right or bottom edge ignore the zoom (`TOP_RIGHT`, `BOTTOM_*`, `CENTER_HEIGHT_RIGHT`), and the bottom ones snap to whole unzoomed viewport heights - found in C5 planning; fixed by sunlight as I18 (BREAKAGES 67), pinned in P13 inside C5's branch (owner's choice); Caravellius' corsair stage starts at y 10003 instead of 10020 (recorded as accepted in sunlight's I18 commit; CARAVELLIUS_BREAKAGES 28) | DONE (2026-11-07) |
 
 **V1 (DONE, 2026-10-22 - V1d confirmed by the owner in a real window).** Not just a rename: the scroll clamp genuinely changed (the last step can now be
 partial, reaching the map's true edge where it used to stop a step short;
@@ -1141,13 +1144,13 @@ twice (P4, P5). Twelve held. Two did not: O4 (moved to V13) and O8 (reworded bel
 
 | # | Change | BREAKAGES entry | Why |
 |---|--------|------------------|-----|
-| O1 | Non-orthogonal maps refused | 1 | All Scarab maps are orthogonal |
+| O1 | Non-orthogonal maps refused | 1 | All Scarab maps were orthogonal when this was recorded; since C5 (2026-11-07) `resources/tilemap/` holds isometric, staggered and hexagonal maps too, all of which load |
 | O2 | `SetPixel` removed | 15 | Zero calls anywhere in Scarab (confirmed by grep across `src/`, `resources/`, `docs/`, `samples/`, `README.md`) |
 | O3 | Polyline/polygon/rectangle/ellipse width-by-zoom | 16 | No polyline/shape object in any Scarab map |
 | O4 | ~~Tile animation first-frame-double-duration fix~~ - **moved to V13** (2026-10-23) | 44 | ~~No animated tiles in any Scarab map~~ - wrong: `test.tmx`'s tilesets have animated tiles, see V13 |
 | O5 | Layer parallax placement correction | 34, 49 | No parallax in any Scarab map, sample or source (confirmed by grep) |
 | O6 | Listener dispatch reentrancy now well-defined | 42 | Scarab registers its listeners once at startup, never from inside a dispatch |
-| O7 | Isometric/staggered/hexagonal maps now load | 21-23 | All Scarab maps are orthogonal; new capability, not a requirement |
+| O7 | Isometric/staggered/hexagonal maps now load | 21-23 | All Scarab maps were orthogonal when this was recorded; new capability, not a requirement - surfaced to game authors by C5 (2026-11-07) |
 | O8 | TTF/OTF accented glyphs | 43 | Applies, harmless: `samples/text` really loads a TTF (`resources/fonts/pressstart2p-regular.ttf`; the first reason, "Scarab's docs name a TTF only as an example", was wrong, found 2026-10-23). ASCII text is drawn exactly as before, and accented letters now draw instead of `?`. Nothing to do |
 | O9 | `IEngine` gains `LoadFont`/`BeginClip`/`EndClip` | 6 | Scarab doesn't implement `IEngine` |
 | O10 | `SetWindowBackgroundColor` takes `stColor` | 10 | Nothing in Scarab calls it |
@@ -1171,7 +1174,7 @@ that.
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38, 65 | **DONE (2026-11-06)**, with P12 (sunlight I16): `shape_draw_*` for Lua; see below |
 | C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **DONE (2026-11-07)**: `tilemap_get/set_layer_parallax` for Lua, `samples/parallax`; see below |
-| C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **PLANNED 2026-11-07** (owner's pick after C4): isometric, staggered and hexagonal maps checked and shown; see below |
+| C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **DONE 2026-11-07**: isometric, staggered and hexagonal maps checked and shown, with P13 (sunlight I17, I18); see below |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
 | C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **Added by the owner (2026-11-03, split out of C1b).** To be planned against EVERY function it affects - see below |
@@ -1679,6 +1682,46 @@ what works.
   - the README feature list (non-orthogonal maps) and sample list;
   - a `CLAUDE.md` line.
 - **Caravellius:** nothing breaks (its maps are orthogonal); an informational breakage entry.
+
+**C5 done (2026-11-07).** Built as planned, with P13 (sunlight `44f64a1`: I17 picking, I18 alignments) in the same
+branch (owner's choice):
+- **Pin:** `SCARAB_SUNLIGHT_REF` `44f64a1648fa55fabc9708e6736d4368ee2bf844`, display `feat/master_plan@44f64a1`; a clean
+  build, `--version` and the unit tests (963 assertions) pass on it.
+- **Resources:** `resources/tilemap/isometric/`, `staggered/` and `hexagonal/` - sunlight's sample maps, unmodified,
+  each with a README; and `resources/tilemap/orthogonal/`, Scarab's own 8x6 orthogonal map with the same layout
+  (the shared grass and brick tilesets; added at the owner's request, so the sample shows all four Tiled styles);
+  `resources/tilemap/README.md` lists them.
+- **Test:** `scripts/projection_smoke.py` + `scripts/projection_smoke/` (ci.yml, all 4 platforms; `asan_run.py`
+  picks it up). For each of the four maps: the map info; exact cell rectangles; the four obstacles; points outside the map
+  refused; every cell's centre AND bottom tip picking itself (48/48 each, I17); an isometric empty corner picking
+  no cell; the scroll limits; `view_fit_to_map`'s zoom; a world-space sprite colliding with the obstacles its
+  bounding box overlaps (the expected count worked out from the shape rectangles: 3 per frame on isometric, 1 on
+  staggered and hexagonal) and with nothing off the map. A failed run never quits (exit 3).
+  - **Shown failing:** on the v0.1.25 binary (wrong rectangles and picking), and with row and column swapped in
+    `LuaTilemapApi::ToTileMatrix` (6 of 48 cells pick themselves); passes again once restored.
+  - **Found writing it:** collision rules survive loading another map, so adding the same tile rule once per map
+    made every hit call the handler once per copy - the test adds its rule once; documented in `CLAUDE.md`.
+- **Sample:** `samples/projections` - keys 1-4 load the maps, listed on the HUD with the loaded one in brackets
+  (the owner's request); Kepi (world space, on the `sprites` layer) walks
+  cell to cell with the arrows, blocked by obstacles and the map's edge, its cell outlined in white with
+  `shape_draw_polygon` (a diamond, or a pointy-top hexagon); WASD move a cursor whose picked cell is outlined in
+  yellow, or "no cell"; the camera follows Kepi with zoom; `view_set_preferred_zoom` set at the first load. A
+  controller works too (the owner's request): the D-pad moves Kepi, the left stick the cursor, L1/R1 change the
+  map, L2/R2 zoom and Y resets it - one step per press, from each button's state on the frame before.
+  - **Window check with the owner (2026-11-07):** all four maps (outlines, blocking, the picking cursor, zoom,
+    the labels) and the controller checked: "working". The owner noticed the obstacle blocks drawn half a cell below their cells: sunlight places a tile
+    image taller than the grid from the cell's top-left (`TileDrawPosition`), where Tiled anchors it at the
+    bottom. The owner decided to leave the sample as it is - not reported.
+- **Docs:** a "Tiles and map projections" group on the tile map reference (`tilemap_get_tile`,
+  `tilemap_to_tile_matrix`); README features and sample list; `samples/README.md` (and the parallax entry's
+  "Sunny" corrected to Kepi); `samples/projections/docs/README.md`; a `CLAUDE.md` gotcha.
+- **V14 (I18) checked:** no Scarab script or sample uses a right or bottom alignment; a probe of all nine
+  alignments on two maps at zoom 1, 2 and 3.8125 gives identical `CENTER` rows on both binaries, and only the
+  far-edge rows move. Caravellius: see BREAKAGES 28.
+- **Checks:** every smoke test (22) and the unit tests pass; the AddressSanitizer run passes 49 of 49 (every
+  smoke test and sample); the style check has no findings; Caravellius' acceptance PASS and fingerprint
+  `hash=33897632` on both pins.
+- **Caravellius:** BREAKAGES 27 (informational) and 28 (the corsair stage starts 17 px higher).
 
 **C4 - layer parallax for Lua (PLANNED 2026-11-06 with the owner; the pin `ad84cca` has what it needs, nothing
 asked of sunlight).** sunlight draws each layer's Tiled `parallaxx`/`parallaxy` factor as Tiled does: a layer is
@@ -2507,6 +2550,29 @@ accurate once the features it describes are actually settled, not before.
 | T1 | A full documentation pass once every other phase's changes have landed | TODO |
 | T2 | Simplify `README.md` | DONE |
 | T3 | Every source file and script carries the project's copyright/license notice | DONE |
+| T4 | Every function in the samples has a comment of its own saying what it does (the samples are the reference for people learning Scarab), and a style rule that keeps it so | TODO (owner, 2026-11-07) |
+
+**T4 (added by the owner, 2026-11-07).** The samples are educational: people read them to learn Scarab and copy
+their patterns, so every function in them should say what it does, the way every C++ function has a Doxygen
+comment of its own (CLAUDE.md's code-style rules). Measured on 2026-11-07 (a function counts as commented when a
+`--` comment or a `--[[ ]]` block ends on the line above it, blank lines skipped): **41 of the 80 functions in
+`samples/` had no comment**, in 24 of the 26 files (`samples/hello-world` and `samples/shared/hud.lua` were the
+only complete ones). `samples/projections`' 5 were commented in C5 itself (the owner's choice), so **36 remain**:
+- `on_update` itself in 23 samples - the function every sample is built around, and the first one a reader
+  looks for;
+- helpers: `actions` (`load_bindings`), `app` (`control_line`), `blend` (`set_glow_mode`, `draw_panels`),
+  `collision` (`add_sunny`), `input` (`set_deadzone`, `move`, `keyboard_step`), `shapes` (`show_map`,
+  `runtime_tint_keys`), `sprite` (`clamp`), `timers` (`on_quarter_tick`), `views` (`clamp`).
+- **To do:**
+  - a comment for each of them, saying what the function does and anything a reader could not see from its
+    name (what it returns, when the engine calls it, which keys or buttons it reads);
+  - `on_update`'s comment says what the sample does each frame;
+  - while there, check each sample's header block and `docs/README.md` still match the code;
+  - a new Lua rule in `docs/CODE_STYLE.md` (every function in `samples/`, `tools/` and `scripts/` has a comment
+    of its own, the Lua counterpart of the C++ rule), checked by `scripts/style_audit.py` in CI and proven by
+    a mutation (a comment removed fails the check). Whether `scripts/` and `tools/` come under the rule is to
+    be decided when T4 is planned: measure them first.
+- Can be done before T1, since the samples are already settled; T1 stays last.
 
 **T1.** Scope: `README.md`; the generated Lua API reference's own source comments
 (`@luadoc`/`@luaexample` tags in `src/lua/`); `samples/*/docs/README.md`; `CLAUDE.md`'s own
