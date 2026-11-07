@@ -14,6 +14,6 @@ Used in [samples/blend](../../samples/blend/docs/README.md): the glow as a sprit
 
 Used in [samples/zorder](../../samples/zorder/docs/README.md): four overlapping cards on one layer, ordered by `sprite_set_z_order`.
 
-`kepi_idle.png` (a 128×32 strip of four 32×32 frames, like `sunny_idle_down.png`) — **Kepi**, Scarab's own mascot: a scarab carrying a small sun, the same character as the logo ([docs/images/kepi.png](../../docs/images/kepi.png)), in pixel art with the logo's palette. Its idle loop: the sun bobs a pixel, its rays pulse and the legs shift. Made for Scarab, temporary art like the logo, under Scarab's own zlib licence.
+`kepi_idle.png` (a 128×32 strip of four 32×32 frames, like `sunny_idle_down.png`) — **Kepi**, Scarab's own mascot: a scarab carrying a small sun, the same character as the logo ([docs/images/kepi.png](../../docs/images/kepi.png)), in pixel art with the logo's palette. Its idle loop: the sun bobs a pixel, its rays pulse and the legs shift. Made for Scarab, temporary art like the logo, under Scarab's own zlib licence. It is drawn by [scripts/kepi_sprite.py](../../scripts/kepi_sprite.py) (standard library only; `python3 scripts/kepi_sprite.py` rewrites it byte for byte, and a second argument writes an 8x preview), so change the script and re-run it rather than editing the PNG.
 
 Used in [samples/parallax](../../samples/parallax/docs/README.md), where Kepi walks the map in Sunny's place.

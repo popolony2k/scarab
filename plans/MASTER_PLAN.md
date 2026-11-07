@@ -1706,7 +1706,8 @@ read them and write them back untouched, so Lua has never seen them. The map's p
   Khepri, the Egyptian scarab who rolls the sun; the owner's choice).
   - It also got a sprite, `resources/sprites/kepi_idle.png`: a 128x32 strip of four 32x32 frames, the same shape
     as Sunny's, in pixel art with the logo's palette. The idle loop bobs the sun, pulses its rays and shifts the
-    legs. It is temporary art.
+    legs. It is temporary art, drawn by `scripts/kepi_sprite.py` (standard library only, deterministic: it rewrites
+    the committed PNG byte for byte; the owner asked to keep it).
   - `samples/parallax` walks Kepi in Sunny's place.
   - The logo was renamed `docs/images/kepi.svg`/`kepi.png`, as sunlight's README shows `sunny.png`.
 - **Window check with the owner:**
