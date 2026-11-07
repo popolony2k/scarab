@@ -24,9 +24,9 @@
         scarab --headless --fast --max-frames 400 scripts/projection_smoke/project.json
 
     Pins plans/MASTER_PLAN.md item C5: Scarab's existing functions on sunlight's isometric, staggered and
-    hexagonal maps (resources/tilemap/<name>/). For each map: the map info; exact cell rectangles
-    (tilemap_get_tile, projection-aware); the four obstacle cells; points outside the map refused by
-    tilemap_to_tile_matrix; the camera's scroll limits; view_fit_to_map's zoom; and a world-space sprite
+    hexagonal maps, and on Scarab's orthogonal map of the same layout (resources/tilemap/<name>/). For each
+    map: the map info; exact cell rectangles (tilemap_get_tile, projection-aware); the four obstacle cells;
+    points outside the map refused by tilemap_to_tile_matrix; the camera's scroll limits; view_fit_to_map's zoom; and a world-space sprite
     colliding with an obstacle (tile collisions use each shape's bounding box, so on the isometric map one
     sprite can touch several adjacent obstacles: the expected count is worked out here from the obstacles'
     collision rectangles) and not off the map.
@@ -67,6 +67,9 @@ local __MAPS <const> = {
     { name = "hexagonal", info = { 8, 6, 60, 50 },
       cells = { { 0, 0, 0, 0, 60, 50 }, { 1, 0, 30, 35, 60, 50 }, { 5, 7, 450, 175, 60, 50 } },
       obstacle = { 2, 3, 180, 70, 60, 50 }, shape = { 60, 50 }, scroll = { 184, 0 }, fit = 2.5625 },
+    { name = "orthogonal", info = { 8, 6, 32, 32 },       -- smaller than the view: no scrolling at all
+      cells = { { 0, 0, 0, 0, 32, 32 }, { 1, 1, 32, 32, 32, 32 }, { 5, 7, 224, 160, 32, 32 } },
+      obstacle = { 2, 3, 96, 64, 32, 32 }, shape = { 32, 32 }, scroll = { 0, 0 }, fit = 4.6875 },
 }
 
 local failures = {}

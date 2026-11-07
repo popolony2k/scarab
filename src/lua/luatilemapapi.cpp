@@ -728,7 +728,7 @@ namespace Scarab  {
              *
              * **Map projections:** every function here, and the camera, views and collisions, works on
              * Tiled's orthogonal, isometric, staggered and hexagonal maps alike (`resources/tilemap/isometric/`,
-             * `staggered/` and `hexagonal/`, and `samples/projections`). On a non-orthogonal map the
+             * `staggered/`, `hexagonal/` and `orthogonal/`, and `samples/projections`). On a non-orthogonal map the
              * rectangle is the tile image's, placed where the projection puts the cell: the cell's own
              * diamond or hexagon is the bottom `tileHeight` pixels of it (`tilemap_get_map_info`), and the
              * cells overlap their neighbours' rectangles. A tile collision tests the tile shapes' bounding

@@ -19,14 +19,20 @@
 ]]
 
 --[[
- projections - isometric, staggered and hexagonal maps
- (docs/lua-api/tilemap.html, "Map projections"), on sunlight's own maps
- (resources/tilemap/isometric/, staggered/, hexagonal/).
+ projections - the four Tiled map styles: isometric, staggered, hexagonal
+ and orthogonal (docs/lua-api/tilemap.html, "Tiles and map projections"),
+ on sunlight's own maps (resources/tilemap/isometric/, staggered/,
+ hexagonal/) and Scarab's orthogonal map of the same layout
+ (resources/tilemap/orthogonal/).
 
- 1-3 pick a map. Kepi, Scarab's mascot, stands on a cell; the arrow keys move
+ 1-4 pick a map. Kepi, Scarab's mascot, stands on a cell; the arrow keys move
  Kepi one row or column, and the obstacles block the way. The camera follows
  Kepi. Kepi's cell is outlined in white (its rectangle from tilemap_get_tile,
- the cell's diamond or hexagon drawn with shape_draw_polygon).
+ the cell's diamond, hexagon or square drawn with shape_draw_polygon).
+
+ A controller works too, the first one connected: the D-pad moves Kepi,
+ the left stick the cursor, L1/R1 pick the previous/next map, L2/R2 zoom
+ and Y resets the zoom.
 
  WASD move a cursor freely, in map pixels: tilemap_to_tile_matrix picks the
  cell under it, outlined in yellow, or says "no cell" where there is none (an
@@ -45,15 +51,18 @@ local __OBSTACLES     <const> = 2
 local __SPRITES       <const> = 3
 local __CURSOR_STEP   <const> = 2       -- map pixels the cursor moves per frame while a key is held
 local __CURSOR_SIZE   <const> = 3       -- the cursor point's size, in map pixels
+local __STICK_STEP    <const> = 3       -- map pixels the cursor moves per frame with the stick pushed all the way
+local __ROUND         <const> = 0.5     -- added before math.floor, to round to the nearest whole pixel
 local __OUTLINE       <const> = { thickness = 1.5 }
 local __VIEW          <const> = 0       -- the default view
 local __OPAQUE        <const> = 255
 local __WHITE         <const> = { 255, 255, 255 }
 local __YELLOW        <const> = { 255, 220, 60 }
-local __MAPS          <const> = {       -- the maps 1-3 pick, and a free cell to start on
-    { key = KEY_ONE,   name = "isometric", start = { 0, 0 } },
-    { key = KEY_TWO,   name = "staggered", start = { 0, 0 } },
-    { key = KEY_THREE, name = "hexagonal", start = { 0, 0 } },
+local __MAPS          <const> = {       -- the maps 1-4 pick, their cell's outline, and a free cell to start on
+    { key = KEY_ONE,   name = "isometric",  outline = "diamond", start = { 0, 0 } },
+    { key = KEY_TWO,   name = "staggered",  outline = "diamond", start = { 0, 0 } },
+    { key = KEY_THREE, name = "hexagonal",  outline = "hexagon", start = { 0, 0 } },
+    { key = KEY_FOUR,  name = "orthogonal", outline = "square",  start = { 0, 0 } },
 }
 
 assert( app_set_name( "Scarab - projections sample" ) )
@@ -82,15 +91,30 @@ local function footprint( row, col )
     return x, y + h - tileHeight, w, tileHeight
 end
 
--- The outline of a cell's footprint, relative to its top-left: a diamond, or a pointy-top hexagon.
+-- The outline of a cell's footprint, relative to its top-left: a diamond, a pointy-top hexagon or a square.
 local function outline_points( w, h )
-    if map.name == "hexagonal" then
+    if map.outline == "hexagon" then
         local edge = ( h - hexSide ) / 2
 
         return { w / 2, 0, w, edge, w, h - edge, w / 2, h, 0, h - edge, 0, edge }
+    elseif map.outline == "square" then
+        return { 0, 0, w, 0, w, h, 0, h }
     end
 
     return { w / 2, 0, w, h / 2, w / 2, h, 0, h / 2 }
+end
+
+-- The map keys, each with its map's name; the loaded one in brackets.
+local function map_labels()
+    local labels = {}
+
+    for index, entry in ipairs( __MAPS ) do
+        local label = index .. " " .. entry.name
+
+        labels[#labels + 1] = entry == map and "[" .. label .. "]" or label
+    end
+
+    return table.concat( labels, "   " )
 end
 
 local function draw_cell( row, col, color )
@@ -157,6 +181,30 @@ end
 
 load_map( __MAPS[1] )
 
+-- The controller's buttons held on the previous frame, to act once per press (the gamepad functions only say
+-- whether a button is down).
+local held = {}
+
+-- Whether a button of the first connected pad went down this frame.
+local function pressed( pad, button )
+    local down = pad ~= nil and input_is_gamepad_button_down( pad, button ) == true
+    local was  = held[button]
+
+    held[button] = down
+
+    return down and not was
+end
+
+-- Load the map `step` places after the loaded one in __MAPS, wrapping around.
+local function cycle_map( step )
+    for index, entry in ipairs( __MAPS ) do
+        if entry == map then
+            load_map( __MAPS[( index - 1 + step ) % #__MAPS + 1] )
+            return
+        end
+    end
+end
+
 local function try_move( dRow, dCol )
     local row, col = kepiRow + dRow, kepiCol + dCol
 
@@ -171,28 +219,42 @@ end
 
 function on_update( dt )
 
+    local pads = input_get_connected_gamepads()
+    local pad  = pads[1] and pads[1].id      -- the first connected controller, if any
+
     for _, entry in ipairs( __MAPS ) do
         if input_is_key_released( entry.key ) then load_map( entry ) end
     end
 
-    -- Kepi: one cell per key press
-    if input_is_key_released( KEY_UP ) then try_move( -1, 0 ) end
-    if input_is_key_released( KEY_DOWN ) then try_move( 1, 0 ) end
-    if input_is_key_released( KEY_LEFT ) then try_move( 0, -1 ) end
-    if input_is_key_released( KEY_RIGHT ) then try_move( 0, 1 ) end
+    if pressed( pad, GAMEPAD_BUTTON_LEFT_TRIGGER_1 ) then cycle_map( -1 ) end
+    if pressed( pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_1 ) then cycle_map( 1 ) end
 
-    -- the cursor: free, in map pixels
+    -- Kepi: one cell per key or D-pad press
+    if input_is_key_released( KEY_UP ) or pressed( pad, GAMEPAD_BUTTON_LEFT_FACE_UP ) then try_move( -1, 0 ) end
+    if input_is_key_released( KEY_DOWN ) or pressed( pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN ) then try_move( 1, 0 ) end
+    if input_is_key_released( KEY_LEFT ) or pressed( pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT ) then try_move( 0, -1 ) end
+    if input_is_key_released( KEY_RIGHT ) or pressed( pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT ) then try_move( 0, 1 ) end
+
+    -- the cursor: free, in whole map pixels (the stick's dead zone is applied for us)
     if input_is_key_down( KEY_W ) then cursorY = cursorY - __CURSOR_STEP end
     if input_is_key_down( KEY_S ) then cursorY = cursorY + __CURSOR_STEP end
     if input_is_key_down( KEY_A ) then cursorX = cursorX - __CURSOR_STEP end
     if input_is_key_down( KEY_D ) then cursorX = cursorX + __CURSOR_STEP end
 
+    if pad then
+        cursorX = cursorX + math.floor( input_get_gamepad_axis( pad, GAMEPAD_AXIS_LEFT_X ) * __STICK_STEP + __ROUND )
+        cursorY = cursorY + math.floor( input_get_gamepad_axis( pad, GAMEPAD_AXIS_LEFT_Y ) * __STICK_STEP + __ROUND )
+    end
+
     -- zoom, as in samples/camera
     local shift = input_is_key_down( KEY_LEFT_SHIFT ) or input_is_key_down( KEY_RIGHT_SHIFT )
+    local zoomIn  = pad ~= nil and input_is_gamepad_button_down( pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_2 ) == true
+    local zoomOut = pad ~= nil and input_is_gamepad_button_down( pad, GAMEPAD_BUTTON_LEFT_TRIGGER_2 ) == true
 
-    if input_is_key_down( KEY_PAGE_UP ) or input_is_key_down( KEY_KP_ADD ) or ( shift and input_is_key_down( KEY_EQUAL ) ) then zoom_in() end
-    if input_is_key_down( KEY_PAGE_DOWN ) or input_is_key_down( KEY_MINUS ) or input_is_key_down( KEY_KP_SUBTRACT ) then zoom_out() end
-    if ( not shift and input_is_key_released( KEY_EQUAL ) ) or input_is_key_released( KEY_KP_EQUAL ) or input_is_key_released( KEY_HOME ) then
+    if zoomIn or input_is_key_down( KEY_PAGE_UP ) or input_is_key_down( KEY_KP_ADD ) or ( shift and input_is_key_down( KEY_EQUAL ) ) then zoom_in() end
+    if zoomOut or input_is_key_down( KEY_PAGE_DOWN ) or input_is_key_down( KEY_MINUS ) or input_is_key_down( KEY_KP_SUBTRACT ) then zoom_out() end
+    if ( not shift and input_is_key_released( KEY_EQUAL ) ) or input_is_key_released( KEY_KP_EQUAL ) or input_is_key_released( KEY_HOME )
+       or pressed( pad, GAMEPAD_BUTTON_RIGHT_FACE_UP ) then
         zoom_reset()
     end
 
@@ -212,11 +274,12 @@ function on_update( dt )
     local _, x, y, w, h = tilemap_get_tile( kepiRow, kepiCol, __GROUND )
 
     Hud.line( "projections sample - " .. map.name .. " map", 1, Hud.TITLE )
-    Hud.line( "1-3 pick a map   arrows move Kepi   WASD move the cursor", 2, Hud.TITLE )
-    Hud.line( "PageUp/PageDown zoom   = reset zoom", 3, Hud.TITLE )
-    Hud.line( string.format( "map %dx%d cells of %dx%d   zoom %.2f", cols, rows, tileWidth, tileHeight, viewport_get_zoom_factor() ), 4, Hud.INFO )
-    Hud.line( string.format( "Kepi: row %d, col %d   tile rectangle %d, %d, %dx%d", kepiRow, kepiCol, x, y, w, h ), 5, Hud.INFO )
+    Hud.line( map_labels(), 2, Hud.TITLE )
+    Hud.line( "arrows/D-pad move Kepi   WASD/left stick move the cursor", 3, Hud.TITLE )
+    Hud.line( "PageUp/PageDown or L2/R2 zoom   = or Y reset zoom   L1/R1 previous/next map", 4, Hud.TITLE )
+    Hud.line( string.format( "map %dx%d cells of %dx%d   zoom %.2f", cols, rows, tileWidth, tileHeight, viewport_get_zoom_factor() ), 5, Hud.INFO )
+    Hud.line( string.format( "Kepi: row %d, col %d   tile rectangle %d, %d, %dx%d", kepiRow, kepiCol, x, y, w, h ), 6, Hud.INFO )
     Hud.line( pickRow and string.format( "cursor %d, %d -> row %d, col %d", cursorX, cursorY, pickRow, pickCol )
-                      or string.format( "cursor %d, %d -> no cell", cursorX, cursorY ), 6, Hud.INFO )
-    Hud.line( message, 7, Hud.ALERT )
+                      or string.format( "cursor %d, %d -> no cell", cursorX, cursorY ), 7, Hud.INFO )
+    Hud.line( message, 8, Hud.ALERT )
 end

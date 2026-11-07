@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="8" height="6" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="1">
+ <tileset firstgid="1" source="../tileset_cloud_soil.tsx"/>
+ <tileset firstgid="10" source="../tileset_wall.tsx"/>
+ <layer id="1" name="ground" width="8" height="6">
+  <data encoding="csv">
+1,2,2,2,2,2,2,3,
+4,5,5,5,5,5,5,6,
+4,5,5,5,5,5,5,6,
+4,5,5,5,5,5,5,6,
+4,5,5,5,5,5,5,6,
+7,8,8,8,8,8,8,9
+</data>
+ </layer>
+ <layer id="2" name="obstacles" width="8" height="6">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,10,10,0,0,0,
+0,0,0,0,10,10,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="3" name="sprites" width="8" height="6">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0
+</data>
+ </layer>
+</map>

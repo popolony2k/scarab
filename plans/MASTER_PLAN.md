@@ -1688,9 +1688,11 @@ branch (owner's choice):
 - **Pin:** `SCARAB_SUNLIGHT_REF` `44f64a1648fa55fabc9708e6736d4368ee2bf844`, display `feat/master_plan@44f64a1`; a clean
   build, `--version` and the unit tests (963 assertions) pass on it.
 - **Resources:** `resources/tilemap/isometric/`, `staggered/` and `hexagonal/` - sunlight's sample maps, unmodified,
-  each with a README; `resources/tilemap/README.md` lists them.
+  each with a README; and `resources/tilemap/orthogonal/`, Scarab's own 8x6 orthogonal map with the same layout
+  (the shared grass and brick tilesets; added at the owner's request, so the sample shows all four Tiled styles);
+  `resources/tilemap/README.md` lists them.
 - **Test:** `scripts/projection_smoke.py` + `scripts/projection_smoke/` (ci.yml, all 4 platforms; `asan_run.py`
-  picks it up). For each map: the map info; exact cell rectangles; the four obstacles; points outside the map
+  picks it up). For each of the four maps: the map info; exact cell rectangles; the four obstacles; points outside the map
   refused; every cell's centre AND bottom tip picking itself (48/48 each, I17); an isometric empty corner picking
   no cell; the scroll limits; `view_fit_to_map`'s zoom; a world-space sprite colliding with the obstacles its
   bounding box overlaps (the expected count worked out from the shape rectangles: 3 per frame on isometric, 1 on
@@ -1699,12 +1701,15 @@ branch (owner's choice):
     `LuaTilemapApi::ToTileMatrix` (6 of 48 cells pick themselves); passes again once restored.
   - **Found writing it:** collision rules survive loading another map, so adding the same tile rule once per map
     made every hit call the handler once per copy - the test adds its rule once; documented in `CLAUDE.md`.
-- **Sample:** `samples/projections` - keys 1-3 load the maps; Kepi (world space, on the `sprites` layer) walks
+- **Sample:** `samples/projections` - keys 1-4 load the maps, listed on the HUD with the loaded one in brackets
+  (the owner's request); Kepi (world space, on the `sprites` layer) walks
   cell to cell with the arrows, blocked by obstacles and the map's edge, its cell outlined in white with
   `shape_draw_polygon` (a diamond, or a pointy-top hexagon); WASD move a cursor whose picked cell is outlined in
-  yellow, or "no cell"; the camera follows Kepi with zoom; `view_set_preferred_zoom` set at the first load.
-  - **Window check with the owner (2026-11-07):** the isometric map, Kepi's outline and blocking checked by
-    screenshot. The owner noticed the obstacle blocks drawn half a cell below their cells: sunlight places a tile
+  yellow, or "no cell"; the camera follows Kepi with zoom; `view_set_preferred_zoom` set at the first load. A
+  controller works too (the owner's request): the D-pad moves Kepi, the left stick the cursor, L1/R1 change the
+  map, L2/R2 zoom and Y resets it - one step per press, from each button's state on the frame before.
+  - **Window check with the owner (2026-11-07):** all four maps (outlines, blocking, the picking cursor, zoom,
+    the labels) and the controller checked: "working". The owner noticed the obstacle blocks drawn half a cell below their cells: sunlight places a tile
     image taller than the grid from the cell's top-left (`TileDrawPosition`), where Tiled anchors it at the
     bottom. The owner decided to leave the sample as it is - not reported.
 - **Docs:** a "Tiles and map projections" group on the tile map reference (`tilemap_get_tile`,

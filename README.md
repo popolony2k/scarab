@@ -172,7 +172,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 * [shapes](samples/shapes/docs/README.md) — shape and point objects, rotation, opacity, layer tint and tile animation, on five maps.
 * [surface](samples/surface/docs/README.md) — shapes drawn from Lua in map units, with or without a map.
 * [parallax](samples/parallax/docs/README.md) — layers scrolling at their own speeds, changed live.
-* [projections](samples/projections/docs/README.md) — isometric, staggered and hexagonal maps, walking cell to cell and picking cells.
+* [projections](samples/projections/docs/README.md) — isometric, staggered, hexagonal and orthogonal maps, walking cell to cell and picking cells, by keyboard or controller.
 * [blend](samples/blend/docs/README.md) — blend modes on sprites and on drawn panels.
 * [mapless](samples/mapless/docs/README.md) — sprites with no map loaded at all, for a title screen or a menu.
 * [zorder](samples/zorder/docs/README.md) — which of a layer's sprites draws on top, by z-order.
