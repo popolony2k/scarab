@@ -14,6 +14,8 @@ Used in [samples/tilemap](../../samples/tilemap/docs/README.md) (loaded via `til
 
 [shapes/](shapes/README.md) holds `shapes.tmx`, `rotation.tmx` and `thick.tmx`, maps made for shape, rotated and point objects (from sunlight's own `shapes` sample). Used in [samples/shapes](../../samples/shapes/docs/README.md).
 
+[isometric/](isometric/README.md), [staggered/](staggered/README.md) and [hexagonal/](hexagonal/README.md) hold one non-orthogonal map each (from sunlight's own samples): an isometric, a staggered and a hexagonal grid, each with ground, obstacle and sprite layers. Used in [samples/projections](../../samples/projections/docs/README.md) and by `scripts/projection_smoke`.
+
 [parallax/](parallax/README.md) holds `parallax.tmx`, a map made for Tiled's per-layer parallax (from sunlight's own `parallax` sample): layers at factors 1, 0.5 and 0.25 and a parallax origin. Used in [samples/parallax](../../samples/parallax/docs/README.md) and by `scripts/layer_parallax_smoke`.
 
 [objects/](objects/README.md) holds `objects.tmx` and `opacity.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).
