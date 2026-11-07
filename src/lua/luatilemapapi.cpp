@@ -21,6 +21,7 @@
 #include "lua/luatilemapapi.h"
 #include "lua/luaengineutil.h"
 #include <climits>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
@@ -504,6 +505,214 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Push a layer's parallax factors, each as the shortest decimal that reads back as its
+             * float (0.5 reads 0.5, an authored 0.3 reads 0.3).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param layer The layer;
+             * @return int number of return data (2);
+             */
+            static int PushParallax( lua_State* pLuaState, const SunLight :: TileMap :: stLayer& layer )  {
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( layer.fParallaxX ) );
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( layer.fParallaxY ) );
+
+                return 2;
+            }
+
+            /**
+             * @brief Read the fx, fy arguments (2 and 3) into a layer: any finite number that a float can hold
+             * (1 = a normal layer, 0 = fixed on the view, negative = the other way).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param layer The layer to write the factors into;
+             * @param strError Receives the reason on failure;
+             * @return true if both factors are usable;
+             */
+            static bool ReadParallax( lua_State* pLuaState, SunLight :: TileMap :: stLayer& layer, std :: string& strError )  {
+
+                static const char * const  aszFactor[2] = { "fx", "fy" };
+
+                double  afFactor[2] = { 0, 0 };
+
+                for( int nArg = 0; nArg < 2; nArg++ )  {
+                    if( !LuaEngineUtil :: ReadNumberArg( pLuaState, 2 + nArg, aszFactor[nArg], afFactor[nArg], strError ) )
+                        return false;
+
+                    if( !std :: isfinite( ( float ) afFactor[nArg] ) )  {
+                        strError = std :: string( "argument '" ) + aszFactor[nArg] + "' must be a finite number";
+                        return false;
+                    }
+                }
+
+                layer.fParallaxX = ( float ) afFactor[0];
+                layer.fParallaxY = ( float ) afFactor[1];
+
+                return true;
+            }
+
+            /**
+             * @brief A layer's parallax factors (sunlight L1: stLayer::fParallaxX/fParallaxY, Tiled's
+             * parallaxx/parallaxy).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_get_layer_parallax(layerId) -> fx, fy | nil, message}
+             * @luagroup{layer_parallax}
+             * @luaheading{Layer parallax}
+             * @luadoc
+             * A layer's **parallax factors**, Tiled's `parallaxx`/`parallaxy` layer properties: how fast
+             * the layer moves with the camera, per axis. `1` (what a layer without them reads) is a
+             * normal layer; `0.5` moves at half the camera's speed, so it looks far away; `0` stays fixed
+             * on the view; above `1` moves faster (a foreground); a negative factor moves the other way.
+             * A layer is drawn shifted by `(1 - factor) x (view centre + the map's parallax origin)`, as
+             * Tiled draws it, in every view about its own centre; a group's factors multiply into the
+             * layers inside it.
+             *
+             * `tilemap_set_layer_parallax` changes them at runtime (any finite number); the next frame
+             * draws with them, and they read back as written. Loading the map again brings back the
+             * values it declares. Every function returns `nil, "message"` for an unknown layer, with no
+             * map loaded, or for a factor that is not a finite number.
+             *
+             * **What parallax moves, and what it does not:** a layer's tiles, objects and images; a
+             * world-space sprite on the layer (`sprite_set_world_space`), with the layer's own factor (not
+             * a parent group's); and what a screen-space sprite on the layer collides with (what is drawn
+             * is what collides). It does **not** move a screen-space sprite, the shapes `shape_draw_*`
+             * (they always use the view's own camera), or tile picking: `tilemap_to_tile_matrix` and
+             * `tilemap_get_tile` work in plain map coordinates, so picking a tile on a parallax layer
+             * under a screen point needs the layer's shift added first.
+             * @luaexample
+             * local fx, fy = tilemap_get_layer_parallax(3)          -- eg. 0.5, 0.5 from the map file
+             * tilemap_set_layer_parallax_by_name("sky", 0.1, 0.1)  -- push the sky further away
+             * tilemap_set_layer_parallax(2, 0, 0)                  -- a backdrop fixed on the view
+             */
+            int LuaTilemapApi :: GetLayerParallax( lua_State* pLuaState )  {
+
+                std :: string                         strError;
+                int                                   nLayerId = 0;
+                SunLight :: TileMap :: stLayer        layer;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) ||
+                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), nLayerId, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return PushParallax( pLuaState, layer );
+            }
+
+            /**
+             * @brief A layer's parallax factors, the layer given by name.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_get_layer_parallax_by_name(layerName) -> fx, fy | nil, message}
+             * @luagroup{layer_parallax}
+             */
+            int LuaTilemapApi :: GetLayerParallaxByName( lua_State* pLuaState )  {
+
+                std :: string                         strError;
+                std :: string                         strName;
+                SunLight :: TileMap :: stLayer        layer;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) ||
+                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), strName, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                return PushParallax( pLuaState, layer );
+            }
+
+            /**
+             * @brief Change a layer's parallax factors at runtime, through ITileMap::SetLayer: the layer is
+             * read first, so every other field (visible, opacity, offset, tint) is written back as it is.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_set_layer_parallax(layerId, fx, fy) -> true | nil, message}
+             * @luagroup{layer_parallax}
+             */
+            int LuaTilemapApi :: SetLayerParallax( lua_State* pLuaState )  {
+
+                std :: string                         strError;
+                int                                   nLayerId = 0;
+                SunLight :: TileMap :: stLayer        layer;
+                SunLight :: TileMap :: stLayer        factors;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) || !ReadParallax( pLuaState, factors, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+
+                if( !FindLayer( pTileMap, nLayerId, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                layer.fParallaxX = factors.fParallaxX;
+                layer.fParallaxY = factors.fParallaxY;
+
+                if( !pTileMap -> SetLayer( nLayerId, layer ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the engine refused to change layer " + std :: to_string( nLayerId ) );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Change a layer's parallax factors at runtime, the layer given by name.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_set_layer_parallax_by_name(layerName, fx, fy) -> true | nil, message}
+             * @luagroup{layer_parallax}
+             */
+            int LuaTilemapApi :: SetLayerParallaxByName( lua_State* pLuaState )  {
+
+                std :: string                         strError;
+                std :: string                         strName;
+                SunLight :: TileMap :: stLayer        layer;
+                SunLight :: TileMap :: stLayer        factors;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) || !ReadParallax( pLuaState, factors, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+
+                if( !FindLayer( pTileMap, strName, layer, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                layer.fParallaxX = factors.fParallaxX;
+                layer.fParallaxY = factors.fParallaxY;
+
+                if( !pTileMap -> SetLayer( strName.c_str(), layer ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the engine refused to change layer '" + strName + "'" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief The loaded map's parallax origin (Tiled's parallaxoriginx/y), read-only: sunlight reads
+             * it from the map and has no setter.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_get_parallax_origin() -> x, y | nil, message}
+             * @luagroup{layer_parallax}
+             */
+            int LuaTilemapApi :: GetParallaxOrigin( lua_State* pLuaState )  {
+
+                SunLight :: TileMap :: stMapInfo  mapInfo;
+
+                if( !LuaEngineUtil :: GetTileMap( pLuaState ) -> GetMapInfo( mapInfo ) || ( mapInfo.pMap == nullptr ) )
+                    return LuaEngineUtil :: PushError( pLuaState, __NO_MAP_LOADED );
+
+                lua_pushnumber( pLuaState, mapInfo.pMap -> parallaxoriginx );
+                lua_pushnumber( pLuaState, mapInfo.pMap -> parallaxoriginy );
+
+                return 2;
+            }
+
+            /**
              * @luaname{tilemap_get_tile(row, col, layerId) -> gid, x, y, width, height | nil, message}
              * @luadoc
              * Look up a single tile by its row/column position on a given
@@ -766,6 +975,11 @@ namespace Scarab  {
                 lua_register( pLuaState, "tilemap_get_layer_tint_by_name", LuaTilemapApi :: GetLayerTintByName );
                 lua_register( pLuaState, "tilemap_set_layer_tint", LuaTilemapApi :: SetLayerTint );
                 lua_register( pLuaState, "tilemap_set_layer_tint_by_name", LuaTilemapApi :: SetLayerTintByName );
+                lua_register( pLuaState, "tilemap_get_layer_parallax", LuaTilemapApi :: GetLayerParallax );
+                lua_register( pLuaState, "tilemap_get_layer_parallax_by_name", LuaTilemapApi :: GetLayerParallaxByName );
+                lua_register( pLuaState, "tilemap_set_layer_parallax", LuaTilemapApi :: SetLayerParallax );
+                lua_register( pLuaState, "tilemap_set_layer_parallax_by_name", LuaTilemapApi :: SetLayerParallaxByName );
+                lua_register( pLuaState, "tilemap_get_parallax_origin", LuaTilemapApi :: GetParallaxOrigin );
                 lua_register( pLuaState, "tilemap_get_tile", LuaTilemapApi :: GetTile );
                 lua_register( pLuaState, "tilemap_to_tile_matrix", LuaTilemapApi :: ToTileMatrix );
                 lua_register( pLuaState, "tilemap_get_object_by_name", LuaTilemapApi :: GetObjectByName );

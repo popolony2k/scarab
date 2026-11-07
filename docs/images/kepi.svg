@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Scarab's TEMPORARY logo (plans/MASTER_PLAN.md item T2), drawn to match sunlight's sunny.png:
+  Scarab's TEMPORARY logo (plans/MASTER_PLAN.md item T2): Kepi, Scarab's mascot, drawn to match sunlight's sunny.png:
   200x200, a glossy creature over italic blue lettering. A scarab carrying the light - a small sun
   held above its head. To be replaced by a team-made logo; render with
-  rsvg-convert -w 200 -h 200 scarab_logo.svg -o scarab_logo.png
+  rsvg-convert -w 200 -h 200 kepi.svg -o kepi.png
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <defs>

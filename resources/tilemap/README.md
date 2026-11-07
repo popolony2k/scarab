@@ -14,4 +14,6 @@ Used in [samples/tilemap](../../samples/tilemap/docs/README.md) (loaded via `til
 
 [shapes/](shapes/README.md) holds `shapes.tmx`, `rotation.tmx` and `thick.tmx`, maps made for shape, rotated and point objects (from sunlight's own `shapes` sample). Used in [samples/shapes](../../samples/shapes/docs/README.md).
 
+[parallax/](parallax/README.md) holds `parallax.tmx`, a map made for Tiled's per-layer parallax (from sunlight's own `parallax` sample): layers at factors 1, 0.5 and 0.25 and a parallax origin. Used in [samples/parallax](../../samples/parallax/docs/README.md) and by `scripts/layer_parallax_smoke`.
+
 [objects/](objects/README.md) holds `objects.tmx` and `opacity.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).

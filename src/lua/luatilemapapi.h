@@ -49,6 +49,11 @@ namespace Scarab  {
                 static int GetLayerTintByName( lua_State* pLuaState );
                 static int SetLayerTint( lua_State* pLuaState );
                 static int SetLayerTintByName( lua_State* pLuaState );
+                static int GetLayerParallax( lua_State* pLuaState );
+                static int GetLayerParallaxByName( lua_State* pLuaState );
+                static int SetLayerParallax( lua_State* pLuaState );
+                static int SetLayerParallaxByName( lua_State* pLuaState );
+                static int GetParallaxOrigin( lua_State* pLuaState );
                 static int GetTile( lua_State* pLuaState );
                 static int ToTileMatrix( lua_State* pLuaState );
                 static int GetObjectByName( lua_State* pLuaState );
