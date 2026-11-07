@@ -1151,7 +1151,7 @@ that.
 | C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
 | C2 | `IShapeSurface` (shapes without a loaded map) | 38, 65 | **DONE (2026-11-06)**, with P12 (sunlight I16): `shape_draw_*` for Lua; see below |
 | C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
-| C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | Defer until a map actually wants it |
+| C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **PLANNED 2026-11-06** (owner's pick after C2): `tilemap_get/set_layer_parallax` for Lua; see below |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | Tell them it's possible; no API change needed, `tilemap_load_map` already takes any map |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
@@ -1603,6 +1603,73 @@ uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed on
     `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
     S4 follows for the others.
 - Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
+**C4 - layer parallax for Lua (PLANNED 2026-11-06 with the owner; the pin `ad84cca` has what it needs, nothing
+asked of sunlight).** sunlight draws each layer's Tiled `parallaxx`/`parallaxy` factor as Tiled does: a layer is
+shifted by `(1 - factor) x (view centre + the map's parallax origin)`, about each view's own centre, and a group's
+factor multiplies into its children (sunlight L1, BREAKAGES 34, corrected in 49). The factors are also writable at
+runtime: they are fields of the `stLayer` that `ITileMap::GetLayer`/`SetLayer` read and write (`fParallaxX`/
+`fParallaxY`; `TileMapRenderer::SetLayerParallax` does the same). Scarab's `tilemap_get_layer`/`tilemap_set_layer`
+read them and write them back untouched, so Lua has never seen them. The map's parallax origin
+(`parallaxoriginx`/`y`) has no setter in sunlight; it is readable through `GetMapInfo`'s `tmx_map`.
+- **Functions** (in `LuaTilemapApi`, the same shape as the layer-tint functions of V12; every failure is
+  `nil, "message"`):
+  - `tilemap_get_layer_parallax( layerId ) -> fx, fy`
+  - `tilemap_get_layer_parallax_by_name( layerName ) -> fx, fy`
+  - `tilemap_set_layer_parallax( layerId, fx, fy ) -> true`
+  - `tilemap_set_layer_parallax_by_name( layerName, fx, fy ) -> true`
+  - `tilemap_get_parallax_origin() -> x, y`: read-only, the map's authored origin. Setting it would be a sunlight
+    request if a game ever needs it.
+  - A factor is any finite number: 1 is a normal layer, 0.5 moves at half the camera's speed, 0 stays fixed on
+    the view, and negative moves the other way (Tiled allows all of these). NaN and infinity are refused. A factor
+    reads back as written (shortest decimal, like layer opacity). The setter writes through `SetLayer`, keeping
+    every other field (visible, opacity, offset, tint) as it is. With no map, or an unknown layer, the message
+    says so.
+  - Loading the map again brings back its authored factors (they live in the loaded map).
+- **To verify while building (sunlight is asked only if one is wrong):**
+  - **Sprites on a parallax layer:** a screen-space sprite ignores the layer's factor (sunlight's docs). A
+    world-space sprite should take its layer's parallax camera (`GetCameraOffset` per layer). Check both.
+  - **Picking and collisions:** `tilemap_to_tile_matrix`/`tilemap_get_tile` and tile collisions are in map
+    space. Find out whether they ignore a layer's parallax (then what is drawn and what is hit differ on a
+    parallax layer), and document whichever it is.
+  - **Shapes (C2)** always use the view's own camera (parallax 1), so a shape drawn over a parallax layer does not
+    follow it. Document it.
+  - **Groups and several views:** a group's factor multiplies into its children; with several views, each view
+    applies the factors about its own centre.
+- **Tests:**
+  - **Doctests** for any pure logic that appears (eg. the shortest-decimal read-back, if not already covered).
+  - **A headless `scripts/layer_parallax_smoke.py`** (ci.yml on all 4 platforms, `asan_run.py`):
+    - the authored factors of `parallax.tmx` read back exactly (1, 0.5, 0.25);
+    - set/get round trips by id and by name, including 0, negative and fractional factors;
+    - other layer fields untouched by a parallax change;
+    - every refusal (bad id or name, NaN, infinity, non-numbers, no map loaded);
+    - the authored values back after a reload;
+    - the parallax origin read back (-640, -416);
+    - the default renderer created only after the arguments are checked.
+
+    Shown failing on the v0.1.25 binary and on mutations.
+  - **Rows in `error_reporting_smoke`.**
+  - **Drawing can't be seen headless.** sunlight's own parallax tests pin the drawing, and the window check is
+    the real proof.
+- **Sample:** a new `samples/parallax`, Scarab's counterpart of sunlight's own, on its `parallax.tmx` and
+  tilesets, copied into `resources/tilemap/parallax/` with a README giving their origin (sunlight's own sample,
+  commit `ad84cca`, the same project, as for the other shared maps):
+  - Sunny at the screen's centre, walking moves the camera, and the map wraps on the four marker objects
+    (`tilemap_get_object_by_name`);
+  - zoom limited so the view never leaves the map, as sunlight's sample does;
+  - keys to change the clouds' and sky's factors live (eg. 1/2/3 pick a layer, Up/Down change its factor,
+    R restores the map's values);
+  - the HUD shows each layer's factor and the parallax origin.
+- **Window check with the owner:**
+  - the layers move at their speeds;
+  - live changes take effect at once;
+  - 0 keeps a layer fixed on the view, and a negative factor reverses it;
+  - R restores the map's values;
+  - the wrap works.
+- **Docs:** `@luaname` docs (the formula, what each factor means, what parallax does NOT move: picking,
+  collisions, shapes, screen-space sprites), the README feature and sample lists, and a `CLAUDE.md` line.
+- **Caravellius:** nothing breaks (all new; `corsair.tmx` and `cover.tmx` have no parallax, checked); an
+  informational breakage entry.
 
 **C2 - shapes for Lua (PLANNED 2026-11-05 with the owner; the pin `51a3bbb` has what it needs: sunlight M1,
 BREAKAGES 38).** sunlight's `IShapeSurface` (on `TileMapRenderer`) draws rectangle, ellipse, polyline and
