@@ -1176,7 +1176,7 @@ that.
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **DONE (2026-11-07)**: `tilemap_get/set_layer_parallax` for Lua, `samples/parallax`; see below |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **DONE 2026-11-07**: isometric, staggered and hexagonal maps checked and shown, with P13 (sunlight I17, I18); see below |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
-| C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **Added by the owner (2026-10-29, during V10).** Needs sunlight first: plan it TOGETHER WITH sunlight when C7 starts - see below |
+| C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **PLANNED 2026-11-07 with sunlight** (sunlight-cf; both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight builds it in 7 phases, per-view opacity first; Scarab pins each and adds its Lua side - see below |
 | C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **Added by the owner (2026-11-03, split out of C1b).** To be planned against EVERY function it affects - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
@@ -2089,22 +2089,67 @@ it can be done safely: Lua code written for other engines keeps working and the 
 around the sandbox. Still to decide: what "the game's own files" is exactly, how `--pack` and the smoke tests
 (`os.getenv`) keep working, whether the sandbox is on by default, and how it is tested.
 
-**C7 (TODO, added by the owner 2026-10-29 during V10; plan it together with sunlight when it
-starts, not before).** Today a renderer holds ONE map (`TileMapRenderer::m_pMap`), views are cameras
-on that one map (`IView` has no map of its own; sunlight's `multiview` samples show one map in
-three views), and Scarab allows one renderer per process. Many games show different maps at once:
-split-screen with players in different areas, a world map beside the local one, a picture-in-picture
-dungeon, a menu over a different map, a cross-fade between two maps.
-- **sunlight's side (the map lives there, so it comes first):** several maps loaded at once, each with
-  its own textures and tile animations, and a view showing one of them; layer ids collide between
-  maps, so sprites, collision rules and layer masks must say which map they belong to; collisions
-  per map (sprite-vs-tile against that map's tiles); camera alignment, scroll limits and `FitToMap`
-  per map.
-- **Scarab's side, a sketch to agree with sunlight:** `tilemap_load_map` returning a map handle, a
-  `view_set_map(view, map)`, and the `tilemap_*` / `sprite_add_to_layer` / collision functions taking
-  an optional map; the single-map calls keep acting on the current map, so existing games are
-  unchanged.
-- When C7 starts: contact sunlight (with the owner) to plan the design together.
+**C7 - several maps at once, as WORLDS (PLANNED 2026-11-07 with sunlight, sunlight-cf, both owners agreed; nothing
+built on either side yet).** Added by the owner on 2026-10-29, during V10. Today a renderer holds ONE map
+(`TileMapRenderer::m_pMap`), `LoadMap` replaces it, every view shows that one map, and there is one renderer per
+process (one raylib window). Games want different maps at once: split-screen with players in different areas, a
+world map beside the local one, a picture-in-picture dungeon, a menu over another map, a cross-fade between two maps.
+- **The design (sunlight's proposal, accepted): the unit is a WORLD, not a map** (as Godot's World2D):
+  - a world holds one or more maps, each at an offset in the world's own coordinates, and owns its sprites and its
+    collision rules; a view shows one world (`IView::SetWorld`);
+  - isolated maps (all the examples above) are several worlds of one map each, at (0, 0); a Tiled `.world` file is
+    one world of several maps at their offsets, and a sprite walks across a map edge without being moved anywhere;
+  - **the default world:** the default view shows it, `LoadMap` puts its single map there at (0, 0), and every
+    single-map call (`LoadMap`, `GetTile`, `TileMapToTileMatrix`, ...) acts on it - NOT on "the default view's
+    world", which a view could switch; mapless sprites stay in it. Existing games are unchanged;
+  - coordinates: each world has its own; a map's tiles sit at their map position plus the map's offset, so with
+    one map at (0, 0) world coordinates are map coordinates, as today. A sprite moves to another world by being
+    removed from one and added to the other (the game converts the position);
+  - every map of a world is loaded at once (Tiled's load-adjacent-maps option is later); every live world updates
+    each frame (animations, collisions), shown by a view or not.
+- **The answers to Scarab's six points (agreed):**
+  1. **Layer ids:** a world-level id per layer NAME. A name in the world's first map keeps that map's Tiled id; a
+     name that first appears in a later map gets a new id above every id assigned so far, so two names never share
+     one. Sprites, collision rules and view layer masks take these ids, with a lookup by name. A one-map world (any
+     `.tmx`, the default world) uses that map's own ids, so nothing changes. Within a world, layers are drawn layer
+     by layer over every visible map, so a sprite on "objects" draws right on both sides of a map edge.
+  2. **Unloading a world (or one of its maps) DETACHES its sprites** (colliders and registrations), without
+     destroying or unloading them; Scarab then releases or moves them. The legacy `UnloadMap` stays as it is: it
+     also calls `Sprite::Unload()` on every registered sprite (textures and sequences gone) - what
+     `tilemap_unload_map` already documents, so nothing changes for it.
+  3. **Which world a hit is in:** each world has its own collision manager and listener, so `ICollisionListener`
+     keeps its signatures; Scarab registers one small adapter per world that calls the one Lua handler with the
+     world's handle.
+  4. **The clock:** every map's animation clock already reads the process-global `Clock` (`mapdata.cpp`), so the
+     null backend's virtual time drives every world exactly; worlds keep it so.
+  5. **Order:** per-view opacity first (cross-fade, a menu over a map), then the rest.
+  6. **Scarab's API**, below.
+- **sunlight's phases, in the agreed order, each a PR Scarab pins:**
+  1. per-view opacity;
+  2. the world container (the default world; `LoadMap` unchanged);
+  3. views show a world (`IView::SetWorld`);
+  4. several worlds;
+  5. map offsets, several maps drawn per view;
+  6. collisions across map edges;
+  7. `.world` loading - JSON, read with nlohmann/json declared exactly as Scarab declares it (`FetchContent` name
+     `nlohmann_json`, the `nlohmann_json` target), so Scarab's build shares one copy; sunlight links it privately.
+- **Still open on sunlight's side (verified before it builds):** the exact `.world` format against Tiled's own
+  source (the explicit map list, and the pattern form placing maps by file name); how Tiled places isometric,
+  staggered and hexagonal maps in a world (orthogonal first); a tileset shared by two maps is loaded twice for now.
+- **Scarab's side, one item per sunlight phase once pinned (each planned with the owner, fully covered):**
+  - after phase 1: per-view opacity for Lua (`view_set_opacity` / `view_get_opacity`, a smoke test, a sample with
+    a cross-fade and a menu over a map);
+  - after phases 2-4: `world_load( path )` (a `.tmx`) returning a world handle, `world_unload( world )` (detaching
+    its sprites, which Scarab's `SpritePool` then releases), `view_set_world( view, world )`, an optional world on
+    the sprite and collision functions (the default world when omitted), the per-world collision adapter passing
+    the world to the Lua handler, and a split-screen sample;
+  - after phases 5-7: `world_load` takes a `.world` too, a world-layer lookup by name, and a sample walking across
+    map edges;
+  - throughout: `tilemap_load_map` and every existing call keep acting on the default world, so Caravellius and
+    every sample are unchanged (checked by its acceptance and fingerprint at every pin); smoke tests headless, in
+    ci.yml and `asan_run.py`, each shown failing; window checks with the owner.
+- **Next:** sunlight writes C7 into its own plan (its owner reviews it), plans phase 1 with its owner, and sends the
+  commit to pin once it is merged.
 
 ## Phase R: requisites
 
