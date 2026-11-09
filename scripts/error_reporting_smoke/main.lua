@@ -328,6 +328,11 @@ function on_update( dt )
         expect_error( "draw_text text", "argument 'text' must be a string", draw_text, {}, 10, 10, 16, 0, 0, 0, 0 )
         expect_error( "measure size", "argument 'size'", measure_text, "x", 1.5 )
         check( math.type( measure_text( 7, 16 ) ) == "integer", "measure_text of a number must return a width" )
+
+        -- view opacity (a renderer exists now: view 0 is real)
+        expect_error( "view opacity range", "argument 'opacity' must be between 0 and 1", view_set_opacity, 0, 1.5 )
+        expect_error( "view opacity type", "argument 'opacity'", view_set_opacity, 0, "x" )
+        expect_error( "view opacity view", "unknown view 99", view_get_opacity, 99 )
     elseif frames == 2 then
         if #failures == 0 then
             print( "ERROR REPORTING SMOKE OK" )

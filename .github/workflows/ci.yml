@@ -521,6 +521,19 @@ jobs:
           python scripts/projection_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "map projection smoke test exited with code $LASTEXITCODE" }
 
+      # view_set_opacity / view_get_opacity: every view starts at 1, exact round trips, each view its own, kept
+      # over a map load, every refusal, a destroyed view, frames drawn faded - plans/MASTER_PLAN.md item C7.
+      - name: View opacity smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/view_opacity_smoke.py build/scarab
+
+      - name: View opacity smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/view_opacity_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "view opacity smoke test exited with code $LASTEXITCODE" }
+
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
       # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md

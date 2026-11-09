@@ -41,7 +41,8 @@ Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePat
 z-orders keep the order sprites were added in), and in P12 to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (I16, Scarab's
 report: a shape drawn outside the map pass uses the view's own camera), and in P13 to
 `44f64a1648fa55fabc9708e6736d4368ee2bf844` (I17, Scarab's report: tile picking on non-orthogonal maps; and I18:
-the far-edge map alignments take the zoom into account).
+the far-edge map alignments take the zoom into account), and in P14 to `d9c71d26232fd7a88132fab1cf4100d97e1b4512`
+(I19, Scarab's C7: view opacity and worlds - several maps at once; and I20: maps with stagger axis X load).
 
 ## Phase P: pin & plumbing
 
@@ -61,6 +62,7 @@ the far-edge map alignments take the zoom into account).
 | P11 | Re-pin to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (sunlight's I15: equal z-orders keep the order sprites were added in, on every frame - Scarab's report from C3 planning, BREAKAGES 64) - done in C3's branch (owner's choice) | DONE |
 | P12 | Re-pin to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (sunlight's I16: a shape drawn outside the map pass uses the view's own camera, map or no map - Scarab's report from C2 planning, BREAKAGES 65) - done in C2's branch (owner's choice) | DONE |
 | P13 | Re-pin to `44f64a1648fa55fabc9708e6736d4368ee2bf844` (sunlight's I17: tile picking by the cell's real diamond or hexagon on isometric, staggered and hexagonal maps - Scarab's report from C5 planning, BREAKAGES 66; and I18: the far-edge map alignments take the zoom into account, BREAKAGES 67, which closes V14) - done in C5's branch (owner's choice) | DONE |
+| P14 | Re-pin to `d9c71d26232fd7a88132fab1cf4100d97e1b4512` (sunlight's I19, Scarab's C7: view opacity (I19a), worlds (I19b-c), several maps per world (I19d), collisions across map edges (I19e) and Tiled `.world` files (I19f), BREAKAGES 68-72; and I20: maps with stagger axis X load, BREAKAGES 73) - done in C7 part 1's branch (owner's choice); nothing changes for existing games | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -2148,8 +2150,35 @@ world map beside the local one, a picture-in-picture dungeon, a menu over anothe
   - throughout: `tilemap_load_map` and every existing call keep acting on the default world, so Caravellius and
     every sample are unchanged (checked by its acceptance and fingerprint at every pin); smoke tests headless, in
     ci.yml and `asan_run.py`, each shown failing; window checks with the owner.
-- **Next:** sunlight writes C7 into its own plan (its owner reviews it), plans phase 1 with its owner, and sends the
-  commit to pin once it is merged.
+- **Delivered by sunlight (2026-11-08, sunlight-a0):** ALL seven phases in one pin, `d9c71d2` (I19a-f, plus I20:
+  stagger axis X), not phase 1 alone. Built as agreed: `IView::SetOpacity`; `CreateWorld`/`RemoveWorld`/
+  `GetDefaultWorld`/`GetWorldCount` with inert `std::shared_ptr<IWorld>` handles; `IView::SetWorld` (extra views
+  only - the default view always shows the default world); `IWorld::AddMap( path, x, y )`/`RemoveMap`/
+  `GetMapCount`/`GetMapOffset`/`GetBounds`/`GetLayerId( name )`; picking and tiles per map; `IWorld::LoadWorld`
+  (only the `maps` list; a file with `patterns` is refused); a sprite in one world at a time. Reference sample:
+  sunlight's `samples/worlds`. **Scarab's side split in two (owner's choice, (b)):** part 1 = P14 + view opacity;
+  part 2 = worlds, several maps and `.world` files (`world_load`, `world_unload`, `world_add_map`,
+  `view_set_world`, `world_layer_id`, an optional world on sprites and collisions), planned with the owner next.
+
+**C7 part 1 done (2026-11-08): P14 + view opacity.**
+- **Pin:** `d9c71d2` builds with no Scarab change; the unit tests, all 22 smoke tests and Caravellius' acceptance
+  (PASS) and fingerprint (`hash=33897632`) are unchanged on it.
+- **Functions** (`LuaViewApi`, under a new "View opacity" heading of the views reference):
+  `view_set_opacity( view, opacity ) -> true` and `view_get_opacity( view ) -> opacity`, on every view, the default
+  one included. Strict: anything but a number from 0 to 1 (NaN and infinity included) is refused, not clamped as
+  sunlight does; it reads back exactly as written (`LuaEngineUtil::ShortestDecimal`), and a map load keeps it.
+- **Test:** `scripts/view_opacity_smoke.py` + `scripts/view_opacity_smoke/` (ci.yml, all 4 platforms;
+  `asan_run.py` picks it up): before any window it is "unknown view 0" and creates no renderer; every view starts
+  at 1; exact round trips on the default and an extra view; each view its own; kept over a map load; every
+  refusal; a destroyed view; frames drawn faded. **Shown failing:** with the getter returning sunlight's raw float,
+  `0.3` reads `0.30000001192093`. Three rows in `error_reporting_smoke`.
+- **Sample:** `samples/fade` - a cross-fade between two places of one map (two views over one rectangle, F fades
+  the upper one over one second with `app_get_time`), and a menu view (`M`, the whole map in a square at 85%,
+  `[`/`]` change its opacity, its text drawn over it); Kepi walks in map coordinates; a controller works too.
+  **Window check with the owner (2026-11-08):** the fade, the menu at 0.85, 1 and 0.4 by screenshot; the owner's
+  two findings fixed (Kepi started outside the view; the 400x300 menu left a black strip beside the square map,
+  now a 320x320 square).
+- **Caravellius:** BREAKAGES 29 (nothing changes).
 
 ## Phase R: requisites
 
