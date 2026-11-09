@@ -18,6 +18,8 @@ Used in [samples/tilemap](../../samples/tilemap/docs/README.md) (loaded via `til
 
 [orthogonal/](orthogonal/README.md) is Scarab's own orthogonal map with the same layout, drawn with the shared `tileset_cloud_soil.tsx` and `tileset_wall.tsx` here. Used in [samples/projections](../../samples/projections/docs/README.md) (key `4`) and by `scripts/projection_smoke`.
 
+[worlds/](worlds/README.md) holds `grid.world`, a Tiled world file placing four of the maps above side by side (orientations mixed). Used in [samples/worlds](../../samples/worlds/docs/README.md) and by `scripts/world_api_smoke`.
+
 [parallax/](parallax/README.md) holds `parallax.tmx`, a map made for Tiled's per-layer parallax (from sunlight's own `parallax` sample): layers at factors 1, 0.5 and 0.25 and a parallax origin. Used in [samples/parallax](../../samples/parallax/docs/README.md) and by `scripts/layer_parallax_smoke`.
 
 [objects/](objects/README.md) holds `objects.tmx` and `opacity.tmx`, a map made for Tiled tile and text objects (from sunlight's own `objects` sample), which reuses the house tileset here. Used in [samples/objects](../../samples/objects/docs/README.md).

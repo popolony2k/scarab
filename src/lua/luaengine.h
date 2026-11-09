@@ -34,6 +34,7 @@ extern "C"  {
 #include "lua/luatimerapi.h"
 #include "engine/spritepool.h"
 #include "lua/luacollisionlistener.h"
+#include "lua/luaworldapi.h"
 #include "engine/fontpool.h"
 #include "input/icontrollermanager.h"
 #include "input/playerslotmanager.h"
@@ -78,6 +79,7 @@ namespace Scarab  {
             SunLight :: Scripting :: ScriptProcessor*                 m_pScriptProcessor;
             Engine :: Lua :: TimerMap                                 m_Timers;
             std :: unique_ptr<Engine :: Lua :: LuaCollisionListener>  m_pCollisionListener;
+            Engine :: Lua :: WorldTable                               m_Worlds;        // world_create/world_load (C7)
             SunLight :: Input :: PlayerSlotManager                    m_PlayerSlots;   // input_claim_player_slot & co (C1a)
             SunLight :: Input :: ActionMap                            m_ActionMap;     // input_bind_action_* & co (C1b)
             std :: unique_ptr<SunLight :: Input :: IGamepadHaptics>   m_pHaptics;      // rumble (C1b): made with the renderer

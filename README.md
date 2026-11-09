@@ -39,7 +39,7 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
 
 * **Games in Lua only:** one `scarab` executable runs any game; which one is chosen at launch by a `project.json`, a `.lua` script or a single `.zip` bundle.
 * **Renderer and views:** create the window with your own settings (size, zoom, viewport, FPS, fullscreen), and show one world in several views at once - a minimap, a close-up - each at its own opacity, for cross-fades and menus over the map.
-* **Tiled maps:** orthogonal, isometric, staggered and hexagonal maps; tile, image, group and object layers, tile animation, tile/text/shape/point objects with rotation and opacity, layer opacity, tint and parallax at runtime, external tilesets.
+* **Tiled maps:** orthogonal, isometric, staggered and hexagonal maps; several maps at once in worlds (split screen, a world map beside the local one) and Tiled `.world` files; tile, image, group and object layers, tile animation, tile/text/shape/point objects with rotation and opacity, layer opacity, tint and parallax at runtime, external tilesets.
 * **Sprites:** pooled, animated sprites on map layers or with no map at all, in screen or map (world) space, with opacity, tint, blend modes and a z-order within their layer.
 * **Collisions:** sprite-to-sprite and sprite-to-tile rules with a Lua handler.
 * **Input:** keyboard and gamepads, hot-plug, player slots, stick dead zones applied for you, rebindable actions and rumble.
@@ -166,6 +166,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 * [camera](samples/camera/docs/README.md) — scrolling and zooming over a map.
 * [views](samples/views/docs/README.md) — one world in three views: the main picture, a minimap and a close-up following the sprite.
 * [fade](samples/fade/docs/README.md) — view opacity: a cross-fade between two places of a map, and a menu over it.
+* [worlds](samples/worlds/docs/README.md) — several maps at once: split screen, a cross-fade between maps, a `.world` file.
 
 ### Maps, objects and drawing
 

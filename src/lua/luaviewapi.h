@@ -99,6 +99,8 @@ namespace Scarab  {
                 static int ViewGetClearBackground( lua_State* pLuaState );
                 static int ViewSetOpacity( lua_State* pLuaState );
                 static int ViewGetOpacity( lua_State* pLuaState );
+                static int ViewSetWorld( lua_State* pLuaState );
+                static int ViewGetWorld( lua_State* pLuaState );
                 static int ViewSetBackgroundColor( lua_State* pLuaState );
                 static int ViewUseMapBackgroundColor( lua_State* pLuaState );
                 static int ViewShowLayer( lua_State* pLuaState );

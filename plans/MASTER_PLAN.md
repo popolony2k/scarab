@@ -1178,7 +1178,7 @@ that.
 | C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **DONE (2026-11-07)**: `tilemap_get/set_layer_parallax` for Lua, `samples/parallax`; see below |
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **DONE 2026-11-07**: isometric, staggered and hexagonal maps checked and shown, with P13 (sunlight I17, I18); see below |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
-| C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **PLANNED 2026-11-07 with sunlight** (sunlight-cf; both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight builds it in 7 phases, per-view opacity first; Scarab pins each and adds its Lua side - see below |
+| C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **DONE 2026-11-09**, planned with sunlight (both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight delivered all of it in one pin (P14, `d9c71d2`); Scarab's side in two parts: view opacity (#92) and worlds - see below |
 | C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **Added by the owner (2026-11-03, split out of C1b).** To be planned against EVERY function it affects - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
@@ -2179,6 +2179,42 @@ world map beside the local one, a picture-in-picture dungeon, a menu over anothe
   two findings fixed (Kepi started outside the view; the 400x300 menu left a black strip beside the square map,
   now a 320x320 square).
 - **Caravellius:** BREAKAGES 29 (nothing changes).
+
+**C7 part 2 done (2026-11-09): worlds, several maps per world, `.world` files** (planned with the owner; on P14's pin).
+- **Decisions (owner, on Claude's recommendation):** `sprite_release` takes the sprite off every layer it is on, in
+  whichever world (before, it stayed registered, only hidden - a recycled handle would then be refused by another
+  world); layer SETTERS stay default-world only (sunlight's `IWorld` has no `SetLayer`; a known limit, asked of
+  sunlight when a game needs it); the layer and map-info GETTERS take an optional world.
+- **Code:** `src/lua/luaworldapi.{h,cpp}` (`world_create`, `world_load` - a `.tmx` or a `.world`, all or nothing,
+  no world left behind on failure - `world_unload`, `world_get_count`, `world_add_map`, `world_remove_map`,
+  `world_get_map_count`, `world_get_map_offset`, `world_get_bounds`, `world_layer_id`, `world_get_tile`,
+  `world_to_tile_matrix`); world ids are sunlight's own (`IWorld::GetId`, never reused, 0 = the default world),
+  kept with one `LuaCollisionListener` per world in LuaEngine's `WorldTable`; `world_unload` drops the world
+  before its listener (sunlight's collision manager cannot drop a listener). `view_set_world`/`view_get_world`
+  (extra views only; `view_set_world( 0, 0 )` accepted as a no-op - sunlight refuses SetWorld on the default view
+  whatever the world). An optional last `world` on `sprite_add_to_layer`/`sprite_remove_from_layer`,
+  `collision_add_rule`/`collision_add_tile_rule`, `tilemap_get_layer(_by_name)` and `tilemap_get_map_info`. Both
+  collision handlers get the world id as their LAST argument. `SpritePool` records each sprite's (world, layer)
+  registrations (sunlight does not say which world holds a sprite): a sprite in another world is refused naming
+  it, `sprite_release` detaches it, `world_unload`/`tilemap_unload_map` forget theirs (doctests).
+- **Resources:** `resources/tilemap/worlds/grid.world` (three orthogonal maps and the isometric one, 2x2).
+- **Test:** `scripts/world_api_smoke.py` + `scripts/world_api_smoke/` (ci.yml, all 4 platforms; `asan_run.py`):
+  before any window, lifetime, maps at offsets (negative too), bounds, `.world` (order, `..` paths, a missing map
+  all or nothing, `patterns` refused), layer ids, tiles and picking per map (an isometric one included), the
+  getters with a world, `view_set_world`, one world per sprite, the three detaches, and collisions counted over
+  frames: per world, the world id in both handlers, two worlds never colliding, a sprite over two maps hitting
+  both (I19e). **Shown failing** under five mutations: release not detaching, the handler always given world 0,
+  `world_unload` and `tilemap_unload_map` not forgetting, no one-world check (the release one needed a one-slot
+  pool type, so the released slot is the one reused). Twelve rows in `error_reporting_smoke`.
+- **Sample:** `samples/worlds` - split screen (default world left, the isometric or grid world right), Kepi per
+  world, the grid world's obstacles blocking its Kepi across map edges, a cross-fade between two different maps,
+  unload/reload; every view fits its whole world; keyboard and controller. **Window check with the owner
+  (2026-11-09):** the HUD cut off and the worlds shown only in part (fixed: 1280x800, HUD above the views,
+  `view_fit_to_map`), and the cloud map showing around the isometric map at overlay 1 (fixed: an opaque overlay
+  backdrop); then split screen, edges, obstacles, cross-fade and unload/reload all confirmed by screenshot.
+- **Checks:** unit tests, 24/24 smoke tests, ASan 53/53, style clean; Caravellius acceptance PASS and fingerprint
+  `hash=33897632` (unchanged: it takes every sprite off its layer before releasing it).
+- **Caravellius:** BREAKAGES 30.
 
 ## Phase R: requisites
 
