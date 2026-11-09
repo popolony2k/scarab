@@ -34,6 +34,9 @@
  They never meet - worlds are isolated. Every view shows its whole world
  (view_fit_to_map, again whenever it changes world).
 
+ T (X on a controller) tints the grid world's "ground" layer: one call, and
+ all four maps change (a layer setter given a world reaches every map of it).
+
  F cross-fades the left half from the cloud map to the isometric world and
  back: an overlay view showing the isometric world, at opacity 0 -> 1. U
  unloads the isometric world and loads it again: while it is gone, the views
@@ -54,7 +57,7 @@ local __RENDER_WIDTH  <const> = 1280
 local __RENDER_HEIGHT <const> = 800
 local __MARGIN        <const> = 10       -- pixels around the views, and between them
 local __MARGINS       <const> = 3        -- across the window: left, middle and right
-local __HUD_HEIGHT    <const> = 140      -- the HUD's rows sit above the views
+local __HUD_HEIGHT    <const> = 168      -- the HUD's five rows sit above the views
 local __KEPIS         <const> = 3        -- one per world: clouds, isometric, grid
 local __CLOUDS        <const> = "resources/tilemap/test.tmx"
 local __ISO           <const> = "resources/tilemap/isometric/isometric.tmx"
@@ -71,6 +74,8 @@ local __SPEED         <const> = 2        -- map pixels per frame
 local __STICK_DEAD    <const> = 0.5      -- how far the stick must lean to walk
 local __FADE_SECONDS  <const> = 1.0
 local __OVERLAY_ORDER <const> = 10       -- the overlay's draw order: above the left half
+local __TINT          <const> = { 255, 150, 150, 255 }   -- T: the grid world's ground, reddened in every map
+local __NO_TINT       <const> = { 255, 255, 255, 255 }
 
 local halfWidth = ( __RENDER_WIDTH - __MARGINS * __MARGIN ) // 2
 local viewH     = __RENDER_HEIGHT - __HUD_HEIGHT - __MARGIN
@@ -127,6 +132,7 @@ local gridKepi  = new_kepi( assert( world_layer_id( grid, "sprites" ) ), grid, _
 assert( collision_add_tile_rule( gridKepi.layer, assert( world_layer_id( grid, "obstacles" ) ), grid ) )
 
 local showGrid    = false        -- what the right half shows: the isometric world, or the grid world
+local gridTinted  = false        -- T: whether the grid world's ground layer is tinted
 local fadeFrom, fadeTo, fadeStart = 0, 0, nil
 local blockedFrame = -1          -- the frame the grid Kepi was last pushed back (once per frame)
 local frame        = 0
@@ -195,6 +201,15 @@ local function show_on_right( grid_ )
     assert( view_fit_to_map( rightView ) )
 end
 
+-- Tint the grid world's "ground" layer, or take the tint off: one call, and every map of the world that has a
+-- layer of that name changes (sunlight I21), so the four maps stay alike.
+local function toggle_grid_tint()
+    local tint = gridTinted and __NO_TINT or __TINT
+
+    gridTinted = not gridTinted
+    assert( tilemap_set_layer_tint_by_name( "ground", tint[1], tint[2], tint[3], tint[4], grid ) )
+end
+
 -- Start fading the overlay (the isometric world over the left half) in, or out.
 local function start_fade()
     fadeFrom  = view_get_opacity( overlay )
@@ -251,6 +266,7 @@ function on_update( dt )
     if pressed( pad, GAMEPAD_BUTTON_RIGHT_FACE_UP ) then show_on_right( not showGrid ) end
     if input_is_key_released( KEY_F ) or pressed( pad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN ) then start_fade() end
     if input_is_key_released( KEY_U ) or pressed( pad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT ) then toggle_iso() end
+    if input_is_key_released( KEY_T ) or pressed( pad, GAMEPAD_BUTTON_RIGHT_FACE_LEFT ) then toggle_grid_tint() end
 
     update_fade()
 
@@ -260,4 +276,5 @@ function on_update( dt )
                              view_get_world( 0 ), view_get_world( rightView ), view_get_opacity( overlay ) ), 3, Hud.INFO )
     Hud.line( string.format( "grid world: %d maps, obstacle hits %d   isometric world: %s", world_get_map_count( grid ), hits,
                              iso and "loaded" or "unloaded" ), 4, Hud.INFO )
+    Hud.line( "T or X: tint the grid world's ground (every map)   grid tint " .. ( gridTinted and "on" or "off" ), 5, Hud.TITLE )
 end

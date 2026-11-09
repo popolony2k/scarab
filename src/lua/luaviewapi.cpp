@@ -1038,11 +1038,6 @@ namespace Scarab  {
                 if( !pWorld )
                     return LuaEngineUtil :: PushError( pLuaState, "argument 'world': " + strError );
 
-                // the default view showing the default world is what it already does: nothing to ask sunlight
-                // (whose SetWorld refuses the default view whatever the world)
-                if( ( pView -> GetId() == 0 ) && ( pWorld -> GetId() == 0 ) )
-                    return LuaEngineUtil :: PushTrue( pLuaState );
-
                 if( !pView -> SetWorld( pWorld ) )
                     return LuaEngineUtil :: PushError( pLuaState, "the default view always shows the default world" );
 

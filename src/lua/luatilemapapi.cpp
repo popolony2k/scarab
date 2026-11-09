@@ -287,8 +287,10 @@ namespace Scarab  {
              *
              * The optional `world` reads a layer of another world (in a world of
              * several maps, `layerId` is a world layer id and the layer is the
-             * first map's that has it). Writing a layer (`tilemap_set_layer`,
-             * tint, parallax) works on the default world only.
+             * first map's that has it). The layer setters (`tilemap_set_layer`,
+             * tint, parallax) take the same optional `world` (sunlight I21): in a
+             * world of several maps the change reaches that layer in EVERY map
+             * that has it, so a layer looks the same across map edges.
              * @luaexample
              * local visible, opacity, offX, offY = tilemap_get_layer(2)
              * local shown = tilemap_get_layer_by_name( "objects", dungeon )
@@ -337,7 +339,7 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{tilemap_set_layer(layerId, visible, opacity, offsetX, offsetY) -> true | nil, message}
+             * @luaname{tilemap_set_layer(layerId, visible, opacity, offsetX, offsetY [, world]) -> true | nil, message}
              * @luagroup{set_layer}
              * @luadoc
              * Write a layer's `visible` flag, `opacity` (a **number from `0`
@@ -365,7 +367,12 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 6, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: IWorld*  pTileMap = pWorld.get();   // the default world when none is given
 
                 /*
                  * Fetch the existing layer first so it's internal tmx_layer pointer
@@ -381,7 +388,7 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{tilemap_set_layer_by_name(layerName, visible, opacity, offsetX, offsetY) -> true | nil, message}
+             * @luaname{tilemap_set_layer_by_name(layerName, visible, opacity, offsetX, offsetY [, world]) -> true | nil, message}
              * @luagroup{set_layer}
              */
             int LuaTilemapApi :: SetLayerByName( lua_State* pLuaState )  {
@@ -393,7 +400,12 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 6, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: IWorld*  pTileMap = pWorld.get();   // the default world when none is given
 
                 if( !FindLayer( pTileMap, strName, layer, strError ) || !ReadLayerValues( pLuaState, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -438,7 +450,7 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{tilemap_get_layer_tint(layerId) -> r, g, b, a | nil, message}
+             * @luaname{tilemap_get_layer_tint(layerId [, world]) -> r, g, b, a | nil, message}
              * @luagroup{layer_tint}
              * @luaheading{Layer tint}
              * @luadoc
@@ -459,7 +471,9 @@ namespace Scarab  {
              * text inside take only the group's opacity.
              *
              * `tilemap_set_layer_tint` changes it at runtime; the next frame
-             * draws with it. Writing back the values read changes nothing, and
+             * draws with it. All four take an optional last `world` (the default
+             * world when left out); in a world of several maps a setter tints that
+             * layer in every map that has it. Writing back the values read changes nothing, and
              * `tilemap_set_layer` keeps a layer's tint as it is. Every function
              * returns `nil, "message"` for an unknown layer, with no map loaded,
              * or for a channel outside `0`..`255`.
@@ -474,15 +488,19 @@ namespace Scarab  {
                 int                                   nLayerId = 0;
                 SunLight :: TileMap :: stLayer        layer;
 
-                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) ||
-                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), nLayerId, layer, strError ) )
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 2, strError );
+
+                if( !pWorld || !FindLayer( pWorld.get(), nLayerId, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return PushTint( pLuaState, layer );
             }
 
             /**
-             * @luaname{tilemap_get_layer_tint_by_name(layerName) -> r, g, b, a | nil, message}
+             * @luaname{tilemap_get_layer_tint_by_name(layerName [, world]) -> r, g, b, a | nil, message}
              * @luagroup{layer_tint}
              */
             int LuaTilemapApi :: GetLayerTintByName( lua_State* pLuaState )  {
@@ -491,15 +509,19 @@ namespace Scarab  {
                 std :: string                         strName;
                 SunLight :: TileMap :: stLayer        layer;
 
-                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) ||
-                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), strName, layer, strError ) )
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 2, strError );
+
+                if( !pWorld || !FindLayer( pWorld.get(), strName, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return PushTint( pLuaState, layer );
             }
 
             /**
-             * @luaname{tilemap_set_layer_tint(layerId, r, g, b, a) -> true | nil, message}
+             * @luaname{tilemap_set_layer_tint(layerId, r, g, b, a [, world]) -> true | nil, message}
              * @luagroup{layer_tint}
              */
             int LuaTilemapApi :: SetLayerTint( lua_State* pLuaState )  {
@@ -511,7 +533,12 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 6, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: IWorld*  pTileMap = pWorld.get();   // the default world when none is given
 
                 // Read first: every other field (visible, opacity, offset, parallax) is written back as it is.
                 if( !FindLayer( pTileMap, nLayerId, layer, strError ) || !ReadTint( pLuaState, layer, strError ) )
@@ -524,7 +551,7 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{tilemap_set_layer_tint_by_name(layerName, r, g, b, a) -> true | nil, message}
+             * @luaname{tilemap_set_layer_tint_by_name(layerName, r, g, b, a [, world]) -> true | nil, message}
              * @luagroup{layer_tint}
              */
             int LuaTilemapApi :: SetLayerTintByName( lua_State* pLuaState )  {
@@ -536,7 +563,12 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 6, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: IWorld*  pTileMap = pWorld.get();   // the default world when none is given
 
                 if( !FindLayer( pTileMap, strName, layer, strError ) || !ReadTint( pLuaState, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -601,7 +633,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call;
              * @return int number of return data (if any - required by lua engine)
              *
-             * @luaname{tilemap_get_layer_parallax(layerId) -> fx, fy | nil, message}
+             * @luaname{tilemap_get_layer_parallax(layerId [, world]) -> fx, fy | nil, message}
              * @luagroup{layer_parallax}
              * @luaheading{Layer parallax}
              * @luadoc
@@ -612,6 +644,9 @@ namespace Scarab  {
              * A layer is drawn shifted by `(1 - factor) x (view centre + the map's parallax origin)`, as
              * Tiled draws it, in every view about its own centre; a group's factors multiply into the
              * layers inside it.
+             *
+             * All four take an optional last `world` (the default world when left out); in a world of
+             * several maps a setter changes that layer in every map that has it.
              *
              * `tilemap_set_layer_parallax` changes them at runtime (any finite number); the next frame
              * draws with them, and they read back as written. Loading the map again brings back the
@@ -636,8 +671,12 @@ namespace Scarab  {
                 int                                   nLayerId = 0;
                 SunLight :: TileMap :: stLayer        layer;
 
-                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) ||
-                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), nLayerId, layer, strError ) )
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 2, strError );
+
+                if( !pWorld || !FindLayer( pWorld.get(), nLayerId, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return PushParallax( pLuaState, layer );
@@ -649,7 +688,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call;
              * @return int number of return data (if any - required by lua engine)
              *
-             * @luaname{tilemap_get_layer_parallax_by_name(layerName) -> fx, fy | nil, message}
+             * @luaname{tilemap_get_layer_parallax_by_name(layerName [, world]) -> fx, fy | nil, message}
              * @luagroup{layer_parallax}
              */
             int LuaTilemapApi :: GetLayerParallaxByName( lua_State* pLuaState )  {
@@ -658,8 +697,12 @@ namespace Scarab  {
                 std :: string                         strName;
                 SunLight :: TileMap :: stLayer        layer;
 
-                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) ||
-                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), strName, layer, strError ) )
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 2, strError );
+
+                if( !pWorld || !FindLayer( pWorld.get(), strName, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return PushParallax( pLuaState, layer );
@@ -672,7 +715,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call;
              * @return int number of return data (if any - required by lua engine)
              *
-             * @luaname{tilemap_set_layer_parallax(layerId, fx, fy) -> true | nil, message}
+             * @luaname{tilemap_set_layer_parallax(layerId, fx, fy [, world]) -> true | nil, message}
              * @luagroup{layer_parallax}
              */
             int LuaTilemapApi :: SetLayerParallax( lua_State* pLuaState )  {
@@ -685,7 +728,12 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) || !ReadParallax( pLuaState, factors, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 4, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: IWorld*  pTileMap = pWorld.get();   // the default world when none is given
 
                 if( !FindLayer( pTileMap, nLayerId, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
@@ -705,7 +753,7 @@ namespace Scarab  {
              * @param pLuaState Lua state to be used by engine call;
              * @return int number of return data (if any - required by lua engine)
              *
-             * @luaname{tilemap_set_layer_parallax_by_name(layerName, fx, fy) -> true | nil, message}
+             * @luaname{tilemap_set_layer_parallax_by_name(layerName, fx, fy [, world]) -> true | nil, message}
              * @luagroup{layer_parallax}
              */
             int LuaTilemapApi :: SetLayerParallaxByName( lua_State* pLuaState )  {
@@ -718,7 +766,12 @@ namespace Scarab  {
                 if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) || !ReadParallax( pLuaState, factors, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: ITileMap*  pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 4, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: TileMap :: IWorld*  pTileMap = pWorld.get();   // the default world when none is given
 
                 if( !FindLayer( pTileMap, strName, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );

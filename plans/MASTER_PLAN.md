@@ -42,7 +42,9 @@ z-orders keep the order sprites were added in), and in P12 to `ad84cca1320fb0464
 report: a shape drawn outside the map pass uses the view's own camera), and in P13 to
 `44f64a1648fa55fabc9708e6736d4368ee2bf844` (I17, Scarab's report: tile picking on non-orthogonal maps; and I18:
 the far-edge map alignments take the zoom into account), and in P14 to `d9c71d26232fd7a88132fab1cf4100d97e1b4512`
-(I19, Scarab's C7: view opacity and worlds - several maps at once; and I20: maps with stagger axis X load).
+(I19, Scarab's C7: view opacity and worlds - several maps at once; and I20: maps with stagger axis X load), and in
+P15 to `df589ce581a393c65edabd8e38995a53fd2f30aa` (I21, Scarab's proposals from C7: `IWorld::SetLayer`, and the default
+view accepting the default world).
 
 ## Phase P: pin & plumbing
 
@@ -63,6 +65,7 @@ the far-edge map alignments take the zoom into account), and in P14 to `d9c71d26
 | P12 | Re-pin to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (sunlight's I16: a shape drawn outside the map pass uses the view's own camera, map or no map - Scarab's report from C2 planning, BREAKAGES 65) - done in C2's branch (owner's choice) | DONE |
 | P13 | Re-pin to `44f64a1648fa55fabc9708e6736d4368ee2bf844` (sunlight's I17: tile picking by the cell's real diamond or hexagon on isometric, staggered and hexagonal maps - Scarab's report from C5 planning, BREAKAGES 66; and I18: the far-edge map alignments take the zoom into account, BREAKAGES 67, which closes V14) - done in C5's branch (owner's choice) | DONE |
 | P14 | Re-pin to `d9c71d26232fd7a88132fab1cf4100d97e1b4512` (sunlight's I19, Scarab's C7: view opacity (I19a), worlds (I19b-c), several maps per world (I19d), collisions across map edges (I19e) and Tiled `.world` files (I19f), BREAKAGES 68-72; and I20: maps with stagger axis X load, BREAKAGES 73) - done in C7 part 1's branch (owner's choice); nothing changes for existing games | DONE |
+| P15 | Re-pin to `df589ce581a393c65edabd8e38995a53fd2f30aa` (sunlight's I21, BREAKAGES 74 - Scarab's two proposals after C7: `IWorld::SetLayer` by id and by name, changing that layer in every map of a world; and `IView::SetWorld( default world )` on the default view returning true) - with the layer setters given an optional world; see below | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -2215,6 +2218,22 @@ world map beside the local one, a picture-in-picture dungeon, a menu over anothe
 - **Checks:** unit tests, 24/24 smoke tests, ASan 53/53, style clean; Caravellius acceptance PASS and fingerprint
   `hash=33897632` (unchanged: it takes every sprite off its layer before releasing it).
 - **Caravellius:** BREAKAGES 30.
+
+**P15 done (2026-11-09): layer setters per world, re-pin to `df589ce` (sunlight I21).** After C7 Scarab sent sunlight
+two proposals (owner-approved): `IWorld::SetLayer` (sunlight's world had only GetLayer, so a layer could be changed
+only in the default world) and `SetWorld( default world )` on the default view returning true (sunlight refused the
+default view whatever the world; Scarab answered `view_set_world( 0, 0 )` itself). sunlight did both as I21.
+- **Code:** an optional last `world` on `tilemap_set_layer(_by_name)`, `tilemap_set_layer_tint(_by_name)`,
+  `tilemap_set_layer_parallax(_by_name)` and on the tint and parallax getters (the layer getters had it since C7
+  part 2); in a world of several maps a setter changes that layer in every map that has it. Scarab's
+  `view_set_world( 0, 0 )` special case removed (sunlight answers it; the test still checks it is true).
+- **Test:** `scripts/world_api_smoke` writes layer, tint and parallax in the grid world and checks the default world
+  untouched, plus the refusals; **shown failing** with the setters ignoring the world (the default world changed
+  instead). That mutation also exposed a bug in the test's own `same()` helper (`table.concat` of a boolean), fixed.
+  Three rows in `error_reporting_smoke`.
+- **Sample:** `samples/worlds` - `T` (X) tints the grid world's "ground" layer; **window check with the owner
+  (2026-11-09):** all four maps, the isometric one included, tinted and untinted together; the cloud map untouched.
+- **Caravellius:** BREAKAGES 31 (nothing changes).
 
 ## Phase R: requisites
 

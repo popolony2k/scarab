@@ -85,10 +85,11 @@ namespace Scarab  {
              * renderer does: `world_create` and `world_load` create the default one if needed, like
              * `tilemap_load_map`; the other functions never do.
              *
-             * **What stays on the default world:** `tilemap_load_map`/`tilemap_unload_map`, the layer
-             * setters (`tilemap_set_layer`, tint, parallax) and `tilemap_get_tile`/
-             * `tilemap_to_tile_matrix` (use `world_get_tile`/`world_to_tile_matrix` for another world).
-             * sunlight's world has no layer setter yet; it is a known limit, asked for when a game needs it.
+             * **Layers of a world:** the layer getters and setters (`tilemap_get_layer`/`tilemap_set_layer`,
+             * tint, parallax, by id or by name) take an optional last `world`; in a world of several maps a
+             * setter changes that layer in every map that has it (sunlight I21). **What stays on the default
+             * world:** `tilemap_load_map`/`tilemap_unload_map` and `tilemap_get_tile`/`tilemap_to_tile_matrix`
+             * (use `world_get_tile`/`world_to_tile_matrix` for another world).
              */
             class LuaWorldApi  {
 
