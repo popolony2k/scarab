@@ -387,6 +387,15 @@ local __GLOW_LAYER     <const> = 4      -- "clouds" in test.tmx: drawn before Su
   `renderer_create{ width = 960 }`), a subscript (`color[3]`), and a HUD row (`Hud.line( text, 3, ... )`).
   Everything else that means something is a constant. Expected values in a smoke test are test data.
 
+### Comments
+
+- **Every function has a comment of its own**, just above it (a `--` line, or a `--[[ ]]` block; blank lines
+  between are fine) - in the samples, the smoke tests and the tools alike, local and nested functions too.
+  It is the Lua counterpart of the C++ rule above: say what the function does, and what its name does not
+  tell - what it returns, when the engine calls it, which keys or buttons it reads. For `on_update`, what
+  the script does each frame. The samples are what people read to learn Scarab, and the smoke tests are
+  what people read to see what a function promises (`lua-function-comment`; `plans/MASTER_PLAN.md` item T4).
+
 ### Checking
 
 - A rule that a script can check is checked by one: `scripts/style_audit.py` measures every rule of

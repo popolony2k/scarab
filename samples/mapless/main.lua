@@ -89,6 +89,8 @@ add_sprite( "glow", "resources/sprites/glow.png", 1, __HELD_FRAME, __GLOW_POS, _
 local sunnyX, sunnyY = __SUNNY_POS.x, __SUNNY_POS.y
 
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): walk Sunny (arrows/WASD), hide or show
+-- a layer in the view (1-3), zoom (PageUp/PageDown, +/-, = and Home reset), and draw the HUD.
 function on_update( dt )
 
     if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then sunnyX = sunnyX - __SPEED end

@@ -50,6 +50,8 @@ local __LEVEL        <const> = 2                     -- what the archive's first
 local scenario = os.getenv( "SMOKE_SCENARIO" ) or "(unset)"
 local failures = {}
 
+-- Record a failure message, prefixed with the scenario's name, when `ok` is false. Every check runs; the
+-- failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = scenario .. ": " .. message end
 end
@@ -67,6 +69,8 @@ local function fixed_table()
              nested = { b = { c = false } } }
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -193,6 +197,8 @@ end
 
 local reported = false
 
+-- Called by Scarab every frame: the checks ran at load time, so on the first frame print OK and quit if none
+-- failed; otherwise print every failure, once, and keep running, so --max-frames runs out and the run fails (exit 3).
 function on_update( dt )
     if reported then return end
     reported = true

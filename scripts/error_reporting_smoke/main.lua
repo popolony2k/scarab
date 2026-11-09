@@ -55,6 +55,7 @@ local __QUEUE_LIMIT <const> = 65535  -- a queued command's 16-bit parameter
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -80,6 +81,8 @@ local function expect_true( label, f, ... )
     check( ok and value == true, label .. ": expected true, got " .. tostring( value ) .. " " .. tostring( message ) )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 
 -- the queue: true once queued; only the parameter can fail (0..65535)
@@ -316,6 +319,8 @@ expect_error( "close handle", "invalid archive handle", pack_close_archive, 9999
 
 local frames = 0
 
+-- Called by Scarab every frame: on the first frame (a renderer exists now) the checks that need one - text, view
+-- opacity, worlds; on the second, then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

@@ -98,6 +98,7 @@ assert( register_font( "Sans", Hud.font() ) )
 
 local current
 
+-- Load one of __MAPS, reset the zoom and put the camera where that map's entry says.
 local function show_map( entry )
     assert( tilemap_load_map( entry.file, MAP_ALIGNMENT_TOP_LEFT ) )
     assert( zoom_reset() )
@@ -124,6 +125,7 @@ local __GROUP_OPACITIES <const> = { 1, 0.25, 0.6 }   -- 0..1; 0.6 is the authore
 local tintIndex      = #__TINTS
 local opacityIndex   = #__GROUP_OPACITIES
 
+-- On the tint map only: T cycles the tinted layer's tint, G the group layer's opacity (keeping its other values).
 local function runtime_tint_keys()
     if input_is_key_released( KEY_T ) then
         tintIndex = tintIndex % #__TINTS + 1
@@ -138,6 +140,8 @@ local function runtime_tint_keys()
     end
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): switch maps (1-6), change tint and group
+-- opacity on the tint map, pan and zoom, and draw the HUD.
 function on_update( dt )
 
     for _, entry in ipairs( __MAPS ) do

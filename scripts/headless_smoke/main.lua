@@ -45,10 +45,15 @@ local __TOLERANCE_SECS <const> = 0.001
 local frames        = 0
 local osTimeStart = os.time()
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId )
     return true
 end
 
+-- Called by Scarab every frame: at __CHECK_FRAME compare app_get_time, os.clock and os.time with the virtual time
+-- the frame count gives, and check the input reads nothing pressed; print the result, and quit only if it passed
+-- (a failed run keeps going until --max-frames runs out, exit 3).
 function on_update( dt )
 
     frames = frames + 1

@@ -58,6 +58,7 @@ local __EXTRA_VIEW  <const> = { x = 0, y = 0, w = 300, h = 200 }
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -103,8 +104,12 @@ local function check_axis( label, toFar, toOrigin, coord, edge )
            label .. ": " .. backMoves .. " moves back to the origin, want " .. math.ceil( edge / __SCROLL_STEP ) )
 end
 
+-- Check one view's camera limits at `zoom`: with the scroll step set, each axis moved with `moves` from 0 must
+-- stop at its far edge (from the viewport's size and the zoom) without changing the other axis.
 local function check_view( label, view, viewportW, viewportH, zoom, moves )
+    -- The view's camera x.
     local function cam_x() local x = view_get_camera_position( view ) return x end
+    -- The view's camera y.
     local function cam_y() local _, y = view_get_camera_position( view ) return y end
 
     check( view_get_zoom( view ) == zoom, label .. ": zoom is " .. tostring( view_get_zoom( view ) ) .. ", want " .. zoom )
@@ -119,6 +124,7 @@ local function check_view( label, view, viewportW, viewportH, zoom, moves )
     check( cam_x() == 0, label .. ": moving up/down changed x" )
 end
 
+-- The four camera moves of `view`, as functions check_view can call.
 local function view_moves( view )
     return { up    = function() view_move_camera_up( view ) end,
              down  = function() view_move_camera_down( view ) end,
@@ -126,6 +132,8 @@ local function view_moves( view )
              right = function() view_move_camera_right( view ) end }
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -150,6 +158,8 @@ if extra then
 end
 
 local frames = 0
+-- Called by Scarab every frame: the checks ran at load time, so on the first frame print OK and quit if none
+-- failed; otherwise print every failure, once, and keep running, so --max-frames runs out and the run fails (exit 3).
 function on_update( dt )
     frames = frames + 1
     if frames == 1 then

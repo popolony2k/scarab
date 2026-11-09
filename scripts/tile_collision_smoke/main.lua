@@ -61,12 +61,15 @@ local __HOLD_FRAMES  <const> = 10     -- frames a still sprite is held in the ca
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
 
 check( renderer_create{ zoom = __ZOOM, preferred_zoom = __ZOOM } ~= nil, "renderer_create failed" )
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -130,6 +133,7 @@ local last     = nil
 local held     = 0
 local tileSeen = nil
 
+-- Start the next phase: its world space and camera, the sprite at its start (or hold) position, the counters reset.
 local function start_phase()
     phase   = phase + 1
     current = phases[phase]
@@ -146,6 +150,8 @@ local function start_phase()
     calls = 0
 end
 
+-- Check a sweep phase: the first and last x where the sprite collided, and the tile and handle the handler got (a
+-- hold phase is checked frame by frame instead).
 local function finish_phase()
     if current.hold then
         return
@@ -164,6 +170,8 @@ end
 
 local reported = false
 
+-- Called by Scarab every frame: run the phases one after another - a sweep across the wall (where collisions
+-- start and stop) or a hold (calls per frame) - and after the last one then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     if reported then return end
 

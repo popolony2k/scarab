@@ -81,6 +81,8 @@ local square       = { x = ( screenWidth - __SQUARE_SIZE ) / 2, y = groundY, spe
 local rebinding    = false
 local message      = ""
 
+-- Load the player's saved bindings from the save directory, or the shipped defaults when there are none yet,
+-- and say which on the HUD.
 local function load_bindings()
     if input_load_action_map( __SAVED ) then
         message = "loaded your saved bindings"
@@ -156,6 +158,9 @@ local function rumble_all( rumble )
     return shaken
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): while rebinding, wait for the key or
+-- button for jump; otherwise R starts a rebind, S saves, D loads the defaults, T tests rumble; move the square by
+-- the ACTIONS (never by keys), and draw the bindings, the message and the connected pads.
 function on_update( dt )
 
     if rebinding then

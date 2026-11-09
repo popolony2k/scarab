@@ -74,10 +74,14 @@ end
 local __FADE_STEP <const> = 1 / 60
 local fadeAlpha    = 1.0
 
+-- One HUD line: the key, what it toggles and its current state ("F1 - FPS counter: true").
 local function control_line( key, label, state )
     return key .. " - " .. label .. ": " .. tostring( state )
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): run the startup fade, toggle the FPS
+-- counter (F1), resizeable window (F2), fullscreen (F3) and stretch to fill (F4), change the target FPS (Up/Down),
+-- and draw the HUD and the meter bar.
 function on_update( dt )
 
     if fadeAlpha > 0 then

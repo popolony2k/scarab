@@ -74,6 +74,7 @@ local __ANIMATED_OBJECTS <const> = { "anim_object", "anim_object_flipped" }
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -100,6 +101,8 @@ local function expected_gid( elapsed )
     end
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -108,6 +111,7 @@ local loadMs  = nil
 local seen    = {}     -- gid -> number of sampled frames that showed it
 local hidden  = false
 
+-- One sample: every animated cell and object must show the frame the time since the load gives.
 local function check_frame( sample )
     local elapsed = now_ms() - loadMs
     local want    = expected_gid( elapsed )
@@ -131,6 +135,8 @@ local function check_frame( sample )
     seen[want] = ( seen[want] or 0 ) + 1
 end
 
+-- Hide or show the animated layer three ways at once - its visible flag, the view's layer mask and a camera far
+-- away - so the test shows the animation keeps time while nothing draws it.
 local function set_hidden( hide )
     local visible, opacity, offsetX, offsetY = tilemap_get_layer( __ANIMATED_LAYER )
 
@@ -140,6 +146,7 @@ local function set_hidden( hide )
     hidden = hide
 end
 
+-- Every way tilemap_get_tile_frame and tilemap_get_object_tile_frame can refuse, with its message.
 local function check_refusals()
     expect_error( "object layer", "is not a tile layer", tilemap_get_tile_frame( 0, 0, __OBJECT_LAYER ) )
     expect_error( "unknown layer", "no layer 99", tilemap_get_tile_frame( 0, 0, 99 ) )
@@ -155,6 +162,9 @@ local function check_refusals()
     expect_error( "object name as a number", "argument 'name' must be a string", tilemap_get_object_tile_frame( 1 ) )
 end
 
+-- Called by Scarab every frame: at __LOAD_FRAME check the refusals and load the map; from then on sample every
+-- animated cell and object against the frame the time since the load gives, hiding the layer for part of the run;
+-- when the sampling ends, then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

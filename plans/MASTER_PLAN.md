@@ -2679,7 +2679,7 @@ accurate once the features it describes are actually settled, not before.
 | T1 | A full documentation pass once every other phase's changes have landed | TODO |
 | T2 | Simplify `README.md` | DONE |
 | T3 | Every source file and script carries the project's copyright/license notice | DONE |
-| T4 | Every function in the samples has a comment of its own saying what it does (the samples are the reference for people learning Scarab), and a style rule that keeps it so | TODO (owner, 2026-11-07) |
+| T4 | Every function in the samples has a comment of its own saying what it does (the samples are the reference for people learning Scarab), and a style rule that keeps it so | DONE (2026-11-09) |
 
 **T4 (added by the owner, 2026-11-07).** The samples are educational: people read them to learn Scarab and copy
 their patterns, so every function in them should say what it does, the way every C++ function has a Doxygen
@@ -2702,6 +2702,24 @@ only complete ones). `samples/projections`' 5 were commented in C5 itself (the o
     a mutation (a comment removed fails the check). Whether `scripts/` and `tools/` come under the rule is to
     be decided when T4 is planned: measure them first.
 - Can be done before T1, since the samples are already settled; T1 stays last.
+
+**T4 done (2026-11-09).** Measured again when T4 started (at `94cdcc2`, after C5, C7 and P15 added samples):
+`samples/` 36 of 98 functions without a comment, `tools/` 1 of 1, `scripts/` (smoke tests) 94 of 127. **Scope (owner):
+all three, enforced** - the smoke tests too, not just reported.
+- **131 comments**, each written from the function's code (two first drafts were wrong and fixed before commit:
+  `samples/sprite` clamps the camera, not Sunny; `on_update` is optional, so `tools/pack.lua`'s empty one is not
+  "required"). Every `on_update` says what the script does each frame; the 23 identical smoke-test `check`s, the 24
+  `on_load_stage`s and the report-only `on_update`s share one wording each.
+- **Rule:** `lua-function-comment` in `docs/CODE_STYLE.md`'s Lua part ("Comments") and in `CLAUDE.md`, checked by
+  `scripts/style_audit.py` in `samples/`, `scripts/` and `tools/` (a `--` line or the end of a `--[[ ]]` block just above
+  the function, blank lines skipped, read in the raw source), enforced by `--check` in CI. **Shown failing:** with the
+  comment above `samples/sprite`'s `clamp` and `scripts/projection_smoke`'s `next_map` removed, `--check` exits 1
+  naming both lines; with them back, 0 findings in 38 enforced rules.
+- **READMEs:** every key a sample reads is in its `docs/README.md` (a script compared them; the only differences
+  were spellings - "Page Up", arrow symbols - and the key names `samples/actions` offers for rebinding). A full read
+  of the samples' text stays part of T1.
+- **Checks:** comments only - every smoke test (24/24) and every sample runs headless as before; AddressSanitizer 53 of
+  53.
 
 **T1.** Scope: `README.md`; the generated Lua API reference's own source comments
 (`@luadoc`/`@luaexample` tags in `src/lua/`); `samples/*/docs/README.md`; `CLAUDE.md`'s own

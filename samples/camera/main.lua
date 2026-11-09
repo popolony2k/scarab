@@ -47,6 +47,8 @@ assert( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER ) )
 -- starts at (Scarab's default, 3.8125), so a reset goes back to it.
 assert( view_set_preferred_zoom( 0, viewport_get_zoom_factor() ) )
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): pan the camera (arrows/WASD) and zoom
+-- (PageUp/PageDown, +/-, = and Home reset) one step per frame a key is held, and draw the HUD.
 function on_update( dt )
 
     -- Panning/zoom: each camera_move_*/zoom_in/zoom_out call is one step

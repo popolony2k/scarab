@@ -115,6 +115,9 @@ local function delete_all()
     return "saves deleted - the defaults come back on the next launch"
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): change the options (Left/Right volume,
+-- F FPS, C colour), play a round (Space) into the high scores, save (S) or delete (X) both files, and draw the
+-- options, the scores, the last message and the save folder.
 function on_update( dt )
 
     if input_is_key_released( KEY_LEFT ) then options.volume = math.max( 0, options.volume - 1 ) end

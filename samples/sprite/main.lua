@@ -101,6 +101,7 @@ local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
 local mapPixelWidth  = mapWidth * tileWidth
 local mapPixelHeight = mapHeight * tileHeight
 
+-- Keep a value between low and high.
 local function clamp( value, low, high )
     return math.max( low, math.min( value, high ) )
 end
@@ -122,6 +123,8 @@ local function follow( x, y, width, height )
     return cameraX, cameraY
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): change Sunny's opacity (O) and tint (T),
+-- walk it (arrows/WASD), keep the camera centred on it (kept inside the map), and draw the HUD.
 function on_update( dt )
 
     if input_is_key_released( KEY_O ) then

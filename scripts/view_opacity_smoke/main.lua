@@ -46,6 +46,7 @@ local __VALUES       <const> = { 0, 0.3, 0.25, 0.1, 0.999, 1 }
 local failures = {}
 local reported = false
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -72,6 +73,8 @@ local function round_trips( label, view )
     end
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -124,6 +127,8 @@ check( view_set_opacity( 0, 0.5 ) == true and view_set_opacity( extra, 0 ) == tr
 
 local frames = 0
 
+-- Called by Scarab every frame: after __DRAW_FRAMES frames drawn with views faded, check the opacities survived and
+-- set them back to 1, then then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     if reported then return end           -- a failed run never quits: --max-frames runs out (exit 3)
 

@@ -36,6 +36,7 @@ io.stdout:setvbuf( "line" )
 local scenario = os.getenv( "RENDERER_SMOKE_SCENARIO" ) or "?"
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -47,6 +48,7 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- Check every key of `want` in a renderer_get_config result, the values of a nested table (the viewport) included.
 local function check_config( label, cfg, want )
     for key, expected in pairs( want ) do
         if type( expected ) == "table" then
@@ -60,6 +62,8 @@ local function check_config( label, cfg, want )
     end
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -436,6 +440,8 @@ else
 end
 
 local frames = 0
+-- Called by Scarab every frame: the checks ran at load time, so on the first frame print OK and quit if none
+-- failed; otherwise print every failure, once, and keep running, so --max-frames runs out and the run fails (exit 3).
 function on_update( dt )
     frames = frames + 1
     if frames == 1 then

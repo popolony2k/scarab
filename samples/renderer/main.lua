@@ -75,6 +75,8 @@ local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
 -- Rejected calls come back as nil + a message - shown on screen, to see the exact text.
 local lastMessage = "press Space to try an invalid zoom (" .. __INVALID_ZOOM .. ")"
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): zoom and pan the default view through
+-- the view_* functions, one step per frame a key is held, and draw the renderer's settings read back live.
 function on_update( dt )
 
     -- Held keys give continuous zoom/pan: each call is one fixed step. The zoom keys are

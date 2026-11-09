@@ -88,6 +88,9 @@ local __OPAQUE                <const> = 255
 local counter          = 0
 local framesSinceCount = 0
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): count, pick the active font (1-3, 0 the
+-- built-in one), and draw the border, a line in each font, the accented line, the bad-path message and the
+-- right-aligned counter.
 function on_update( dt )
 
     framesSinceCount = framesSinceCount + 1

@@ -46,6 +46,7 @@ local __SCROLL        <const> = 64     -- camera position on the loaded map
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -57,10 +58,13 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- Check that a shape call returned true, naming the message it returned otherwise.
 local function expect_true( label, value, message )
     check( value == true, label .. ": expected true, got " .. tostring( value ) .. " " .. tostring( message ) )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -120,6 +124,8 @@ end
 
 local frames = 0
 
+-- Called by Scarab every frame: draw every shape with no map (__MAPLESS_FRAME), load a map and scroll the frame
+-- before __MAP_FRAME, draw them all again over the map, and at __LAST_FRAME then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

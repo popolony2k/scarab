@@ -77,6 +77,8 @@ sp_wait( 1 )
 assert( tilemap_load_map( "resources/tilemap/collision.tmx", MAP_ALIGNMENT_CENTER ) )
 assert( pool_register_type( "sunny", 2 ) )
 
+-- Acquire a Sunny from the pool and set it up: its texture (animated in `mode`, `delay` ms per frame), world
+-- space, position `pos` and layer `layerId` (adding it to a layer is what makes it collide). Returns its handle.
 local function add_sunny( pos, layerId, mode, delay )
     local handle = assert( sprite_acquire( "sunny" ) )
 
@@ -122,6 +124,9 @@ collision_set_tile_handler( function( handle, gid, x, y, width, height )
     end
 end )
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): remember where the player was, walk it
+-- (arrows/WASD; the tile handler puts it back when it walks into a wall), zoom, and draw the HUD with the
+-- wall stops and the sprite hits counted by the handlers.
 function on_update( dt )
 
     frameCount = frameCount + 1

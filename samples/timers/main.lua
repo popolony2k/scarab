@@ -56,6 +56,8 @@ local function on_second_tick()
     secondTicks = secondTicks + 1
 end
 
+-- The quarter-second timer's callback: count a tick. It runs on the timer's own thread, so it only touches
+-- plain Lua data (see the timer-callback rule in docs/lua-api/timers.html).
 local function on_quarter_tick()
     quarterTicks = quarterTicks + 1
 end
@@ -63,6 +65,8 @@ end
 assert( set_timer( __SECOND_TIMER, __SECOND_MILLI, on_second_tick ) )
 assert( set_timer( __QUARTER_TIMER, __QUARTER_MILLI, on_quarter_tick ) )
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): stop or restart the one-second timer
+-- (F1), and draw both timers' tick counts.
 function on_update( dt )
 
     if input_is_key_released( KEY_F1 ) then

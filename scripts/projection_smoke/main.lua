@@ -74,10 +74,12 @@ local __MAPS <const> = {
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
 
+-- Check that the values in `got` equal `want`, value by value; one failure names both lists.
 local function same( label, got, want )
     for i = 1, #want do
         if got[i] ~= want[i] then
@@ -87,6 +89,8 @@ local function same( label, got, want )
     end
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -213,6 +217,7 @@ end
 
 local expected = 0
 
+-- Go on to the next map of __MAPS, at its first step, and set it up (none left: the run reports).
 local function next_map()
     index = index + 1
     step  = 0
@@ -222,6 +227,8 @@ end
 
 next_map()
 
+-- Called by Scarab every frame: for the current map, hold the sprite on the obstacle and then off the map, counting
+-- tile collisions over __HOLD_FRAMES frames each, then go on to the next map; after the last map, then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     local m = __MAPS[index]
 
