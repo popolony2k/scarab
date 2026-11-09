@@ -64,6 +64,7 @@ SOURCE_TO_DOC = {
     "luatilemapapi.cpp":    "tilemap.md",
     "luatimerapi.cpp":      "timers.md",
     "luaviewapi.cpp":       "views.md",
+    "luaworldapi.cpp":      "worlds.md",
 }
 
 # luaengine.cpp is the one file scanned for the REVERSE direction - Lua

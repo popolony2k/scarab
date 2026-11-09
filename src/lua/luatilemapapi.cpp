@@ -19,6 +19,9 @@
  */
 
 #include "lua/luatilemapapi.h"
+#include "lua/luaworldapi.h"
+#include "lua/luaspriteapi.h"
+#include "engine/spritepool.h"
 #include "lua/luaengineutil.h"
 #include <climits>
 #include <cmath>
@@ -63,7 +66,7 @@ namespace Scarab  {
             /**
              * @brief Fetch layer nLayerId of the loaded map, with the reason on failure.
              */
-            static bool FindLayer( SunLight :: TileMap :: ITileMap* pTileMap, int nLayerId, SunLight :: TileMap :: stLayer& layer, std :: string& strError )  {
+            template<typename TileSource> static bool FindLayer( TileSource* pTileMap, int nLayerId, SunLight :: TileMap :: stLayer& layer, std :: string& strError )  {
 
                 SunLight :: TileMap :: stMapInfo  mapInfo;
 
@@ -83,7 +86,7 @@ namespace Scarab  {
             /**
              * @brief Fetch the layer named strName of the loaded map, with the reason on failure.
              */
-            static bool FindLayer( SunLight :: TileMap :: ITileMap* pTileMap, const std :: string& strName, SunLight :: TileMap :: stLayer& layer, std :: string& strError )  {
+            template<typename TileSource> static bool FindLayer( TileSource* pTileMap, const std :: string& strName, SunLight :: TileMap :: stLayer& layer, std :: string& strError )  {
 
                 SunLight :: TileMap :: stMapInfo  mapInfo;
 
@@ -215,24 +218,40 @@ namespace Scarab  {
                 if( !pTileMap -> GetMapInfo( mapInfo ) || !pTileMap -> UnloadMap() )
                     return LuaEngineUtil :: PushError( pLuaState, __NO_MAP_LOADED );
 
+                // the default world's sprites are on no layer now (item C7: the sprite pool keeps where each one is)
+                static_cast<SpritePool *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_GLOBAL ) ) -> ForgetWorld( 0 );
+
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{tilemap_get_map_info() -> mapWidth, mapHeight, tileWidth, tileHeight | nil, message}
+             * @brief The loaded map's size in tiles and its tile size, of a world (the default world when none is given).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_get_map_info([world]) -> mapWidth, mapHeight, tileWidth, tileHeight | nil, message}
              * @luadoc
              * Dimensions of the currently loaded map, in tiles
              * (`mapWidth`/`mapHeight`) and pixels-per-tile
              * (`tileWidth`/`tileHeight`). Returns `nil, "no map is loaded"`
-             * if no map is loaded.
+             * if no map is loaded. The optional `world` reads another world's
+             * map instead of the default world's (its first map, when it has
+             * several - `world_get_bounds` gives the whole world's size).
              * @luaexample
              * local mapW, mapH, tileW, tileH = tilemap_get_map_info()
+             * local dungeonW, dungeonH = tilemap_get_map_info( dungeon )
              */
             int LuaTilemapApi :: GetMapInfo( lua_State* pLuaState )  {
 
-                SunLight :: TileMap :: stMapInfo  mapInfo;
+                std :: string                                     strError;
+                SunLight :: TileMap :: stMapInfo                  mapInfo;
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 1, strError );
 
-                if( !LuaEngineUtil :: GetTileMap( pLuaState ) -> GetMapInfo( mapInfo ) )
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pWorld -> GetMapInfo( mapInfo ) )
                     return LuaEngineUtil :: PushError( pLuaState, __NO_MAP_LOADED );
 
                 lua_pushinteger( pLuaState, mapInfo.mapSize.nWidth );
@@ -244,7 +263,12 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{tilemap_get_layer(layerId) -> visible, opacity, offsetX, offsetY | nil, message}
+             * @brief A layer's visible flag, opacity and offset, in a world (the default world when none is given).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_get_layer(layerId [, world]) -> visible, opacity, offsetX, offsetY | nil, message}
              * @luagroup{get_layer}
              * @luadoc
              * Every sprite lives on a numbered (or named) Tiled layer —
@@ -260,8 +284,14 @@ namespace Scarab  {
              * layer authored at `0.69` reads `0.69`. (Up to Scarab v0.1.25 it read
              * as an integer 0..255; since Scarab's V3 the integer was exact, but a
              * read-and-write-back still moved an authored `0.5` to `0.502`.)
+             *
+             * The optional `world` reads a layer of another world (in a world of
+             * several maps, `layerId` is a world layer id and the layer is the
+             * first map's that has it). Writing a layer (`tilemap_set_layer`,
+             * tint, parallax) works on the default world only.
              * @luaexample
              * local visible, opacity, offX, offY = tilemap_get_layer(2)
+             * local shown = tilemap_get_layer_by_name( "objects", dungeon )
              */
             int LuaTilemapApi :: GetLayer( lua_State* pLuaState )  {
 
@@ -269,15 +299,24 @@ namespace Scarab  {
                 int                                   nLayerId = 0;
                 SunLight :: TileMap :: stLayer        layer;
 
-                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) ||
-                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), nLayerId, layer, strError ) )
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "layerId", nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 2, strError );
+
+                if( !pWorld || !FindLayer( pWorld.get(), nLayerId, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return PushLayer( pLuaState, layer );
             }
 
             /**
-             * @luaname{tilemap_get_layer_by_name(layerName) -> visible, opacity, offsetX, offsetY | nil, message}
+             * @brief A layer's visible flag, opacity and offset by name, in a world (the default world when none is given).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{tilemap_get_layer_by_name(layerName [, world]) -> visible, opacity, offsetX, offsetY | nil, message}
              * @luagroup{get_layer}
              */
             int LuaTilemapApi :: GetLayerByName( lua_State* pLuaState )  {
@@ -286,8 +325,12 @@ namespace Scarab  {
                 std :: string                         strName;
                 SunLight :: TileMap :: stLayer        layer;
 
-                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) ||
-                    !FindLayer( LuaEngineUtil :: GetTileMap( pLuaState ), strName, layer, strError ) )
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "layerName", strName, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 2, strError );
+
+                if( !pWorld || !FindLayer( pWorld.get(), strName, layer, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 return PushLayer( pLuaState, layer );

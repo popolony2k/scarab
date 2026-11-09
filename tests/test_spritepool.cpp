@@ -182,3 +182,59 @@ TEST_CASE( "Clear forgets every type, so nothing can be acquired until types are
     CHECK_FALSE( pool.HasType( "ship" ) );
     CHECK( pool.Acquire( "ship" ) == INVALID_SPRITE_HANDLE );
 }
+
+TEST_CASE( "A sprite's registrations: one world, recorded and forgotten (item C7)" )  {
+
+    SpritePool  pool;
+
+    REQUIRE( pool.RegisterType( "ship", 2 ) );
+
+    SpriteHandle  hShip  = pool.Acquire( "ship" );
+    SpriteHandle  hOther = pool.Acquire( "ship" );
+
+    CHECK( pool.GetWorld( hShip ) == -1 );                          // on no layer yet
+
+    CHECK( pool.NoteRegistered( hShip, 2, 5 ) );
+    CHECK_FALSE( pool.NoteRegistered( hShip, 2, 5 ) );              // the same registration once
+    CHECK( pool.NoteRegistered( hShip, 2, 7 ) );                    // a second layer of the same world
+    CHECK( pool.GetWorld( hShip ) == 2 );
+    CHECK( pool.GetWorld( hOther ) == -1 );                         // each sprite its own
+
+    CHECK( pool.NoteUnregistered( hShip, 2, 5 ) );
+    CHECK_FALSE( pool.NoteUnregistered( hShip, 2, 5 ) );            // not recorded any more
+    CHECK( pool.GetWorld( hShip ) == 2 );                           // still on layer 7
+
+    std :: vector<SpritePool :: stRegistration>  taken = pool.TakeRegistrations( hShip );
+
+    REQUIRE( taken.size() == 1 );
+    CHECK( taken[0].nWorldId == 2 );
+    CHECK( taken[0].nLayerId == 7 );
+    CHECK( pool.GetWorld( hShip ) == -1 );                          // taken means forgotten
+    CHECK( pool.TakeRegistrations( hShip ).empty() );
+}
+
+TEST_CASE( "ForgetWorld forgets one world's registrations only, and Release forgets a sprite's (item C7)" )  {
+
+    SpritePool  pool;
+
+    REQUIRE( pool.RegisterType( "ship", 2 ) );
+
+    SpriteHandle  hA = pool.Acquire( "ship" );
+    SpriteHandle  hB = pool.Acquire( "ship" );
+
+    REQUIRE( pool.NoteRegistered( hA, 0, 1 ) );
+    REQUIRE( pool.NoteRegistered( hB, 3, 1 ) );
+
+    pool.ForgetWorld( 0 );
+
+    CHECK( pool.GetWorld( hA ) == -1 );
+    CHECK( pool.GetWorld( hB ) == 3 );
+
+    REQUIRE( pool.Release( hB ) );
+
+    SpriteHandle  hRecycled = pool.Acquire( "ship" );               // hB's slot, a new generation
+
+    CHECK( pool.GetWorld( hRecycled ) == -1 );                      // a recycled slot is on no layer
+    CHECK_FALSE( pool.NoteRegistered( hB, 3, 1 ) );                 // a stale handle is refused
+    CHECK( pool.GetWorld( hB ) == -1 );
+}

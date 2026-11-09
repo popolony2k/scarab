@@ -19,6 +19,7 @@
  */
 
 #include "engine/spritepool.h"
+#include <memory>
 #include <climits>
 
 /** A sprite's opacity and tint as sunlight creates it - what Release() puts back. */
@@ -209,6 +210,7 @@ namespace Scarab  {
                 return false;
 
             slot.bInUse = false;
+            slot.registrations.clear();           // the caller detached it (LuaSpriteApi::Release, item C7)
             slot.sprite.SetVisible( false );
             slot.sprite.SetWorldSpace( false );   // a recycled handle must not inherit the previous owner's coordinate space
             slot.sprite.ClearBlendMode();         // ... nor its blend mode (plans/MASTER_PLAN.md item B1)
@@ -391,6 +393,132 @@ namespace Scarab  {
                 slot.sprite.Unload();
 
             m_FreeListsByType.clear();
+        }
+
+        /**
+         * @brief The slot a handle names, if it is live (in use, and of the handle's generation).
+         *
+         * @param hSprite The handle;
+         * @return The slot, or nullptr for an invalid, stale or out-of-range handle;
+         */
+        SpritePool :: stSlot* SpritePool :: FindLiveSlot( SpriteHandle hSprite )  {
+
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
+
+            if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
+                return nullptr;
+
+            stSlot&  slot = m_Slots[nIndex];
+
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
+                return nullptr;
+
+            return std :: addressof( slot );
+        }
+
+        /**
+         * @brief Record that a sprite was registered on a layer of a world (plans/MASTER_PLAN.md item
+         * C7) - sunlight does not say which world holds a sprite, so the pool keeps it.
+         *
+         * @param hSprite The sprite;
+         * @param nWorldId The world (0 = the default world);
+         * @param nLayerId The layer;
+         * @return false for an invalid handle, or when that registration is already recorded;
+         */
+        bool SpritePool :: NoteRegistered( SpriteHandle hSprite, int nWorldId, int nLayerId )  {
+
+            stSlot*  pSlot = FindLiveSlot( hSprite );
+
+            if( pSlot == nullptr )
+                return false;
+
+            for( const stRegistration& registration : pSlot -> registrations )
+                if( ( registration.nWorldId == nWorldId ) && ( registration.nLayerId == nLayerId ) )
+                    return false;
+
+            pSlot -> registrations.push_back( stRegistration { nWorldId, nLayerId } );
+
+            return true;
+        }
+
+        /**
+         * @brief Record that a sprite left a layer of a world.
+         *
+         * @param hSprite The sprite;
+         * @param nWorldId The world;
+         * @param nLayerId The layer;
+         * @return false for an invalid handle, or when that registration was not recorded;
+         */
+        bool SpritePool :: NoteUnregistered( SpriteHandle hSprite, int nWorldId, int nLayerId )  {
+
+            stSlot*  pSlot = FindLiveSlot( hSprite );
+
+            if( pSlot == nullptr )
+                return false;
+
+            for( auto it = pSlot -> registrations.begin(); it != pSlot -> registrations.end(); ++it )  {
+                if( ( it -> nWorldId == nWorldId ) && ( it -> nLayerId == nLayerId ) )  {
+                    pSlot -> registrations.erase( it );
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /**
+         * @brief The world a sprite is registered in (a sprite is in one world at a time).
+         *
+         * @param hSprite The sprite;
+         * @return The world's id, or -1 when the sprite is on no layer or the handle is invalid;
+         */
+        int SpritePool :: GetWorld( SpriteHandle hSprite )  {
+
+            stSlot*  pSlot = FindLiveSlot( hSprite );
+
+            if( ( pSlot == nullptr ) || pSlot -> registrations.empty() )
+                return -1;
+
+            return pSlot -> registrations.front().nWorldId;
+        }
+
+        /**
+         * @brief Every layer a sprite is registered on, forgotten as they are returned - so the caller
+         * can detach the sprite from each (LuaSpriteApi::Release).
+         *
+         * @param hSprite The sprite;
+         * @return Its registrations; empty for an invalid handle;
+         */
+        std :: vector<SpritePool :: stRegistration> SpritePool :: TakeRegistrations( SpriteHandle hSprite )  {
+
+            stSlot*                         pSlot = FindLiveSlot( hSprite );
+            std :: vector<stRegistration>   registrations;
+
+            if( pSlot != nullptr )
+                registrations.swap( pSlot -> registrations );
+
+            return registrations;
+        }
+
+        /**
+         * @brief Forget every registration in one world - after the world let go of its sprites
+         * (world_unload, or tilemap_unload_map for the default world).
+         *
+         * @param nWorldId The world;
+         */
+        void SpritePool :: ForgetWorld( int nWorldId )  {
+
+            for( stSlot& slot : m_Slots )  {
+                std :: vector<stRegistration>&  registrations = slot.registrations;
+
+                for( auto it = registrations.begin(); it != registrations.end(); )  {
+                    if( it -> nWorldId == nWorldId )
+                        it = registrations.erase( it );
+                    else
+                        ++it;
+                }
+            }
         }
     }
 }

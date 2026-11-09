@@ -38,10 +38,12 @@ namespace Scarab  {
              * @brief Constructor. Initialize all class data.
              *
              * @param pLuaState Lua state used to invoke the registered handlers;
+             * @param nWorldId The world this listener hears (0 = the default world), passed to the handlers;
              */
-            LuaCollisionListener :: LuaCollisionListener( lua_State* pLuaState )  {
+            LuaCollisionListener :: LuaCollisionListener( lua_State* pLuaState, int nWorldId )  {
 
                 m_pLuaState = pLuaState;
+                m_nWorldId  = nWorldId;
             }
 
             /**
@@ -92,8 +94,9 @@ namespace Scarab  {
 
                 lua_pushinteger( m_pLuaState, ( lua_Integer ) hFirst );
                 lua_pushinteger( m_pLuaState, ( lua_Integer ) hSecond );
+                lua_pushinteger( m_pLuaState, m_nWorldId );
 
-                if( lua_pcall( m_pLuaState, 2, 0, 0 ) != 0 )  {
+                if( lua_pcall( m_pLuaState, 3, 0, 0 ) != 0 )  {
                     fprintf( stderr, "Error calling collision handler: %s\n", lua_tostring( m_pLuaState, -1 ) );
                     lua_pop( m_pLuaState, 1 );
                 }
@@ -130,8 +133,9 @@ namespace Scarab  {
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.pos.y );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.size.nWidth );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.size.nHeight );
+                lua_pushinteger( m_pLuaState, m_nWorldId );
 
-                if( lua_pcall( m_pLuaState, 6, 0, 0 ) != 0 )  {
+                if( lua_pcall( m_pLuaState, 7, 0, 0 ) != 0 )  {
                     fprintf( stderr, "Error calling collision tile handler: %s\n", lua_tostring( m_pLuaState, -1 ) );
                     lua_pop( m_pLuaState, 1 );
                 }

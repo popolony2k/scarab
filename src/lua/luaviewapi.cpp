@@ -21,6 +21,7 @@
 #include "lua/luaviewapi.h"
 #include "lua/luaengineutil.h"
 #include "lua/luarendererapi.h"
+#include "lua/luaworldapi.h"
 #include "tilemap/iview.h"
 #include "base/viewport.h"
 #include "base/color.h"
@@ -1003,6 +1004,76 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Show a world in a view (sunlight's IView::SetWorld, plans/MASTER_PLAN.md item C7).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{view_set_world(view, world) -> true | nil, message}
+             * @luagroup{view_world}
+             * @luaheading{The world a view shows}
+             * @luadoc
+             * Choose which world a view shows (and read it back with `view_get_world`) - see
+             * `docs/lua-api/worlds.html`. Only a view made by `view_create` can show another world:
+             * the **default view always shows the default world**, so `view_set_world( 0, w )` is
+             * refused unless `w` is `0`. The view keeps its rectangle, camera and zoom; place the
+             * camera on the new world yourself (`view_fit_to_map`, `view_set_camera_position`). When a
+             * world is unloaded, every view showing it goes back to the default world. A view's layer
+             * mask uses the layer ids of the world it shows (a layer *name* is looked up there).
+             * @luaexample
+             * local right = assert( view_create( renderer_get_current(), 640, 0, 640, 720 ) )
+             * assert( view_set_world( right, dungeon ) )
+             * assert( view_fit_to_map( right ) )
+             */
+            int LuaViewApi :: ViewSetWorld( lua_State* pLuaState )  {
+
+                std :: string                                    strError;
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
+
+                if( !pView )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadWorldArg( pLuaState, 2, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'world': " + strError );
+
+                // the default view showing the default world is what it already does: nothing to ask sunlight
+                // (whose SetWorld refuses the default view whatever the world)
+                if( ( pView -> GetId() == 0 ) && ( pWorld -> GetId() == 0 ) )
+                    return LuaEngineUtil :: PushTrue( pLuaState );
+
+                if( !pView -> SetWorld( pWorld ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the default view always shows the default world" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief The world a view shows (sunlight's IView::GetWorld).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{view_get_world(view) -> world | nil, message}
+             * @luagroup{view_world}
+             */
+            int LuaViewApi :: ViewGetWorld( lua_State* pLuaState )  {
+
+                std :: string                                    strError;
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
+
+                if( !pView )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = pView -> GetWorld();
+
+                lua_pushinteger( pLuaState, pWorld ? pWorld -> GetId() : 0 );
+
+                return 1;
+            }
+
+            /**
              * @luaname{view_set_background_color(view, r, g, b [, a]) -> true | nil, message}
              * @luadoc
              * Fill a view's backdrop with this colour instead of the map's own. Each of `r`, `g`,
@@ -1071,7 +1142,8 @@ namespace Scarab  {
              * @luadoc
              * Show or hide one layer **in this view only** (the layer itself, and what every
              * other view shows, are untouched). `layer` is the layer's integer id, or its name
-             * as a string — a name needs a loaded map with a layer of that name, otherwise
+             * as a string — looked up in the world the view shows (`view_set_world`; a world
+             * layer id in a world of several maps) — a name needs a loaded map with a layer of that name, otherwise
              * `nil` and the reason; an id may be set before the map is loaded (the mask is kept
              * by id, and an id that names no layer is simply never matched). `show` is a
              * boolean. Every layer is shown by default.
@@ -1270,6 +1342,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "view_get_clear_background", LuaViewApi :: ViewGetClearBackground );
                 lua_register( pLuaState, "view_set_opacity", LuaViewApi :: ViewSetOpacity );
                 lua_register( pLuaState, "view_get_opacity", LuaViewApi :: ViewGetOpacity );
+                lua_register( pLuaState, "view_set_world", LuaViewApi :: ViewSetWorld );
+                lua_register( pLuaState, "view_get_world", LuaViewApi :: ViewGetWorld );
                 lua_register( pLuaState, "view_set_background_color", LuaViewApi :: ViewSetBackgroundColor );
                 lua_register( pLuaState, "view_use_map_background_color", LuaViewApi :: ViewUseMapBackgroundColor );
                 lua_register( pLuaState, "view_show_layer", LuaViewApi :: ViewShowLayer );

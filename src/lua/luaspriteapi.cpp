@@ -19,6 +19,7 @@
  */
 
 #include "lua/luaspriteapi.h"
+#include "lua/luaworldapi.h"
 #include "lua/luaengineutil.h"
 #include "lua/luablendapi.h"
 #include "engine/spritehandle.h"
@@ -200,21 +201,41 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Return a sprite to its pool, first taking it off every layer it is on, in whichever
+             * world (plans/MASTER_PLAN.md item C7) - so a recycled handle starts on no layer and in no
+             * world.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
              * @luaname{sprite_release(handle) -> true | nil, message}
              * @luadoc
              * Return a handle to its pool, making the slot available for
-             * a future `sprite_acquire`. **Call
-             * `sprite_remove_from_layer` first** if the sprite was ever
-             * added to a layer (see the gotcha above).
+             * a future `sprite_acquire`. The sprite is first taken off every
+             * layer it is on, in whichever world, so it stops drawing and
+             * colliding and a recycled handle starts on no layer. (Up to C7
+             * it stayed registered, only hidden, and had to be taken off its
+             * layer with `sprite_remove_from_layer` first; doing so still
+             * works.)
              */
             int LuaSpriteApi :: Release( lua_State* pLuaState )  {
 
-                std :: string  strError;
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                if( ResolveHandleArg( pLuaState, 1, strError ) == nullptr )
+                if( pSprite == nullptr )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                GetSpritePool( pLuaState ) -> Release( ( SpriteHandle ) lua_tointeger( pLuaState, 1 ) );
+                SpriteHandle  hSprite = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+
+                for( const SpritePool :: stRegistration& registration : GetSpritePool( pLuaState ) -> TakeRegistrations( hSprite ) )  {
+                    std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: WorldById( pLuaState, registration.nWorldId );
+
+                    if( pWorld )
+                        pWorld -> RemoveSprite( registration.nLayerId, *pSprite );
+                }
+
+                GetSpritePool( pLuaState ) -> Release( hSprite );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
@@ -953,7 +974,7 @@ namespace Scarab  {
              * collision callback can decode which sprite collided without
              * exposing raw pointers to Lua.
              *
-             * @luaname{sprite_add_to_layer(handle, layerId) -> true | nil, message}
+             * @luaname{sprite_add_to_layer(handle, layerId [, world]) -> true | nil, message}
              * @luagroup{layers}
              * @luaheading{Layers}
              * @luadoc
@@ -972,9 +993,18 @@ namespace Scarab  {
              * Layer ids are integers from `0` to `254`.
              * `sprite_remove_from_layer` fails when the sprite isn't on that
              * layer.
+             *
+             * **Worlds** (`docs/lua-api/worlds.html`): the optional `world` is
+             * the world whose layer it is - the default world when left out,
+             * so existing code is unchanged. In a world of several maps the
+             * layer id is a world layer id (`world_layer_id`). A sprite is in
+             * one world at a time: adding it to a layer of another world fails
+             * with `"the sprite is in world N: take it off its layer there
+             * first"`. `sprite_remove_from_layer` takes the same `world`.
              * @luaexample
              * assert( sprite_add_to_layer(handle, layerId) )
              * sprite_remove_from_layer(handle, layerId)
+             * assert( sprite_add_to_layer( hero, world_layer_id( dungeon, "objects" ), dungeon ) )
              */
             int LuaSpriteApi :: AddToLayer( lua_State* pLuaState )  {
 
@@ -986,25 +1016,42 @@ namespace Scarab  {
                 if( pSprite == nullptr || !ReadLayerIdArg( pLuaState, 2, nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: ITileMap*    pTileMap = LuaEngineUtil :: GetTileMap( pLuaState );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 3, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SpriteHandle                        hSprite  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                SpritePool*                         pPool    = GetSpritePool( pLuaState );
+                int                                 nWorldId = pWorld -> GetId();
+                int                                 nHeldBy  = pPool -> GetWorld( hSprite );
                 SunLight :: TileMap :: stMapInfo    mapInfo;
                 SunLight :: TileMap :: stLayer      layer;
 
                 // With no map loaded any layer id is accepted (the sprite is drawn once a map with that layer loads).
-                if( pTileMap -> GetMapInfo( mapInfo ) && !pTileMap -> GetLayer( nLayerId, layer ) )
+                if( pWorld -> GetMapInfo( mapInfo ) && !pWorld -> GetLayer( nLayerId, layer ) )
                     return LuaEngineUtil :: PushError( pLuaState, "layer " + std :: to_string( nLayerId ) + " is not a layer of the loaded map" );
 
-                if( !pTileMap -> AddSprite( nLayerId, *pSprite ) )
+                if( ( nHeldBy >= 0 ) && ( nHeldBy != nWorldId ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the sprite is in world " + std :: to_string( nHeldBy ) + ": take it off its layer there first" );
+
+                if( !pWorld -> AddSprite( nLayerId, *pSprite ) )
                     return LuaEngineUtil :: PushError( pLuaState, "the sprite is already on layer " + std :: to_string( nLayerId ) );
 
+                pPool -> NoteRegistered( hSprite, nWorldId, nLayerId );
                 pSprite -> GetCollider().SetParent( pSprite );
-                pSprite -> GetCollider().SetPtrData( PackSpriteHandleAsPtr( ( SpriteHandle ) lua_tointeger( pLuaState, 1 ) ) );
+                pSprite -> GetCollider().SetPtrData( PackSpriteHandleAsPtr( hSprite ) );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sprite_remove_from_layer(handle, layerId) -> true | nil, message}
+             * @brief Take a sprite off a layer of a world (the default world when none is given).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{sprite_remove_from_layer(handle, layerId [, world]) -> true | nil, message}
              * @luagroup{layers}
              */
             int LuaSpriteApi :: RemoveFromLayer( lua_State* pLuaState )  {
@@ -1017,8 +1064,15 @@ namespace Scarab  {
                 if( pSprite == nullptr || !ReadLayerIdArg( pLuaState, 2, nLayerId, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !LuaEngineUtil :: GetTileMap( pLuaState ) -> RemoveSprite( nLayerId, *pSprite ) )
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 3, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pWorld -> RemoveSprite( nLayerId, *pSprite ) )
                     return LuaEngineUtil :: PushError( pLuaState, "the sprite is not on layer " + std :: to_string( nLayerId ) );
+
+                GetSpritePool( pLuaState ) -> NoteUnregistered( ( SpriteHandle ) lua_tointeger( pLuaState, 1 ), pWorld -> GetId(), nLayerId );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }

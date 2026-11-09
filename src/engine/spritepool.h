@@ -26,6 +26,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "engine/spritehandle.h"
 #include "sprite/sprite.h"
 #include "canvas/texturecanvas.h"
@@ -43,6 +44,20 @@ namespace Scarab  {
          * lifecycle policy - all of that is Lua's responsibility.
          */
         class SpritePool  {
+
+            public:
+
+            /**
+             * @brief Where a sprite is registered: a world (0 = the default world) and a layer of it
+             * (plans/MASTER_PLAN.md item C7). sunlight does not say which world holds a sprite, so the
+             * pool keeps it, to detach a released sprite and to name the world that holds one.
+             */
+            struct stRegistration  {
+                int  nWorldId;
+                int  nLayerId;
+            };
+
+            private:
 
             /**
              * @brief A sequence's cached native (un-frame-divided) pixel size -
@@ -83,6 +98,7 @@ namespace Scarab  {
                  */
                 std :: map<int, stNativeTextureSize>                   nativeTextureSizes;
                 std :: string                                          strTypeTag;
+                std :: vector<stRegistration>                          registrations;   // the layers the sprite is on (item C7)
                 uint16_t                                               nGeneration;
                 bool                                                   bInUse;
             };
@@ -95,6 +111,8 @@ namespace Scarab  {
              */
             std :: deque<stSlot>                              m_Slots;
             std :: unordered_map<std :: string, __FreeList>   m_FreeListsByType;
+
+            stSlot* FindLiveSlot( SpriteHandle hSprite );
 
             public:
 
@@ -112,6 +130,12 @@ namespace Scarab  {
             int GetOrCacheNativeWidth( SpriteHandle hSprite, int nSequenceId, int nCurrentWidth );
             int GetOrCacheNativeHeight( SpriteHandle hSprite, int nSequenceId, int nCurrentHeight );
             void Clear( void );
+
+            bool NoteRegistered( SpriteHandle hSprite, int nWorldId, int nLayerId );
+            bool NoteUnregistered( SpriteHandle hSprite, int nWorldId, int nLayerId );
+            int GetWorld( SpriteHandle hSprite );
+            std :: vector<stRegistration> TakeRegistrations( SpriteHandle hSprite );
+            void ForgetWorld( int nWorldId );
         };
     }
 }

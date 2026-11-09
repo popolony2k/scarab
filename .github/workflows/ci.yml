@@ -534,6 +534,20 @@ jobs:
           python scripts/view_opacity_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "view opacity smoke test exited with code $LASTEXITCODE" }
 
+      # Worlds: lifetime, maps at offsets, .world files, layer ids by name, tiles and picking per map,
+      # view_set_world, sprites in one world at a time and detached on release/unload, collisions per world with
+      # the world id in the handlers, across a map edge too - plans/MASTER_PLAN.md item C7, part 2.
+      - name: World API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/world_api_smoke.py build/scarab
+
+      - name: World API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/world_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "world api smoke test exited with code $LASTEXITCODE" }
+
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
       # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md

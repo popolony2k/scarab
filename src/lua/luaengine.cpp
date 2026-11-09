@@ -24,6 +24,7 @@
 #include "lua/luaappapi.h"
 #include "lua/luarendererapi.h"
 #include "lua/luaviewapi.h"
+#include "lua/luaworldapi.h"
 #include "lua/luatextapi.h"
 #include "lua/luacameraapi.h"
 #include "lua/luainputapi.h"
@@ -365,6 +366,9 @@ namespace Scarab  {
         lua_pushlightuserdata( m_pLuaState, &m_pHaptics );
         lua_setglobal( m_pLuaState, Engine :: Lua :: LuaInputApi :: HAPTICS_GLOBAL );
 
+        lua_pushlightuserdata( m_pLuaState, &m_Worlds );
+        lua_setglobal( m_pLuaState, Engine :: Lua :: LuaWorldApi :: WORLD_TABLE_GLOBAL );
+
         lua_pushlightuserdata( m_pLuaState, pSaveDirectory );
         lua_setglobal( m_pLuaState, Engine :: Lua :: LuaAppApi :: SAVE_DIRECTORY_GLOBAL );
 
@@ -374,6 +378,7 @@ namespace Scarab  {
         Engine :: Lua :: LuaAppApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaRendererApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaViewApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaWorldApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaTextApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCameraApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaInputApi :: Register( m_pLuaState );
@@ -384,7 +389,7 @@ namespace Scarab  {
         Engine :: Lua :: LuaShapeApi :: Register( m_pLuaState );   // checks its arguments, then reaches the renderer
         Engine :: Lua :: LuaSaveApi :: Register( m_pLuaState );   // needs SAVE_DIRECTORY_GLOBAL, set above
 
-        m_pCollisionListener = std :: make_unique<Engine :: Lua :: LuaCollisionListener>( m_pLuaState );
+        m_pCollisionListener = std :: make_unique<Engine :: Lua :: LuaCollisionListener>( m_pLuaState, 0 );   // the default world's
     }
 
     /**
@@ -502,6 +507,7 @@ namespace Scarab  {
         // Released here, before lua_close: a timer's thread calls back into the Lua state, and the
         // listener holds it - left to the members' own destructors, both would outlive it.
         m_Timers.clear();
+        m_Worlds.clear();
         m_pCollisionListener.reset();
 
         if( m_pLuaState )  {
