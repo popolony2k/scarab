@@ -19,6 +19,7 @@ From the repo root:
 | `1` / `2` | `Y` (switches) | Show the isometric world or the grid world on the right |
 | `F` | `A` | Cross-fade the left half to the isometric world, and back |
 | `U` | `B` | Unload the isometric world, or load it again |
+| `T` | `X` | Tint the grid world's ground layer, or take the tint off |
 
 The controller is the first one connected.
 
@@ -27,6 +28,7 @@ The controller is the first one connected.
 - **Split screen** (`view_create`, `view_set_world`): the left half is the default view, which always shows the **default world** - the cloud map loaded with `tilemap_load_map`. The right half is an extra view showing another world, made with `world_load` from a map (`resources/tilemap/isometric/`) or from a Tiled `.world` file ([resources/tilemap/worlds/grid.world](../../../resources/tilemap/worlds/README.md)).
 - **Isolated worlds:** each world has its own Kepi (`sprite_add_to_layer( handle, layer, world )`, with the layer id from `world_layer_id`). The two Kepis never meet and never collide.
 - **Several maps in one world:** the grid world holds four maps at offsets, orientations mixed. Its Kepi walks across the maps' edges; a tile collision rule of that world only (`collision_add_tile_rule( ..., grid )`) stops him at the obstacles of every map. The tile handler receives the world as its last argument, and the HUD counts the hits.
+- **A layer of a whole world** (`tilemap_set_layer_tint_by_name( "ground", r, g, b, a, grid )`): one call tints the "ground" layer of all four maps of the grid world - a layer setter given a world reaches every map that has the layer, so the maps stay alike across their edges.
 - **A cross-fade between two maps** (`view_set_opacity`): an overlay view over the left half shows the isometric world, with an opaque backdrop (`view_set_background_color`), and `F` fades it from 0 to 1 in one second.
 - **Unloading a world** (`world_unload`): the views that showed it go back to the default world, and its Kepi is detached - not drawn, not colliding, still yours. `U` again loads it (`world_load`) and puts Kepi back.
 - **Whole worlds:** every view shows its whole world (`view_fit_to_map`, again whenever it changes world); `world_get_bounds` keeps each Kepi inside its world.

@@ -31,7 +31,8 @@
     - Maps: world_add_map at offsets (negative too), world_remove_map, world_get_map_count / _offset / _bounds;
       map ids start at 0; a .world's maps in the file's order; all or nothing (a missing map); "patterns" refused.
     - Layers and tiles: world_layer_id by name, world_get_tile in the world's pixels, world_to_tile_matrix finding
-      the map (an isometric one included); tilemap_get_map_info / tilemap_get_layer(_by_name) with a world.
+      the map (an isometric one included); tilemap_get_map_info / tilemap_get_layer(_by_name) with a world, and
+      the layer, tint and parallax setters with a world, leaving the default world untouched (P15, sunlight I21).
     - Views: view_set_world / view_get_world; the default view refuses another world; an unloaded world's views go
       back to the default world.
     - Sprites: one world at a time (adding to another world is refused, naming the world), sprite_release detaches
@@ -85,11 +86,11 @@ end
 local function same( label, got, want )
     for i = 1, #want do
         if got[i] ~= want[i] then
-            local shown = {}
+            local shown, wanted = {}, {}
 
-            for j = 1, #want do shown[j] = tostring( got[j] ) end
+            for j = 1, #want do shown[j], wanted[j] = tostring( got[j] ), tostring( want[j] ) end
 
-            check( false, label .. ": " .. table.concat( shown, "," ) .. " - expected " .. table.concat( want, "," ) )
+            check( false, label .. ": " .. table.concat( shown, "," ) .. " - expected " .. table.concat( wanted, "," ) )
             return
         end
     end
@@ -153,6 +154,23 @@ same( "map info of a world", { tilemap_get_map_info( grid ) }, { 8, 6, 32, 32 } 
 check( tilemap_get_layer_by_name( "obstacles", grid ) == true, "tilemap_get_layer_by_name with a world failed" )
 check( tilemap_get_layer( __GROUND, grid ) == true, "tilemap_get_layer with a world failed" )
 expect_error( "a layer of a world", "no layer 99", tilemap_get_layer, 99, grid )
+
+-- layer setters with a world (P15, sunlight I21): the grid world changes, the default world does not
+check( tilemap_set_layer( __GROUND, false, 0.5, 3, 4, grid ) == true, "tilemap_set_layer with a world failed" )
+same( "a world's layer, written", { tilemap_get_layer( __GROUND, grid ) }, { false, 0.5, 3, 4 } )
+same( "the default world's layer, untouched", { tilemap_get_layer( __GROUND ) }, { true, 1, 0, 0 } )
+check( tilemap_set_layer_by_name( "ground", true, 1, 0, 0, grid ) == true, "tilemap_set_layer_by_name with a world failed" )
+same( "a world's layer, restored", { tilemap_get_layer_by_name( "ground", grid ) }, { true, 1, 0, 0 } )
+check( tilemap_set_layer_tint( __GROUND, 255, 0, 0, 255, grid ) == true, "tilemap_set_layer_tint with a world failed" )
+same( "a world's tint", { tilemap_get_layer_tint( __GROUND, grid ) }, { 255, 0, 0, 255 } )
+same( "the default world's tint, untouched", { tilemap_get_layer_tint_by_name( "ground" ) }, { 255, 255, 255, 255 } )
+check( tilemap_set_layer_tint_by_name( "ground", 255, 255, 255, 255, grid ) == true, "tilemap_set_layer_tint_by_name with a world failed" )
+check( tilemap_set_layer_parallax_by_name( "obstacles", 0.5, 0.25, grid ) == true, "tilemap_set_layer_parallax_by_name with a world failed" )
+same( "a world's parallax", { tilemap_get_layer_parallax( __OBSTACLES, grid ) }, { 0.5, 0.25 } )
+same( "the default world's parallax, untouched", { tilemap_get_layer_parallax_by_name( "obstacles" ) }, { 1, 1 } )
+check( tilemap_set_layer_parallax( __OBSTACLES, 1, 1, grid ) == true, "tilemap_set_layer_parallax with a world failed" )
+expect_error( "set a layer of an unknown world", "argument 'world': unknown world 999", tilemap_set_layer, __GROUND, true, 1, 0, 0, 999 )
+expect_error( "tint a missing layer of a world", "no layer 99", tilemap_set_layer_tint, 99, 1, 2, 3, 4, grid )
 
 local count = world_get_count()
 

@@ -347,6 +347,9 @@ function on_update( dt )
         expect_error( "world remove map", "argument 'mapId' must be an integer", world_remove_map, 0, nil )
         expect_error( "view world", "argument 'world': unknown world 99", view_set_world, 0, 99 )
         expect_error( "view get world", "unknown view 99", view_get_world, 99 )
+        expect_error( "layer of a world", "argument 'world': unknown world 99", tilemap_set_layer, 1, true, 1, 0, 0, 99 )
+        expect_error( "tint of a world", "argument 'world': expected a world handle", tilemap_set_layer_tint_by_name, "x", 1, 2, 3, 4, "w" )
+        expect_error( "parallax of a world", "argument 'world': unknown world 99", tilemap_get_layer_parallax, 1, 99 )
     elseif frames == 2 then
         if #failures == 0 then
             print( "ERROR REPORTING SMOKE OK" )
