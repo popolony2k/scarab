@@ -130,6 +130,8 @@ local function draw_order()
     return table.concat( names, " < " )
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): bring a card to the front (1-4) or send
+-- it to the back (Shift+1-4), set every z-order equal (0), and draw the z-orders and the drawing order.
 function on_update( dt )
 
     local shift = input_is_key_down( KEY_LEFT_SHIFT ) or input_is_key_down( KEY_RIGHT_SHIFT )

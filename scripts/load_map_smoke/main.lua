@@ -51,6 +51,7 @@ local __LOADS      <const> = tonumber( os.getenv( "LOADS" ) or "1" )
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -64,6 +65,8 @@ local function expect_test_map( when )
            tostring( tileWidth ) .. "x" .. tostring( tileHeight ) .. " - expected test.tmx" )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -100,6 +103,8 @@ check( added == nil and tostring( addErr ):find( "already on layer", 1, true ),
 
 local reported = false
 
+-- Called by Scarab every frame: the checks ran at load time, so on the first frame print OK and quit if none
+-- failed; otherwise print every failure, once, and keep running, so --max-frames runs out and the run fails (exit 3).
 function on_update( dt )
     if reported then
         return

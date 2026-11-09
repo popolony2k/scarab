@@ -84,6 +84,7 @@ assert( input_set_gamepad_connection_handler( function( gamepadId, connected )
     lastEvent = "pad " .. gamepadId .. ( connected and " connected" or " disconnected" )
 end ) )
 
+-- Set every pad's stick dead zone to `value` (kept within 0..1), for both sticks of all __PAD_COUNT pads.
 local function set_deadzone( value )
     deadzone = math.max( 0, math.min( 1, value ) )
 
@@ -103,11 +104,13 @@ local function free_slot()
     return nil
 end
 
+-- Move a player's square by (dx, dy) pixels, kept inside the screen.
 local function move( square, dx, dy )
     square.x = math.max( 0, math.min( screenWidth - __SQUARE_SIZE, square.x + dx ) )
     square.y = math.max( 0, math.min( screenHeight - __SQUARE_SIZE, square.y + dy ) )
 end
 
+-- Player 1's step this frame from the keyboard (arrows/WASD), as dx, dy in pixels.
 local function keyboard_step()
     local dx, dy = 0, 0
 
@@ -133,6 +136,9 @@ local function pad_step( pad )
     return dx, dy
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): let pads join (A) and leave (B),
+-- change the dead zone ([ and ]), move each player's square (player 1 by keyboard, the others by their pad),
+-- reset them (R), and draw the squares and the HUD.
 function on_update( dt )
 
     local pads = input_get_connected_gamepads()

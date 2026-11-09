@@ -46,16 +46,19 @@ local __OPACITIES    <const> = { 0, 0.1, 0.25, 0.3, 0.5, 0.69, 0.75, 1 }   -- ea
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
 
+-- Check that a tint ( r, g, b, a ) equals `expected`, { r, g, b, a }.
 local function tint_is( label, expected, r, g, b, a )
     check( r == expected[1] and g == expected[2] and b == expected[3] and a == expected[4],
            string.format( "%s: tint %s,%s,%s,%s - expected %d,%d,%d,%d", label, tostring( r ), tostring( g ), tostring( b ),
                           tostring( a ), expected[1], expected[2], expected[3], expected[4] ) )
 end
 
+-- Check a sprite's opacity against `expected`.
 local function opacity_is( label, expected, value )
     check( value == expected, string.format( "%s: opacity %s - expected %s", label, tostring( value ), tostring( expected ) ) )
 end
@@ -69,6 +72,8 @@ end
 
 local __WHITE <const> = { 255, 255, 255, 255 }
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -164,6 +169,8 @@ tint_is( "a, after reconfigure + sequence switch", { 255, 80, 80, 255 }, sprite_
 check( sprite_set_opacity( b, 0 ) == true and sprite_set_tint( b, 120, 160, 255 ) == true, "setting b failed" )
 
 local frames = 0
+-- Called by Scarab every frame: after __DRAW_FRAMES frames of drawing, check both sprites kept their opacity and
+-- tint, then then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

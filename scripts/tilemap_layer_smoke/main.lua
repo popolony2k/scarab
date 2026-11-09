@@ -49,10 +49,12 @@ local __NO_SUCH_LAYER     <const> = 999
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
 
+-- A layer's opacity (tilemap_get_layer's second result).
 local function opacity_of( layerId )
     local _, opacity = tilemap_get_layer( layerId )
     return opacity
@@ -65,6 +67,8 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -129,6 +133,8 @@ check( unknownGet == nil and tostring( unknownGetErr ):find( "no layer", 1, true
 check( unknownSet == nil and tostring( unknownSetErr ):find( "no layer", 1, true ), "writing an unknown layer id must return nil, \"no layer ...\"" )
 
 local frames = 0
+-- Called by Scarab every frame: the checks ran at load time, so on the first frame print OK and quit if none
+-- failed; otherwise print every failure, once, and keep running, so --max-frames runs out and the run fails (exit 3).
 function on_update( dt )
     frames = frames + 1
     if frames == 1 then

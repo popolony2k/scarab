@@ -94,6 +94,8 @@ local __DEFAULT_GLOW_MODE <const> = 3   -- add
 
 local glowModeName
 
+-- Give the glow sprite the blend mode of a __GLOW_MODES entry (or none: its own mode cleared), and remember
+-- the mode's name for the HUD.
 local function set_glow_mode( entry )
     if entry.mode then
         assert( sprite_set_blend_mode( glow, entry.mode ) )
@@ -127,6 +129,8 @@ local __PANELS <const> = {
 local __LABEL_INSET <const> = 6     -- pixels from a panel's corner to its label
 local __OPAQUE      <const> = 255
 
+-- Draw the four panels: each an opaque backdrop, then overlapping translucent squares drawn between
+-- draw_begin_blend_mode and draw_end_blend_mode in that panel's mode.
 local function draw_panels()
     for index, panel in ipairs( __PANELS ) do
         local x = __PANEL.x
@@ -149,6 +153,8 @@ end
 
 local sunnyX, sunnyY = __SUNNY_START.x, __SUNNY_START.y
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): walk Sunny (arrows/WASD), pick the
+-- glow's blend mode (1-5), keep the glow and the shadow on Sunny, and draw the panels and the HUD.
 function on_update( dt )
 
     if input_is_key_down( KEY_LEFT ) or input_is_key_down( KEY_A ) then sunnyX = sunnyX - __SPEED end

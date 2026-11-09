@@ -42,6 +42,8 @@ sp_wait( 1 )
 -- load_json returns nil, "message" on failure: kept, so the HUD can show it.
 local data, loadError = load_json( "samples/json/data.json" )
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): draw the values read from the JSON
+-- file at load time, or why it could not be read.
 function on_update( dt )
 
     Hud.line( "json sample", 1, Hud.TITLE )

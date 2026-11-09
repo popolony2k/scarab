@@ -40,6 +40,7 @@ local __UNKNOWN_MODE           <const> = 9
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -51,6 +52,8 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -102,6 +105,9 @@ check( draw_begin_blend_mode( BLEND_MODE_MULTIPLY ) == true, "draw_begin_blend_m
 check( draw_end_blend_mode() == true, "draw_end_blend_mode at load time failed" )
 
 local frames = 0
+-- Called by Scarab every frame: on the first frame draw with every blend mode inside a real frame (begin and end
+-- around drawing, a begin replacing a begin, a begin left open); __FRAMES_WITH_OPEN_BLEND frames later, when the
+-- frames after the open begin ran normally, then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

@@ -145,6 +145,9 @@ local function change_selected( fn, what )
     message = layer.name .. ": " .. what
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): walk (arrows/WASD; the map wraps), zoom,
+-- keep the camera on Kepi, change the picked layer's parallax (1-4 pick, [ ] slower/faster, 0 fixed, N the other
+-- way, R the map's values), and draw the HUD.
 function on_update( dt )
 
     -- walking moves the camera

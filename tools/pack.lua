@@ -181,5 +181,7 @@ if app_quit then
     app_quit()
 end
 
+-- Called by Scarab every frame in form 2 (a window), until app_quit above closes it: nothing to do - the packing
+-- already ran once, above. (on_update is optional; this empty one changes nothing.)
 function on_update( dt )
 end

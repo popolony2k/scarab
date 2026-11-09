@@ -66,6 +66,8 @@ assert( register_font( "Sans", Hud.font() ) )
 
 assert( camera_set_position( __START_CAMERA.x, __START_CAMERA.y ) )
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): pan (arrows/WASD) and zoom
+-- (PageUp/PageDown, +/-, = reset, Home back to the start) over the objects map, and draw the HUD.
 function on_update( dt )
 
     -- Same mapping as samples/camera: the arrow moves the map's content that way.

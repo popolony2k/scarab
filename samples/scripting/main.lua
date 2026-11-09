@@ -70,6 +70,8 @@ assert( sp_wait_queue_empty() )
 assert( sp_wait( __CLEAR_PAUSE_MILLI ) )
 assert( sp_goto_label( __WAVE_LABEL ) )
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): draw how many times the queued script
+-- has fired on_move_sprites_to_screen.
 function on_update( dt )
     Hud.line( "scripting sample", 1, Hud.TITLE )
     Hud.line( "on_move_sprites_to_screen fired: " .. waveCount .. " time(s)", 2, Hud.INFO )

@@ -58,6 +58,8 @@ local __FADE_LAYER <const> = 4
 local __OPAQUE     <const> = 1
 local __FADE_STEP  <const> = 0.125  -- exact in binary: 8 steps land on both 0 and 1 with no rounding
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): change the clouds layer's opacity
+-- (Up/Down), and draw the map's size and the opacity read back.
 function on_update( dt )
 
     local delta = 0

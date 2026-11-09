@@ -52,10 +52,12 @@ local __NO_SEQUENCE  <const> = -1     -- sprite_get_active_sequence of a sprite 
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
 
+-- Configure a sprite, put it at the test position and add it to `layerId`.
 local function setup( handle, layerId )
     check( sprite_configure_texture( handle, 0, __TEXTURE, __FRAMES, 0, TEXTURE_ANIMATION_MODE_MANUAL ) == true, "configure failed" )
     check( sprite_set_active_sequence( handle, 0 ) == true, "set_active_sequence failed" )
@@ -63,6 +65,8 @@ local function setup( handle, layerId )
     check( sprite_add_to_layer( handle, layerId ) == true, "add_to_layer " .. layerId .. " failed" )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -80,11 +84,14 @@ local frames = 0
 
 check( collision_set_handler( function() hits = hits + 1 end ) == true, "collision_set_handler failed" )
 
+-- Check the collision calls counted during a phase against `expected`, and reset the count.
 local function expect_hits( phase, expected )
     check( hits == expected, string.format( "phase %s: %d collision calls in %d frames, expected %d", phase, hits, __PHASE_FRAMES, expected ) )
     hits = 0
 end
 
+-- Called by Scarab every frame: three phases of __PHASE_FRAMES frames - map loaded (hits counted), map unloaded
+-- (sprites unloaded, no hits), map loaded again and sprites set up again (hits again); after the third, then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

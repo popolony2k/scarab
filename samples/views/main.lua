@@ -102,10 +102,14 @@ local spriteWidth, spriteHeight = sprite_get_size( sunny )
 local x, y = mapWidth // 2, mapHeight // 2
 sprite_set_pos( sunny, x, y )
 
+-- Keep a value between low and high.
 local function clamp( value, low, high )
     return math.max( low, math.min( high, value ) )
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): walk Sunny inside the map, keep the
+-- close-up's camera on it, toggle the minimap (M), the close-up (C), the minimap's clouds (L) and world space
+-- (Space), and draw the HUD.
 function on_update( dt )
 
     if input_is_key_down( KEY_LEFT )  or input_is_key_down( KEY_A ) then x = x - __SPEED end

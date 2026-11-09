@@ -92,6 +92,8 @@ else
     end
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): draw what the script found at load
+-- time - the encryption round trip and the tamper check - and how to build with a key.
 function on_update( dt )
 
     Hud.line( "crypto sample", 1, Hud.TITLE )

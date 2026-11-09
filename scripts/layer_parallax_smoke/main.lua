@@ -54,6 +54,7 @@ local __DRAW_FRAMES  <const> = 5
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -65,11 +66,14 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- Check that a layer's parallax factors ( fx, fy ) are ( wantX, wantY ).
 local function factors_are( label, wantX, wantY, fx, fy )
     check( fx == wantX and fy == wantY,
            string.format( "%s: parallax %s, %s - expected %s, %s", label, tostring( fx ), tostring( fy ), tostring( wantX ), tostring( wantY ) ) )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -148,6 +152,8 @@ check( camera_set_position( 64, 32 ) == true, "camera_set_position failed" )
 
 local frames = 0
 
+-- Called by Scarab every frame: after __DRAW_FRAMES frames drawn with changed factors, check the factors are still
+-- the ones written, then then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

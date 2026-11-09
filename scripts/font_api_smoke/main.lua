@@ -47,6 +47,7 @@ local __BAD     <const> = 123456          -- a number that is not a live handle
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -58,6 +59,8 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -131,6 +134,7 @@ check( release_font( regular ) == true and release_font( bold ) == true and rele
        "releasing the remaining handles failed" )
 
 local frames = 0
+-- Called by Scarab every frame: on the first frame draw with a font handle inside a real frame, then then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
     if frames == 1 then

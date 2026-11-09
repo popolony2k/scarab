@@ -48,10 +48,12 @@ local __Z_VALUES     <const> = { -5, 0, 1, 42, __INT_MAX, __INT_MIN }   -- each 
 
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
 
+-- Check a z-order: the expected value, and an integer.
 local function z_is( label, expected, value )
     check( value == expected and math.type( value ) == "integer",
            string.format( "%s: z-order %s - expected %s", label, tostring( value ), tostring( expected ) ) )
@@ -64,6 +66,8 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -134,6 +138,8 @@ z_is( "a, after a reconfigure", 10, sprite_get_z_order( a ) )
 check( sprite_set_z_order( b, -3 ) == true, "setting b failed" )
 
 local frames = 0
+-- Called by Scarab every frame: change b's z-order between frames (frame 2); after __DRAW_FRAMES frames, check both
+-- z-orders are the ones written, then then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     frames = frames + 1
 

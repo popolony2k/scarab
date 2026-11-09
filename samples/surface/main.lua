@@ -133,6 +133,8 @@ local function draw_shapes()
     assert( shape_draw_rectangle( sunnyX, __WALK.y, __SUNNY_SIZE, __SUNNY_SIZE, __RED[1], __RED[2], __RED[3], __OPAQUE, { thickness = __HITBOX_THICK } ) )
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): walk Sunny back and forth, pan and zoom,
+-- unload or reload the map (M), draw the shapes in map units, and the HUD and progress bar in screen space.
 function on_update( dt )
     frame = frame + 1
 

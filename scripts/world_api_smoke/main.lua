@@ -64,6 +64,7 @@ local __OBSTACLE_Y   <const> = 64
 local failures = {}
 local reported = false
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -96,6 +97,8 @@ local function same( label, got, want )
     end
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -302,6 +305,9 @@ end
 
 local frame = 0
 
+-- Called by Scarab every frame: after __SETTLE frames, count collisions over __HOLD frames and check them (per
+-- world, the world id in each handler, across a map edge), unload the default map and check its sprite is free to
+-- join another world, then then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
 function on_update( dt )
     if reported then return end           -- a failed run never quits: --max-frames runs out (exit 3)
 

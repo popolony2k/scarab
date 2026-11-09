@@ -52,6 +52,8 @@ if soundLoaded then
     sound_set_volume( __SOUND_ID, volume )
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): play the sound one-shot (1), looping (2)
+-- or queued (3), pause (P), stop (O), resume (R), change the volume (Up/Down), and draw the HUD.
 function on_update( dt )
 
     if input_is_key_released( KEY_ONE ) then

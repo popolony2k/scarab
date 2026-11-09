@@ -94,6 +94,7 @@ RULES = {
     "lua-const-prefix":     "top-level private constant without the __ prefix (local NAME = ...)",
     "lua-const-attrib":     "private constant without <const> (local __NAME = ...)",
     "lua-function-name":    "function name not snake_case",
+    "lua-function-comment": "function with no comment of its own just above it (samples, smoke tests and tools)",
     "lua-local-name":       "local variable in snake_case (should be lowerCamel)",
     "lua-unchecked-load":   "a call whose failure matters (loading, creating, registering) made as a bare statement",
     "lua-unchecked-load-test": "the same, in a smoke test (setup a test checks some other way is allowed there)",
@@ -579,6 +580,14 @@ def lua_findings(path, rel, add_finding):
             name = re.split(r"[.:]", m.group(2))[-1]
             if re.search(r"[A-Z]", name):
                 add("lua-function-name", rel, n, rawl)
+            # T4: a "--" comment line, or the end of a "--[[ ]]" block, just above it (blank lines skipped) - read in
+            # the raw source, since `lines` has its comments blanked
+            above = k - 1
+            while above >= 0 and raw_lines[above].strip() == "":
+                above -= 1
+            previous = raw_lines[above].strip() if above >= 0 else ""
+            if not ( previous.startswith("--") or previous.endswith("]]") ):
+                add("lua-function-comment", rel, n, rawl)
         m = re.match(r"\s*local\s+([a-z][a-z0-9]*_[a-z0-9_]*)\s*[=,]", line)
         if m:
             add("lua-local-name", rel, n, rawl)
