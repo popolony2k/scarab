@@ -36,6 +36,8 @@
 #define __RGB_CHANNELS    3
 #define __RGBA_CHANNELS   4
 #define __OPAQUE_ALPHA    255
+#define __VIEW_OPACITY_MIN  0.0   /* a view's opacity: 0 draws nothing ... */
+#define __VIEW_OPACITY_MAX  1.0   /* ... 1 (the default) draws it as it is */
 
 extern "C"  {
   #include "lauxlib.h"
@@ -928,6 +930,79 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Set a view's opacity (sunlight I19a, IView::SetOpacity): how much of its finished image shows.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{view_set_opacity(view, opacity) -> true | nil, message}
+             * @luagroup{view_opacity}
+             * @luaheading{View opacity}
+             * @luadoc
+             * How much of a view shows (and read it back with `view_get_opacity`): a number from `0`
+             * (nothing) to `1` (the default, the view as it is). It works on every view, the default
+             * view `0` included.
+             *
+             * The view's **finished image** fades, not each thing in it: a wall still hides the floor
+             * behind it, the view's backdrop fades with it, and a blend mode inside the view combines
+             * with what the view drew, not with what is under it. The default view fades over the
+             * frame's background colour. At `0` nothing of the view is drawn, but its pass still runs,
+             * so its sprites keep animating. At `1` nothing changes and nothing extra is drawn.
+             *
+             * A **cross-fade** is two views over the same rectangle, the upper one (a higher draw
+             * order, `view_set_draw_order`) going from `0` to `1`; a **menu over a map** is an upper
+             * view at any opacity. The opacity reads back exactly as written (`0.3` reads `0.3`), and
+             * a view keeps it when another map is loaded.
+             *
+             * Failures are `nil, "message"`: `"unknown view N"`, or an opacity that is not a number
+             * from `0` to `1` (NaN and infinity included).
+             * @luaexample
+             * -- a one-second cross-fade to `scene` (above `previous`), from on_update
+             * local t = math.min( 1, app_get_time() - fadeStart )   -- 0 -> 1 in one second
+             * view_set_opacity( scene, t )
+             * view_set_opacity( menu, 0.85 )   -- a menu that lets the map show through
+             */
+            int LuaViewApi :: ViewSetOpacity( lua_State* pLuaState )  {
+
+                std :: string                                    strError;
+                double                                           fOpacity = __VIEW_OPACITY_MAX;
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
+
+                if( !pView )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2, "opacity", __VIEW_OPACITY_MIN, __VIEW_OPACITY_MAX, fOpacity, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pView -> SetOpacity( ( float ) fOpacity );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief A view's opacity, as the shortest decimal of the float sunlight keeps (so it reads
+             * back exactly as written).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{view_get_opacity(view) -> opacity | nil, message}
+             * @luagroup{view_opacity}
+             */
+            int LuaViewApi :: ViewGetOpacity( lua_State* pLuaState )  {
+
+                std :: string                                    strError;
+                std :: shared_ptr<SunLight :: TileMap :: IView>  pView = FindView( pLuaState, 1, strError );
+
+                if( !pView )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( pView -> GetOpacity() ) );
+
+                return 1;
+            }
+
+            /**
              * @luaname{view_set_background_color(view, r, g, b [, a]) -> true | nil, message}
              * @luadoc
              * Fill a view's backdrop with this colour instead of the map's own. Each of `r`, `g`,
@@ -1193,6 +1268,8 @@ namespace Scarab  {
                 lua_register( pLuaState, "view_get_draw_order", LuaViewApi :: ViewGetDrawOrder );
                 lua_register( pLuaState, "view_set_clear_background", LuaViewApi :: ViewSetClearBackground );
                 lua_register( pLuaState, "view_get_clear_background", LuaViewApi :: ViewGetClearBackground );
+                lua_register( pLuaState, "view_set_opacity", LuaViewApi :: ViewSetOpacity );
+                lua_register( pLuaState, "view_get_opacity", LuaViewApi :: ViewGetOpacity );
                 lua_register( pLuaState, "view_set_background_color", LuaViewApi :: ViewSetBackgroundColor );
                 lua_register( pLuaState, "view_use_map_background_color", LuaViewApi :: ViewUseMapBackgroundColor );
                 lua_register( pLuaState, "view_show_layer", LuaViewApi :: ViewShowLayer );
