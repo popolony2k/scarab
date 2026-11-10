@@ -1182,7 +1182,7 @@ that.
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **DONE 2026-11-07**: isometric, staggered and hexagonal maps checked and shown, with P13 (sunlight I17, I18); see below |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **DONE 2026-11-09**, planned with sunlight (both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight delivered all of it in one pin (P14, `d9c71d2`); Scarab's side in two parts: view opacity (#92) and worlds - see below |
-| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **Added by the owner (2026-11-03, split out of C1b).** To be planned against EVERY function it affects - see below |
+| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **PLANNED 2026-11-09 with the owner**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
 keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
@@ -2064,35 +2064,111 @@ every view.
   - 43/43 `asan_run.py` runs, on the normal build and the ASan build;
   - style check 0, and the docs generator.
 
-**C8 (TODO, added by the owner 2026-11-03, split out of C1b) - a sandbox for game scripts.** The owner's
-goal: a game script cannot reach anything outside its own files and its save directory - forbidden, not
-discouraged. It must be planned against every function it touches before anything changes; a first list:
-- Scarab's loaders (`load_json`, `dofile`, the entry script, every sunlight load: maps, textures, sounds,
-  fonts) and `hpath://` (on since P9).
-- Lua's own standard library: `io.*`, `os.remove`, `os.rename`, `os.tmpname`, `os.execute`, `os.getenv`,
-  `require`/`package` (which loads from the OS), `loadfile`. Checked 2026-11-02: Caravellius, the samples,
-  the smoke scripts and `tools/` use NO `io`/`os` file function (the smoke scripts do use `os.getenv` and
-  `io.stdout:setvbuf`).
-- `pack_*` (`tools/pack.lua`), which reads and writes real OS paths by design.
-- C1b's and C1c's save functions.
-- What a game legitimately needs outside: none known today - to confirm with Caravellius.
+**C8 - a sandbox for game scripts (PLANNED 2026-11-09 with the owner; nothing built yet).** Added by the owner on
+2026-11-03, split out of C1b. The goal: a game script cannot read or write anything outside the game's own files and
+its save directory - forbidden, not discouraged - while a Lua developer keeps the core Lua functions they know.
+- **Found while planning (2026-11-09):**
+  - Lua's standard libraries are all open (`luaL_openlibs`): `io.open`/`io.popen`, `os.execute`/`os.remove`/
+    `os.rename`, `require` (which can load native C libraries), `loadfile`, `load` of precompiled bytecode.
+  - Every Scarab loader accepts `hpath://` (a real OS path, on since P9), and `pack_*` (real OS read and write) is
+    registered for every game, not only for the `--pack` tool.
+  - Paths can already not climb out of the mounts: sunlight refuses `..` and does not follow symlinks.
+  - **Used today** (samples, smoke tests, tools, Caravellius' `src/`): `io.stdout:setvbuf`, `os.getenv` (Scarab's
+    tests and packing tool, Caravellius' debug scripts), `os.time`/`os.clock`, `dofile`, and `pack_*` in the packing
+    tool only. Nothing uses `io.open`, `require`, `loadfile`, `load`, `os.execute` or `debug`.
+  - **There is no single path rule today.** A plain path (`"settings.json"`) given to `dofile`, `load_json`, maps,
+    textures, fonts, sounds or the action map is looked up in the save directory, then the launch folder - and a
+    `.zip` game's files are NOT among them (the zip is mounted at `APP_DIR` only, so only `APP_DIR .. "/x"` reaches
+    it). `save_read`/`save_exists` read the save directory only (through `hpath://`, C1c). So the same code behaves
+    differently loose and packed.
+- **Decisions (owner, 2026-11-09):**
+  1. **One path rule, for every function, in every mode** (the owner: define one default and document it for all io
+     functions). Reading a relative path: **(1) the save directory, (2) the game's own files** - the `.zip` when
+     launched from one, otherwise the launch folder. Writing a relative path: **always the save directory**. It
+     applies to `io.*`, `dofile`, `require`, `loadfile`, `load_json`, maps (and their tilesets and images), textures,
+     fonts, sounds and the action map; `APP_DIR .. "/x"` keeps reaching the same game files. To make a `.zip` game
+     behave exactly like a loose one, the zip is also mounted at the root, and a launch from a `.zip` no longer adds
+     the launch folder (the zip IS the game's files).
+  1b. **`APP_DIR` paths follow the same rule** (the owner, on Claude's recommendation, 2026-11-09). `APP_DIR` is
+     Scarab's own Lua global (set in `LuaEngine::Init`: the executable's folder as a file-system path, ending in `/`;
+     the executable's folder - or the game's `.zip` - is mounted there). Today an `APP_DIR .. "x"` path is absolute,
+     so the save folder (mounted at the root) never answers it: a game that writes every path that way (Caravellius)
+     would be outside the rule, and its files could never be replaced by a save. So a path that STARTS with `APP_DIR`
+     gains the save-first step and nothing else changes: (1) the save directory, under the path after `APP_DIR`
+     (`APP_DIR .. "src/ai.lua"` -> the save's `src/ai.lua`); (2) exactly where `APP_DIR` points today - the
+     executable's folder, or the game's `.zip`. Only the leading `APP_DIR` is recognised. Why not simply treat it as
+     the plain path after it (the first wording): in a LOOSE run `APP_DIR` (the executable's folder, eg. `build/`) and
+     the launch folder (eg. the repo root) are often different folders, so a game keeping its files next to the
+     executable and launched from elsewhere - Caravellius' loose build - would have looked in the wrong folder (found
+     while writing the rule down, corrected with the owner). So every path follows "the save directory first, then the
+     game's own files", where the game's own files are, for a plain path, the launch folder (or the `.zip`) and, for an
+     `APP_DIR` path, the executable's folder (or the `.zip`) - from a `.zip` both are the same zip. Plain relative paths
+     become the recommended form in the docs; `APP_DIR` keeps working, so existing games (Caravellius) do not change.
+  2. **Code follows the same rule:** a saved `ai.lua` takes the place of the game's own for `dofile`/`require` - how
+     mods and patches work; a crafted save could run code, but only inside the sandbox. Documented, no exception.
+  3. **The `save_*` functions stay saves-only:** they are Scarab's functions for the player's saved data, not core Lua
+     functions, so they never fall back to a game file - not a second path rule but their own contract.
+  4. **Override, never remove** (the owner: Lua developers are welcome and will use the core functions they know):
+     the unsafe core functions are replaced IN C++, in place in Lua's own `io`/`os`/`package` tables, so the
+     originals are gone (not reachable through `package.loaded` either). Every failure follows Lua's own convention
+     (`nil, message`, as for a missing file), so error handling written for standard Lua keeps working.
+  5. **`debug` is kept whole** (the owner): the in-place overrides leave nothing for it to restore.
+  6. **On by default; only the command line turns it off** (`--no-sandbox`) - a `project.json` cannot, or a game could
+     opt out of its own sandbox. `--pack` runs without it (the packing tool needs real paths).
+  7. **"The game's own files"** are what the file system mounts: the launch folder (or the `.zip`), and the
+     executable's folder. Documented caveat: launched from a home folder, the home folder is the game's root;
+     narrowing it to the project's own folder would break Scarab's samples (they use repo-root paths) - a possible
+     follow-up.
+  8. `os.getenv` and `os.exit` are kept (no file access; the tests and tools need `getenv`).
+- **The sandboxed core functions (C++):**
 
-**How each function is handled - three options, open until C8 is planned** (discussed 2026-11-03):
-- **Override** - the same name, a safe behaviour, as Scarab already does with `dofile` (same name and
-  arguments, read through `SunLight::FileSystem`): existing code keeps working, only what is outside the
-  sandbox is refused. Lua's own failure convention (`io.open` returns `nil, "message"`) already matches
-  Scarab's.
-- **Remove** - the function no longer exists (calling it is "attempt to call a nil value").
-- **New function** - a safe Scarab equivalent (eg. C1c's `save_write`), with the original removed; code using
-  the original must be rewritten. A new function alone is no sandbox: the original would still go around it.
+  | Function | In the sandbox |
+  |---|---|
+  | `io.open` reading (`"r"`, `"rb"`) | the path rule: save directory, then the game's files |
+  | `io.open` writing (`"w"`, `"a"`, `"r+"`, `"w+"`, `"a+"`, with or without `"b"`) | into the save directory, written atomically on `close`/`flush` (sunlight's `WriteFile`); `"a"`/`"r+"` start from the saved file, or the game's file when there is no save |
+  | `io.lines( name )`, `io.input( name )`, `io.output( name )` | through `io.open`, same rules |
+  | `io.tmpfile()` | a file kept in memory, never on disk |
+  | `io.popen`, `os.execute` | still exist; fail the standard way (`nil, "not available in the sandbox"`) |
+  | `os.remove`, `os.rename` | inside the save directory only |
+  | `os.tmpname` | a fresh name inside the save directory |
+  | `require` | Lua modules through the path rule (`package.path` patterns, read through the file system); the C-module searchers and `package.loadlib` fail the standard way |
+  | `loadfile` | through the path rule, like `dofile` |
+  | `load` | text chunks only (`mode "t"`); precompiled bytecode refused (it can crash the interpreter) |
+  | `io.write`, `io.read`, `io.stdout`, `io.stderr`, `os.time`/`os.clock`/`os.date`/`os.difftime`/`os.getenv`/`os.exit`, `debug` | unchanged |
 
-A first proposal, not decided: OVERRIDE `io.open` (reads inside the game's files, writes inside the save
-directory), `loadfile` and `require` (through `SunLight::FileSystem`, so modules inside a `.zip` load like
-`dofile`); REMOVE what has no safe form (`os.execute`, `io.popen`, `require`'s native C loader); KEEP the
-harmless ones (`os.time`, `os.clock`, `os.date`, `io.stdout:setvbuf`). Overriding is the better default where
-it can be done safely: Lua code written for other engines keeps working and the original can't be called
-around the sandbox. Still to decide: what "the game's own files" is exactly, how `--pack` and the smoke tests
-(`os.getenv`) keep working, whether the sandbox is on by default, and how it is tested.
+  - **Scarab's file object (C++):** Lua's own file handles wrap a C `FILE*` opened straight from the operating system,
+    and there is no portable in-memory `FILE*` (none on Windows), so sandboxed files are Scarab's own object with the
+    same methods: `read( "a" / "l" / "L" / "n" / count )`, `lines`, `write`, `seek`, `flush`, `setvbuf`, `close`, and
+    `io.type` answering `"file"`/`"closed file"` for it. Its read/seek/line logic is pure C++ - unit-tested (doctest)
+    against standard Lua's own results.
+- **Scarab's own functions:** `hpath://` refused through sunlight's existing switch (`SetHostPathEnabled( false )`);
+  `pack_*` registered only in `--pack` mode; the save functions, which read through `hpath://` today, read through a
+  private mount of the save folder instead (sunlight's `Mount` takes a mount point; remounted when the game changes its
+  save folder) - no sunlight change needed.
+- **Caravellius, checked here (no question to it before code; the owner, 2026-11-09):** it uses none of the new
+  features, so it follows Scarab's decisions; the breakage entry and the release notice are its handoff. Every path it loads is built from `APP_DIR` (`BASE_PATH = APP_DIR .. "resources/"`, `SRC_PATH = APP_DIR .. "src/"`),
+  it uses none of the overridden functions except `io.stdout` and `os.getenv` (kept), it packs with `scarab --pack`
+  (no sandbox there), and its Lua unit tests run under a plain `lua`, not Scarab. For its handoff (breakage entry): (1)
+  with 1b a save can replace one of its files (mods, patches) once it saves anything; (2) its save names (high score,
+  settings) must not collide with its `src/`/`resources/` paths; (3) a module using `io.open` would read different
+  places in its unit tests (plain Lua, the real disk) and in the game (the path rule). Its acceptance and fingerprint are
+  run here, loose and from `caravellius.zip`, with the sandbox on.
+- **Tests:**
+  - a new `scripts/sandbox_smoke.py` (ci.yml, all 4 platforms; `asan_run.py`), loose and from a `.zip`: on by default;
+    the path rule for every kind of loader, through a plain path and an `APP_DIR` path alike (a file in both places: the save wins; only in the game: the game's;
+    writes land in the save directory); every overridden function confined (`hpath://` refused everywhere, writing
+    outside the save directory impossible); `io.*` results matching standard Lua's (read formats, lines, seek, append,
+    `io.type`); bytecode refused; `pack_*` absent outside `--pack`; saves working; `--no-sandbox` restoring the
+    standard functions;
+  - each part shown failing by a mutation;
+  - `scripts/path_scheme_smoke` (it tests `hpath://`) runs with `--no-sandbox`, plus a check that `hpath://` is refused
+    with the sandbox on; `--pack` still packs, plain and encrypted (`tileset_archive_smoke`); every other test and
+    sample unchanged.
+- **Docs:** "How paths are found" and "The sandbox" in the Lua API reference, pointed to from the README and every
+  loader's doc; `--no-sandbox` in the README's command line; `CLAUDE.md` (and its C1b/C1c save-path gotchas updated).
+- **Checks:** AddressSanitizer; Caravellius acceptance and fingerprint; a breakage entry (on by default is a behaviour
+  change: a game using `hpath://`, `pack_*` or native modules stops working, and a `.zip` game's plain paths now reach
+  its own files, no longer the launch folder).
 
 **C7 - several maps at once, as WORLDS (PLANNED 2026-11-07 with sunlight, sunlight-cf, both owners agreed; nothing
 built on either side yet).** Added by the owner on 2026-10-29, during V10. Today a renderer holds ONE map
