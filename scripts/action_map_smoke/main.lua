@@ -28,8 +28,9 @@
                   directory, binding and file functions create no renderer
         priority  no --save-dir, HOME/APPDATA/XDG_DATA_HOME pointed at a temp folder by the driver:
                   project.json's "save_directory" is used, app_set_save_directory then wins
-        nodir     a project with no "save_directory": no save directory, a plain save is refused, an
-                  hpath:// save still works
+        nodir     a project with no "save_directory": no save directory, a plain save is refused, and
+                  an hpath:// save is refused in the sandbox but works with --no-sandbox
+                  (SMOKE_SANDBOX=0, plans/MASTER_PLAN.md item C8)
         default / saved   the game shipped as a .zip (and an encrypted pack): the first run has no save,
                   loads the default shipped under APP_DIR, rebinds and saves; the second run loads the
                   save
@@ -154,9 +155,13 @@ elseif scenario == "nodir" then
     check( input_bind_action_key( "jump", KEY_SPACE ) == true, "bind" )
     expect_error( "plain save refused", "no save directory", input_save_action_map( __SAVES ) )
     local hostFile = "hpath://" .. os.getenv( "SMOKE_HOST_FILE" )
-    check( input_save_action_map( hostFile ) == true, "an hpath:// save needs no save directory" )
-    check( input_unbind_action( "jump" ) == true and input_load_action_map( hostFile ) == true, "and loads back" )
-    binding_is( "hpath round trip", "jump", ACTION_BINDING_KEY, KEY_SPACE, 0 )
+    if os.getenv( "SMOKE_SANDBOX" ) == "0" then
+        check( input_save_action_map( hostFile ) == true, "an hpath:// save needs no save directory" )
+        check( input_unbind_action( "jump" ) == true and input_load_action_map( hostFile ) == true, "and loads back" )
+        binding_is( "hpath round trip", "jump", ACTION_BINDING_KEY, KEY_SPACE, 0 )
+    else
+        check( input_save_action_map( hostFile ) == nil, "an hpath:// save must be refused in the sandbox" )
+    end
 
 elseif scenario == "default" then
     check( input_load_action_map( __SAVES ) == nil, "a fresh save directory has no saved bindings" )

@@ -40,18 +40,29 @@ namespace Scarab  {
          */
         class SaveDirectory  {
 
-            std :: string  m_strPath;              // the real folder in use, "" while there is none
-            bool           m_bFromCommandLine;     // --save-dir set it: a name no longer changes it
+            std :: string  m_strPath;                    // the real folder in use, "" while there is none
+            bool           m_bFromCommandLine;           // --save-dir set it: a name no longer changes it
+            std :: string  m_strGameMountPoint;          // APP_DIR: the save folder is mounted there too (C8)
+            std :: string  m_strMountedPath;             // the folder the extra mounts are of, "" when none
+            std :: string  m_strMountedGameMountPoint;   // where it is mounted besides SAVE_MOUNT_POINT
 
             bool Apply( const std :: string& strRealPath, std :: string& strError );
+            bool MountExtras( void );
+            void UnmountExtras( void );
 
             public:
+
+            /** @brief The private mount point of the save folder alone, which the save functions read through. */
+            static constexpr const char*  SAVE_MOUNT_POINT = "/__scarab_saves__";
 
             /** @brief Reads an environment variable: nullptr when it is not set. */
             typedef std :: function<const char*( const char* )>  EnvLookup;
 
             SaveDirectory( void );
 
+            void SetGameMountPoint( const std :: string& strMountPoint );
+            bool Remount( std :: string& strError );
+            static std :: string GetSavePath( const std :: string& strName );
             bool SetFromCommandLine( const std :: string& strRealPath, std :: string& strError );
             bool SetByName( const std :: string& strName, std :: string& strError );
             const std :: string& GetPath( void ) const;

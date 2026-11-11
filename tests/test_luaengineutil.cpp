@@ -229,23 +229,34 @@ TEST_CASE( "PushError and PushTrue: the nil, message / true convention" )  {
     CHECK( lua_toboolean( stack.L, -1 ) == 1 );
 }
 
-TEST_CASE( "GetGlobalPointer reads a light userdata global and leaves the stack as it was" )  {
+TEST_CASE( "GetEnginePointer reads the engine's objects, never a Lua global, and leaves the stack as it was" )  {
 
-    LuaStack  stack;
-    int       nObject = 0;
+    LuaStack                          stack;
+    LuaEngineUtil :: EngineObjectMap  objects;
+    int                               nObject = 0;
+    int                               nForged = 0;
 
-    lua_pushlightuserdata( stack.L, &nObject );
+    LuaEngineUtil :: SetEngineObjects( stack.L, &objects );
+    CHECK( LuaEngineUtil :: GetEnginePointer( stack.L, "objectPtr" ) == nullptr );
+
+    objects["objectPtr"] = &nObject;
+
+    // A script that sets a global of the same name - how the pointers could be forged before C8a.
+    lua_pushlightuserdata( stack.L, &nForged );
     lua_setglobal( stack.L, "objectPtr" );
 
     // An argument already on the stack, as when a primitive resolves an object before reading the rest.
     lua_pushinteger( stack.L, 7 );
 
-    CHECK( LuaEngineUtil :: GetGlobalPointer( stack.L, "objectPtr" ) == &nObject );
+    CHECK( LuaEngineUtil :: GetEnginePointer( stack.L, "objectPtr" ) == &nObject );
     CHECK( lua_gettop( stack.L ) == 1 );
     CHECK( lua_tointeger( stack.L, 1 ) == 7 );
+    CHECK( LuaEngineUtil :: GetEnginePointer( stack.L, "missingPtr" ) == nullptr );
 
-    CHECK( LuaEngineUtil :: GetGlobalPointer( stack.L, "missingPtr" ) == nullptr );
-    CHECK( lua_gettop( stack.L ) == 1 );
+    // A coroutine created afterwards reaches the same objects.
+    lua_State*  pThread = lua_newthread( stack.L );
+
+    CHECK( LuaEngineUtil :: GetEnginePointer( pThread, "objectPtr" ) == &nObject );
 }
 
 TEST_CASE( "FormatNumber writes a number as a user would" )  {

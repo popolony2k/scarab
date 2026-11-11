@@ -10,6 +10,7 @@ Generated straight from `@luaname`/`@luadoc`/`@luaexample` tags on each primitiv
 
 | Page | Covers |
 |---|---|
+| [The sandbox and how paths are found](https://popolony2k.github.io/scarab/lua-api/sandbox.html) | The one path rule every loader follows (the save directory, then the game's own files; writes into the save directory), and the sandbox: Lua's own `io`, `os`, `require`, `loadfile` and `load` working the way Lua developers know them, but reaching only the game's files and its save directory (`--no-sandbox` turns it off) |
 | [Scripting](https://popolony2k.github.io/scarab/lua-api/scripting.html) | The `ScriptProcessor` command queue — `sp_wait`, `sp_clear`, `sp_wait_queue_empty`, `sp_move_sprites_to_screen`, `sp_add_label`/`sp_goto_label`, `sp_load_stage` |
 | [Sound](https://popolony2k.github.io/scarab/lua-api/sound.html) | Loading and playing sounds — `sound_*` (direct playback state) and the queued/direct song commands (`sp_play_song`/`play_song` and friends) |
 | [Timers](https://popolony2k.github.io/scarab/lua-api/timers.html) | `set_timer`/`reset_timer` — background-thread periodic/delayed callbacks |
@@ -46,7 +47,9 @@ BASE_PATH = APP_DIR .. "resources/"
 
 Every other Caravellius module reads `BASE_PATH`, never `APP_DIR` directly — a different game could lay its resources out completely differently and only this one line would need to change.
 
-A few other globals exist purely as internal plumbing between `LuaEngine`/the `Lua*Api` classes and are **not** meant to be read or written by game scripts directly: `scriptProcessorPtr`, `timerMapPtr`, `rendererProviderPtr`, `soundManagerPtr`, `spritePoolPtr` (opaque light-userdata pointers), and `__collision_handler`/`__collision_tile_handler` (the `__`-prefixed callback storage `collision_set_handler`/`collision_set_tile_handler` install). Interact with these through the documented functions, not by naming the globals themselves.
+A path starting with `APP_DIR` follows the same path rule as every other path ([The sandbox and how paths are found](https://popolony2k.github.io/scarab/lua-api/sandbox.html)): the save directory first, under the part after `APP_DIR`, then exactly where `APP_DIR` points — the executable's folder, or the game's `.zip`. Plain relative paths (`"resources/hero.png"`) are the recommended form for a new game.
+
+The engine's own objects (the script processor, the timers, the renderer, the sound manager, the sprite pool, the save directory, ...) are kept where no script can reach them - not as globals (they were, until plans/MASTER_PLAN.md item C8a, and overwriting one could crash the engine). A few other globals exist purely as internal plumbing and are **not** meant to be read or written by game scripts directly: `__collision_handler`/`__collision_tile_handler` (the `__`-prefixed callback storage `collision_set_handler`/`collision_set_tile_handler` install). Interact with these through the documented functions, not by naming the globals themselves.
 
 ## Conventions used in this reference
 

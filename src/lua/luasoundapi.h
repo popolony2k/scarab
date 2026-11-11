@@ -76,8 +76,8 @@ namespace Scarab  {
 
                 public:
 
-                // The Lua global LuaEngine::Init stashes the engine's SoundManager in (a light userdata).
-                static constexpr const char*  SOUND_MANAGER_GLOBAL = "soundManagerPtr";
+                // The key LuaEngine::Init keeps the engine's SoundManager under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SOUND_MANAGER_KEY = "soundManagerPtr";
 
                 static void Register( lua_State* pLuaState );
             };

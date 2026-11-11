@@ -34,12 +34,12 @@ namespace Scarab  {
 
             /**
              * @brief The engine's FontPool, stashed by LuaEngine::Init as the light userdata global
-             * FONT_POOL_GLOBAL. Pops what it pushed: the font functions read optional arguments
+             * FONT_POOL_KEY. Pops what it pushed: the font functions read optional arguments
              * after resolving a handle, and a leftover value would sit in their place (found in C6).
              */
             static Engine :: FontPool* GetFontPool( lua_State* pLuaState )  {
 
-                return static_cast<Engine :: FontPool *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaTextApi :: FONT_POOL_GLOBAL ) );
+                return static_cast<Engine :: FontPool *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaTextApi :: FONT_POOL_KEY ) );
             }
 
             /**

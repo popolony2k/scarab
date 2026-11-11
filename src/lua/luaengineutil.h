@@ -23,6 +23,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <mutex>
 #include <string>
 
@@ -96,10 +97,20 @@ namespace Scarab  {
                  */
                 static std :: mutex                       s_LuaMutex;
 
-                // The Lua global LuaEngine::Init stashes the renderer provider in (a light userdata).
-                static constexpr const char*              RENDERER_PROVIDER_GLOBAL = "rendererProviderPtr";
+                // The key LuaEngine::Init keeps the renderer provider under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*              RENDERER_PROVIDER_KEY = "rendererProviderPtr";
 
-                static void* GetGlobalPointer( lua_State* pLuaState, const char* szName );
+                /**
+                 * @brief The engine objects a Lua state's primitives reach, by key (the *_KEY constants):
+                 * kept by LuaEngine, and found through the state's extra space (lua_getextraspace), which no
+                 * Lua code - the debug library included - can read or write. They used to be light-userdata
+                 * Lua globals, which a script could overwrite with another userdata (plans/MASTER_PLAN.md
+                 * item C8a).
+                 */
+                typedef std :: map<std :: string, void*>  EngineObjectMap;
+
+                static void SetEngineObjects( lua_State* pLuaState, EngineObjectMap* pObjects );
+                static void* GetEnginePointer( lua_State* pLuaState, const char* szKey );
                 static Engine :: IRendererProvider* GetRendererProvider( lua_State* pLuaState );
                 static void EnsureRenderer( lua_State* pLuaState );
                 static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State* pLuaState );

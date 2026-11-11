@@ -148,8 +148,24 @@ namespace Scarab  {
             if( strExtension == ".zip" )  {
                 const std :: string&  strAppDir = m_LuaEngine.GetApplicationDirectory();
 
-                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strEntryArg, strAppDir, false ) )  {
+                SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
+
+                /*
+                 * The path rule (plans/MASTER_PLAN.md item C8): the archive IS the game's own files - at APP_DIR,
+                 * as before, and at the root too (after the save folder, which sunlight mounts there first), so a
+                 * plain path reads the save, then the archive, exactly as a loose game reads the save, then the
+                 * launch folder (main.cpp does not mount the launch folder for a .zip). The save folder's own
+                 * mount at APP_DIR must come first there too, so it is mounted again after the archive.
+                 */
+                if( !fileSystem.Mount( strEntryArg, strAppDir, false ) || !fileSystem.Mount( strEntryArg, "/", true ) )  {
                     OnError( "Error mounting archive => " + strEntryArg );
+                    return false;
+                }
+
+                std :: string  strRemountError;
+
+                if( !m_SaveDirectory.Remount( strRemountError ) )  {
+                    OnError( "Error: " + strRemountError );
                     return false;
                 }
 
@@ -463,10 +479,16 @@ namespace Scarab  {
          * command line (a .lua script path or a .json project file) -
          * resolved later, from RunEntryScript, since a failure
          * there already has a normal fatal-error path to report through;
+         * @param strEntryOverride The command line's --entry, "" for none;
+         * @param bSandbox false for --no-sandbox: Lua's own io/os/require/loadfile/load (plans/MASTER_PLAN.md
+         * item C8);
          */
         EngineHost :: EngineHost( Scarab :: Host :: RendererProvider* pRendererProvider,
                                  std :: string strEntryArg,
-                                 std :: string strEntryOverride )  : m_LuaEngine( &m_ScriptProcessorMachine )  {
+                                 std :: string strEntryOverride,
+                                 bool bSandbox )  : m_LuaEngine( &m_ScriptProcessorMachine,
+                                                                 bSandbox ? Scarab :: Lua :: LUA_ENGINE_MODE_SANDBOX
+                                                                          : Scarab :: Lua :: LUA_ENGINE_MODE_NO_SANDBOX )  {
 
             m_CurrentStateHandler   = nullptr;
             m_nClearInactiveSpriteQueueMilli = 0;
@@ -489,6 +511,9 @@ namespace Scarab  {
             m_bEntryScriptDone = false;
 
             m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool, &m_FontPool, &m_SaveDirectory );
+
+            // The save folder is mounted at APP_DIR too, ahead of the game's own files there (C8, decision 1b).
+            m_SaveDirectory.SetGameMountPoint( m_LuaEngine.GetApplicationDirectory() );
 
             /*
              * Whatever renderer the provider creates (explicitly or the

@@ -42,7 +42,6 @@ local __MAP         <const> = "resources/tilemap/test.tmx"
 local __TEXTURE     <const> = "resources/sprites/sunny_idle_down.png"
 local __SOUND       <const> = "resources/sounds/stage_theme.wav"
 local __BAD_JSON    <const> = "scripts/error_reporting_smoke/bad.json"
-local __GOOD_DIR    <const> = "scripts/error_reporting_smoke"
 local __MISSING     <const> = "scripts/error_reporting_smoke/does-not-exist"
 local __FRAMES      <const> = 4      -- texture frames in sunny_idle_down.png
 local __MAP_LAYER   <const> = 7      -- "monke", a layer of test.tmx
@@ -310,12 +309,12 @@ expect_error( "json bad", "cannot parse", load_json, __BAD_JSON )
 expect_error( "json path", "argument 'path' must be a string", load_json, nil )
 expect_error( "encrypt type", "argument 'data' must be a string", crypto_encrypt_data, 5 )
 expect_error( "decrypt garbage", "", crypto_decrypt_data, "not encrypted" )
-expect_error( "list missing", "is not a directory", pack_list_directory, __MISSING )
-check( type( pack_list_directory( __GOOD_DIR ) ) == "table", "pack_list_directory of a real directory must return a table" )
-expect_error( "read missing", "cannot open", pack_read_file, __MISSING )
-expect_error( "archive bad path", "cannot create archive", pack_create_archive, __MISSING .. "/sub/x.zip" )
-expect_error( "add_entry handle", "invalid archive handle", pack_add_entry, 9999, "a", "b" )
-expect_error( "close handle", "invalid archive handle", pack_close_archive, 9999 )
+-- the pack_* functions read and write real OS paths: they exist only in the --pack tool, never in a game
+-- (plans/MASTER_PLAN.md item C8 - their own error checks are tests/test_packapi.cpp)
+for _, name in ipairs( { "pack_list_directory", "pack_read_file", "pack_write_file", "pack_create_archive",
+                         "pack_add_entry", "pack_close_archive" } ) do
+    check( _G[name] == nil, name .. " must not exist in a game" )
+end
 
 local frames = 0
 

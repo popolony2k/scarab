@@ -21,6 +21,8 @@
 #ifndef __LUAFILESYSTEMAPI_H__
 #define __LUAFILESYSTEMAPI_H__
 
+#include <string>
+
 extern "C"  {
   #include "lua.h"
 }
@@ -42,16 +44,18 @@ namespace Scarab  {
              * (later) - nothing above this needed to change to notice the
              * difference, load_json/dofile call sites included.
              *
-             * require()/loadfile()/raw io.* file access are deliberately
-             * NOT overridden - confirmed, project-wide, that no script in
-             * this game ever calls any of them; dofile() is the only
-             * module-loading mechanism actually in use.
+             * Since plans/MASTER_PLAN.md item C8, require(), loadfile()
+             * and io.* go through the file system too - in the sandbox,
+             * LuaSandboxApi; they share LoadChunk with dofile and the
+             * entry script, which is text only in the sandbox.
              */
             class LuaFileSystemApi  {
 
                 static int DoFile( lua_State* pLuaState );
 
                 public:
+
+                static int LoadChunk( lua_State* pLuaState, const std :: string& strPath, const char* szMode );
 
                 static void Register( lua_State* pLuaState );
             };

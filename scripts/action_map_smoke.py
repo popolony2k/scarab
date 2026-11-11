@@ -165,7 +165,14 @@ def main():
         # nodir
         host_file = os.path.join(work, "host-bindings.txt")
         ok &= run(scarab, [os.path.join(SCRIPT_DIR, "nodir.json")], repo_root,
-                  {"SMOKE_SCENARIO": "nodir", "SMOKE_HOST_FILE": host_file}, "nodir, no save directory")
+                  {"SMOKE_SCENARIO": "nodir", "SMOKE_HOST_FILE": host_file, "SMOKE_SANDBOX": "1"},
+                  "nodir, no save directory (sandbox: hpath:// refused)")
+        sandbox_kept_out = not os.path.exists(host_file)
+        print(f"[{'PASS' if sandbox_kept_out else 'FAIL'}] nodir: the sandbox wrote no host file")
+        ok &= sandbox_kept_out
+        ok &= run(scarab, ["--no-sandbox", os.path.join(SCRIPT_DIR, "nodir.json")], repo_root,
+                  {"SMOKE_SCENARIO": "nodir", "SMOKE_HOST_FILE": host_file, "SMOKE_SANDBOX": "0"},
+                  "nodir, no save directory (--no-sandbox: hpath:// works)")
 
         # archive and encrypted pack
         source_dir = os.path.join(work, "source")

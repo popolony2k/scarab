@@ -268,6 +268,21 @@ int main( int argc, char** argv )  {
     pSaveDirOption -> excludes( pPackOption );
     pPackOption -> excludes( pSaveDirOption );
 
+    /*
+     * --no-sandbox gives a game Lua's own io/os/require/loadfile/load and host paths (hpath://) back
+     * (plans/MASTER_PLAN.md item C8). Only the command line can turn the sandbox off - a project file
+     * can't, or a game could opt out of its own sandbox. --pack never has one: the packing tool needs
+     * real paths.
+     */
+    bool  bNoSandbox = false;
+
+    CLI :: Option*  pNoSandboxOption = app.add_flag( "--no-sandbox", bNoSandbox,
+                    "Run the game without the sandbox: Lua's own io, os, require, loadfile and load, "
+                    "and real OS paths (hpath://). For tools and trusted scripts only." );
+
+    pNoSandboxOption -> excludes( pPackOption );
+    pPackOption -> excludes( pNoSandboxOption );
+
     CLI11_PARSE( app, argc, argv );
 
     if( strEntryPath.empty() && strPackConfigPath.empty() )  {
@@ -444,9 +459,19 @@ int main( int argc, char** argv )  {
      * plain fopen() always gave, for every relative path anywhere in this
      * codebase, not only this one call site.
      */
-    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( std :: filesystem :: current_path().string(), "/", true );
+    bool  bPackMode = !strPackConfigPath.empty();
+    bool  bZipEntry = !bPackMode && ( std :: filesystem :: path( strEntryPath ).extension() == ".zip" );
 
-    if( !strPackConfigPath.empty() )  {
+    // A game launched from a .zip has its files in the archive, mounted at the root by
+    // EngineHost::ResolveEntryScript (plans/MASTER_PLAN.md item C8: the save directory, then the game's
+    // own files) - the launch folder is not among them.
+    if( !bZipEntry )
+        SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( std :: filesystem :: current_path().string(), "/", true );
+
+    // Host paths (hpath://) reach the whole disk: refused in the sandbox.
+    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().SetHostPathEnabled( bPackMode || bNoSandbox );
+
+    if( bPackMode )  {
         /*
          * Genuinely headless --pack: no TileMapRenderer/EngineHost is ever
          * constructed, so no window ever opens - there was never an actual
@@ -469,7 +494,7 @@ int main( int argc, char** argv )  {
          * this path never calls at all).
          */
         SunLight :: Scripting :: ScriptProcessor  packScriptProcessor;
-        Scarab :: Lua :: LuaEngine                packLuaEngine( &packScriptProcessor );
+        Scarab :: Lua :: LuaEngine                packLuaEngine( &packScriptProcessor, Scarab :: Lua :: LUA_ENGINE_MODE_PACK );
 
         bool  bPackOk = packLuaEngine.RunFile( strEntryPath );
 
@@ -496,7 +521,7 @@ int main( int argc, char** argv )  {
     headlessSettings.nMaxFrames = nMaxFrames;
 
     Scarab :: Host :: RendererProvider  rendererProvider( MakeDefaultRendererConfig(), headlessSettings );
-    Scarab :: Host :: EngineHost        engineHost( &rendererProvider, strEntryPath, strEntryOverride );
+    Scarab :: Host :: EngineHost        engineHost( &rendererProvider, strEntryPath, strEntryOverride, !bNoSandbox );
 
     if( !strSaveDirectory.empty() )  {
         std :: string  strError;

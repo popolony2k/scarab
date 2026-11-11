@@ -31,7 +31,6 @@
 #define __SAVE_NAME_EXTRA_CHARACTERS   "-_."     // besides letters and digits, in each part of a save's name
 #define __SAVE_TEMP_SUFFIX             ".tmp"    // sunlight's IFileSystem::WriteFile writes "<target>.tmp" first
 #define __SAVE_JSON_INDENT             2         // spaces per level of a written save
-#define __HOST_PATH_SCHEME             "hpath://"
 
 
 namespace Scarab  {
@@ -136,29 +135,44 @@ namespace Scarab  {
             }
 
             /**
-             * @brief The real path of a save inside the save directory, as a host path Scarab builds itself
-             * (never one taken from Lua): reading through it finds only the save, never a file of the same
-             * name in another mount (a loose run's working folder is mounted at the root too).
+             * @brief The path a save is read through: the private mount of the save folder alone
+             * (SaveDirectory::GetSavePath, plans/MASTER_PLAN.md item C8), so reading it finds only the save,
+             * never a game file of the same name in another mount. Before C8 this was a host path, which the
+             * sandbox refuses.
              *
              * @param pLuaState Lua state to be used by engine call;
              * @param strName The save's name (already checked);
-             * @param strHostPath Receives "hpath://<save folder>/<name>";
+             * @param strSavePath Receives the path;
              * @param strError Receives the reason on failure;
              * @return true if there is a save directory;
              */
-            static bool SaveHostPath( lua_State* pLuaState, const std :: string& strName, std :: string& strHostPath, std :: string& strError )  {
+            static bool SavePath( lua_State* pLuaState, const std :: string& strName, std :: string& strSavePath, std :: string& strError )  {
 
                 Engine :: SaveDirectory*  pSaveDirectory = static_cast<Engine :: SaveDirectory *>(
-                                              LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_GLOBAL ) );
+                                              LuaEngineUtil :: GetEnginePointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_KEY ) );
 
                 if( pSaveDirectory -> GetPath().empty() )  {
                     strError = "no save directory (app_set_save_directory, or \"save_directory\" in the project file)";
                     return false;
                 }
 
-                strHostPath = __HOST_PATH_SCHEME + pSaveDirectory -> GetPath() + "/" + strName;
+                strSavePath = Engine :: SaveDirectory :: GetSavePath( strName );
 
                 return true;
+            }
+
+            /**
+             * @brief Whether a save FILE is there: one that reads (a virtual path's Exists also answers for a
+             * folder, which is not a save).
+             *
+             * @param strSavePath The save's path (@see SavePath);
+             * @return true if it is a file;
+             */
+            static bool IsSaveFile( const std :: string& strSavePath )  {
+
+                std :: vector<unsigned char>  data;
+
+                return SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strSavePath, data );
             }
 
             /**
@@ -186,7 +200,7 @@ namespace Scarab  {
 
                 std :: string      strError;
                 std :: string      strName;
-                std :: string      strHostPath;
+                std :: string      strSavePath;
                 nlohmann :: json   value;
 
                 if( !ReadSaveName( pLuaState, strName, strError ) ||
@@ -196,7 +210,7 @@ namespace Scarab  {
                 if( !LuaJsonApi :: ToJson( pLuaState, 2, "value", value, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, "argument 'value' can't be saved: " + strError );
 
-                if( !SaveHostPath( pLuaState, strName, strHostPath, strError ) )
+                if( !SavePath( pLuaState, strName, strSavePath, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot write save '" + strName + "': " + strError );
 
                 std :: string                 strText = value.dump( __SAVE_JSON_INDENT ) + "\n";
@@ -229,20 +243,20 @@ namespace Scarab  {
 
                 std :: string                 strError;
                 std :: string                 strName;
-                std :: string                 strHostPath;
+                std :: string                 strSavePath;
                 std :: vector<unsigned char>  data;
                 nlohmann :: json              value;
 
                 if( !ReadSaveName( pLuaState, strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !SaveHostPath( pLuaState, strName, strHostPath, strError ) )
+                if( !SavePath( pLuaState, strName, strSavePath, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot read save '" + strName + "': " + strError );
 
                 SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
 
-                if( !fileSystem.ReadFile( strHostPath, data ) )
-                    return LuaEngineUtil :: PushError( pLuaState, fileSystem.Exists( strHostPath ) ? "cannot read save '" + strName + "'"
+                if( !fileSystem.ReadFile( strSavePath, data ) )
+                    return LuaEngineUtil :: PushError( pLuaState, IsSaveFile( strSavePath ) ? "cannot read save '" + strName + "'"
                                                                                                   : "no save named '" + strName + "'" );
 
                 try  {
@@ -263,7 +277,7 @@ namespace Scarab  {
 
             /**
              * @brief Whether a save exists: a FILE of that name in the save directory (a folder of that
-             * name is not a save - sunlight's Exists on a host path checks for a regular file).
+             * name is not a save).
              *
              * @param pLuaState Lua state to be used by engine call;
              * @return int number of return data (if any - required by lua engine)
@@ -279,15 +293,15 @@ namespace Scarab  {
 
                 std :: string  strError;
                 std :: string  strName;
-                std :: string  strHostPath;
+                std :: string  strSavePath;
 
                 if( !ReadSaveName( pLuaState, strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !SaveHostPath( pLuaState, strName, strHostPath, strError ) )
+                if( !SavePath( pLuaState, strName, strSavePath, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot look for save '" + strName + "': " + strError );
 
-                lua_pushboolean( pLuaState, SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Exists( strHostPath ) );
+                lua_pushboolean( pLuaState, IsSaveFile( strSavePath ) );
 
                 return 1;
             }
@@ -310,17 +324,17 @@ namespace Scarab  {
 
                 std :: string  strError;
                 std :: string  strName;
-                std :: string  strHostPath;
+                std :: string  strSavePath;
 
                 if( !ReadSaveName( pLuaState, strName, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !SaveHostPath( pLuaState, strName, strHostPath, strError ) )
+                if( !SavePath( pLuaState, strName, strSavePath, strError ) )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot delete save '" + strName + "': " + strError );
 
                 SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
 
-                if( !fileSystem.Exists( strHostPath ) )
+                if( !IsSaveFile( strSavePath ) )
                     return LuaEngineUtil :: PushError( pLuaState, "no save named '" + strName + "'" );
 
                 if( !fileSystem.RemoveFile( strName ) )

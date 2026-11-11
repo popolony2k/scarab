@@ -71,8 +71,8 @@ namespace Scarab  {
 
                 public:
 
-                // The Lua global LuaEngine::Init stashes the engine's SaveDirectory in (a light userdata).
-                static constexpr const char*  SAVE_DIRECTORY_GLOBAL = "saveDirectoryPtr";
+                // The key LuaEngine::Init keeps the engine's SaveDirectory under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SAVE_DIRECTORY_KEY = "saveDirectoryPtr";
 
                 /**
                  * @brief Host platform Scarab itself was compiled for,

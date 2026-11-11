@@ -40,7 +40,7 @@ namespace Scarab  {
              */
             static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State* pLuaState )  {
 
-                return static_cast<SunLight :: Sound :: SoundManager *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaSoundApi :: SOUND_MANAGER_GLOBAL ) );
+                return static_cast<SunLight :: Sound :: SoundManager *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaSoundApi :: SOUND_MANAGER_KEY ) );
             }
 
             /*

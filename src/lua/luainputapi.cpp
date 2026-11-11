@@ -299,13 +299,13 @@ namespace Scarab  {
 
             /**
              * @brief The engine's player slots, stashed by LuaEngine::Init as the light userdata global
-             * PLAYER_SLOTS_GLOBAL.
+             * PLAYER_SLOTS_KEY.
              *
              * @param pLuaState Lua state to be used by engine call;
              */
             static SunLight :: Input :: PlayerSlotManager* GetPlayerSlots( lua_State* pLuaState )  {
 
-                return static_cast<SunLight :: Input :: PlayerSlotManager *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaInputApi :: PLAYER_SLOTS_GLOBAL ) );
+                return static_cast<SunLight :: Input :: PlayerSlotManager *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaInputApi :: PLAYER_SLOTS_KEY ) );
             }
 
             /** @brief Read a gamepad id and a GAMEPAD_BUTTON_* constant (arguments 1 and 2). */
@@ -859,14 +859,14 @@ namespace Scarab  {
             }
 
             /**
-             * @brief The engine's action map, stashed by LuaEngine::Init as ACTION_MAP_GLOBAL.
+             * @brief The engine's action map, stashed by LuaEngine::Init as ACTION_MAP_KEY.
              *
              * @param pLuaState Lua state to be used by engine call;
              * @return The action map;
              */
             static SunLight :: Input :: ActionMap* GetActionMap( lua_State* pLuaState )  {
 
-                return static_cast<SunLight :: Input :: ActionMap *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaInputApi :: ACTION_MAP_GLOBAL ) );
+                return static_cast<SunLight :: Input :: ActionMap *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaInputApi :: ACTION_MAP_KEY ) );
             }
 
             /**
@@ -1111,7 +1111,7 @@ namespace Scarab  {
                     return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 Engine :: SaveDirectory*  pSaveDirectory = static_cast<Engine :: SaveDirectory *>(
-                                              LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_GLOBAL ) );
+                                              LuaEngineUtil :: GetEnginePointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_KEY ) );
 
                 if( ( SunLight :: FileSystem :: FilePath :: SplitPath( strPath, strRest ) == SunLight :: FileSystem :: FilePath :: PATH_SCHEME_VIRTUAL ) &&
                     pSaveDirectory -> GetPath().empty() )
@@ -1154,7 +1154,7 @@ namespace Scarab  {
             static SunLight :: Input :: IGamepadHaptics* GetHaptics( lua_State* pLuaState )  {
 
                 std :: unique_ptr<SunLight :: Input :: IGamepadHaptics>*  pHolder =
-                    static_cast<std :: unique_ptr<SunLight :: Input :: IGamepadHaptics> *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaInputApi :: HAPTICS_GLOBAL ) );
+                    static_cast<std :: unique_ptr<SunLight :: Input :: IGamepadHaptics> *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaInputApi :: HAPTICS_KEY ) );
 
                 if( !*pHolder )
                     LuaEngineUtil :: EnsureRenderer( pLuaState );

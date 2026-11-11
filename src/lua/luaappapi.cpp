@@ -830,14 +830,14 @@ namespace Scarab  {
 
             /**
              * @brief The engine's SaveDirectory, stashed by LuaEngine::Init as the light userdata global
-             * SAVE_DIRECTORY_GLOBAL.
+             * SAVE_DIRECTORY_KEY.
              *
              * @param pLuaState Lua state to be used by engine call;
              * @return The save directory;
              */
             static Engine :: SaveDirectory* GetSaveDirectoryObject( lua_State* pLuaState )  {
 
-                return static_cast<Engine :: SaveDirectory *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_GLOBAL ) );
+                return static_cast<Engine :: SaveDirectory *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_KEY ) );
             }
 
             /**
