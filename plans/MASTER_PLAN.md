@@ -1182,7 +1182,7 @@ that.
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **DONE 2026-11-07**: isometric, staggered and hexagonal maps checked and shown, with P13 (sunlight I17, I18); see below |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **DONE 2026-11-09**, planned with sunlight (both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight delivered all of it in one pin (P14, `d9c71d2`); Scarab's side in two parts: view opacity (#92) and worlds - see below |
-| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **PLANNED 2026-11-09 with the owner**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
+| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **PLANNED 2026-11-09 with the owner; WAITS for sunlight I22 (P16)**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
 keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
@@ -2145,6 +2145,19 @@ its save directory - forbidden, not discouraged - while a Lua developer keeps th
   `pack_*` registered only in `--pack` mode; the save functions, which read through `hpath://` today, read through a
   private mount of the save folder instead (sunlight's `Mount` takes a mount point; remounted when the game changes its
   save folder) - no sunlight change needed.
+- **BLOCKED on sunlight (found 2026-11-10, when the code was about to start; nothing built):** the rule must hold
+  for every read, sunlight's own included (tilesets, images, textures, fonts), so it is done with mounts - and two
+  things stand in the way. (1) PhysFS silently ignores a second mount of a path already mounted, at any mount point
+  (`doMount` in physfs.c, "already in search path?", still returns success), while the plan needs the game's `.zip` at
+  `APP_DIR` and `/`, and the save folder at `/` (the write directory), at `APP_DIR` and at a private mount point (for the
+  save functions, replacing `hpath://`). (2) `IFileSystem` has no `Unmount`, while a game can change its save folder
+  while running, so the extra save mounts would go stale. Scarab cannot work around it alone: rewriting paths in its own
+  functions would miss everything sunlight reads itself. **Asked sunlight (sunlight-96, owner-approved); accepted by its
+  owner as sunlight I22:** the same real folder or archive mountable at several mount points through `Mount`, each in
+  its own place in the search order (its own PhysFS name per extra mount, archives through `PHYSFS_mountIo`), and
+  `IFileSystem::Unmount( realPath, mountPoint )` removing just that mount (false when none) - not an alias between
+  virtual prefixes, which could not give a private mount that sees only the save folder. sunlight confirms the final API
+  if it changes, and sends the commit; Scarab pins it as **P16**, then builds C8 as planned (the design is unchanged).
 - **Caravellius, checked here (no question to it before code; the owner, 2026-11-09):** it uses none of the new
   features, so it follows Scarab's decisions; the breakage entry and the release notice are its handoff. Every path it loads is built from `APP_DIR` (`BASE_PATH = APP_DIR .. "resources/"`, `SRC_PATH = APP_DIR .. "src/"`),
   it uses none of the overridden functions except `io.stdout` and `os.getenv` (kept), it packs with `scarab --pack`
