@@ -606,12 +606,11 @@ Sub-tasks, as agreed with the owner:
   zoom keys were added next to the sample's own: `+`/`-` zoom, `=` resets the zoom, on the main
   keyboard and the keypad (sunlight's `samples/shared/zoomkeys.h`). And Home/`=` now reset to
   the sample's starting zoom (`view_set_preferred_zoom`, see D2 for why that is needed).
-- Also from that check, still open: semi-transparent layers (`test.tmx`'s
-  `background_clouds`, 0.69, and `background`, 0.65) draw darker than in Tiled. It's a sunlight
+- Also from that check (**since fixed by sunlight as its I1, reported by Scarab - checked 2026-11-11**):
+  semi-transparent layers (`test.tmx`'s `background_clouds`, 0.69, and `background`, 0.65) drew darker than in Tiled. It's a sunlight
   bug, present in v0.38.0 too: the frame is drawn into a render texture whose own alpha drops
   under every semi-transparent tile, and `TileMapRenderer::Run` then blends that texture onto a
-  black screen (about 70% brightness in those areas). Not tracked in sunlight's plan; how it
-  goes to sunlight is the owner's decision.
+  black screen (about 70% brightness in those areas). It went to sunlight and was fixed there (I1).
 
 **V2.** Three real rendering bugs sunlight found and fixed at non-integer zoom - a
 rasterization seam between adjacent tiles, a scroll-boundary gap of tens of pixels, and a
