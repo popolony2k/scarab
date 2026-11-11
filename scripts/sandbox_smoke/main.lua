@@ -217,6 +217,11 @@ local function check_code()
     check( require( module_name( "shadow_mod" ) ) == "saved", "require finds the saved module first" )
     check( dofile( gameDir .. "shadow_mod.lua" ) == "saved", "dofile finds the saved file first" )
 
+    check( write_all( gameDir .. "broken_mod.lua", "return (" ) == true, "save a module that does not compile" )
+    local loadedBroken, brokenMessage = pcall( require, module_name( "broken_mod" ) )
+    check( not loadedBroken and tostring( brokenMessage ):find( "error loading module", 1, true ) ~= nil,
+           "require raises Lua's error for a module that does not compile: " .. tostring( brokenMessage ) )
+
     check( loadfile( gameDir .. "mod.lua" )() == "game module", "loadfile" )
     check( loadfile( gameDir .. "envmod.lua", "t", { x = 5 } )() == 5, "loadfile with an environment" )
     expect_fail( "loadfile binary mode", "binary chunks are not available", loadfile( gameDir .. "mod.lua", "b" ) )

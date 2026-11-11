@@ -262,8 +262,35 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Open a file or raise Lua's own error for it (liolib.c's opencheck: io.lines, io.input and
-             * io.output raise rather than return nil).
+             * @brief Open a file and push it, or push Lua's own message for a failed open (liolib.c's opencheck):
+             * OpenOrRaise's work, in a frame of its own so the error is raised where no C++ object lives.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The path a script gave;
+             * @param szMode A valid Lua mode string;
+             * @return true if the file was pushed, false if the message was;
+             */
+            static bool TryOpenOrMessage( lua_State* pLuaState, const char* szName, const char* szMode )  {
+
+                Engine :: SandboxFile :: stMode  mode;
+                int                              nErrorCode = 0;
+                std :: string                    strReason;
+
+                Engine :: SandboxFile :: ParseMode( szMode, mode );
+
+                if( TryOpen( pLuaState, szName, mode, nErrorCode, strReason ) )
+                    return true;
+
+                lua_pushfstring( pLuaState, "cannot open file '%s' (%s)", szName,
+                                 strReason.empty() ? std :: strerror( nErrorCode ) : strReason.c_str() );
+
+                return false;
+            }
+
+            /**
+             * @brief Open a file or raise Lua's own error for it (io.lines, io.input and io.output raise rather
+             * than return nil). Lua is built as C, so an error is a longjmp: this frame holds no C++ object
+             * (TryOpenOrMessage does the work) - on Windows, unwinding through one crashed (C8, found in CI).
              *
              * @param pLuaState Lua state to be used by engine call;
              * @param szName The path a script gave;
@@ -271,23 +298,8 @@ namespace Scarab  {
              */
             static void OpenOrRaise( lua_State* pLuaState, const char* szName, const char* szMode )  {
 
-                bool  bOpened;
-
-                {
-                    Engine :: SandboxFile :: stMode  mode;
-                    int                              nErrorCode = 0;
-                    std :: string                    strReason;
-
-                    Engine :: SandboxFile :: ParseMode( szMode, mode );
-                    bOpened = TryOpen( pLuaState, szName, mode, nErrorCode, strReason );
-
-                    if( !bOpened )
-                        lua_pushfstring( pLuaState, "cannot open file '%s' (%s)", szName,
-                                         strReason.empty() ? std :: strerror( nErrorCode ) : strReason.c_str() );
-                }
-
-                if( !bOpened )
-                    lua_error( pLuaState );     // the strings above are gone: lua_error does not return
+                if( !TryOpenOrMessage( pLuaState, szName, szMode ) )
+                    lua_error( pLuaState );
             }
 
             /**
@@ -917,44 +929,55 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Create a fresh, empty file in the save directory and push its name: os.tmpname's work, in a
+             * frame of its own so the error is raised where no C++ object lives.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return true if the name was pushed, false when there is no save directory or no free name;
+             */
+            static bool PushNewTempName( lua_State* pLuaState )  {
+
+                Engine :: SaveDirectory*  pSaveDirectory = GetSaveDirectory( pLuaState );
+
+                if( !pSaveDirectory || pSaveDirectory -> GetPath().empty() )
+                    return false;
+
+                static std :: mt19937  random( std :: random_device {}() );
+
+                const std :: string                             strLetters = __TMPNAME_LETTERS;
+                std :: uniform_int_distribution<std :: size_t>  pick( 0, strLetters.size() - 1 );
+
+                for( int nTry = 0; nTry < __TMPNAME_TRIES; nTry++ )  {
+                    std :: string                 strName = __TMPNAME_PREFIX;
+                    std :: vector<unsigned char>  data;
+
+                    for( int nLetter = 0; nLetter < __TMPNAME_LENGTH; nLetter++ )
+                        strName += strLetters[pick( random )];
+
+                    if( ReadSaveFile( strName, data ) )
+                        continue;           // taken: try another name
+
+                    if( SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().WriteFile( strName, data ) )  {
+                        lua_pushstring( pLuaState, strName.c_str() );
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            /**
              * @brief os.tmpname(): the name of a fresh, empty file created in the save directory (Lua's own
-             * creates the file too) - a plain name, which io.open writes back to the same file.
+             * creates the file too) - a plain name, which io.open writes back to the same file. Raises, as Lua's
+             * does, when it can't; this frame holds no C++ object for that longjmp (PushNewTempName does the
+             * work - on Windows, unwinding through one crashed: C8, found in CI).
              *
              * @param pLuaState Lua state to be used by engine call;
              * @return 1, the name;
              */
             int LuaSandboxApi :: OsTmpName( lua_State* pLuaState )  {
 
-                bool  bCreated = false;
-
-                {
-                    Engine :: SaveDirectory*  pSaveDirectory = GetSaveDirectory( pLuaState );
-
-                    if( pSaveDirectory && !pSaveDirectory -> GetPath().empty() )  {
-                        static std :: mt19937  random( std :: random_device {}() );
-
-                        const std :: string                       strLetters = __TMPNAME_LETTERS;
-                        std :: uniform_int_distribution<std :: size_t>  pick( 0, strLetters.size() - 1 );
-
-                        for( int nTry = 0; ( nTry < __TMPNAME_TRIES ) && !bCreated; nTry++ )  {
-                            std :: string                 strName = __TMPNAME_PREFIX;
-                            std :: vector<unsigned char>  data;
-
-                            for( int nLetter = 0; nLetter < __TMPNAME_LENGTH; nLetter++ )
-                                strName += strLetters[pick( random )];
-
-                            if( ReadSaveFile( strName, data ) )
-                                continue;           // taken: try another name
-
-                            if( SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().WriteFile( strName, data ) )  {
-                                lua_pushstring( pLuaState, strName.c_str() );
-                                bCreated = true;
-                            }
-                        }
-                    }
-                }
-
-                if( !bCreated )
+                if( !PushNewTempName( pLuaState ) )
                     return luaL_error( pLuaState, "unable to generate a unique filename" );
 
                 return 1;
@@ -1023,8 +1046,40 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Find and load a Lua module by package.path: SearchLuaModule's work, in a frame of its own so
+             * the error is raised where no C++ object lives.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The module's name;
+             * @param szPath package.path;
+             * @return 1 with the files tried pushed (not found), 2 with the loader and its file pushed, or -1 with
+             * the error message pushed;
+             */
+            static int FindAndLoadModule( lua_State* pLuaState, const char* szName, const char* szPath )  {
+
+                std :: string  strFound;
+                std :: string  strTried;
+
+                if( !FindInPath( szName, szPath, ".", __VIRTUAL_SEPARATOR, strFound, strTried ) )  {
+                    lua_pushstring( pLuaState, strTried.c_str() );
+                    return 1;
+                }
+
+                if( LuaFileSystemApi :: LoadChunk( pLuaState, strFound, __TEXT_MODE ) == LUA_OK )  {
+                    lua_pushstring( pLuaState, strFound.c_str() );
+                    return 2;
+                }
+
+                lua_pushfstring( pLuaState, "error loading module '%s' from file '%s':\n\t%s", szName,
+                                 strFound.c_str(), lua_tostring( pLuaState, -1 ) );
+
+                return -1;
+            }
+
+            /**
              * @brief require's Lua-module searcher (package.searchers[2]): the module's file by package.path,
-             * read through the file system and loaded as text - Lua's searcher_Lua, by the path rule.
+             * read through the file system and loaded as text - Lua's searcher_Lua, by the path rule. This frame
+             * holds no C++ object for the error's longjmp (FindAndLoadModule does the work).
              *
              * @param pLuaState Lua state to be used by engine call;
              * @return The loader and the file's name, or the files tried;
@@ -1040,30 +1095,12 @@ namespace Scarab  {
                 if( !szPath )
                     return luaL_error( pLuaState, "'package.path' must be a string" );
 
-                bool  bLoaded;
+                int  nResults = FindAndLoadModule( pLuaState, szName, szPath );
 
-                {
-                    std :: string  strFound;
-                    std :: string  strTried;
-
-                    if( !FindInPath( szName, szPath, ".", __VIRTUAL_SEPARATOR, strFound, strTried ) )  {
-                        lua_pushstring( pLuaState, strTried.c_str() );
-                        return 1;
-                    }
-
-                    bLoaded = ( LuaFileSystemApi :: LoadChunk( pLuaState, strFound, __TEXT_MODE ) == LUA_OK );
-
-                    if( bLoaded )
-                        lua_pushstring( pLuaState, strFound.c_str() );
-                    else
-                        lua_pushfstring( pLuaState, "error loading module '%s' from file '%s':\n\t%s", szName,
-                                         strFound.c_str(), lua_tostring( pLuaState, -1 ) );
-                }
-
-                if( !bLoaded )
+                if( nResults < 0 )
                     return lua_error( pLuaState );
 
-                return 2;
+                return nResults;
             }
 
             /**
