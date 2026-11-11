@@ -20,7 +20,9 @@
 """
 Style audit - counts how far Scarab's code is from docs/CODE_STYLE.md (plans/MASTER_PLAN.md item S1).
 
-C++ rules run over src/ and tests/, Lua rules over samples/, scripts/ and tools/. Every rule
+C++ rules run over src/ and tests/, Lua rules over samples/, scripts/ and tools/, and the documentation
+rules (T1) over the tracked documents and the generated Lua API reference (the Lua example check needs
+the luac a build leaves under build/_deps). Every rule
 reads the source with comments and string literals blanked out (newlines kept, so line numbers
 stay right), the way Caravellius' tools/lua_lint.py does, so a rule never fires on text inside a
 comment or a message. The rules are heuristics over text, not a parser: each one is checked
@@ -42,7 +44,9 @@ its header), interface overrides included - Scarab's own rule, not sunlight's, s
 import glob
 import os
 import re
+import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,6 +60,12 @@ LUA_DIRS = ["samples", "scripts", "tools"]
 SCRIPT_GLOBS = ["scripts/**/*.py", "tools/**/*.py", "scripts/**/*.supp", ".github/workflows/*.yml",
                 "CMakeLists.txt", "src/**/CMakeLists.txt", "tests/**/CMakeLists.txt", "Doxyfile"]
 EXAMPLES_PER_RULE = 2
+# Documentation rules (T1): the documents whose Lua is checked (CLAUDE.md and docs/lua-integration.md are about the
+# C++ and the build, full of C++ names), and where luac is after a build.
+DOC_LUA_GLOBS = ["README.md", "docs/lua-api/README.md", "docs/CODE_STYLE.md", "samples/**/*.md", "tools/**/*.md",
+                 "resources/**/*.md"]
+LUAC_PATHS = ["build/_deps/lua_library-build/luac", "build/_deps/lua_library-build/Release/luac.exe",
+              "build/_deps/lua_library-build/luac.exe"]
 
 RULES = {
     # C++ - docs/CODE_STYLE.md, "C++"
@@ -104,6 +114,12 @@ RULES = {
 
     # Other files - plans/MASTER_PLAN.md item T3
     "script-license":       "script, build or config file without the full zlib license notice (docs/HEADER.txt)",
+
+    # Documentation - plans/MASTER_PLAN.md item T1
+    "doc-link":             "relative link in a document to a file that does not exist",
+    "doc-lua-name":         "a Lua function a document or a reference example calls that Scarab does not have (nor the text defines)",
+    "doc-example-parse":    "Lua code block in a document or the generated reference that is not valid Lua (luac -p)",
+    "doc-sample-list":      "a sample (samples/*/project.json) missing from README.md's or samples/README.md's list, or the VSCode launch picker",
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -613,6 +629,106 @@ def lua_findings(path, rel, add_finding):
 # ---------------------------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------------------------
+# Documentation (plans/MASTER_PLAN.md item T1)
+
+LINK_RE      = re.compile(r"\]\(([^)#\s]+)(#[^)\s]*)?\)")
+CALL_RE      = re.compile(r"(?<![\w.:])([a-z][a-z0-9]*_[a-z0-9_]+)\s*\(")
+DEFINED_RE   = re.compile(r"(?:function\s+(?:[\w.:]+[.:])?|local\s+function\s+|local\s+)([a-z][a-z0-9_]*)|([a-z][a-z0-9_]*)\s*=")
+LUA_BLOCK_RE = re.compile(r"```lua\n(.*?)```", re.S)
+
+
+def tracked_documents():
+    """Every tracked .md outside plans/ (the plans are history: they quote what was, on purpose)."""
+    output = subprocess.run(["git", "ls-files", "*.md"], cwd=REPO_ROOT, capture_output=True, text=True).stdout
+    return [p for p in output.split() if not p.startswith("plans/")]
+
+
+def known_lua_functions():
+    """The functions Scarab registers, the callbacks it calls (luaengine.cpp's @luaname tags), and Lua's own
+    snake_case names (none today besides the sandbox's, which Scarab registers)."""
+    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
+    from _lua_api_shared import find_registrations
+    names = {name for name, *_ in find_registrations()}
+    with open(os.path.join(REPO_ROOT, "src", "lua", "luaengine.cpp"), encoding="utf-8") as f:
+        names |= set(re.findall(r"@luaname\{([a-z_][a-z0-9_]*)\(", f.read()))
+    return names
+
+
+def generated_reference():
+    """The Lua API reference as generate_lua_api_docs.py renders it (Markdown), or None if it can't run."""
+    result = subprocess.run([sys.executable, os.path.join(REPO_ROOT, "scripts", "generate_lua_api_docs.py"),
+                             "--format", "markdown"], cwd=REPO_ROOT, capture_output=True, text=True)
+    return result.stdout if result.returncode == 0 else None
+
+
+def find_luac():
+    """The luac a build leaves under build/_deps, or None."""
+    for rel in LUAC_PATHS:
+        path = os.path.join(REPO_ROOT, rel)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def check_lua_text(text, label, known, luac, add):
+    """doc-lua-name and doc-example-parse over one document's text: every call to an unknown snake_case
+    function (one the text itself defines is fine), and every ```lua block luac refuses."""
+    defined = {a or b for a, b in DEFINED_RE.findall(text)}
+    for n, line in enumerate(text.splitlines(), start=1):
+        for name in CALL_RE.findall(line):
+            if name not in known and name not in defined:
+                add("doc-lua-name", label, n, line)
+
+    for block in LUA_BLOCK_RE.finditer(text):
+        n = text.count("\n", 0, block.start()) + 2
+        if luac is None:
+            add("doc-example-parse", label, n, "luac not found under build/_deps - build Scarab first")
+            return
+        with tempfile.NamedTemporaryFile("w", suffix=".lua", delete=False, encoding="utf-8") as f:
+            f.write(block.group(1))
+        result = subprocess.run([luac, "-p", f.name], capture_output=True, text=True)
+        os.unlink(f.name)
+        if result.returncode != 0:
+            add("doc-example-parse", label, n, (result.stderr or result.stdout).strip().splitlines()[-1].split(":", 2)[-1])
+
+
+def doc_findings(add):
+    """The three documentation rules."""
+    for rel in tracked_documents():
+        with open(os.path.join(REPO_ROOT, rel), encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        for n, line in enumerate(lines, start=1):
+            for target, _ in LINK_RE.findall(line):
+                if re.match(r"[a-z]+:", target):
+                    continue
+                if not os.path.exists(os.path.normpath(os.path.join(REPO_ROOT, os.path.dirname(rel), target))):
+                    add("doc-link", rel, n, target)
+
+    samples = sorted(os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(REPO_ROOT, "samples", "*", "project.json")))
+    for rel, needle in (("README.md", "samples/{}/docs/README.md"), (os.path.join("samples", "README.md"), "({}/docs/README.md)"),
+                        (os.path.join("docs", "vscode", ".vscode", "launch.json"), "samples/{}/project.json")):
+        with open(os.path.join(REPO_ROOT, rel), encoding="utf-8") as f:
+            listing = f.read()
+        for sample in samples:
+            if needle.format(sample) not in listing:
+                add("doc-sample-list", rel, 0, "samples/" + sample + " is not listed")
+
+    known = known_lua_functions()
+    luac  = find_luac()
+
+    for pattern in DOC_LUA_GLOBS:
+        for path in sorted(glob.glob(os.path.join(REPO_ROOT, pattern), recursive=True)):
+            with open(path, encoding="utf-8") as f:
+                check_lua_text(f.read(), os.path.relpath(path, REPO_ROOT), known, luac, add)
+
+    reference = generated_reference()
+    if reference is None:
+        add("doc-lua-name", "docs/lua-api (generated)", 0, "generate_lua_api_docs.py failed")
+        return
+    check_lua_text(reference, "docs/lua-api (generated)", known, luac, add)
+
+
 def main():
     args = sys.argv[1:]
     list_rule = args[args.index("--list") + 1] if "--list" in args else None
@@ -640,6 +756,7 @@ def main():
         for pattern in SCRIPT_GLOBS:
             for path in sorted(glob.glob(os.path.join(REPO_ROOT, pattern), recursive=True)):
                 script_findings(path, os.path.relpath(path, REPO_ROOT), add)
+        doc_findings(add)
 
     if list_rule:
         for rel, n, text in findings.get(list_rule, []):

@@ -70,18 +70,7 @@ namespace Scarab  {
 
             /**
              * @luaname{sound_load(id, path) -> true | nil, message}
-             * @luaheading{Error reporting}
              * @luadoc
-             * Every sound and song function reports a failure as
-             * `nil, "message"` and never raises a Lua error; one with nothing
-             * else to return returns `true`. Ids are integers; an id that was
-             * never loaded is `"sound N is not loaded (see sound_load)"`.
-             *
-             * These are unconditional, immediate calls — no queue
-             * involved, and they don't distinguish "background music"
-             * from "sound effect." Use these for anything you want to
-             * control precisely and immediately.
-             *
              * Load a sound file and associate it with `id`. Must be
              * called once before any other `sound_*`/`*_song` call for
              * that id. Fails for a file that can't be loaded

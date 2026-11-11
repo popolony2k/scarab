@@ -12,7 +12,7 @@ From the repo root:
 
 This sample's own on-screen output depends on how `scarab` was built:
 
-- **Default build** (no `SCARAB_CONTENT_KEY` configured): `crypto_encrypt_data` returns `nil`, and the sample shows that plainly — this is a normal, expected state (not every build needs content encryption), not an error.
+- **Default build** (no `SCARAB_CONTENT_KEY` configured): `crypto_encrypt_data` returns `nil` and the reason, and the sample shows that plainly — this is a normal, expected state (not every build needs content encryption), not an error.
 - **Built with a real key**:
 
   ```shell
@@ -26,7 +26,7 @@ Run it once against each build to see both code paths — both were verified liv
 
 ## What it shows
 
-- [main.lua](../main.lua) — encrypts a plaintext string, decrypts it back, and confirms it matches; then flips one ciphertext byte and confirms `crypto_decrypt_data` refuses it (returns `nil`) rather than returning silently-wrong data — `crypto_secretbox`'s authenticated-encryption guarantee, confirmed live (`LuaCryptoApi: crypto_decrypt_data failed - wrong key or corrupted data.` on stderr for the tamper case only).
+- [main.lua](../main.lua) — encrypts a plaintext string, decrypts it back, and confirms it matches; then flips one ciphertext byte and confirms `crypto_decrypt_data` refuses it (`nil, "cannot decrypt: wrong key, corrupted data, or a blob too short to be valid"`) rather than returning silently-wrong data — `crypto_secretbox`'s authenticated-encryption guarantee.
 - Neither primitive ever takes a key argument — both are keyed entirely by the compile-time `SCARAB_CONTENT_KEY`, never a Lua-supplied value.
 
 ## Lua API reference

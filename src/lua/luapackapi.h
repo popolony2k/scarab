@@ -49,18 +49,18 @@ namespace Scarab  {
              * disk, before any of Scarab's own runtime mounting
              * concepts (`APP_DIR`, a loaded `.zip`) are even relevant.
              * These primitives exist purely for `tools/pack.lua`, and
-             * only in `scarab --pack` (plans/MASTER_PLAN.md item C8): a
-             * game never has them, sandboxed or not.
+             * only in `scarab --pack`: a game never has them, sandboxed
+             * or not.
              * @luaoutro
              * ## Archive handles
              *
-             * `pack_create_archive`/`pack_add_entry`/`pack_close_archive`
-             * share one integer-handle convention: `0` always means
-             * failure (the same "0 is never a valid handle" shape
-             * `sprite_acquire` already uses), a real handle otherwise.
-             * Always call `pack_close_archive` once done with a handle
-             * - the underlying zip file isn't actually finalized/valid
-             * until then.
+             * `pack_create_archive` returns an integer handle that
+             * `pack_add_entry`/`pack_close_archive` take; a failure is
+             * `nil, "message"`, and a handle that isn't open is
+             * `nil, "invalid archive handle"`. Always call
+             * `pack_close_archive` once done with a handle - the
+             * underlying zip file isn't actually finalized/valid until
+             * then.
              */
             class LuaPackApi  {
 

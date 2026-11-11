@@ -39,6 +39,13 @@ namespace Scarab  {
              * Application-level primitives — concerns that belong to the
              * running app/game itself, not to any one engine subsystem
              * (camera, sound, sprites, ...).
+             *
+             * ## Error reporting
+             *
+             * Every app and screen function reports a wrong argument as
+             * `nil, "message"` and never raises a Lua error; a setter returns
+             * `true` on success. Booleans must be `true`/`false` (not `nil`,
+             * not `0`/`1`), and integers must be whole numbers.
              */
             class LuaAppApi  {
 

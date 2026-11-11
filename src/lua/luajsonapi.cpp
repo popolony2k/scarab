@@ -468,9 +468,9 @@ namespace Scarab  {
              * @luaname{load_json(path) -> table | nil, message}
              * @luadoc
              * Read a JSON file and return its content as an equivalent Lua
-             * table — this is the engine's only config-file bridge;
-             * everything else under `resources/configs/` is read this
-             * way rather than through any Caravellius-specific loader.
+             * table — the engine's config-file bridge, for any data a game
+             * keeps as JSON. The file is found by the path rule (the save
+             * directory, then the game's own files).
              * Returns `nil, "message"` (never a Lua error) if the file
              * can't be opened (`"cannot open '<path>'"`) or fails to parse
              * (`"cannot parse '<path>': <reason>"`).

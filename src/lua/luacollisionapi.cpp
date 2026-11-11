@@ -55,10 +55,6 @@ namespace Scarab  {
              *
              * @luaname{collision_add_rule(layerA, layerB [, world]) -> true | nil, message}
              * @luadoc
-             * Every collision function reports a failure as `nil, "message"`
-             * and never raises a Lua error. Layer ids are integers from `0` to
-             * `254`.
-             *
              * Declare that sprites on `layerA` should be checked against
              * sprites on `layerB` every frame. Order doesn't matter for
              * the check itself, but your handler always receives the two

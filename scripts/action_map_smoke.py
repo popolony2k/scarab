@@ -152,6 +152,7 @@ def main():
         ok &= run(scarab, ["--save-dir", save_dir, project], repo_root,
                   {"SMOKE_SCENARIO": "api", "SMOKE_EXPECT_DIR": save_dir}, "api, with --save-dir")
         ok &= file_has(os.path.join(save_dir, "bindings.txt"), "jump=KEY:", "api: the saved bindings are on disk")
+        ok &= file_has(os.path.join(save_dir, "appdir_bindings.txt"), "jump=KEY:", "api: an APP_DIR save lands at the save directory's top")
 
         # priority: the real per-user folder, computed under a fake home
         home       = os.path.join(work, "home")

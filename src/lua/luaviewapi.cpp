@@ -1014,7 +1014,7 @@ namespace Scarab  {
              * @luaheading{The world a view shows}
              * @luadoc
              * Choose which world a view shows (and read it back with `view_get_world`) - see
-             * `docs/lua-api/worlds.html`. Only a view made by `view_create` can show another world:
+             * [worlds.md](worlds.md). Only a view made by `view_create` can show another world:
              * the **default view always shows the default world**, so `view_set_world( 0, w )` is
              * refused unless `w` is `0`. The view keeps its rectangle, camera and zoom; place the
              * camera on the new world yourself (`view_fit_to_map`, `view_set_camera_position`). When a

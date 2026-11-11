@@ -26,7 +26,7 @@ From the repo root:
 
 - [main.lua](../main.lua) — `sound_load` once at startup, then every Play form from the [song-commands comparison table](https://popolony2k.github.io/scarab/lua-api/sound.html): only the *tracked* forms (`play_song_looping`, `sp_play_song`) get free auto-looping from the engine once playback ends — plain `play_song` plays once and is never auto-repeated, which is what a one-off sound effect (a shot, an explosion) actually wants.
 - `pause_song`/`stop_song`/`resume_song` work identically regardless of which tracked form started playback.
-- `sound_is_playing` is read every frame to show real playback state on the HUD, since none of the 9 song functions themselves return a value.
+- `sound_is_playing` is read every frame to show real playback state on the HUD, since the 9 song functions only return `true` (or `nil, "message"`), not whether anything is playing.
 
 ## Lua API reference
 

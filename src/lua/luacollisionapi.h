@@ -45,6 +45,12 @@ namespace Scarab  {
              * pair. There's no per-sprite "on hit" registration — dispatch
              * to the right game logic based on the two handles is entirely
              * up to your handler.
+             *
+             * ## Error reporting
+             *
+             * Every collision function reports a failure as `nil, "message"`
+             * and never raises a Lua error. Layer ids are integers from `0` to
+             * `254`.
              */
             class LuaCollisionApi  {
 

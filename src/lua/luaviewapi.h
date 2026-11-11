@@ -38,11 +38,10 @@ namespace Scarab  {
              * The renderer owns one built-in view, the **default view** (id `0`, from
              * `renderer_get_default_view`), and it is the one the older global `camera_*`,
              * `zoom_*` and `viewport_*` functions act on — those keep working unchanged. The
-             * `view_*` functions here take the view *first*, so that when more views exist
-             * (several views in one window: a minimap, picture-in-picture, split screen) the
-             * same calls address any of them. `view_create` adds further views over the same world
-             * (a minimap, a close-up, picture-in-picture, split screen), each with its own
-             * rectangle, camera and zoom, and each drawn every frame.
+             * `view_*` functions here take the view *first*, so the same calls address any
+             * view. `view_create` adds further views (a minimap, a close-up,
+             * picture-in-picture, split screen), each with its own rectangle, camera and zoom,
+             * and each drawn every frame.
              *
              * View handles are opaque integers. Every function reports failure as
              * `nil, "message"` (never a Lua error) — an unknown view is
@@ -54,8 +53,10 @@ namespace Scarab  {
              * its camera:** the camera position is not re-clamped, so set it again afterwards
              * (`view_set_camera_position`).
              *
-             * **What an extra view is for, and its limits.** Every view shows the *same* map,
-             * sprites and layers — there is one world seen through several windows. A view can
+             * **What an extra view is for, and its limits.** A view shows one **world** - its
+             * maps, sprites and layers: the default world unless `view_set_world` picks another
+             * (see [worlds.md](worlds.md)), so several views of the default world are one world
+             * seen through several windows. A view can
              * hide layers (`view_show_layer`, `view_show_only_layers`), be hidden
              * (`view_set_visible`), be drawn above or below another (`view_set_draw_order`) and
              * have its own backdrop (`view_set_clear_background`, `view_set_background_color`).

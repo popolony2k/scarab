@@ -34,9 +34,10 @@ namespace Scarab  {
              *
              * @luacategory{Camera}
              * @luadoc
-             * All camera functions act on the currently loaded map's
-             * viewport (`tilemap_load_map`) — there's no separate "camera
-             * object" to create or select.
+             * The camera, zoom and viewport functions here act on the
+             * renderer's default view (view `0`) — there's no separate
+             * "camera object" to create or select. The `view_*` functions
+             * do the same for any view, by id (see [views.md](views.md)).
              */
             class LuaCameraApi  {
 
