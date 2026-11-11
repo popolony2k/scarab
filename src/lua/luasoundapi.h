@@ -48,6 +48,19 @@ namespace Scarab  {
              * `caravellius/src/soundids.lua`) — the engine never
              * interprets what a specific id means, it's just a key into
              * `SoundManager`.
+             *
+             * The `sound_*` functions are unconditional, immediate calls — no
+             * queue involved, and they don't distinguish "background music" from
+             * "sound effect." Use them for anything you want to control
+             * precisely and immediately; the song functions below add the queue
+             * and background-music looping.
+             *
+             * ## Error reporting
+             *
+             * Every sound and song function reports a failure as
+             * `nil, "message"` and never raises a Lua error; one with nothing
+             * else to return returns `true`. Ids are integers; an id that was
+             * never loaded is `"sound N is not loaded (see sound_load)"`.
              */
             class LuaSoundApi  {
 

@@ -28,7 +28,7 @@ The controller is the first one connected.
 - **What fades:** a view's finished image, not each thing in it - a house still hides what is behind it at any opacity - and its backdrop fades with it. At `0` a view draws nothing, but its sprites keep animating. The HUD shows each view's opacity (`view_get_opacity`).
 - **Kepi is world space** (`sprite_set_world_space`): during a fade it fades out in one place and in with the other view.
 
-Fading between two *different* maps needs worlds (several maps at once), which come in a later item.
+Fading between two *different* maps uses worlds (several maps at once): the [worlds](../../worlds/docs/README.md) sample does it.
 
 ## Lua API reference
 

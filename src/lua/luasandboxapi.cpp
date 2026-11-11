@@ -43,7 +43,6 @@ extern "C"  {
 #define __DEFAULT_INPUT_KEY    "scarab.io.input"         // registry: io.input()'s file
 #define __DEFAULT_OUTPUT_KEY   "scarab.io.output"        // registry: io.output()'s file
 #define __INSTALLED_KEY        "scarab.sandbox"          // registry: true once the sandbox is installed
-#define __APP_DIRECTORY_KEY    "scarab.sandbox.appdir"   // registry: APP_DIR, as the engine computed it
 #define __NOT_AVAILABLE        " is not available in the sandbox"
 #define __NO_SAVE_DIRECTORY    "no save directory (app_set_save_directory, \"save_directory\" in the project file, or --save-dir)"
 #define __MAX_LINES_FORMATS    250                       // Lua's MAXARGLINE (liolib.c)
@@ -110,33 +109,6 @@ namespace Scarab  {
                 return static_cast<Engine :: SaveDirectory *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaAppApi :: SAVE_DIRECTORY_KEY ) );
             }
 
-            /**
-             * @brief Where a path is written: inside the save directory (LuaSandboxApi::ToSavePath), which must
-             * exist.
-             *
-             * @param pLuaState Lua state to be used by engine call;
-             * @param szPath The path a script gave;
-             * @param strSavePath Receives the path inside the save directory;
-             * @param strError Receives the reason on failure;
-             * @return true if the path can be written;
-             */
-            static bool ResolveWrite( lua_State* pLuaState, const char* szPath, std :: string& strSavePath, std :: string& strError )  {
-
-                Engine :: SaveDirectory*  pSaveDirectory = GetSaveDirectory( pLuaState );
-
-                if( !pSaveDirectory || pSaveDirectory -> GetPath().empty() )  {
-                    strError = __NO_SAVE_DIRECTORY;
-                    return false;
-                }
-
-                lua_getfield( pLuaState, LUA_REGISTRYINDEX, __APP_DIRECTORY_KEY );
-
-                std :: string  strAppDirectory = lua_isstring( pLuaState, -1 ) ? lua_tostring( pLuaState, -1 ) : "";
-
-                lua_pop( pLuaState, 1 );
-
-                return LuaSandboxApi :: ToSavePath( szPath, strAppDirectory, strSavePath, strError );
-            }
 
             /**
              * @brief Whether a file is in the save directory itself - read through the save folder's private
@@ -247,7 +219,7 @@ namespace Scarab  {
 
                 std :: string  strSavePath;
 
-                if( mode.bWrite && !ResolveWrite( pLuaState, szName, strSavePath, strReason ) )  {
+                if( mode.bWrite && !LuaSandboxApi :: ResolveWritePath( pLuaState, szName, strSavePath, strReason ) )  {
                     nErrorCode = EACCES;
                     return false;
                 }
@@ -877,7 +849,7 @@ namespace Scarab  {
                 std :: string                 strError;
                 std :: vector<unsigned char>  data;
 
-                if( !ResolveWrite( pLuaState, szName, strSavePath, strError ) )
+                if( !LuaSandboxApi :: ResolveWritePath( pLuaState, szName, strSavePath, strError ) )
                     return PushFailure( pLuaState, szName, EACCES, strError );
 
                 if( !ReadSaveFile( strSavePath, data ) )
@@ -907,10 +879,10 @@ namespace Scarab  {
                 std :: string                 strError;
                 std :: vector<unsigned char>  data;
 
-                if( !ResolveWrite( pLuaState, szOldName, strOldPath, strError ) )
+                if( !LuaSandboxApi :: ResolveWritePath( pLuaState, szOldName, strOldPath, strError ) )
                     return PushFailure( pLuaState, szOldName, EACCES, strError );
 
-                if( !ResolveWrite( pLuaState, szNewName, strNewPath, strError ) )
+                if( !LuaSandboxApi :: ResolveWritePath( pLuaState, szNewName, strNewPath, strError ) )
                     return PushFailure( pLuaState, szNewName, EACCES, strError );
 
                 if( !ReadSaveFile( strOldPath, data ) )
@@ -1613,14 +1585,11 @@ namespace Scarab  {
              * right after luaL_openlibs, before any script.
              *
              * @param pLuaState Lua state to be used by engine call;
-             * @param strAppDirectory APP_DIR (a path starting with it is written under the part after it);
              */
-            void LuaSandboxApi :: Install( lua_State* pLuaState, const std :: string& strAppDirectory )  {
+            void LuaSandboxApi :: Install( lua_State* pLuaState )  {
 
                 lua_pushboolean( pLuaState, 1 );
                 lua_setfield( pLuaState, LUA_REGISTRYINDEX, __INSTALLED_KEY );
-                lua_pushstring( pLuaState, strAppDirectory.c_str() );
-                lua_setfield( pLuaState, LUA_REGISTRYINDEX, __APP_DIRECTORY_KEY );
 
                 InstallFileType( pLuaState );
                 InstallIo( pLuaState );
@@ -1658,6 +1627,30 @@ namespace Scarab  {
             const char* LuaSandboxApi :: GetChunkMode( lua_State* pLuaState )  {
 
                 return IsInstalled( pLuaState ) ? __TEXT_MODE : __ANY_MODE;
+            }
+
+            /**
+             * @brief Where a path a script gave is written (the path rule, plans/MASTER_PLAN.md item C8): inside the
+             * save directory, which must exist, by ToSavePath with this engine's APP_DIR. Used by the sandbox's
+             * io/os and by every Scarab function that writes a path (input_save_action_map), sandboxed or not.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param strPath The path a script gave;
+             * @param strSavePath Receives the path inside the save directory;
+             * @param strError Receives the reason on failure;
+             * @return true if the path can be written;
+             */
+            bool LuaSandboxApi :: ResolveWritePath( lua_State* pLuaState, const std :: string& strPath, std :: string& strSavePath, std :: string& strError )  {
+
+                Engine :: SaveDirectory*  pSaveDirectory  = GetSaveDirectory( pLuaState );
+                const std :: string*      pAppDirectory   = static_cast<const std :: string *>( LuaEngineUtil :: GetEnginePointer( pLuaState, APP_DIRECTORY_KEY ) );
+
+                if( !pSaveDirectory || pSaveDirectory -> GetPath().empty() )  {
+                    strError = __NO_SAVE_DIRECTORY;
+                    return false;
+                }
+
+                return ToSavePath( strPath, pAppDirectory ? *pAppDirectory : std :: string(), strSavePath, strError );
             }
 
             /**

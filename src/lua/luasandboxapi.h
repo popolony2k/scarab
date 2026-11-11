@@ -65,8 +65,9 @@ namespace Scarab  {
              *
              * **The sandbox** is on by default: a script can reach nothing outside the game's own files
              * and its save directory. Lua's own functions keep working the way a Lua developer knows them,
-             * replaced in place by Scarab (in C++) with ones that follow the rule; every failure is Lua's
-             * own `nil, message`. Only the command line turns it off (`scarab --no-sandbox ...`) — a
+             * replaced in place by Scarab (in C++) with ones that follow the rule, and fail the way Lua's
+             * own do: `nil, message` (with an error code, for a file) where Lua returns one, a Lua error
+             * where Lua raises (an invalid mode, `io.lines` of a missing file). Only the command line turns it off (`scarab --no-sandbox ...`) — a
              * project file cannot; the `--pack` tool runs without it. `hpath://` paths are refused in the
              * sandbox, and the `pack_*` functions exist only in the `--pack` tool.
              * @luaoutro
@@ -158,7 +159,12 @@ namespace Scarab  {
                 /** @brief The package.path the sandbox starts with: Lua modules by the path rule. */
                 static constexpr const char*  PACKAGE_PATH = "?.lua;?/init.lua";
 
-                static void Install( lua_State* pLuaState, const std :: string& strAppDirectory );
+                /** @brief The key LuaEngine keeps APP_DIR under (a std::string, LuaEngineUtil::GetEnginePointer). */
+                static constexpr const char*  APP_DIRECTORY_KEY = "appDirectory";
+
+                static void Install( lua_State* pLuaState );
+                static bool ResolveWritePath( lua_State* pLuaState, const std :: string& strPath, std :: string& strSavePath,
+                                              std :: string& strError );
                 static bool IsInstalled( lua_State* pLuaState );
                 static const char* GetChunkMode( lua_State* pLuaState );
                 static bool ToSavePath( const std :: string& strPath, const std :: string& strAppDirectory,

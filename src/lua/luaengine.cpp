@@ -65,6 +65,7 @@ namespace Scarab  {
         m_EngineObjects[Engine :: Lua :: LuaScriptingApi :: SCRIPT_PROCESSOR_KEY] = m_pScriptProcessor;
 
         m_EngineObjects[Engine :: Lua :: LuaTimerApi :: TIMER_MAP_KEY] = &m_Timers;
+        m_EngineObjects[Engine :: Lua :: LuaSandboxApi :: APP_DIRECTORY_KEY] = &m_strAppDirectory;   // where APP_DIR paths are written (C8)
 
         // Register the primitive API modules that only need
         // scriptProcessorPtr/timerMapPtr (both set just above) - everything
@@ -88,7 +89,7 @@ namespace Scarab  {
         if( m_Mode == LUA_ENGINE_MODE_PACK )
             Engine :: Lua :: LuaPackApi :: Register( m_pLuaState );
         else if( m_Mode == LUA_ENGINE_MODE_SANDBOX )
-            Engine :: Lua :: LuaSandboxApi :: Install( m_pLuaState, m_strAppDirectory );
+            Engine :: Lua :: LuaSandboxApi :: Install( m_pLuaState );
     }
 
     /**
@@ -100,7 +101,8 @@ namespace Scarab  {
      * @luaname{on_update(deltaMilli)}
      * @luadoc
      * Called once per frame, after the engine's own per-frame
-     * bookkeeping (script queue processing, sprite pool update). This
+     * bookkeeping (script queue processing) and after the map and
+     * its sprites are drawn - so what it draws is on top. This
      * is the main per-frame hook — virtually all real-time game logic
      * (movement, input polling, timers you're tracking by hand) lives
      * here.

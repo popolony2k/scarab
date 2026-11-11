@@ -133,17 +133,7 @@ namespace Scarab  {
 
             /**
              * @luaname{pool_register_type(typeTag, capacity) -> true | nil, message}
-             * @luaheading{Error reporting}
              * @luadoc
-             * Every sprite function reports a failure as `nil, "message"` and
-             * never raises a Lua error: `local ok, err = sprite_set_pos( h, x, y )`.
-             * A function with nothing else to return returns `true` on success.
-             * Arguments are checked strictly: `"invalid sprite handle"` (never
-             * acquired, or already released), `"argument 'x' must be an integer"`
-             * (a string, a missing argument, or a fractional number like `3.5` —
-             * round it with `math.floor` first; `3.0` is fine), `"argument 'visible'
-             * must be a boolean"` (not `nil`, not `0`/`1`).
-             *
              * Reserve `capacity` slots (1 or more) for sprites acquired with this
              * `typeTag` string. Must be called once before the first
              * `sprite_acquire` for that tag. Fails for a tag already registered,
@@ -175,7 +165,7 @@ namespace Scarab  {
              * @luadoc
              * Get a free handle from the pool registered for `typeTag`.
              * Fails for a tag never registered and when every slot of that
-             * tag is in use (`"pool type 'x' is full (N sprites)"`). A handle is
+             * tag is in use (`"pool type 'x' is full"`). A handle is
              * never `0`.
              */
             int LuaSpriteApi :: Acquire( lua_State* pLuaState )  {
@@ -501,6 +491,10 @@ namespace Scarab  {
 
             /**
              * @luaname{sprite_get_active_sequence(handle) -> sequenceId | nil, message}
+             * @luadoc
+             * Which configured sequence the sprite shows now (the last
+             * `sprite_set_active_sequence`; `-1` after `tilemap_unload_map`
+             * unloaded it), or `nil, "invalid sprite handle"`.
              */
             int LuaSpriteApi :: GetActiveSequence( lua_State* pLuaState )  {
 
@@ -524,8 +518,8 @@ namespace Scarab  {
              * `visible` must be a boolean. `sprite_get_visible` returns
              * `nil, "invalid sprite handle"` for a handle that isn't live.
              * @luaexample
-             * sprite_set_visible(handle, visible)
-             * sprite_get_visible(handle) -> visible
+             * -- sprite_set_visible(handle, visible)
+             * -- sprite_get_visible(handle) -> visible
              */
             int LuaSpriteApi :: SetVisible( lua_State* pLuaState )  {
 
@@ -844,9 +838,9 @@ namespace Scarab  {
              * sprite moved by a fractional velocity look stuck) — round it
              * with `math.floor` first.
              * @luaexample
-             * sprite_get_pos(handle) -> x, y
-             * sprite_set_pos(handle, x, y)
-             * sprite_get_size(handle) -> width, height
+             * -- sprite_get_pos(handle) -> x, y
+             * -- sprite_set_pos(handle, x, y)
+             * -- sprite_get_size(handle) -> width, height
              */
             int LuaSpriteApi :: GetPos( lua_State* pLuaState )  {
 
@@ -994,7 +988,7 @@ namespace Scarab  {
              * `sprite_remove_from_layer` fails when the sprite isn't on that
              * layer.
              *
-             * **Worlds** (`docs/lua-api/worlds.html`): the optional `world` is
+             * **Worlds** ([worlds.md](worlds.md)): the optional `world` is
              * the world whose layer it is - the default world when left out,
              * so existing code is unchanged. In a world of several maps the
              * layer id is a world layer id (`world_layer_id`). A sprite is in
@@ -1028,7 +1022,7 @@ namespace Scarab  {
                 SunLight :: TileMap :: stMapInfo    mapInfo;
                 SunLight :: TileMap :: stLayer      layer;
 
-                // With no map loaded any layer id is accepted (the sprite is drawn once a map with that layer loads).
+                // With no map loaded any layer id is accepted, and the sprite is drawn right away (V8: a layer id is then a grouping key).
                 if( pWorld -> GetMapInfo( mapInfo ) && !pWorld -> GetLayer( nLayerId, layer ) )
                     return LuaEngineUtil :: PushError( pLuaState, "layer " + std :: to_string( nLayerId ) + " is not a layer of the loaded map" );
 

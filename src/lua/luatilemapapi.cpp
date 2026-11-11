@@ -140,14 +140,7 @@ namespace Scarab  {
 
             /**
              * @luaname{tilemap_load_map(path, alignment) -> true | nil, message}
-             * @luaheading{Error reporting}
              * @luadoc
-             * Every tilemap function reports a failure as `nil, "message"`
-             * and never raises a Lua error; one with nothing else to return
-             * returns `true`. With no map loaded, the queries fail with
-             * `"no map is loaded"`; an unknown layer is
-             * `"no layer N in the loaded map"`.
-             *
              * Load a `.tmx` map file, replacing any currently loaded map.
              * `alignment` (optional, defaults to `MAP_ALIGNMENT_CENTER`)
              * controls how the map is positioned relative to the
@@ -169,8 +162,9 @@ namespace Scarab  {
              * is what unloads sprites). The new map is read first: if it can't
              * be loaded, the call fails and the loaded map stays loaded. Up to
              * Scarab v0.1.25 every such load leaked the whole previous map, and
-             * a map that failed to parse left no map at all. One map is loaded
-             * at a time; every view shows it.
+             * a map that failed to parse left no map at all. This loads the
+             * default world's one map, which the default view shows; for
+             * several maps at once, see [worlds.md](worlds.md).
              * @luaexample
              * tilemap_load_map(BASE_PATH .. "tilemap/corsair/corsair.tmx", MAP_ALIGNMENT_CENTER_WIDTH_BOTTOM)
              */

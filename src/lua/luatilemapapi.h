@@ -35,6 +35,14 @@ namespace Scarab  {
              * @luacategory{Tile map}
              * @luadoc
              * Wraps sunlight's `ITileMap` (Tiled `.tmx` maps via libtmx).
+             *
+             * ## Error reporting
+             *
+             * Every tilemap function reports a failure as `nil, "message"`
+             * and never raises a Lua error; one with nothing else to return
+             * returns `true`. With no map loaded, the queries fail with
+             * `"no map is loaded"`; an unknown layer is
+             * `"no layer N in the loaded map"`.
              */
             class LuaTilemapApi  {
 

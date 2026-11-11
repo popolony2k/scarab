@@ -56,24 +56,18 @@ namespace Scarab  {
             /**
              * @brief Set the application window's title. Scarab (the engine)
              * has no opinion on what a game should call itself - the window
-             * is created with a generic default title (APP_NAME, "Scarab")
-             * before any Lua exists, and the game's own main.lua is expected
-             * to call this with its real name once it starts running.
+             * opens with a generic default title (APP_NAME, "Scarab"), and the
+             * game's own main.lua is expected to call this with its real name.
              *
              * @luaname{app_set_name(name) -> true | nil, message}
-             * @luaheading{Error reporting}
              * @luadoc
-             * Every app and screen function reports a wrong argument as
-             * `nil, "message"` and never raises a Lua error; a setter returns
-             * `true` on success. Booleans must be `true`/`false` (not `nil`,
-             * not `0`/`1`), and integers must be whole numbers.
-             *
              * Set the application window's title. Scarab (the engine) has no
-             * opinion on what a game calls itself — the window opens with a
-             * generic default title (`"Scarab"`, `main.h`'s `APP_NAME`)
-             * before any Lua exists to override it, since the window has to
-             * exist before `main.lua`'s first line runs. Call this once,
-             * early, with the game's real name:
+             * opinion on what a game calls itself — the window's default
+             * title is `"Scarab"` (`main.h`'s `APP_NAME`). Call this once,
+             * early, with the game's real name. It needs the window, so it
+             * creates the default renderer if none exists yet: a game that
+             * calls `renderer_create` does so first, and names the window
+             * there (`title`) or right after:
              * @luaexample
              * -- main.lua
              * app_set_name( "Caravellius" )
@@ -342,10 +336,12 @@ namespace Scarab  {
              * @luadoc
              * Allow or disallow the user resizing the window by dragging
              * its edges/corners, or query the current state. A genuine
-             * **live** toggle — safe to call both before the window exists
-             * and at any point after, in either direction (unlike raylib's
-             * own pre-`InitWindow`-only `FLAG_WINDOW_RESIZABLE` config
-             * flag). Scarab's own default (`main.cpp`) is `true`;
+             * **live** toggle, at any point, in either direction (unlike
+             * raylib's own pre-`InitWindow`-only `FLAG_WINDOW_RESIZABLE`
+             * config flag); it needs the window, so it creates the default
+             * renderer if none exists yet (`renderer_create`'s `resizeable`
+             * sets it at creation instead). Scarab's own default
+             * (`main.cpp`) is `true`;
              * Caravellius overrides it to `false` (the game renders at a
              * fixed internal resolution with letterboxing, so a resizeable
              * window offers no benefit):
@@ -854,12 +850,13 @@ namespace Scarab  {
              * `~/.local/share/<name>` - created if missing. Returns that real
              * folder. `name` is one folder name: letters, digits and `-_.` only.
              *
-             * A save is written with a plain path (`"bindings.txt"`): it goes
-             * into this folder, and reading that same plain path back finds it
-             * there first. Ship the game's DEFAULTS under its own folder
-             * (`APP_DIR .. "/default_bindings.txt"`, which is inside the `.zip`
-             * for a packed game) and load them when the player has no save yet -
-             * a packed game's files live under `APP_DIR`, not at the plain path.
+             * Every write goes into this folder, and every read looks here
+             * first, then in the game's own files (see "The sandbox and how
+             * paths are found"): a save of a path replaces the game's own
+             * file of that path. So keep a player's file under its own name
+             * (`"bindings.txt"`), ship the game's DEFAULTS under another
+             * (`"default_bindings.txt"`), and load the defaults when the
+             * player has no save yet.
              *
              * The game can also name it in its project file
              * (`"save_directory": "<name>"`); this call wins over that. The
@@ -867,8 +864,8 @@ namespace Scarab  {
              * portable installs): then this call changes nothing and returns
              * that folder. No window is needed.
              * @luaexample
-             * app_set_save_directory(name) -> folder   -- the real folder in use
-             * app_get_save_directory() -> folder       -- nil, message while there is none
+             * -- app_set_save_directory(name) -> folder   -- the real folder in use
+             * -- app_get_save_directory() -> folder       -- nil, message while there is none
              *
              * local folder = assert(app_set_save_directory("Caravellius"))
              * print("saves go to " .. folder)

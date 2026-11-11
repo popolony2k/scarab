@@ -26,7 +26,7 @@ There is no map to scroll over, so there are no camera keys: a sprite's position
 ## What to look for
 
 - All three sprites draw on a black window, with no map. Sunny animates.
-- **Draw order:** with no map, a layer id is only a grouping key, and the layers are drawn in ascending id order. Move Sunny: he passes **over** the shadow (layer 1) and **under** the glow (layer 3).
+- **Draw order:** with no map, a layer id is only a grouping key, and the layers are drawn in ascending id order. Move Sunny: Sunny passes **over** the shadow (layer 1) and **under** the glow (layer 3).
 - **Layer mask:** `1`, `2` and `3` hide and show each sprite through the view's layer mask (`view_show_layer`), which hides mapless layers by id the same way it hides a map's. The HUD's second line shows each layer's state.
 - Zoom scales every sprite together.
 

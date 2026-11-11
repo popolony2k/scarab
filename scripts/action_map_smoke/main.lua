@@ -115,6 +115,14 @@ if scenario == "api" then
     binding_is( "after load", "fire", ACTION_BINDING_GAMEPAD_BUTTON, GAMEPAD_BUTTON_RIGHT_FACE_DOWN, 0 )
     binding_is( "after load", "left", ACTION_BINDING_GAMEPAD_AXIS, GAMEPAD_AXIS_LEFT_X, -1 )
     expect_error( "missing file", "the bindings are unchanged", input_load_action_map( "missing.txt" ) )
+
+    -- an APP_DIR path is written by the path rule (C8): into the save directory under the part after APP_DIR, so
+    -- it reads back through the APP_DIR path and the plain one alike
+    check( input_save_action_map( APP_DIR .. "appdir_bindings.txt" ) == true, "save through an APP_DIR path" )
+    check( input_unbind_action( "jump" ) == true and input_load_action_map( APP_DIR .. "appdir_bindings.txt" ) == true,
+           "load it back through the APP_DIR path" )
+    binding_is( "after an APP_DIR round trip", "jump", ACTION_BINDING_KEY, KEY_UP, 0 )
+    check( input_load_action_map( "appdir_bindings.txt" ) == true, "and through the plain path" )
     binding_is( "after a failed load", "jump", ACTION_BINDING_KEY, KEY_UP, 0 )
 
     -- argument errors

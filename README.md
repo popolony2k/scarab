@@ -47,7 +47,8 @@ Read the full story, in the author's own words: [*From a Transforming Ship to a 
 * **Sound and sequencing:** sound effects and songs, timers, and a queued command processor for stage intros and waves.
 * **Shapes:** rectangle, ellipse, polyline and polygon outlines and points, drawn from Lua in map units with a thickness and a rotation - debug hitboxes, paths, range rings.
 * **Text:** TrueType/OpenType and BMFont fonts by handle, measured and drawn as a HUD.
-* **Errors you can read:** every Lua function that can fail returns `nil, "message"`, never a crash or a silent no-op.
+* **Errors you can read:** every Scarab function that can fail returns `nil, "message"`, never a crash or a silent no-op.
+* **A sandbox:** game scripts keep Lua's own `io`, `os`, `require`, `loadfile` and `load`, but reach only the game's own files and its save directory; a saved file can replace a game file of the same path, which is how mods and patches work.
 * **Headless runs:** a mode with no window and a virtual clock, for CI and automated playthroughs.
 * **Content encryption:** pack a game into an encrypted `.zip` only your own build can open.
 

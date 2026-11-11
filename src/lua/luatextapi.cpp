@@ -109,7 +109,8 @@ namespace Scarab  {
              * (`register_font`), and be passed to `draw_text`/`measure_text` directly (their
              * optional last argument) — one file, one load. TrueType/OpenType (`.ttf`/`.otf`,
              * with Latin accents) and AngelCode BMFont (`.fnt`) are told apart by the extension.
-             * Anchor the path on `APP_DIR` (see the BMFont note in `CLAUDE.md`).
+             * The file is found by the path rule (the save directory, then the game's
+             * own files), so a plain relative path works, from a folder or a `.zip`.
              *
              * It needs a window, so the `renderer_create`-first rule applies (calling it first
              * creates the default renderer). A file that can't be loaded returns

@@ -19,6 +19,7 @@
  */
 
 #include "lua/luainputapi.h"
+#include "lua/luasandboxapi.h"
 #include "lua/luaengineutil.h"
 #include "input/iinputhandler.h"
 #include "input/playerslotmanager.h"
@@ -337,9 +338,9 @@ namespace Scarab  {
              * `gamepadId` is `0` to `9`, and `button`/`axis` must be
              * `GAMEPAD_BUTTON_*`/`GAMEPAD_AXIS_*` constants.
              * @luaexample
-             * input_is_key_down(key) -> down       -- true every frame the key is held
-             * input_is_key_up(key) -> up           -- true every frame the key is NOT held
-             * input_is_key_released(key) -> released -- true only on the frame the key transitions from down to up
+             * -- input_is_key_down(key) -> down       -- true every frame the key is held
+             * -- input_is_key_up(key) -> up           -- true every frame the key is NOT held
+             * -- input_is_key_released(key) -> released -- true only on the frame the key transitions from down to up
              *
              * function Player.update(dt)
              *   if input_is_key_down(KEY_LEFT) then
@@ -410,10 +411,10 @@ namespace Scarab  {
              * curve, calibration). Triggers are always returned as they are:
              * they rest at `-1`, not at the centre.
              * @luaexample
-             * input_is_gamepad_button_down(gamepadId, button) -> down
-             * input_is_gamepad_button_up(gamepadId, button) -> up
-             * input_get_gamepad_axis(gamepadId, axis) -> value       -- -1.0 .. 1.0, the dead zone applied
-             * input_get_gamepad_axis_raw(gamepadId, axis) -> value   -- -1.0 .. 1.0, as the pad reports it
+             * -- input_is_gamepad_button_down(gamepadId, button) -> down
+             * -- input_is_gamepad_button_up(gamepadId, button) -> up
+             * -- input_get_gamepad_axis(gamepadId, axis) -> value       -- -1.0 .. 1.0, the dead zone applied
+             * -- input_get_gamepad_axis_raw(gamepadId, axis) -> value   -- -1.0 .. 1.0, as the pad reports it
              *
              * function Player.update(dt)
              *   if input_is_gamepad_button_down(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT) then
@@ -565,9 +566,9 @@ namespace Scarab  {
              * then). Registering it needs no window, like
              * `collision_set_handler`; a second call replaces the first.
              * @luaexample
-             * input_get_connected_gamepads() -> pads    -- { { id = 0, name = "Xbox Controller" }, ... }
-             * input_is_gamepad_available(gamepadId) -> connected
-             * input_get_gamepad_name(gamepadId) -> name -- "" when nothing is connected there
+             * -- input_get_connected_gamepads() -> pads    -- { { id = 0, name = "Xbox Controller" }, ... }
+             * -- input_is_gamepad_available(gamepadId) -> connected
+             * -- input_get_gamepad_name(gamepadId) -> name -- "" when nothing is connected there
              *
              * input_set_gamepad_connection_handler(function(gamepadId, connected)
              *   if connected then
@@ -937,26 +938,27 @@ namespace Scarab  {
              * active.
              *
              * `input_save_action_map(path)` and `input_load_action_map(path)`
-             * keep the bindings in a text file (sunlight's own format). Save the
-             * player's bindings under a plain path: it is the game's save
-             * directory (`app_set_save_directory`), and loading the same plain
-             * path reads it back from there. Ship defaults under `APP_DIR`
-             * (inside the `.zip` for a packed game, even an encrypted one) and
-             * load them when the player has no save yet, as below. A load that
-             * fails leaves the bindings as they were.
+             * keep the bindings in a text file (sunlight's own format), by the
+             * path rule: saving writes into the game's save directory
+             * (`app_set_save_directory`), and loading looks there first, then
+             * in the game's own files (its `.zip` too, even an encrypted one).
+             * So save the player's bindings under one name and ship the
+             * defaults under another, and load the defaults when the player
+             * has no save yet, as below. A load that fails leaves the bindings
+             * as they were.
              * @luaexample
-             * input_bind_action_key(name, key)
-             * input_bind_action_button(name, button)
-             * input_bind_action_axis(name, axis, direction)   -- direction 1 or -1
-             * input_unbind_action(name)
-             * input_get_action_binding(name) -> type, code, direction
-             * input_is_action_active(name[, gamepadId[, threshold]]) -> active
-             * input_save_action_map(path) / input_load_action_map(path)
+             * -- input_bind_action_key(name, key)
+             * -- input_bind_action_button(name, button)
+             * -- input_bind_action_axis(name, axis, direction)   -- direction 1 or -1
+             * -- input_unbind_action(name)
+             * -- input_get_action_binding(name) -> type, code, direction
+             * -- input_is_action_active(name[, gamepadId[, threshold]]) -> active
+             * -- input_save_action_map(path) / input_load_action_map(path)
              *
              * -- the player's own bindings if they saved some, else the game's shipped defaults
              * assert(app_set_save_directory("MyGame"))
              * if not input_load_action_map("bindings.txt") then
-             *   assert(input_load_action_map(APP_DIR .. "/default_bindings.txt"))
+             *   assert(input_load_action_map("default_bindings.txt"))   -- shipped with the game
              * end
              *
              * -- after the player rebinds "jump" in the options menu
@@ -964,7 +966,7 @@ namespace Scarab  {
              * assert(input_save_action_map("bindings.txt"))
              *
              * function on_update(dt)
-             *   if input_is_action_active("jump") then player_jump() end
+             *   if input_is_action_active("jump") then jumping = true end
              * end
              */
             int LuaInputApi :: BindActionKey( lua_State* pLuaState )  {
@@ -1096,7 +1098,9 @@ namespace Scarab  {
 
             /**
              * @brief Save every binding to a file. A plain (virtual) path needs a save directory: the
-             * FileSystem writes a virtual path into it, and saying so is clearer than sunlight's plain false.
+             * FileSystem writes a virtual path into it, and saying so is clearer than sunlight's plain false. It is
+             * written by the path rule (LuaSandboxApi::ResolveWritePath, C8): a leading APP_DIR is taken off, so the
+             * file lands where reading the same path looks first.
              *
              * @luaname{input_save_action_map(path) -> true | nil, message}
              * @luagroup{actions}
@@ -1118,7 +1122,15 @@ namespace Scarab  {
                     return LuaEngineUtil :: PushError( pLuaState, "cannot save '" + strPath + "': no save directory (app_set_save_directory, "
                                                                   "or \"save_directory\" in the project file)" );
 
-                if( !GetActionMap( pLuaState ) -> Save( strPath ) )
+                // A virtual path is written by the path rule (C8): into the save directory, a leading APP_DIR taken
+                // off, so it lands where reading the same path looks first.
+                std :: string  strWritePath = strPath;
+
+                if( ( SunLight :: FileSystem :: FilePath :: SplitPath( strPath, strRest ) == SunLight :: FileSystem :: FilePath :: PATH_SCHEME_VIRTUAL ) &&
+                    !LuaSandboxApi :: ResolveWritePath( pLuaState, strPath, strWritePath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot save '" + strPath + "': " + strError );
+
+                if( !GetActionMap( pLuaState ) -> Save( strWritePath ) )
                     return LuaEngineUtil :: PushError( pLuaState, "cannot write '" + strPath + "'" );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
@@ -1174,9 +1186,9 @@ namespace Scarab  {
              * `input_is_rumble_supported` first to skip the effect. Headless runs
              * see no pad, so nothing rumbles there.
              * @luaexample
-             * input_is_rumble_supported(gamepadId) -> supported
-             * input_set_rumble(gamepadId, left, right, seconds)
-             * input_stop_rumble(gamepadId)
+             * -- input_is_rumble_supported(gamepadId) -> supported
+             * -- input_set_rumble(gamepadId, left, right, seconds)
+             * -- input_stop_rumble(gamepadId)
              *
              * -- a short, strong hit when the ship is damaged
              * if input_is_rumble_supported(pad) then

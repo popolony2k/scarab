@@ -75,4 +75,4 @@ Either way: every file under `source_dir`, recursively, gets encrypted and added
 /path/to/scarab my_game.zip
 ```
 
-...once Scarab's own runtime decrypt hook exists (checkpoint 3 of the plan doc — not done yet as of this writing). Until then, a packed bundle's content can be produced but not yet read back by a running game.
+A `scarab` built with the same `SCARAB_CONTENT_KEY` decrypts every file as it reads it - scripts, JSON, maps with their tilesets, textures, fonts and sounds - so the bundle runs from anywhere, with no loose copy of anything.

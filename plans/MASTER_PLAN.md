@@ -2810,7 +2810,7 @@ accurate once the features it describes are actually settled, not before.
 
 | # | Item | Status |
 |---|------|--------|
-| T1 | A full documentation pass once every other phase's changes have landed | TODO |
+| T1 | A full documentation pass once every other phase's changes have landed | DONE (2026-11-11) |
 | T2 | Simplify `README.md` | DONE |
 | T3 | Every source file and script carries the project's copyright/license notice | DONE |
 | T4 | Every function in the samples has a comment of its own saying what it does (the samples are the reference for people learning Scarab), and a style rule that keeps it so | DONE (2026-11-09) |
@@ -2860,6 +2860,59 @@ all three, enforced** - the smoke tests too, not just reported.
 "Known gotchas" (several will need a new entry or an update from this plan's own
 findings - the `use_default_key_handler` design (D1), the non-integer-zoom pixel-snap
 fixes (V2), `MoveCamera*`'s new boundary behavior (V1)); `doc/lua-integration.md`.
+
+**T1 planned (2026-11-11, with the owner; every other item is DONE).** Measured first (branch `t1-docs`):
+- **Mechanical checks, all 50 tracked `.md` files outside `plans/`:** 0 broken relative links; every backticked
+  `snake_case(` name is a real Lua function, except C++/CMake names in `CLAUDE.md` and `docs/lua-integration.md` and
+  one hypothetical, `viewport_set_dimension`, in a `CLAUDE.md` history note. The generated reference (230 registered
+  functions, 128 Lua examples): every function an example calls exists; 120 examples parse (`luac -p`), the 8 that
+  don't are signature lists (`sprite_get_visible(handle) -> visible`) written as Lua code.
+- **Not yet in `CLAUDE.md`:** the D1 (`use_default_key_handler` over `DefaultControllerBindings`), V1 (`MoveCamera*`
+  boundaries) and V2 (pixel snap at non-integer zoom) gotchas the scope names.
+- **The work (one PR):**
+
+  | # | Part | What | Status |
+  |---|---|---|---|
+  | 1 | `CLAUDE.md` | add the D1, V1, V2 gotchas; read all 40 gotchas and the Build/CI/Architecture sections against today's code (superseded statements, pins and versions, file lists) | ✅ |
+  | 2 | `README.md` | features (every master-plan feature: worlds, views, shapes, saves, actions, rumble, projections, the sandbox, ...), the 28 samples, the `--version` example, the command line | ✅ |
+  | 3 | Lua API reference (`src/lua` tags) | read every page (230 functions) against the code: behaviour, errors, defaults, examples; the 8 signature lists as plain text or Lua comments | ✅ |
+  | 4 | `samples/*/docs/README.md` (27) | each against its `main.lua`: what it shows, controls, the functions it names | ✅ |
+  | 5 | `docs/lua-integration.md` | its findings and plan against today's `CMakeLists.txt` | ✅ |
+  | 6 | the other docs | `docs/lua-api/README.md`, `samples/README.md`, `tools/README.md`, `resources/*/README.md`, `docs/CODE_STYLE.md` (its C++ part against sunlight's own copy, which it mirrors word for word), `docs/vscode` launch list | ✅ |
+  | 7 | checks that keep it so | the owner chose all three (2026-11-11): no broken relative link in any `.md`, every Lua function a doc or reference example names exists, every reference example parses as Lua - `style_audit` rules, run by CI | ✅ |
+
+  The owner also chose (2026-11-11) to keep the gotchas' history: T1 fixes what is wrong, it does not cut the stories.
+
+**T1 done (2026-11-11).** Every document read against the code; what was wrong is corrected, the history kept.
+- **The checks (part 7):** four `style_audit` rules, run by CI's style step after the build: `doc-link` (no broken
+  relative link in any tracked `.md` outside `plans/`), `doc-lua-name` (no Lua function a user document or a
+  reference example calls that Scarab lacks, unless the text defines it), `doc-example-parse` (every ` ```lua ` block
+  in those documents and the generated reference parses, `luac -p`), and `doc-sample-list` (every sample in
+  `README.md`, `samples/README.md` and the VSCode picker - the picker had fallen behind twice). Each shown firing on
+  a planted fault. They found 11 problems: 8 signature lists written as Lua code (now Lua comments), a placeholder
+  name, an example calling an undefined `player_jump()`, and a code block in `docs/CODE_STYLE.md` that did not parse.
+- **`CLAUDE.md` (part 1):** the D1, V1 and V2 gotchas added; superseded statements fixed (the `.zip`/launch-folder
+  mounts, the CI branches and style step, `sprite_add_to_layer` with no map, the save path, `pack_*` lists, the zoom
+  limits heading, the fixed `AddTextureSequence` duplicates, `RunFile`'s loader, `set_font` from a `.zip` - checked
+  headless - and the unit-test list).
+- **The reference (part 3), every page read:** the pages' "Error reporting" paragraphs had been put on their first
+  function as a heading, which dropped that function's own (`app_set_name`, `tilemap_load_map`, `sound_load`,
+  `pool_register_type`) - moved to the class comments; **the Timers page said engine calls are safe from a timer
+  callback, the opposite of the real rule** (corrected, with the flag pattern); stale text fixed on the App, Camera,
+  Collision, Callbacks, Input, JSON, Pack, Renderer, Sandbox, Sound, Sprites, Text, Tile map and Views pages (the
+  window existing before the script, handles and `0`, `sprite_release` detaching, one map per renderer, every view
+  showing one map, the shipped-defaults pattern under the path rule).
+- **A real gap found reading it (fixed):** `input_save_action_map( APP_DIR .. "x" )` wrote under the executable's
+  whole absolute path inside the save folder, so reading the same path never found it - against C8's path rule.
+  It now writes through `LuaSandboxApi::ResolveWritePath`, which the sandbox shares; `APP_DIR` is an engine object
+  (`APP_DIRECTORY_KEY`), so the rule holds with or without the sandbox. `action_map_smoke` pins it (the file lands at
+  the save folder's top, and reads back through both forms); shown failing without the fix.
+- **Samples (part 4):** the 27 READMEs read with their code's keys: fixed `crypto` (the tamper message), `fade`
+  (worlds exist now), `hello-world` (the `..` launch error), `json`, `renderer`, `sound`, `mapless`, `worlds`.
+- **Others (parts 5-6):** `docs/lua-integration.md` (the variable renamed by P1; the style check's use of `luac`);
+  `docs/CODE_STYLE.md`'s C++ part compared with sunlight's copy in the current pin - word for word as before, only
+  the pin note updated, and the one Lua block fixed; the VSCode picker gained its 8 missing samples; `tools/README.md`
+  (packed bundles do run) and `resources/fonts/README.md` (plain paths reach a `.zip`).
 
 **T2.** The owner's own assessment (2026-10-20): Scarab's `README.md` reads as "too much
 polluted." Measured, not assumed: it is 197 lines with 17 section headings, against

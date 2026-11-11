@@ -50,7 +50,7 @@ namespace Scarab  {
              * `renderer_create` then fails with `nil, "renderer already created: ..."` naming
              * the call that did it. Calls that need no window are fine before it:
              * `load_json`, `dofile`, `sound_*`, `sp_*`, `pool_*`, the `sprite_*` handle calls,
-             * `set_timer`, `collision_set_handler`, `crypto_*`, `pack_*`, `app_get_platform`.
+             * `set_timer`, `collision_set_handler`, `crypto_*`, `app_get_platform`.
              *
              * One renderer per process run. Every function here reports failure as
              * `nil, "message"` — it never raises a Lua error. Handles are opaque integers.
