@@ -93,6 +93,11 @@ namespace Scarab  {
              * `lines`, `write`, `seek`, `flush`, `setvbuf`, `close`, and `io.type` answers `"file"` or
              * `"closed file"` for it.
              *
+             * A sandbox file is read and written **byte for byte on every OS** - as if every mode had
+             * `"b"`: Lua's own `"r"` on Windows turns `"\r\n"` into `"\n"`, the sandbox never does, so a
+             * game reads the same bytes everywhere, from a folder, a `.zip` or a save. A file saved with
+             * Windows line endings keeps its `"\r"` at the end of each `"l"` line.
+             *
              * ```lua
              * -- the game's own file, or the player's saved copy of it
              * local f = assert( io.open( "settings.txt" ) )
