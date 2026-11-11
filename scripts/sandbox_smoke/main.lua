@@ -62,6 +62,12 @@ local function expect_fail( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- Write a progress line to stderr, unbuffered, so a run that crashes shows the last step it reached (the results
+-- themselves are printed only at the end).
+local function step( name )
+    io.stderr:write( "SANDBOX SMOKE STEP " .. scenario .. ": " .. name .. "\n" )
+end
+
 -- The whole contents of a file through io.open, or nil when it does not open.
 local function read_all( path )
     local file = io.open( path )
@@ -295,19 +301,32 @@ if scenario ~= "nosandbox" and not sandbox_installed() then
     check( false, "the sandbox is not installed: nothing else was run" )
 
 elseif scenario == "rule" then
+    step( "reading" )
     check_reading()
+    step( "writing" )
     check_writing()
+    step( "os" )
     check_os()
+    step( "code" )
     check_code()
+    step( "refusals" )
     check_refusals()
+    step( "forgery" )
     check_forgery()
+    step( "done" )
 
 elseif scenario == "nodir" then
+    step( "app_get_save_directory" )
     expect_fail( "no save directory", "no save directory", app_get_save_directory() )
+    step( "read" )
     check( read_all( gameDir .. "game.txt" ) == "game\n", "reading needs no save directory" )
+    step( "io.open w" )
     expect_fail( "writing", "no save directory", io.open( gameDir .. "x.txt", "w" ) )
+    step( "os.remove" )
     expect_fail( "os.remove", "no save directory", os.remove( "x.txt" ) )
+    step( "os.tmpname" )
     check( not pcall( os.tmpname ), "os.tmpname raises with no save directory" )
+    step( "done" )
 
 elseif scenario == "switch" then
     check( write_all( "switch.txt", "a" ) == true, "write into the first folder" )
@@ -336,6 +355,7 @@ function on_update( dt )
     if reported then return end
     reported = true
 
+    step( "reporting" )
     if #failures == 0 then
         print( "SANDBOX SMOKE OK" )
         app_quit()
