@@ -174,6 +174,7 @@ Each sample is a `project.json` and a Lua script, run from the repo root with no
 * [objects](samples/objects/docs/README.md) — Tiled tile objects and text objects.
 * [shapes](samples/shapes/docs/README.md) — shape and point objects, rotation, opacity, layer tint and tile animation, on five maps.
 * [surface](samples/surface/docs/README.md) — shapes drawn from Lua in map units, with or without a map.
+* [backdrop](samples/backdrop/docs/README.md) — a screen-space image layer (`screen_space = true`): a full-window picture that stays whole and fixed while the map scrolls and zooms, for a title or cover screen.
 * [parallax](samples/parallax/docs/README.md) — layers scrolling at their own speeds, changed live.
 * [projections](samples/projections/docs/README.md) — isometric, staggered, hexagonal and orthogonal maps, walking cell to cell and picking cells, by keyboard or controller.
 * [blend](samples/blend/docs/README.md) — blend modes on sprites and on drawn panels.

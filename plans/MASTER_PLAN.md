@@ -67,6 +67,7 @@ view accepting the default world).
 | P14 | Re-pin to `d9c71d26232fd7a88132fab1cf4100d97e1b4512` (sunlight's I19, Scarab's C7: view opacity (I19a), worlds (I19b-c), several maps per world (I19d), collisions across map edges (I19e) and Tiled `.world` files (I19f), BREAKAGES 68-72; and I20: maps with stagger axis X load, BREAKAGES 73) - done in C7 part 1's branch (owner's choice); nothing changes for existing games | DONE |
 | P15 | Re-pin to `df589ce581a393c65edabd8e38995a53fd2f30aa` (sunlight's I21, BREAKAGES 74 - Scarab's two proposals after C7: `IWorld::SetLayer` by id and by name, changing that layer in every map of a world; and `IView::SetWorld( default world )` on the default view returning true) - with the layer setters given an optional world; see below | DONE |
 | P16 | Re-pin to `b5a6ca121634b43151b6100506e41d2eb1545145` (sunlight's I22, asked by Scarab for C8: the same real folder or archive mountable at several mount points, each in its own place in the search order; `IFileSystem::Unmount( realPath, mountPoint )`) - C8's mounts need both | DONE |
+| P17 | Re-pin to `fa7575a0db7127230946bd44199de1d38a1172f1` (sunlight's I23, asked by Scarab for C9: an image layer with the Tiled custom property `screen_space` drawn in screen space; BREAKAGES 34 corrected, 76) | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -1183,6 +1184,7 @@ that.
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **DONE 2026-11-09**, planned with sunlight (both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight delivered all of it in one pin (P14, `d9c71d2`); Scarab's side in two parts: view opacity (#92) and worlds - see below |
 | C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **DONE 2026-11-11 (on P16)**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
+| C9 | An image layer drawn in screen space, as before sunlight's L1 (Caravellius' cover screen) | - | **DONE 2026-11-11 (on P17)**: sunlight's `screen_space` image-layer property, a test map, `samples/backdrop`, the Tile map reference's "Tiled custom properties" - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
 keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
@@ -2063,6 +2065,38 @@ every view.
   - 22 samples headless;
   - 43/43 `asan_run.py` runs, on the normal build and the ASan build;
   - style check 0, and the docs generator.
+
+**C9 - an image layer drawn in screen space (PLANNED and BUILT 2026-11-11 with the owner, on P17 - see "Done" below).** Found by
+Caravellius (caravellius-6a) checking its cover screen by eye on `master_plan@61ff524`: `cover.tmx`'s full-screen image
+layer (1260x920, layer 1, which is also the anchor of the player ship's sprite) is drawn at the default zoom 3.8125, so
+only its top-left part shows. Cause, read in sunlight's source: its L1 made `LayerRenderer::DrawImageLayer` follow the
+camera, zoom and viewport like a tile layer; before, it drew at the raw screen pixel (0,0). Missed by Scarab's C4 and
+BREAKAGES 26 (parallax only checked) and by sunlight's BREAKAGES 34 ("bit-identically to before"); no headless test can
+see it, since the null backend draws nothing.
+- **Options weighed with the owner:** (A) an opt-in, per-layer screen-space image layer in sunlight - chosen; (B) a
+  standalone screen-space `Image` primitive (SCARAB_TODO item 2) - useful, but Lua draws after the map and sprites, so it
+  would cover the ship sprite and cannot fix this screen on its own; (C) no engine change, Caravellius sets the zoom to
+  1.0 while the cover shows - the workaround it would rather not need.
+- **The design to ask sunlight for (A):** an image layer with a Tiled custom property (name to agree with sunlight, eg.
+  `screen_space = true`) is drawn as before L1: at its offset in screen pixels, unscaled, not moved by the camera or the
+  zoom, in its own place in the layer order (sprites on it and above it still draw over it). Every other image layer
+  keeps L1's behaviour, so no game changes unless its map asks. Open points for sunlight: whether the viewport's origin
+  and clip apply; opacity and tint (expected: as today); extra views (image layers draw only in the default view).
+- **Scarab's side, once sunlight has it:** re-pin (P17); a smoke test reading the layer back where possible, and an eye
+  check with the owner (nothing headless can see it); `samples/` or a test map with a screen-space image layer; the
+  tile map reference; a BREAKAGES entry; tell Caravellius the commit to re-pin to.
+- **Also:** sunlight's BREAKAGES 34 to be corrected (told to sunlight with this request).
+- **Done (2026-11-11), as designed:** sunlight built it as its I23 (`fa7575a`, BREAKAGES 76) and corrected its BREAKAGES
+  34. The property is exactly `screen_space`, type bool, on an image layer: drawn at its offset in window pixels, its own
+  size, no camera, zoom, parallax or viewport origin, and not cut to the viewport; its place in the layer order, opacity
+  and tint kept; default view only. sunlight's three unit tests pin the drawing (they fail drawn the L1 way).
+  - **Scarab:** P17 re-pin (unit tests, all 25 smoke tests, AddressSanitizer, Caravellius' acceptance and fingerprint);
+    `resources/tilemap/screenspace/` (a screen-space backdrop - `backdrop.png`, 1260x920, drawn by
+    `scripts/backdrop_image.py`, a gold frame, corner squares and a ring so a missing part shows - beside three
+    map-space house layers); `samples/backdrop` (pan, zoom, Kepi on the backdrop layer); the Tile map reference's
+    "Tiled custom properties" section listing every property sunlight reads, as sunlight asked; `CLAUDE.md`;
+    BREAKAGES 34. No headless check can see the drawing (the null backend draws nothing): the map loading with the
+    property, and the sample running under the ASan job, are the headless part; the owner's eye check is the rest.
 
 **C8 - a sandbox for game scripts (PLANNED 2026-11-09 with the owner; BUILT 2026-11-11 on P16 - see "Done" at the end).** Added by the owner on
 2026-11-03, split out of C1b. The goal: a game script cannot read or write anything outside the game's own files and

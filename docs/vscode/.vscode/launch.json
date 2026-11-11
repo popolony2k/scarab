@@ -38,6 +38,7 @@
                 "samples/objects/project.json",
                 "samples/shapes/project.json",
                 "samples/surface/project.json",
+                "samples/backdrop/project.json",
                 "samples/parallax/project.json",
                 "samples/projections/project.json",
                 "samples/blend/project.json",

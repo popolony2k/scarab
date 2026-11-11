@@ -43,6 +43,26 @@ namespace Scarab  {
              * returns `true`. With no map loaded, the queries fail with
              * `"no map is loaded"`; an unknown layer is
              * `"no layer N in the loaded map"`.
+             * @luaoutro
+             * ## Tiled custom properties
+             *
+             * sunlight reads a few **custom properties** a map author adds in Tiled: select the
+             * object or layer, open the *Properties* panel, choose *Add Property*, and give it
+             * exactly the name and type below. Tiled saves them in the map (eg.
+             * `<property name="screen_space" type="bool" value="true"/>`) but gives them no meaning
+             * of its own; only sunlight uses them. Nothing in Lua sets them: they are part of the map.
+             *
+             * | Property | Type | Set on | What it does |
+             * |---|---|---|---|
+             * | `screen_space` | bool | an image layer | When `true`, the layer is drawn in **screen space**: at its offset in window pixels, at its own size, not moved by the camera, the zoom or the layer's parallax, and not cut to the viewport - for a full-screen picture such as a title or cover screen. It keeps its place in the layer order (sprites on it and above it draw over it), its opacity and its tint. Like every image layer, it is drawn in the default view only. Without it (or `false`), an image layer is drawn in map space, like the rest of the map. |
+             * | `line_width` | int or float | a rectangle, ellipse, polyline or polygon object | Draws its outline this many map pixels wide (`1` when absent), scaled with the zoom. |
+             * | `point_size` | int or float | a point object | Draws the point this size (`1` when absent). |
+             * | `opacity` | int or float, `0` to `1` | any object | The object's own opacity, instead of its layer's (Tiled has no per-object opacity). A value of another type or outside `0` to `1` is ignored, with a warning, and the layer's opacity is used. |
+             *
+             * Image layers changed with sunlight's L1: every image layer used to be drawn in screen
+             * space, and is drawn in map space since (moved by the camera, scaled by the zoom,
+             * offset by the viewport). A map made for the old drawing - a full-window cover image,
+             * say - sets `screen_space` on that layer. `samples/backdrop` shows one.
              */
             class LuaTilemapApi  {
 

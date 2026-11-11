@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" backgroundcolor="#202830" nextlayerid="5" nextobjectid="1">
+ <imagelayer id="1" name="backdrop">
+  <properties>
+   <property name="screen_space" type="bool" value="true"/>
+  </properties>
+  <image source="backdrop.png" width="1260" height="920"/>
+ </imagelayer>
+ <imagelayer id="2" name="house near" offsetx="64" offsety="64">
+  <image source="../images/house.png" width="160" height="64"/>
+ </imagelayer>
+ <imagelayer id="3" name="house middle" offsetx="896" offsety="608">
+  <image source="../images/house.png" width="160" height="64"/>
+ </imagelayer>
+ <imagelayer id="4" name="house far" offsetx="1664" offsety="1152">
+  <image source="../images/house.png" width="160" height="64"/>
+ </imagelayer>
+</map>
