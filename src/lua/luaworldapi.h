@@ -47,7 +47,7 @@ namespace Scarab  {
 
             /**
              * @brief Shared type for LuaEngine's m_Worlds member and LuaWorldApi's casts of the
-             * WORLD_TABLE_GLOBAL global: the worlds Lua made, by sunlight's own world id (never reused).
+             * WORLD_TABLE_KEY global: the worlds Lua made, by sunlight's own world id (never reused).
              * The default world (id 0) is not in it: it is the renderer's own.
              */
             typedef std :: map<int, stWorldEntry> WorldTable;
@@ -108,8 +108,8 @@ namespace Scarab  {
 
                 public:
 
-                /** @brief The Lua global LuaEngine stores its WorldTable's address in. */
-                static constexpr const char*  WORLD_TABLE_GLOBAL = "worldTablePtr";
+                /** @brief The key LuaEngine keeps its WorldTable's address under (LuaEngineUtil::GetEnginePointer). */
+                static constexpr const char*  WORLD_TABLE_KEY = "worldTablePtr";
 
                 static std :: shared_ptr<SunLight :: TileMap :: IWorld> ReadWorldArg( lua_State* pLuaState, int nIndex, std :: string& strError );
                 static std :: shared_ptr<SunLight :: TileMap :: IWorld> WorldById( lua_State* pLuaState, int nWorldId );

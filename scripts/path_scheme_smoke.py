@@ -20,11 +20,13 @@
 """
 Smoke test for path schemes (plans/MASTER_PLAN.md item P9, sunlight I12).
 
-Runs scripts/path_scheme_smoke/main.lua headless twice: a plain path, vpath://, virtualpath://,
-hpath:// and hostpath:// all load the same file through load_json, dofile and tilemap_load_map, and
-an unknown scheme is refused. The first run starts from project.json (a plain "main_script"), the
-second from scheme_project.json, whose "main_script" is "vpath://..." - a scheme there is used as it
-stands, not joined onto the project file's folder. See the Lua script's own header.
+Runs scripts/path_scheme_smoke/main.lua headless three times. With --no-sandbox, a plain path, vpath://,
+virtualpath://, hpath:// and hostpath:// all load the same file through load_json, dofile, io.open and
+tilemap_load_map, and an unknown scheme is refused: the first run starts from project.json (a plain
+"main_script"), the second from scheme_project.json, whose "main_script" is "vpath://..." - a scheme there
+is used as it stands, not joined onto the project file's folder. The third run is in the sandbox
+(plans/MASTER_PLAN.md item C8), where the host paths must be refused and the virtual ones still load. See
+the Lua script's own header.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
 failure and never quits, so --max-frames runs out and scarab exits 3.
@@ -38,8 +40,9 @@ import sys
 
 MAX_FRAMES          = 200
 RUN_TIMEOUT_SECONDS = 120
-PROJECTS            = ["scripts/path_scheme_smoke/project.json",          # main_script "main.lua"
-                       "scripts/path_scheme_smoke/scheme_project.json"]   # main_script "vpath://..."
+RUNS                = [("scripts/path_scheme_smoke/project.json",        ["--no-sandbox"]),   # main_script "main.lua"
+                       ("scripts/path_scheme_smoke/scheme_project.json", ["--no-sandbox"]),   # main_script "vpath://..."
+                       ("scripts/path_scheme_smoke/project.json",        [])]                 # the sandbox
 OK_MARKER           = "PATH SCHEME SMOKE OK"
 
 
@@ -53,15 +56,16 @@ def main():
     env       = dict(os.environ, SCARAB_SMOKE_REPO_ROOT=repo_root)   # for the hpath:// cases
     all_ok    = True
 
-    for project in PROJECTS:
-        result = subprocess.run([scarab, "--headless", "--fast", "--max-frames", str(MAX_FRAMES), project],
-                                cwd=repo_root, env=env, capture_output=True, text=True,
-                                timeout=RUN_TIMEOUT_SECONDS)
+    for project, options in RUNS:
+        run_env = dict(env, SCARAB_SMOKE_SANDBOX="0" if options else "1")
+        result  = subprocess.run([scarab, "--headless", "--fast", "--max-frames", str(MAX_FRAMES)] + options + [project],
+                                 cwd=repo_root, env=run_env, capture_output=True, text=True,
+                                 timeout=RUN_TIMEOUT_SECONDS)
         output = (result.stdout or "") + (result.stderr or "")
         ok     = result.returncode == 0 and OK_MARKER in output
         all_ok = all_ok and ok
 
-        print(f"[{'PASS' if ok else 'FAIL'}] path schemes from {project}: exit={result.returncode}")
+        print(f"[{'PASS' if ok else 'FAIL'}] path schemes from {project} {' '.join(options) or '(sandbox)'}: exit={result.returncode}")
 
         if not ok:
             failures = [line for line in output.splitlines() if "SMOKE FAIL" in line or "SMOKE NOTE" in line]

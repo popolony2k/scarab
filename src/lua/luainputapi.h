@@ -88,13 +88,13 @@ namespace Scarab  {
 
                 public:
 
-                // The Lua global LuaEngine::Init stashes its PlayerSlotManager in (a light userdata).
-                static constexpr const char*  PLAYER_SLOTS_GLOBAL = "playerSlotsPtr";
+                // The key LuaEngine::Init keeps its PlayerSlotManager under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  PLAYER_SLOTS_KEY = "playerSlotsPtr";
 
-                // The Lua globals LuaEngine::Init stashes its ActionMap in, and the HOLDER of its rumble
+                // The keys LuaEngine::Init keeps its ActionMap under, and the HOLDER of its rumble
                 // backend (a std::unique_ptr<IGamepadHaptics>, empty until the renderer exists).
-                static constexpr const char*  ACTION_MAP_GLOBAL = "actionMapPtr";
-                static constexpr const char*  HAPTICS_GLOBAL    = "hapticsHolderPtr";
+                static constexpr const char*  ACTION_MAP_KEY = "actionMapPtr";
+                static constexpr const char*  HAPTICS_KEY    = "hapticsHolderPtr";
 
                 static void Register( lua_State* pLuaState );
                 static float ApplyDeadzone( float fValue, float fDeadzone );

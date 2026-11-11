@@ -50,7 +50,7 @@ namespace Scarab  {
              */
             static WorldTable* GetWorldTable( lua_State* pLuaState )  {
 
-                return static_cast<WorldTable *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaWorldApi :: WORLD_TABLE_GLOBAL ) );
+                return static_cast<WorldTable *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaWorldApi :: WORLD_TABLE_KEY ) );
             }
 
             /**
@@ -272,7 +272,7 @@ namespace Scarab  {
                     return LuaEngineUtil :: PushError( pLuaState, "the default world cannot be unloaded" );
 
                 LuaEngineUtil :: GetTileMap( pLuaState ) -> RemoveWorld( pWorld );
-                static_cast<SpritePool *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_GLOBAL ) ) -> ForgetWorld( nWorldId );
+                static_cast<SpritePool *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_KEY ) ) -> ForgetWorld( nWorldId );
 
                 // The world first, then its listener: sunlight's collision manager cannot drop a listener,
                 // so the manager (inside the world) must be gone before the listener is.

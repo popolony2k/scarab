@@ -48,8 +48,9 @@ namespace Scarab  {
              * runs against a real, not-yet-bundled source directory on
              * disk, before any of Scarab's own runtime mounting
              * concepts (`APP_DIR`, a loaded `.zip`) are even relevant.
-             * These primitives exist purely for `tools/pack.lua` - no
-             * running game should ever call them.
+             * These primitives exist purely for `tools/pack.lua`, and
+             * only in `scarab --pack` (plans/MASTER_PLAN.md item C8): a
+             * game never has them, sandboxed or not.
              * @luaoutro
              * ## Archive handles
              *

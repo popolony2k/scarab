@@ -38,24 +38,39 @@ namespace Scarab  {
             std :: mutex LuaEngineUtil :: s_LuaMutex;
 
             /**
-             * @brief Read an engine object LuaEngine stashed as a light userdata global. Pops what it
-             * pushed, so the caller's stack is left as it was: a primitive that resolves an object
-             * and then reads further arguments would otherwise find the leftover value in their
-             * place (C6 hit this through the font pool).
+             * @brief Give a Lua state its engine objects: the map's address goes into the state's extra space
+             * (one pointer, LUA_EXTRASPACE), which Lua code cannot reach, and which every coroutine created
+             * later copies from the main thread. Must be called right after the state is created, before any
+             * GetEnginePointer and before any coroutine exists.
              *
              * @param pLuaState Lua state to be used by engine call;
-             * @param szName The global's name;
-             * @return The pointer, or nullptr if the global is not set (or not a userdata);
+             * @param pObjects The objects, owned by the caller and outliving the state;
              */
-            void* LuaEngineUtil :: GetGlobalPointer( lua_State* pLuaState, const char* szName )  {
+            void LuaEngineUtil :: SetEngineObjects( lua_State* pLuaState, EngineObjectMap* pObjects )  {
 
-                lua_getglobal( pLuaState, szName );
+                static_assert( LUA_EXTRASPACE >= sizeof( EngineObjectMap* ), "the Lua state's extra space must hold a pointer" );
 
-                void*  pObject = lua_touserdata( pLuaState, -1 );
+                *static_cast<EngineObjectMap**>( lua_getextraspace( pLuaState ) ) = pObjects;
+            }
 
-                lua_pop( pLuaState, 1 );
+            /**
+             * @brief An engine object LuaEngine keeps for this Lua state (@see SetEngineObjects). Touches nothing
+             * on the Lua stack, and nothing a script can change: a Lua global of the same name means nothing.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szKey The object's key (a *_KEY constant);
+             * @return The pointer, or nullptr if there is none under that key;
+             */
+            void* LuaEngineUtil :: GetEnginePointer( lua_State* pLuaState, const char* szKey )  {
 
-                return pObject;
+                EngineObjectMap*  pObjects = *static_cast<EngineObjectMap**>( lua_getextraspace( pLuaState ) );
+
+                if( !pObjects )
+                    return nullptr;
+
+                EngineObjectMap :: const_iterator  itObject = pObjects -> find( szKey );
+
+                return ( itObject == pObjects -> end() ) ? nullptr : itObject -> second;
             }
 
             /**
@@ -68,7 +83,7 @@ namespace Scarab  {
              */
             Engine :: IRendererProvider* LuaEngineUtil :: GetRendererProvider( lua_State* pLuaState )  {
 
-                return static_cast<Engine :: IRendererProvider *>( GetGlobalPointer( pLuaState, RENDERER_PROVIDER_GLOBAL ) );
+                return static_cast<Engine :: IRendererProvider *>( GetEnginePointer( pLuaState, RENDERER_PROVIDER_KEY ) );
             }
 
             /**

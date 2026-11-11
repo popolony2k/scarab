@@ -64,7 +64,7 @@ namespace Scarab  {
              */
             static TimerMap* GetTimerMap( lua_State* pLuaState )  {
 
-                return static_cast<TimerMap *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaTimerApi :: TIMER_MAP_GLOBAL ) );
+                return static_cast<TimerMap *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaTimerApi :: TIMER_MAP_KEY ) );
             }
 
             /**

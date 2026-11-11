@@ -451,6 +451,22 @@ jobs:
           python scripts/save_api_smoke.py build/Release/scarab.exe --require-encrypted
           if ($LASTEXITCODE -ne 0) { throw "save API smoke test exited with code $LASTEXITCODE" }
 
+      # The sandbox and the path rule (C8): reading finds the save directory, then the game's own
+      # files; writing goes into the save directory - through Lua's io/os/require/loadfile/load and
+      # Scarab's loaders, loose, from a .zip and from an encrypted pack; no game file changed, no
+      # host path or launch folder reachable, a save-folder change leaves no stale mount, and
+      # --no-sandbox gives Lua's own functions back - plans/MASTER_PLAN.md item C8.
+      - name: Sandbox smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/sandbox_smoke.py build/scarab --require-encrypted
+
+      - name: Sandbox smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/sandbox_smoke.py build/Release/scarab.exe --require-encrypted
+          if ($LASTEXITCODE -ne 0) { throw "sandbox smoke test exited with code $LASTEXITCODE" }
+
       # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
       # rejection, two sprites sharing a texture keeping their own values, a recycled slot
       # starting opaque and untinted - plans/MASTER_PLAN.md item P8.

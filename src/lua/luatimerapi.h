@@ -39,7 +39,7 @@ namespace Scarab  {
 
             /**
              * @brief Shared type for LuaEngine's m_Timers member and LuaTimerApi's
-             * casts of the TIMER_MAP_GLOBAL global - both need the exact same type,
+             * casts of the TIMER_MAP_KEY global - both need the exact same type,
              * not just structurally identical ones.
              */
             typedef std :: map<int, std :: unique_ptr<SunLight :: Concurrent :: Timer>> TimerMap;
@@ -97,8 +97,8 @@ namespace Scarab  {
 
                 public:
 
-                // The Lua global LuaEngine stashes its TimerMap in (a light userdata).
-                static constexpr const char*  TIMER_MAP_GLOBAL = "timerMapPtr";
+                // The key LuaEngine keeps its TimerMap under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  TIMER_MAP_KEY = "timerMapPtr";
 
                 static void Register( lua_State* pLuaState );
             };

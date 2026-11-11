@@ -47,6 +47,15 @@ extern "C"  {
 
 namespace Scarab  {
     namespace Lua  {
+
+        /** @brief What a Lua engine runs: a game (sandboxed, or not with --no-sandbox), or the --pack tool. */
+        enum LuaEngineMode  {
+            LUA_ENGINE_MODE_SANDBOX,        // a game, in the sandbox (plans/MASTER_PLAN.md item C8): the default
+            LUA_ENGINE_MODE_NO_SANDBOX,     // a game, with Lua's own io/os/require/loadfile/load (--no-sandbox)
+            LUA_ENGINE_MODE_PACK,           // the --pack tool: no sandbox, and the pack_* functions
+            LUA_ENGINE_MODE_LAST
+        };
+
         /**
          * @brief Implements a C++ abstraction for using
          * Lua engine;
@@ -84,12 +93,14 @@ namespace Scarab  {
             SunLight :: Input :: ActionMap                            m_ActionMap;     // input_bind_action_* & co (C1b)
             std :: unique_ptr<SunLight :: Input :: IGamepadHaptics>   m_pHaptics;      // rumble (C1b): made with the renderer
             std :: string                                             m_strAppDirectory;
+            LuaEngineMode                                             m_Mode;
+            Engine :: Lua :: LuaEngineUtil :: EngineObjectMap         m_EngineObjects; // out of every script's reach (C8a)
 
             void RegisterCalls( void );
 
             public:
 
-            LuaEngine( SunLight :: Scripting :: ScriptProcessor* pScriptProcessor );
+            LuaEngine( SunLight :: Scripting :: ScriptProcessor* pScriptProcessor, LuaEngineMode mode );
             virtual ~LuaEngine( void );
 
             bool RunFile( std :: string strFileName );

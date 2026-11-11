@@ -58,7 +58,7 @@ namespace Scarab  {
              */
             static Engine :: SpritePool* GetSpritePool( lua_State* pLuaState )  {
 
-                return static_cast<Engine :: SpritePool *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_GLOBAL ) );
+                return static_cast<Engine :: SpritePool *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_KEY ) );
             }
 
             /**

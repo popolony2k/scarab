@@ -30,7 +30,10 @@
     own loaders (load_json, dofile) and a sunlight one (tilemap_load_map): each scheme loads the
     same file, and an unknown one is an error, not a file name.
 
-    The driver passes the repo's absolute path in SCARAB_SMOKE_REPO_ROOT, for the host paths.
+    The driver passes the repo's absolute path in SCARAB_SMOKE_REPO_ROOT, for the host paths. Host paths
+    work only with --no-sandbox (plans/MASTER_PLAN.md item C8): the driver runs the script that way, and
+    once more in the sandbox with SCARAB_SMOKE_SANDBOX=1, where every loader - and io.open - must refuse
+    them while the virtual schemes still load.
 
     The script quits ITSELF only if every check passed (exit 0); otherwise it prints every
     failure and never quits, so --max-frames runs out and scarab exits 3.
@@ -43,7 +46,8 @@ local __ANSWER  <const> = 42                                    -- data.json's "
 local __MAP     <const> = "resources/tilemap/test.tmx"          -- external tilesets (.tsx) resolved beside it
 local __MAP_COLUMNS <const> = 20                                -- test.tmx is 20x20 tiles
 
-local repoRoot = os.getenv( "SCARAB_SMOKE_REPO_ROOT" )
+local repoRoot  = os.getenv( "SCARAB_SMOKE_REPO_ROOT" )
+local inSandbox = os.getenv( "SCARAB_SMOKE_SANDBOX" ) == "1"
 
 local failures = {}
 
@@ -68,24 +72,37 @@ check( repoRoot ~= nil, "SCARAB_SMOKE_REPO_ROOT is not set (run through scripts/
 
 local hostDir = ( repoRoot or "" ) .. "/" .. __DIR
 local schemes = {
-    { "plain",          __DIR },
-    { "vpath",          "vpath://" .. __DIR },
-    { "virtualpath",    "virtualpath://" .. __DIR },
-    { "hpath",          "hpath://" .. hostDir },
-    { "hostpath",       "hostpath://" .. hostDir },
+    { "plain",          __DIR,                        false },
+    { "vpath",          "vpath://" .. __DIR,          false },
+    { "virtualpath",    "virtualpath://" .. __DIR,    false },
+    { "hpath",          "hpath://" .. hostDir,        true },
+    { "hostpath",       "hostpath://" .. hostDir,     true },
 }
 
--- Scarab's own loaders: load_json and dofile
+-- Scarab's own loaders (load_json, dofile) and Lua's io.open: a host path loads only without the sandbox
 for _, scheme in ipairs( schemes ) do
-    local label, dir = scheme[1], scheme[2]
+    local label, dir, isHost = scheme[1], scheme[2], scheme[3]
     local data, err  = load_json( dir .. "data.json" )
-
-    check( type( data ) == "table" and data.answer == __ANSWER,
-           label .. ": load_json gave " .. tostring( data ) .. " (" .. tostring( err ) .. ")" )
-
     local ok, result = pcall( dofile, dir .. "module.lua" )
+    local file       = io.open( dir .. "data.json" )
 
-    check( ok and result == __ANSWER, label .. ": dofile gave " .. tostring( result ) )
+    if isHost and inSandbox then
+        check( data == nil, label .. ": load_json read a host path in the sandbox" )
+        check( not ok, label .. ": dofile ran a host path in the sandbox" )
+        check( file == nil, label .. ": io.open opened a host path in the sandbox" )
+    else
+        check( type( data ) == "table" and data.answer == __ANSWER,
+               label .. ": load_json gave " .. tostring( data ) .. " (" .. tostring( err ) .. ")" )
+        check( ok and result == __ANSWER, label .. ": dofile gave " .. tostring( result ) )
+        -- io.open follows the file system only in the sandbox: --no-sandbox gives Lua's own, which opens an
+        -- OS path and knows no scheme
+        if inSandbox or label == "plain" then
+            check( file ~= nil and file:read( "a" ):find( tostring( __ANSWER ), 1, true ) ~= nil,
+                   label .. ": io.open could not read data.json" )
+        end
+    end
+
+    if file then file:close() end
 end
 
 -- a sunlight loader: a map and its external tilesets
@@ -93,7 +110,11 @@ for _, path in ipairs( { "vpath://" .. __MAP, "hpath://" .. ( repoRoot or "" ) .
     local ok, err = tilemap_load_map( path, MAP_ALIGNMENT_TOP_LEFT )
     local columns = tilemap_get_map_info()
 
-    check( ok == true and columns == __MAP_COLUMNS, "tilemap_load_map( " .. path .. " ): " .. tostring( err ) )
+    if inSandbox and path:find( "hpath://", 1, true ) == 1 then
+        check( ok == nil, "tilemap_load_map( " .. path .. " ) loaded a host path in the sandbox" )
+    else
+        check( ok == true and columns == __MAP_COLUMNS, "tilemap_load_map( " .. path .. " ): " .. tostring( err ) )
+    end
 end
 
 -- an unknown scheme is refused, not taken as a file name

@@ -49,14 +49,120 @@ namespace Scarab  {
          */
         bool SaveDirectory :: Apply( const std :: string& strRealPath, std :: string& strError )  {
 
-            if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().SetWriteDirectory( strRealPath ) )  {
+            SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
+
+            UnmountExtras();
+
+            if( !fileSystem.SetWriteDirectory( strRealPath ) )  {
                 strError = "cannot use '" + strRealPath + "' as the save directory (not creatable or not writable)";
+
+                // sunlight keeps the previous write directory when it refuses a new one: so do its mounts.
+                if( !m_strPath.empty() )
+                    MountExtras();
+
                 return false;
             }
 
             m_strPath = strRealPath;
 
+            if( !MountExtras() )  {
+                strError = "cannot mount '" + strRealPath + "' as the save directory";
+                return false;
+            }
+
             return true;
+        }
+
+        /**
+         * @brief Mount the save folder at its extra mount points (plans/MASTER_PLAN.md item C8): the private
+         * one the save functions read through (appended - nothing else is mounted there), and the game's own
+         * mount point (APP_DIR) ahead of every other mount, so an APP_DIR path finds a save first. The write
+         * directory's own mount at the root is sunlight's (SetWriteDirectory).
+         *
+         * @return true if both mounts are in place;
+         */
+        bool SaveDirectory :: MountExtras( void )  {
+
+            SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
+
+            if( !fileSystem.Mount( m_strPath, SAVE_MOUNT_POINT, true ) )
+                return false;
+
+            m_strMountedPath = m_strPath;
+
+            if( !m_strGameMountPoint.empty() && !fileSystem.Mount( m_strPath, m_strGameMountPoint, false ) )
+                return false;
+
+            m_strMountedGameMountPoint = m_strGameMountPoint;
+
+            return true;
+        }
+
+        /**
+         * @brief Remove the extra mounts MountExtras made (none when there are none).
+         */
+        void SaveDirectory :: UnmountExtras( void )  {
+
+            SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
+
+            if( m_strMountedPath.empty() )
+                return;
+
+            fileSystem.Unmount( m_strMountedPath, SAVE_MOUNT_POINT );
+
+            if( !m_strMountedGameMountPoint.empty() )
+                fileSystem.Unmount( m_strMountedPath, m_strMountedGameMountPoint );
+
+            m_strMountedPath.clear();
+            m_strMountedGameMountPoint.clear();
+        }
+
+        /**
+         * @brief Name the virtual folder where the game's own files are mounted (APP_DIR), so the save folder
+         * is mounted there too, ahead of them (plans/MASTER_PLAN.md item C8, decision 1b). Called once, before
+         * any save directory is set.
+         *
+         * @param strMountPoint The virtual folder (APP_DIR);
+         */
+        void SaveDirectory :: SetGameMountPoint( const std :: string& strMountPoint )  {
+
+            m_strGameMountPoint = strMountPoint;
+        }
+
+        /**
+         * @brief Mount the save folder at the game's mount point again, ahead of every mount - after something
+         * else was mounted there ahead of it (a game's .zip, EngineHost::ResolveEntryScript). Nothing to do
+         * while there is no save directory.
+         *
+         * @param strError Receives the reason on failure;
+         * @return true if the mounts are in place (or there is no save directory);
+         */
+        bool SaveDirectory :: Remount( std :: string& strError )  {
+
+            if( m_strPath.empty() )
+                return true;
+
+            UnmountExtras();
+
+            if( !MountExtras() )  {
+                strError = "cannot mount '" + m_strPath + "' as the save directory";
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
+         * @brief The virtual path a save of this name is read through: the private mount of the save folder
+         * alone, so a game file of the same name is never taken for a save (plans/MASTER_PLAN.md item C8 -
+         * before, a host path, which the sandbox refuses).
+         *
+         * @param strName The save's name, relative to the save folder;
+         * @return The virtual path;
+         */
+        std :: string SaveDirectory :: GetSavePath( const std :: string& strName )  {
+
+            return std :: string( SAVE_MOUNT_POINT ) + "/" + strName;
         }
 
         /**

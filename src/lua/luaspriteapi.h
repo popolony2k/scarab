@@ -118,8 +118,8 @@ namespace Scarab  {
 
                 public:
 
-                // The Lua global LuaEngine::Init stashes the engine's SpritePool in (a light userdata).
-                static constexpr const char*  SPRITE_POOL_GLOBAL = "spritePoolPtr";
+                // The key LuaEngine::Init keeps the engine's SpritePool under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SPRITE_POOL_KEY = "spritePoolPtr";
 
                 static void Register( lua_State* pLuaState );
             };

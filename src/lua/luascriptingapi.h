@@ -77,8 +77,8 @@ namespace Scarab  {
 
                 public:
 
-                // The Lua global LuaEngine stashes the engine's ScriptProcessor in (a light userdata).
-                static constexpr const char*  SCRIPT_PROCESSOR_GLOBAL = "scriptProcessorPtr";
+                // The key LuaEngine keeps the engine's ScriptProcessor under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SCRIPT_PROCESSOR_KEY = "scriptProcessorPtr";
 
                 static void Register( lua_State* pLuaState );
                 static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State* pLuaState );

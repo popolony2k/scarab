@@ -109,7 +109,8 @@ namespace Scarab  {
 
             EngineHost( Scarab :: Host :: RendererProvider* pRendererProvider,
                        std :: string strEntryArg,
-                       std :: string strEntryOverride = std :: string() );
+                       std :: string strEntryOverride,
+                       bool bSandbox );
             virtual ~EngineHost( void );
 
             // Runs the entry script - before the window exists, see the definition

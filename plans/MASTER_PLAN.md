@@ -66,6 +66,7 @@ view accepting the default world).
 | P13 | Re-pin to `44f64a1648fa55fabc9708e6736d4368ee2bf844` (sunlight's I17: tile picking by the cell's real diamond or hexagon on isometric, staggered and hexagonal maps - Scarab's report from C5 planning, BREAKAGES 66; and I18: the far-edge map alignments take the zoom into account, BREAKAGES 67, which closes V14) - done in C5's branch (owner's choice) | DONE |
 | P14 | Re-pin to `d9c71d26232fd7a88132fab1cf4100d97e1b4512` (sunlight's I19, Scarab's C7: view opacity (I19a), worlds (I19b-c), several maps per world (I19d), collisions across map edges (I19e) and Tiled `.world` files (I19f), BREAKAGES 68-72; and I20: maps with stagger axis X load, BREAKAGES 73) - done in C7 part 1's branch (owner's choice); nothing changes for existing games | DONE |
 | P15 | Re-pin to `df589ce581a393c65edabd8e38995a53fd2f30aa` (sunlight's I21, BREAKAGES 74 - Scarab's two proposals after C7: `IWorld::SetLayer` by id and by name, changing that layer in every map of a world; and `IView::SetWorld( default world )` on the default view returning true) - with the layer setters given an optional world; see below | DONE |
+| P16 | Re-pin to `b5a6ca121634b43151b6100506e41d2eb1545145` (sunlight's I22, asked by Scarab for C8: the same real folder or archive mountable at several mount points, each in its own place in the search order; `IFileSystem::Unmount( realPath, mountPoint )`) - C8's mounts need both | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -1182,7 +1183,7 @@ that.
 | C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **DONE 2026-11-07**: isometric, staggered and hexagonal maps checked and shown, with P13 (sunlight I17, I18); see below |
 | C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **DONE 2026-11-09**, planned with sunlight (both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight delivered all of it in one pin (P14, `d9c71d2`); Scarab's side in two parts: view opacity (#92) and worlds - see below |
-| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **PLANNED 2026-11-09 with the owner; WAITS for sunlight I22 (P16)**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
+| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **DONE 2026-11-11 (on P16)**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
 keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
@@ -2064,7 +2065,7 @@ every view.
   - 43/43 `asan_run.py` runs, on the normal build and the ASan build;
   - style check 0, and the docs generator.
 
-**C8 - a sandbox for game scripts (PLANNED 2026-11-09 with the owner; nothing built yet).** Added by the owner on
+**C8 - a sandbox for game scripts (PLANNED 2026-11-09 with the owner; BUILT 2026-11-11 on P16 - see "Done" at the end).** Added by the owner on
 2026-11-03, split out of C1b. The goal: a game script cannot read or write anything outside the game's own files and
 its save directory - forbidden, not discouraged - while a Lua developer keeps the core Lua functions they know.
 - **Found while planning (2026-11-09):**
@@ -2112,7 +2113,8 @@ its save directory - forbidden, not discouraged - while a Lua developer keeps th
      the unsafe core functions are replaced IN C++, in place in Lua's own `io`/`os`/`package` tables, so the
      originals are gone (not reachable through `package.loaded` either). Every failure follows Lua's own convention
      (`nil, message`, as for a missing file), so error handling written for standard Lua keeps working.
-  5. **`debug` is kept whole** (the owner): the in-place overrides leave nothing for it to restore.
+  5. **`debug` is kept whole** (the owner): the in-place overrides leave nothing for it to restore. *Amended in
+     C8a (the owner, 2026-11-11): `debug.setmetatable` on a userdata and `debug.getregistry` are refused.*
   6. **On by default; only the command line turns it off** (`--no-sandbox`) - a `project.json` cannot, or a game could
      opt out of its own sandbox. `--pack` runs without it (the packing tool needs real paths).
   7. **"The game's own files"** are what the file system mounts: the launch folder (or the `.zip`), and the
@@ -2182,6 +2184,49 @@ its save directory - forbidden, not discouraged - while a Lua developer keeps th
 - **Checks:** AddressSanitizer; Caravellius acceptance and fingerprint; a breakage entry (on by default is a behaviour
   change: a game using `hpath://`, `pack_*` or native modules stops working, and a `.zip` game's plain paths now reach
   its own files, no longer the launch folder).
+- **Done (2026-11-11), as planned - the design did not change:**
+  - **Mounts (the path rule):** the save folder at `/` (sunlight's write directory), at `APP_DIR` (prepended) and at a
+    private mount point (`SaveDirectory::SAVE_MOUNT_POINT`), all moved when the folder changes (`Unmount` first); a
+    `.zip` at `APP_DIR` and at `/`, the save folder mounted again ahead of it (`SaveDirectory::Remount`), and no
+    launch-folder mount for a `.zip`; `SetHostPathEnabled( false )` unless `--no-sandbox` or `--pack`.
+  - **`Engine::SandboxFile`:** the in-memory file (modes, `read` formats, `write`, `seek`, append), copied from Lua
+    5.4.7's `liolib.c`; 14 doctests, every expected value checked against stock Lua first.
+  - **`LuaSandboxApi`:** `io.open`/`lines`/`input`/`output`/`read`/`write`/`close`/`type`/`popen`/`tmpfile`,
+    `os.remove`/`rename`/`tmpname`/`execute`, `require`'s searchers (Lua modules through the file system, C ones
+    refusing), `package.loadlib`/`searchpath`, `loadfile` and `load` (text only), the file methods and `__gc`/`__close`/
+    `__tostring`; no original kept anywhere (not even an upvalue: `debug` is whole). The entry script, `dofile`,
+    `loadfile` and `require` share one loader (`LuaFileSystemApi::LoadChunk`). `LuaEngine` has a mode
+    (`LUA_ENGINE_MODE_SANDBOX` / `_NO_SANDBOX` / `_PACK`); `pack_*` only in `_PACK`.
+  - **Save functions:** read through the private mount (no more `hpath://`); "exists" = reads as a file.
+  - **Tests:** `scripts/sandbox_smoke.py` (ci.yml, all 4 platforms; `asan_run.py` picks it up) - loose, from a plain
+    `.zip` and an encrypted pack, no save directory, a save-folder change, `--no-sandbox`; it runs from temp copies and
+    refuses to write unless the sandbox is installed (found the hard way: the "sandbox not installed" mutation ran the
+    suite against Lua's own `io`/`os` and removed and rewrote files in the repo - restored, and both guards added).
+    `tests/test_sandboxfile.cpp`, `tests/test_sandboxpath.cpp` (`ToSavePath`), `tests/test_packapi.cpp` (the `pack_*`
+    rows `error_reporting_smoke` could no longer run). `path_scheme_smoke` runs `--no-sandbox` plus a sandboxed run
+    where every loader and `io.open` refuse host paths; `action_map_smoke`'s `nodir` runs both ways.
+  - **Mutations, each caught:** sandbox not installed; save not mounted at `APP_DIR`; no remount after the zip; zip not
+    at the root; launch folder mounted for a zip; old save mounts never removed; host paths left on (caught when re-run
+    by hand - the scripted run had a stale build); save functions reading the plain name; `pack_*` in a game; `load`
+    taking bytecode; append mode not appending and an exponent without digits (doctests).
+  - **Checks:** every unit test and smoke test; AddressSanitizer; Caravellius acceptance PASS loose and from
+    `caravellius.zip` (intro sync 84.000s), fingerprint `hash=33897632` three times out of three; BREAKAGES 32.
+  - **C8a, found while building C8 and fixed with the owner's go-ahead (2026-11-11):** engine objects reached C++
+    through light-userdata Lua GLOBALS (`saveDirectoryPtr`, `rendererProviderPtr`, ... - 11 of them) that a script
+    could overwrite with any userdata, which the engine then used as its own object (shown: forging them with
+    `io.stdout` crashed with a bus error, exit -10). Now `LuaEngine::m_EngineObjects`, a map whose address is in the
+    Lua state's extra space (`lua_getextraspace` - unreachable from Lua, `debug` included; copied to coroutines),
+    read by `LuaEngineUtil::GetEnginePointer` under `*_KEY` constants (the old `*_GLOBAL` names). Also the
+    `io.lines` iterator's file, a C upvalue `debug.setupvalue` can replace, is checked (`luaL_testudata`). Tests: a
+    doctest (a global of the same name is ignored, coroutines see the objects) and `sandbox_smoke`'s forgery checks;
+    the old global lookup mutated back in fails both (the smoke run crashes), and the unchecked upvalue fails the
+    smoke test.
+  - **Decision 5 amended (the owner, 2026-11-11):** `debug.setmetatable` on a userdata, or swapping the file
+    metatables in `debug.getregistry()`, made a Lua file pass for a sandbox file or the other way round (shown: exit
+    134 when it was collected). So in the sandbox `debug.setmetatable` refuses a FULL userdata (`nil, message`; every
+    other value as Lua's) and `debug.getregistry` gives `nil, message`; the rest of `debug` is Lua's own, and
+    `--no-sandbox` gives the whole library back. Pinned by `sandbox_smoke` (the refusals, a table's metatable still
+    set); without the install the smoke test fails.
 
 **C7 - several maps at once, as WORLDS (PLANNED 2026-11-07 with sunlight, sunlight-cf, both owners agreed; nothing
 built on either side yet).** Added by the owner on 2026-10-29, during V10. Today a renderer holds ONE map

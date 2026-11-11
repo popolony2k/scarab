@@ -90,7 +90,7 @@ A project file names the first Lua file to run, relative to the project file its
 { "main_script": "main.lua" }
 ```
 
-You can also run a script directly (`./build/scarab main.lua`) or a whole game packed into one archive (`./build/scarab game.zip`, which runs the `project.json` at its root; `--entry`/`-e <path>` names another). Loose folders and archives read the same way. A game's saves go into a per-user folder it names (`"save_directory"` in `project.json`, or `app_set_save_directory`); `--save-dir <folder>` puts them somewhere else. `--help` lists every option, and `--version` prints the Scarab, sunlight and Lua versions.
+You can also run a script directly (`./build/scarab main.lua`) or a whole game packed into one archive (`./build/scarab game.zip`, which runs the `project.json` at its root; `--entry`/`-e <path>` names another). Loose folders and archives read the same way. A game's saves go into a per-user folder it names (`"save_directory"` in `project.json`, or `app_set_save_directory`); `--save-dir <folder>` puts them somewhere else. Every path a game uses follows one rule: reading looks in the save directory, then the game's own files (its `.zip`, or the launch folder); writing goes into the save directory. Game scripts run in a **sandbox**: Lua's own `io`, `os`, `require`, `loadfile` and `load` work as usual but reach nothing else, and `--no-sandbox` turns it off for tools and trusted scripts (see [The sandbox and how paths are found](https://popolony2k.github.io/scarab/lua-api/sandbox.html)). `--help` lists every option, and `--version` prints the Scarab, sunlight and Lua versions.
 
 ### Headless mode
 

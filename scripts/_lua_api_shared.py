@@ -55,6 +55,7 @@ SOURCE_TO_DOC = {
     "luajsonapi.cpp":       "json.md",
     "luapackapi.cpp":       "pack.md",
     "luarendererapi.cpp":   "renderer.md",
+    "luasandboxapi.cpp":    "sandbox.md",
     "luascriptingapi.cpp":  "scripting.md",
     "luasaveapi.cpp":       "save.md",
     "luashapeapi.cpp":      "shape.md",

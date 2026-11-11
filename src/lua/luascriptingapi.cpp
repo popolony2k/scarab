@@ -34,7 +34,7 @@ namespace Scarab  {
              */
             SunLight :: Scripting :: ScriptProcessor* LuaScriptingApi :: GetScriptProcessor( lua_State* pLuaState )  {
 
-                return static_cast<SunLight :: Scripting :: ScriptProcessor *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, SCRIPT_PROCESSOR_GLOBAL ) );
+                return static_cast<SunLight :: Scripting :: ScriptProcessor *>( LuaEngineUtil :: GetEnginePointer( pLuaState, SCRIPT_PROCESSOR_KEY ) );
             }
 
             /**

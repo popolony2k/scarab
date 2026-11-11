@@ -65,8 +65,8 @@ namespace Scarab  {
 
                 public:
 
-                // The Lua global LuaEngine::Init stashes the engine's FontPool in (a light userdata).
-                static constexpr const char*  FONT_POOL_GLOBAL = "fontPoolPtr";
+                // The key LuaEngine::Init keeps the engine's FontPool under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  FONT_POOL_KEY = "fontPoolPtr";
 
                 static void Register( lua_State* pLuaState );
             };

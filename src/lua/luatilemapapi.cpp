@@ -219,7 +219,7 @@ namespace Scarab  {
                     return LuaEngineUtil :: PushError( pLuaState, __NO_MAP_LOADED );
 
                 // the default world's sprites are on no layer now (item C7: the sprite pool keeps where each one is)
-                static_cast<SpritePool *>( LuaEngineUtil :: GetGlobalPointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_GLOBAL ) ) -> ForgetWorld( 0 );
+                static_cast<SpritePool *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_KEY ) ) -> ForgetWorld( 0 );
 
                 return LuaEngineUtil :: PushTrue( pLuaState );
             }
