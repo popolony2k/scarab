@@ -45,8 +45,8 @@ cmake_minimum_required(VERSION 3.24)
 # sensible version string either). See plans/MASTER_PLAN.md item P1 for the
 # full story.
 #
-set(SCARAB_SUNLIGHT_REF "df589ce581a393c65edabd8e38995a53fd2f30aa")
-set(SCARAB_SUNLIGHT_DISPLAY_VERSION "feat/master_plan@df589ce")
+set(SCARAB_SUNLIGHT_REF "b5a6ca121634b43151b6100506e41d2eb1545145")
+set(SCARAB_SUNLIGHT_DISPLAY_VERSION "feat/master_plan@b5a6ca1")
 
 project(scarab VERSION 0.1.25)
 
