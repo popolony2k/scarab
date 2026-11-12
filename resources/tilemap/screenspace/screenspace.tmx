@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" backgroundcolor="#202830" nextlayerid="5" nextobjectid="1">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="60" height="40" tilewidth="32" tileheight="32" infinite="0" backgroundcolor="#202830" nextlayerid="7" nextobjectid="1">
  <imagelayer id="1" name="backdrop">
   <properties>
    <property name="screen_space" type="bool" value="true"/>
@@ -14,5 +14,14 @@
  </imagelayer>
  <imagelayer id="4" name="house far" offsetx="1664" offsety="1152">
   <image source="../images/house.png" width="160" height="64"/>
+ </imagelayer>
+ <imagelayer id="5" name="house stale size" offsetx="448" offsety="320">
+  <image source="../images/house.png" width="200" height="80"/>
+ </imagelayer>
+ <imagelayer id="6" name="badge stale size" offsetx="1040" offsety="800">
+  <properties>
+   <property name="screen_space" type="bool" value="true"/>
+  </properties>
+  <image source="../images/house.png" width="240" height="96"/>
  </imagelayer>
 </map>

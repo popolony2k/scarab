@@ -68,6 +68,7 @@ view accepting the default world).
 | P15 | Re-pin to `df589ce581a393c65edabd8e38995a53fd2f30aa` (sunlight's I21, BREAKAGES 74 - Scarab's two proposals after C7: `IWorld::SetLayer` by id and by name, changing that layer in every map of a world; and `IView::SetWorld( default world )` on the default view returning true) - with the layer setters given an optional world; see below | DONE |
 | P16 | Re-pin to `b5a6ca121634b43151b6100506e41d2eb1545145` (sunlight's I22, asked by Scarab for C8: the same real folder or archive mountable at several mount points, each in its own place in the search order; `IFileSystem::Unmount( realPath, mountPoint )`) - C8's mounts need both | DONE |
 | P17 | Re-pin to `fa7575a0db7127230946bd44199de1d38a1172f1` (sunlight's I23, asked by Scarab for C9: an image layer with the Tiled custom property `screen_space` drawn in screen space; BREAKAGES 34 corrected, 76) | DONE |
+| P18 | Re-pin to `3a2f1c55ad1cde8915464668a1794b9a80461229` (sunlight's I24, asked by Scarab for C10: image layers drawn at their picture's real size; new pure virtual `IEngine::GetTextureSize`, BREAKAGES 77) | DONE |
 
 **P0 (DONE).** This document and [`plans/CARAVELLIUS_BREAKAGES.md`](CARAVELLIUS_BREAKAGES.md)
 (this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
@@ -1185,6 +1186,7 @@ that.
 | C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **DONE 2026-11-09**, planned with sunlight (both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight delivered all of it in one pin (P14, `d9c71d2`); Scarab's side in two parts: view opacity (#92) and worlds - see below |
 | C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **DONE 2026-11-11 (on P16)**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
 | C9 | An image layer drawn in screen space, as before sunlight's L1 (Caravellius' cover screen) | - | **DONE 2026-11-11 (on P17)**: sunlight's `screen_space` image-layer property, a test map, `samples/backdrop`, the Tile map reference's "Tiled custom properties" - see below |
+| C10 | An image layer is drawn at its picture's real size, whatever size the map declares | - | **DONE 2026-11-11 (on P18)** - see below |
 
 **C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
 keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
@@ -2065,6 +2067,32 @@ every view.
   - 22 samples headless;
   - 43/43 `asan_run.py` runs, on the normal build and the ASan build;
   - style check 0, and the docs generator.
+
+**C10 - an image layer drawn at its picture's real size (PLANNED and BUILT 2026-11-11 with the owner, on P18).**
+Found by Caravellius (caravellius-89) by eye after C9: its cover picture is really 1206x880, but `cover.tmx`'s
+`<image>` declares `width="1260" height="920"`. sunlight's `DrawScreenSpaceImageLayer` (and the map-space
+`DrawImageLayer`) take the source AND destination rectangles from the declared size, so `DrawTextureTiled` reads 54x40
+pixels past the texture and repeats it: a slice of the picture's left edge down its right side, a strip of its top
+along the bottom.
+- **Checked here:** before sunlight's L1, `DrawImageLayer` was `DrawTexture( image, 0, 0 )` - the picture at its REAL
+  size, at window pixel (0,0), ignoring the declared size (and the layer's offset): it never stretched. Tiled shows an
+  image layer at the picture's real size too; the `<image>` `width`/`height` only record the size when the map was
+  saved, and go stale when the picture changes.
+- **Options weighed with the owner:** (A) draw at the picture's real size in both image-layer paths - chosen: what Tiled
+  and pre-L1 sunlight do, never reads past the texture, a stale declared size stops mattering; (B) stretch to the
+  declared size (Caravellius' first suggestion) - neither Tiled nor pre-L1 did it, and it distorts a picture whenever
+  the map's numbers are stale; (C) call it a data error and change nothing - the repeat would stay for the next map.
+- **Scarab's side, once sunlight has it:** re-pin (P18); `resources/tilemap/screenspace/` gains an image layer whose
+  declared size differs from its picture's, for the eye check (no headless test sees drawing); docs (the Tile map
+  reference's image-layer notes); a BREAKAGES entry; the new commit to Caravellius.
+- **Done (2026-11-11), as designed:** sunlight built it as its I24 (`3a2f1c5`, BREAKAGES 77): both image-layer paths
+  draw the loaded texture's real size (a new pure virtual `IEngine::GetTextureSize`; the null backend keeps the size it
+  reads from the image header; the declared size only when an engine can't tell), the source never past the texture.
+  Scarab implements no `IEngine`, so nothing in its code changed. Scarab: P18 re-pin; `screenspace.tmx` gained a
+  map-space and a screen-space layer declaring a larger size than their picture (200x80 and 240x96 for a 160x64
+  house), shown by `samples/backdrop`; the Tile map reference, `CLAUDE.md`, BREAKAGES 35. Out of scope (sunlight's
+  note): a tileset whose declared image size is stale - tiles are cut by tile coordinates, a different case nobody has
+  reported.
 
 **C9 - an image layer drawn in screen space (PLANNED and BUILT 2026-11-11 with the owner, on P17 - see "Done" below).** Found by
 Caravellius (caravellius-6a) checking its cover screen by eye on `master_plan@61ff524`: `cover.tmx`'s full-screen image

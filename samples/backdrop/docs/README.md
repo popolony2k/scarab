@@ -24,6 +24,7 @@ From the repo root:
 - **The gold frame stays whole and fixed:** its four edges, its four corner squares and the ring in the middle are all on screen at every zoom and wherever the camera goes. It is not cut to the viewport either: it reaches the window's own edges, outside the viewport's 10-pixel margin.
 - **The houses are map space:** they move when you pan and grow or shrink when you zoom.
 - **Layer order:** Kepi stands on the backdrop layer (layer 1) and draws over the picture; the houses are later layers and draw over Kepi.
+- **A picture is drawn at its real size:** the map declares a larger size than the picture really has for one map-space house (layer 5) and for the small screen-space house in the bottom-right corner (layer 6). Each must show one plain house - no extra slice of roof or wall repeated along its right or bottom edge.
 
 ## What it shows
 

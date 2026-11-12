@@ -63,6 +63,11 @@ namespace Scarab  {
              * space, and is drawn in map space since (moved by the camera, scaled by the zoom,
              * offset by the viewport). A map made for the old drawing - a full-window cover image,
              * say - sets `screen_space` on that layer. `samples/backdrop` shows one.
+             *
+             * An image layer is drawn at its **picture's real size**, in screen space and in map
+             * space (scaled by the zoom there). The `width`/`height` a map's `<image>` declares only
+             * record the size when the map was saved, and are not used for drawing: a picture that
+             * changed size after it was saved draws whole at its new size, never repeated.
              */
             class LuaTilemapApi  {
 
