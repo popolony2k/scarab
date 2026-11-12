@@ -23,10 +23,12 @@
  a full-window picture that stays whole and fixed on the screen while the map under it scrolls
  and zooms - a title or cover screen, the way Caravellius draws its cover.
 
- resources/tilemap/screenspace/screenspace.tmx has four image layers. Layer 1, "backdrop", carries
+ resources/tilemap/screenspace/screenspace.tmx has six image layers. Layer 1, "backdrop", carries
  the Tiled custom property screen_space = true (bool): it is drawn at its offset in window pixels,
  at its own size, whatever the camera or the zoom. The three houses (layers 2-4) are ordinary image
- layers, drawn in map space: they move and scale with the camera.
+ layers, drawn in map space: they move and scale with the camera. Layers 5 (map space) and 6 (screen
+ space, the small house in the bottom-right corner) declare a larger size than their picture has:
+ an image layer is drawn at its picture's real size, so each is one plain house, never repeated.
 
  Kepi stands on layer 1, like Caravellius' ship on its cover: sprites on a screen-space layer draw
  over it, and the houses on the later layers draw over Kepi.
