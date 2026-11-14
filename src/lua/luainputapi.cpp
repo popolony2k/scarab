@@ -553,18 +553,26 @@ namespace Scarab  {
              * @luaheading{Connected gamepads}
              * @luadoc
              * Which pads are plugged in, and when that changes. A pad id is
-             * `0` to `9`; `name` is what the pad's driver calls it. Headless
-             * runs never see a pad.
+             * `0` to `9`, and a pad keeps its id until it is unplugged; `name`
+             * comes from SDL's controller database (pads are read through
+             * SDL2), so it can differ from the name another program shows for
+             * the same pad - a game that saves a pad's name or id may find a
+             * new one next time. Face buttons are named by position
+             * (`GAMEPAD_BUTTON_RIGHT_FACE_DOWN` is the bottom one on every
+             * pad, a Nintendo pad's included). Headless runs never see a pad.
              *
              * `input_set_gamepad_connection_handler(fn)` calls
              * `fn(gamepadId, connected)` once each time a pad is plugged in
              * (`connected` true) or unplugged (false), on the main thread,
-             * at the start of a frame before `on_update`. The first frame
-             * reports every pad that was already connected at start-up, so
-             * one handler set from the entry script covers both (one set later
-             * only hears later changes - read `input_get_connected_gamepads`
-             * then). Registering it needs no window, like
-             * `collision_set_handler`; a second call replaces the first.
+             * at the start of a frame before `on_update`. A pad is set up in
+             * the background, so the game never waits for it: it is reported
+             * when it is ready - on the first frames for a pad already on at
+             * start-up, but 2 to 4 seconds later for some Bluetooth pads. One
+             * handler set from the entry script hears all of them (one set
+             * later only hears later changes - read
+             * `input_get_connected_gamepads` then). Registering it needs no
+             * window, like `collision_set_handler`; a second call replaces the
+             * first.
              * @luaexample
              * -- input_get_connected_gamepads() -> pads    -- { { id = 0, name = "Xbox Controller" }, ... }
              * -- input_is_gamepad_available(gamepadId) -> connected
