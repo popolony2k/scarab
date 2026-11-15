@@ -1,6 +1,6 @@
 # input sample
 
-Keyboard and gamepad reading, before any sprite exists — see the [sprite](../../sprite/docs/README.md) sample for the same kind of movement applied to a real sprite. See [samples/README.md](../../README.md) for the full sample list.
+Keyboard and gamepad reading for two players, before any sprite exists — see the [sprite](../../sprite/docs/README.md) sample for the same kind of movement applied to a real sprite. See [samples/README.md](../../README.md) for the full sample list.
 
 ## Running
 
@@ -12,21 +12,23 @@ From the repo root:
 
 ## Controls
 
-| Key | Action |
+| Input | Action |
 | --- | --- |
-| `Arrow keys` / `WASD` (held) | Move the square (`input_is_key_down`) |
-| Gamepad 0 left stick (held) | Move the square (`input_get_gamepad_axis`, with a deadzone) |
-| Gamepad 0 D-pad (held) | Move the square (`input_is_gamepad_button_down`, digital — no deadzone needed) |
-| `R` | Reset the square to the center (`input_is_key_released`) |
-| Gamepad 0 face-down button | Reset the square to the center (`input_is_gamepad_button_down`) |
+| `Arrow keys` / `WASD` (held) | Move player 1's square, the blue one (`input_is_key_down`) |
+| A on a pad (`GAMEPAD_BUTTON_RIGHT_FACE_DOWN`) | Join: the pad claims the next free player slot (`input_claim_player_slot`) |
+| B on a pad (`GAMEPAD_BUTTON_RIGHT_FACE_RIGHT`) | Leave: free the pad's slot (`input_release_player_slot`) |
+| A joined pad's left stick / D-pad (held) | Move that player's square (`input_get_gamepad_axis`, `input_is_gamepad_button_down`) |
+| `[` / `]` | Lower / raise the stick dead zone of every pad (`input_set_axis_deadzone`) |
+| `R` | Reset both squares (`input_is_key_released`) |
 
 ## What it shows
 
-- [main.lua](../main.lua) — `input_is_key_down` for continuous movement (checked every frame, true for as long as the key is held), `input_is_key_released` for an edge-triggered action (true only on the one frame the key transitions from down to up — not while holding it).
-- The gamepad's left stick drives the exact same movement, not just a HUD readout — `input_get_gamepad_axis` returns a raw `-1.0`–`1.0` value that jitters near `0` even when the stick is physically centered, so a small deadzone (`__STICK_DEADZONE`) is applied before treating it as real input, the same pattern `input_is_gamepad_button_down`'s own doc example uses.
-- The D-pad drives the same movement too, via plain `input_is_gamepad_button_down` checks — no deadzone needed, since it's a digital input (fully pressed or not, unlike the stick's analog range). **Naming gotcha**: raylib's own gamepad button naming (which this engine's `GAMEPAD_BUTTON_*` constants mirror exactly) calls the D-pad `LEFT_FACE` (`GAMEPAD_BUTTON_LEFT_FACE_UP`/`DOWN`/`LEFT`/`RIGHT`) — the face buttons (A/B/X/Y or equivalent) are `RIGHT_FACE`. Easy to mix up the two at a glance.
-- `input_add_gamepad(0)` is called once at startup — a gamepad id has to be registered this way before any `input_is_gamepad_button_*`/`input_get_gamepad_axis` call for that id reports real state. It's harmless to keep reading gamepad 0's state every frame even with nothing plugged in — every value just reads back as centered (`0.0`) or not-pressed (`false`), never an error.
+- **Connected pads and hot-plug:** the HUD lists every pad plugged in now (`input_get_connected_gamepads`, with each pad's name) and the last connect or disconnect (`input_set_gamepad_connection_handler`). The handler is set in the entry script, so its first call reports the pads already plugged in at start-up.
+- **Player slots:** the first two pads to press A become players 1 and 2; the keyboard always drives player 1 as well. Unplugging a pad keeps its slot — the HUD shows `(unplugged)`, and plugging it back in makes it that player again. B frees the slot.
+- **Dead zones:** a worn stick at rest reads a little off centre. `input_get_gamepad_axis` applies the pad's dead zone (default `0.1`), so the square doesn't creep and the movement code needs no threshold of its own; `input_get_gamepad_axis_raw` returns the value as the pad reports it. The bottom HUD line shows both for player 1's pad, and `[` / `]` move the dead zone so you can watch a resting stick go from `0.00` to its raw value.
+- The D-pad drives the same movement through plain `input_is_gamepad_button_down` checks — a digital input, no dead zone. **Naming gotcha**: raylib's own gamepad button naming (which this engine's `GAMEPAD_BUTTON_*` constants mirror exactly) calls the D-pad `LEFT_FACE` (`GAMEPAD_BUTTON_LEFT_FACE_UP`/`DOWN`/`LEFT`/`RIGHT`) — the face buttons (A/B/X/Y or equivalent) are `RIGHT_FACE`.
+- No pad needs registering before it is read. With nothing plugged in, the pad list is empty and every read is centred or not pressed, never an error.
 
 ## Lua API reference
 
-- [`input_is_key_down`/`input_is_key_released`/`input_add_gamepad`/`input_get_gamepad_axis`/`input_is_gamepad_button_down`](https://popolony2k.github.io/scarab/lua-api/input.html)
+- [Input: keyboard, gamepad, connected gamepads, stick dead zones, player slots](https://popolony2k.github.io/scarab/lua-api/input.html)

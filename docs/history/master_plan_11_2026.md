@@ -1,0 +1,3080 @@
+# Scarab master plan
+
+> **History (November 2026).** This is the plan of Scarab's first big refactoring done with an AI
+> (Claude) as a development partner: the integration of sunlight's master plan, from 2026-10-21 to
+> 2026-11-14, released as Scarab v0.2.0 on sunlight v0.39.0. It is kept as it was written, so its
+> statuses, pins and "removed before `main`" notes describe that time. The file was moved here from
+> `plans/MASTER_PLAN.md` when `master_plan` was merged into `main`. See [README.md](README.md).
+
+This is the working plan for integrating sunlight's `feat/master_plan`. Each item has a
+status, a scope, and the test items that must pass before it is closed. Items are closed
+one at a time, in phase order, unless the owner decides otherwise.
+
+Like [`docs/history/caravellius_breakages_11_2026.md`](caravellius_breakages_11_2026.md), this file is integration
+material only: it lives on `master_plan` and is removed before `master_plan` goes to
+`main`. `master_plan` merges to `main` only on the owner's own explicit command, after
+Scarab's own work here is integrated with Caravellius - not automatically once this plan's
+own items are closed, and not before Caravellius has been told what changed.
+
+Every change follows this project's own rules in [`CLAUDE.md`](../../CLAUDE.md): tests first
+(a regression test must fail on the old code, where applicable), the full existing check
+suite passing (samples, the renderer/view API smoke test, the tileset archive smoke test,
+the headless smoke test), an AddressSanitizer run for anything touching lifetimes once
+Phase R lands, and a PR per item (or per consolidated set of mechanical items).
+
+This plan follows sunlight's own [`doc/MASTER_PLAN.md`](https://github.com/popolony2k/sunlight/blob/v0.39.0/doc/MASTER_PLAN.md)
+in shape and in working rules - see sunlight's handoff, read from
+[`doc/SCARAB_HANDOFF.md`](https://github.com/popolony2k/sunlight/blob/v0.39.0/doc/SCARAB_HANDOFF.md) in a local checkout of
+sunlight (`../sunlight` from this repo's root), and its peer-impact list,
+[`doc/BREAKAGES.md`](https://github.com/popolony2k/sunlight/blob/62985ef5ebe1262c07e7477df950bceeec8baa05/doc/BREAKAGES.md) (49 entries). sunlight's own commit
+pinned for this work: `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5` (the head of
+`feat/master_plan` when the handoff was sent), re-pinned in P4 to
+`a63fec6811ba28fb46a94015d05b852393016692` (sunlight's fix for semi-transparent drawing), in
+P5 to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's blend modes), in C6 to
+`9c8c6bf421a1147d1e8c099e698dfbe7c1885af2` (fonts by handle), in V6 to
+`f651accc2291a2ea9020dad3bfc2f1245e76858f` (I4, `..` in an embedded tileset image path), in
+P6 to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (I5, CollisionManager layer-id checks), and in
+V9 to `a6ac4f6bea9973795c1668dd8eabfc67defc03c1` (I6, UnloadMap takes sprites' colliders out), and in
+V11 to `4189199f7b3af75e590792f85d51051916f4a206` (I7, tile collisions and tile picking in map space), and in
+V12 to `4274ecbf6cdd71c3625254f68ae14e0ed6631acb` (I8, layer tint at runtime, group tint and opacity), and
+in P7 to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (I9, layer opacity as a 0..1 float, exact round trips),
+and in P8 to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (I10, sprite opacity and tint), and in V13 to
+`56a73cd4de2868fe30e124e79340ea19d71feae7` (I11, tile animation by time and the frame query, with the 0 ms fix),
+and in P9 to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (I12, path schemes and writing in the FileSystem, with
+Scarab's map fix; and I13, Scarab's request: the path helpers public in `FilePath`), and in P10 to
+`b778188443842351c079b88cc8c59e87b87e2e1c` (I14, Scarab's request: atomic, durable `WriteFile` and
+`IFileSystem::RemoveFile`), and in P11 to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (I15, Scarab's report: equal
+z-orders keep the order sprites were added in), and in P12 to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (I16, Scarab's
+report: a shape drawn outside the map pass uses the view's own camera), and in P13 to
+`44f64a1648fa55fabc9708e6736d4368ee2bf844` (I17, Scarab's report: tile picking on non-orthogonal maps; and I18:
+the far-edge map alignments take the zoom into account), and in P14 to `d9c71d26232fd7a88132fab1cf4100d97e1b4512`
+(I19, Scarab's C7: view opacity and worlds - several maps at once; and I20: maps with stagger axis X load), and in
+P15 to `df589ce581a393c65edabd8e38995a53fd2f30aa` (I21, Scarab's proposals from C7: `IWorld::SetLayer`, and the default
+view accepting the default world).
+
+## Phase P: pin & plumbing
+
+| # | Item | Status |
+|---|------|--------|
+| P0 | Write and get this document approved | DONE |
+| P1 | Split `SCARAB_SUNLIGHT_VERSION`'s single hardcoded-`v`-prefix mechanism into a fetch-ref variable and a display-version variable; decide `--version`'s format for a commit-pinned build | DONE |
+| P2 | Pin `GIT_TAG` to `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; make the code compile against it (the `SunLight::Base` namespace move, BREAKAGES entry 14; `BaseCommand`'s new header, entry 5) | DONE |
+| P3 | Every existing Scarab check green against the pin, before any further BREAKAGES item is touched | DONE |
+| P4 | Re-pin to `a63fec6811ba28fb46a94015d05b852393016692` (sunlight's I1 fix: semi-transparent drawing no longer darker; sunlight BREAKAGES entry 50) | DONE |
+| P5 | Re-pin to `bfce5983370fa0661c18701164a10f7e18f1e7a1` (sunlight's I2: blend modes; sunlight BREAKAGES entry 51) | DONE |
+| P6 | Re-pin to `fa953f38cb22508247b528c8234ad2bb0f4293e8` (sunlight's I5: CollisionManager checks every layer id, `Clear()`/`RemoveAll()` work; sunlight BREAKAGES entry 54) | DONE |
+| P7 | Re-pin to `8842ccc831a0dc7d10f85a93fc9f978f63015b09` (sunlight's I9: layer opacity is a 0..1 float with exact round trips, `SetScreenFade` clamped; sunlight BREAKAGES entry 58) and move Lua's layer opacity to 0..1 | DONE |
+| P8 | Re-pin to `ef1499d811e87c520a3669c9754cf4e6893ff4a8` (sunlight's I10: sprite opacity and tint; sunlight BREAKAGES entry 59) and expose them to Lua (`sprite_set/get_opacity`, `sprite_set/get_tint`) | DONE |
+| P9 | Re-pin to `4cb7262b3e4e5a7fce745053d716c977d29078b8` (sunlight's I12: path schemes, writing and `ActionMap` through the FileSystem, BREAKAGES 61; and I13: `FilePath`, BREAKAGES 62) - the pin C1 waits for; Scarab's entry-path helpers replaced by sunlight's | DONE |
+| P10 | Re-pin to `b778188443842351c079b88cc8c59e87b87e2e1c` (sunlight's I14: atomic, durable `WriteFile` and the new `IFileSystem::RemoveFile`, BREAKAGES 63) - the pin C1c builds on | DONE |
+| P11 | Re-pin to `51a3bbb6ea205d7a26e3db1bd66bbd61984dcfbe` (sunlight's I15: equal z-orders keep the order sprites were added in, on every frame - Scarab's report from C3 planning, BREAKAGES 64) - done in C3's branch (owner's choice) | DONE |
+| P12 | Re-pin to `ad84cca1320fb0464cb13e44c4e0710d27ca3731` (sunlight's I16: a shape drawn outside the map pass uses the view's own camera, map or no map - Scarab's report from C2 planning, BREAKAGES 65) - done in C2's branch (owner's choice) | DONE |
+| P13 | Re-pin to `44f64a1648fa55fabc9708e6736d4368ee2bf844` (sunlight's I17: tile picking by the cell's real diamond or hexagon on isometric, staggered and hexagonal maps - Scarab's report from C5 planning, BREAKAGES 66; and I18: the far-edge map alignments take the zoom into account, BREAKAGES 67, which closes V14) - done in C5's branch (owner's choice) | DONE |
+| P14 | Re-pin to `d9c71d26232fd7a88132fab1cf4100d97e1b4512` (sunlight's I19, Scarab's C7: view opacity (I19a), worlds (I19b-c), several maps per world (I19d), collisions across map edges (I19e) and Tiled `.world` files (I19f), BREAKAGES 68-72; and I20: maps with stagger axis X load, BREAKAGES 73) - done in C7 part 1's branch (owner's choice); nothing changes for existing games | DONE |
+| P15 | Re-pin to `df589ce581a393c65edabd8e38995a53fd2f30aa` (sunlight's I21, BREAKAGES 74 - Scarab's two proposals after C7: `IWorld::SetLayer` by id and by name, changing that layer in every map of a world; and `IView::SetWorld( default world )` on the default view returning true) - with the layer setters given an optional world; see below | DONE |
+| P16 | Re-pin to `b5a6ca121634b43151b6100506e41d2eb1545145` (sunlight's I22, asked by Scarab for C8: the same real folder or archive mountable at several mount points, each in its own place in the search order; `IFileSystem::Unmount( realPath, mountPoint )`) - C8's mounts need both | DONE |
+| P17 | Re-pin to `fa7575a0db7127230946bd44199de1d38a1172f1` (sunlight's I23, asked by Scarab for C9: an image layer with the Tiled custom property `screen_space` drawn in screen space; BREAKAGES 34 corrected, 76) | DONE |
+| P18 | Re-pin to `3a2f1c55ad1cde8915464668a1794b9a80461229` (sunlight's I24, asked by Scarab for C10: image layers drawn at their picture's real size; new pure virtual `IEngine::GetTextureSize`, BREAKAGES 77) | DONE |
+| P19 | Re-pin to `62985ef5ebe1262c07e7477df950bceeec8baa05` (sunlight's I25 + I25b, from Caravellius' five macOS gamepad findings: pads read through SDL2 on a thread of their own, raylib/GLFW as the fallback and as build switch `DEFAULT_GAMEPAD_ENGINE` 2; `IInputHandler::Update`, called by `TileMapRenderer::Run`; sunlight BREAKAGES 78). No Scarab code change; the input reference says pads appear when set up (2 to 4 s for some Bluetooth pads), names come from SDL's database and face buttons are named by position. Checked by the owner with real pads (an Xbox One S and a PS4 controller at once): `samples/input` (names, buttons, sticks, hot-plug keeping the id) and `samples/actions` (rebinding jump to a pad button, rumble) | DONE |
+
+**P0 (DONE).** This document and [`docs/history/caravellius_breakages_11_2026.md`](caravellius_breakages_11_2026.md)
+(this plan's own peer-impact log, mirroring sunlight's `BREAKAGES.md` one level down the
+chain), reviewed and approved by the owner before the `master_plan` branch held anything
+else.
+
+**P1 (DONE).** `GIT_TAG v${SCARAB_SUNLIGHT_VERSION}` (`CMakeLists.txt`) and
+`"sunlight v" SCARAB_SUNLIGHT_VERSION` (`main.cpp`'s `--version` string) both hardcoded a
+literal `v` in front of the variable, so it couldn't hold a commit hash as-is - confirmed by
+reading both call sites, not assumed. `SCARAB_SUNLIGHT_VERSION` is now two variables,
+`SCARAB_SUNLIGHT_REF` (what `GIT_TAG` fetches) and `SCARAB_SUNLIGHT_DISPLAY_VERSION` (what
+`--version` prints after `"sunlight "`), each used **verbatim** at its one call site - no
+`v` hardcoded anywhere else, so either variable can hold any ref shape (a tag, a bare commit
+hash, a `branch@shorthash`) without the other needing to change. **Decided while building
+it**, not exactly as first scoped: rather than conflating the mechanism change with the
+actual hash pin (P2), P1 keeps both variables pointing at today's real release
+(`SCARAB_SUNLIGHT_REF "v0.38.0"`, `SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.38.0"`) and proves the
+refactor is behavior-neutral; P2 is where they actually flip to the commit hash, together
+with the compile fixes that requires. `CLAUDE.md`'s own Build-section description of this
+mechanism is updated in the same change (agreed with the owner - the doc describes the exact
+mechanism being changed, not a general sweep for Phase T).
+- Test items: `scarab --version` is byte-for-byte identical to before
+  (`scarab v0.1.25 (sunlight v0.38.0, Lua 5.4.7)`), confirmed by a direct string comparison,
+  not eyeballed; `cmake -B build -S .` configures clean against `v0.38.0` through the new
+  `GIT_TAG ${SCARAB_SUNLIGHT_REF}`; a headless sample (`samples/hello-world`) still runs.
+- `--version`'s format for the commit-pinned build (P2's own concern, decided here since the
+  mechanism now exists to support it): `scarab v<version> (sunlight <branch>@<short hash>,
+  <Lua release>)`, eg. `scarab v0.1.25 (sunlight feat/master_plan@772851c, Lua 5.4.7)` -
+  matches the handoff brief's own suggested shape.
+
+**P2 (DONE).** `stDimension2D`/`stSize2D`/`stCoordinate2D` move from `SunLight::TileMap` to
+`SunLight::Base`, no aliases kept (BREAKAGES entry 14) - **12 sites, not the 11 a first grep
+found**: `main.cpp`, `src/lua/luaspriteapi.cpp`, `src/lua/luarendererapi.cpp`,
+`src/lua/luaviewapi.cpp`, `src/lua/luacameraapi.cpp` each had the type fully qualified
+(`SunLight :: TileMap :: stDimension2D` etc., 11 sites, renamed by a scripted substitution);
+`src/lua/luatilemapapi.cpp` had a 12th, unqualified `stCoordinate2D` relying on its own
+`using namespace SunLight :: TileMap;` - **found only by actually grepping that one file
+again after the others compiled clean**, not assumed from BREAKAGES' own count, and fixed by
+qualifying that one site explicitly (`SunLight :: Base :: stCoordinate2D`) rather than adding
+a second `using namespace` line. `BaseCommand`'s new header (entry 5): no direct include of
+the old command-types path anywhere in Scarab, confirmed by grep - nothing to do.
+- **Found while building it, not in P2's original scope**: `src/lua/luarendererapi.cpp`
+  reads and writes `config.bUseDefaultKeyHandler` directly, a flat compile error of its own
+  once `RendererConfig` loses that field (BREAKAGES entry 26) - P2 could not compile without
+  resolving this too. **Owner's decision (2026-10-21): implement D1 in full here**, rather
+  than a minimal no-op stash, since D1's design was already settled and small. See D1 below
+  for what was built; it shipped in this same PR.
+- Test items: `cmake -B build -S .` configures and builds clean against the real, network-
+  fetched commit (not just the local `../sunlight` checkout used for fast iteration) -
+  confirmed separately, `git -C build/_deps/sunlight-src rev-parse HEAD` reads exactly
+  `772851ce7120c0d4f25dbf72c8d15f7e54bcd1d5`; `scarab --version` prints
+  `scarab v0.1.25 (sunlight feat/master_plan@772851c, Lua 5.4.7)`, matching P1's own decided
+  format exactly.
+
+**P3 (DONE, folded into the same PR as P2 - its own scope was already satisfied by P2's
+verification).** `scripts/renderer_api_smoke.py` (all 9 scenarios, including `create`'s own
+`use_default_key_handler` option round-trip), `scripts/tileset_archive_smoke.py`, the
+headless smoke project, and all 15 samples headless - all green against the real pin.
+Additionally (not in P3's original scope, but the natural check for what P2 found): a
+scratch headless script confirmed `renderer_create{ use_default_key_handler = true }`
+creates the renderer without crashing *before* any map is loaded and that
+`renderer_get_config`'s readback matches, then `tilemap_load_map` still succeeds afterward -
+closing D1's own open question (`Install` is safe to call before a map is loaded). Not
+checked: the bindings' actual functional effect (do the arrow keys really pan the camera) -
+nothing exercises real input headless, and this was never checked in a real window even
+before this change (`use_default_key_handler=true` was never used by any Scarab sample,
+confirmed earlier). Available as a quick real-window check if wanted; not blocking.
+
+**P4 (DONE, 2026-10-22, added during V1).** Found by the owner in V1's real-window
+check of `samples/camera`: `test.tmx`'s semi-transparent layers (`background_clouds` 0.69,
+`background` 0.65) drew darker than in Tiled. A sunlight bug, present in v0.38.0 too. sunlight
+draws the frame into a render target and then blends it over a window cleared to black, and
+raylib's `BLEND_ALPHA` blended the target's own alpha channel as well (one 0.69 layer over the
+opaque sky left it at 0.79; both layers at about 0.70). Reported to the sunlight session on the
+owner's request. Fixed there on `feat/master_plan` only (sunlight #214, "I1"): in
+`RaylibEngine::BeginRenderTarget`, the alpha channel now blends with (ONE,
+ONE_MINUS_SRC_ALPHA), and colour blending is unchanged. sunlight measured a pixel on the GPU at
+167 173 175 before and 242 250 253 after, which matches Tiled. The hash is recorded in sunlight's
+`doc/SCARAB_HANDOFF.md`, section 9 "sunlight commits to pin". sunlight BREAKAGES entry 50:
+opaque drawing is unchanged, and everything semi-transparent now comes out lighter, as
+authored.
+- Pin: `SCARAB_SUNLIGHT_REF` `a63fec6811ba28fb46a94015d05b852393016692`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@a63fec6`. Verified in the local sunlight
+  checkout: the commit is on `origin/feat/master_plan` and descends directly from `772851c`
+  (2 commits, one `src` file changed). No Scarab code change was needed.
+- Verified with a real fetch (not `FETCHCONTENT_SOURCE_DIR_SUNLIGHT`): the fetched checkout is
+  exactly `a63fec6`, and `scarab --version` prints
+  `scarab v0.1.25 (sunlight feat/master_plan@a63fec6, Lua 5.4.7)`. The camera boundary,
+  renderer API, tileset archive (plain + encrypted) and headless smoke tests (incl. the
+  frame-budget exit 3) pass, the Lua API docs generator passes, and all 15 samples run headless.
+- `docs/history/caravellius_breakages_11_2026.md` entry 2.
+- The real check is by eye only, since nothing headless can see colour. The owner ran
+  `samples/camera` in a real window (screenshot, 2026-10-22 02:50): `background_clouds` and
+  `background` now show light blue and white like Tiled, not grey.
+
+**P5 (DONE, 2026-10-22).** sunlight added blend modes on `feat/master_plan` (sunlight #216,
+"I2", on top of I1), at the owner's request, and sent the new pin. The owner asked for Scarab's
+Lua side as a new item, B1 (below). This item is only the re-pin. In sunlight:
+- Four modes, `SunLight::Base::BlendMode`: `BLEND_MODE_NORMAL` (the default), `_ADD`,
+  `_MULTIPLY` and `_SUBTRACT`.
+- A scoped mode for a game's own drawing, `IDrawSurface::BeginBlendMode`/`EndBlendMode`.
+  The calls do not nest.
+- A per-sprite mode, `Sprite::SetBlendMode`/`ClearBlendMode`/`HasBlendMode`/`GetBlendMode`.
+- Every frame starts in normal and the screen fade always runs in normal. A frame that uses no
+  mode makes no blend call at all.
+- sunlight BREAKAGES entry 51: only classes that implement `IEngine`/`IDrawSurface` must
+  change.
+- Pin: `SCARAB_SUNLIGHT_REF` `bfce5983370fa0661c18701164a10f7e18f1e7a1`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@bfce598`. Verified in the local sunlight
+  checkout: it is on `origin/feat/master_plan` and descends directly from `a63fec6` (2 commits,
+  11 `src` files changed).
+- No Scarab code change. Scarab implements neither interface, and no file in `src/`
+  includes `raylib.h` or names `BlendMode`, so raylib's own global `BlendMode` (the same trap as
+  `KeyboardKey`) cannot bite yet. B1 must write `SunLight :: Base :: BlendMode` in full.
+- Verified with a real fetch: the fetched checkout is exactly `bfce598`, the build has zero
+  warnings, and `--version` prints
+  `scarab v0.1.25 (sunlight feat/master_plan@bfce598, Lua 5.4.7)`. The camera boundary,
+  renderer API, tileset archive (plain + encrypted) and headless smoke tests (incl. exit 3 on
+  the frame budget) pass, the Lua API docs generator passes, and all 15 samples run headless.
+- No CARAVELLIUS_BREAKAGES entry: nothing changes for a game that uses no blend mode, and
+  Caravellius cannot use one before B1 exists. No real-window check either, for the same
+  reason.
+
+**P6 (DONE, 2026-10-24).** Re-pin to sunlight's I5, the fix for the CollisionManager bug
+found in D3 and reported on the owner's request (sunlight PR #223, BREAKAGES entry 54). Checking
+the report, sunlight found two more of the same class and fixed all four:
+`AddColliderToColliderRule`'s duplicate search indexed the layer array with both ids before any
+check; its bounds check tested the first id twice (`(1, 300)` and `(1, -1)` were accepted, and
+the next `Update()` crashed); `Clear()` destroyed every layer's list, so the next add/remove/update
+dereferenced null; `RemoveAll()`'s default `-1` ("every layer") cleared nothing. Every method
+taking a layer id now checks `0 <= id < MAX_COLLIDER_LAYERS` first. Nothing to do for Scarab or
+Caravellius: valid ids behave as before, D3 already refuses ids outside `0..254`, and neither
+calls `Clear()` or `RemoveAll()`. Scarab keeps its own range checks (the owner's question,
+answered 2026-10-24): they give the precise `"argument 'x' must be between 0 and 254"` instead of
+a plain refusal that would read like "already declared", and use sunlight's public
+`MAX_COLLIDER_LAYERS`; only their comments changed.
+- `SCARAB_SUNLIGHT_REF` `fa953f38cb22508247b528c8234ad2bb0f4293e8`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@fa953f3`. Verified: on
+  `origin/feat/master_plan`, two commits after `f651acc` (the I4 pin record, docs only, and the
+  fix; 2 files in `src/collision/`, no API change).
+- Checks: real fetch exact (`build/_deps/sunlight-src` at `fa953f3`), clean build, `--version`
+  shows `feat/master_plan@fa953f3`; every smoke test (error reporting, renderer API, camera
+  boundary, blend API, tilemap layer, input constants, font API, headless incl. the budget run,
+  tileset archive plain and encrypted), the docs generator and all 18 samples pass; Caravellius'
+  acceptance PASS and its reference state fingerprint (`hash=33897632`).
+- Local note: the local build's content key was lost when `build/` was deleted for the clean
+  fetch; the owner chose to reuse Caravellius' local key for Scarab's local build (CI uses its own
+  secret, unaffected).
+
+**P7 (DONE, 2026-10-30).** sunlight I9 (PR #231, BREAKAGES 58, BREAKING), found by sunlight
+after V12 and sent on its owner's go-ahead: `stLayer::nOpacity` (an int 0..255) is replaced by
+`fOpacity` (a float 0..1, as Tiled, libtmx and raylib store it). With the int, an unchanged
+`GetLayer` -> `SetLayer` moved an authored 0.5 to 128/255 = 0.502, and Scarab's `tilemap_set_layer`
+does that round trip on every call, even one that only changes visibility. `GetLayer` now reads the
+authored value exactly; `SetLayer` clamps to 0..1 and writes the opacity and parallax only when they
+changed. `SetScreenFade` clamps to 0..1 (Scarab's `screen_fade` already refuses anything else, D3).
+- **Decision (the owner): option (a)** - Lua's layer opacity moves to a number 0..1 too, in
+  `tilemap_get_layer`/`tilemap_set_layer` (and `_by_name`), rather than keeping 0..255 with a
+  conversion that would bring the 0.502 drift back. Strict 0..1 on write (outside it, or not a
+  number: `nil, "message"`, the layer unchanged), like `screen_fade` and `sound_set_volume`. It
+  reverses the unit V3 chose; V3's exactness is kept, now without rounding.
+- **Reads the shortest decimal:** sunlight's float holds an authored 0.69 as 0.6899999761...; Scarab
+  pushes the shortest decimal that converts back to the same float, so a script reads `0.69` as Tiled
+  shows it and writing it back gives the identical float (mutation-checked: pushing the raw float makes
+  the test read 0.68999999761581).
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `8842ccc831a0dc7d10f85a93fc9f978f63015b09`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@8842ccc`; verified on `origin/feat/master_plan`,
+  two commits after `4274ecb` (the I8 pin record and the fix); reconfigured in place.
+- **Tests:** `scripts/tilemap_layer_smoke` (V3's) rewritten for 0..1: the authored 0.69/0.65/1 read
+  exactly, three write-backs in a row change nothing, 0/0.25/0.3/0.5/0.65/0.69/1 round-trip exactly by
+  id and by name (0.5 is the value the int moved), 1.5/-0.1/255/"0.5" refused with the layer unchanged,
+  the other fields round-trip with it. `error_reporting_smoke`: an opacity of 255 refused.
+- **Samples:** `samples/tilemap`'s Up/Down now step the clouds layer by 0.125 (exact in binary) between
+  0 and 1, and the HUD shows "of 1" (its HUD moved to Caravellius 8x8 on three short lines, at the
+  owner's request: the built-in font was hard to read); `samples/shapes`' `G` steps the group through
+  1 / 0.25 / 0.6. The owner's window check (2026-10-30): readable HUD, the clouds layer at exactly 0.25.
+- **Docs:** `tilemap_get_layer` / `tilemap_set_layer` (`@luadoc`, example now `0.5`).
+- **Caravellius:** its `core/presentation.lua` reads a layer's opacity and passes it straight back to
+  hide the layer, so it keeps working (acceptance and fingerprint unchanged). Breakage entry 17, and
+  entry 4 (V3's 0..255) now points at it.
+
+**P8 (DONE, 2026-10-30).** sunlight I10 (PR #233, BREAKAGES 59, nothing breaks), sent by sunlight on
+its owner's go-ahead: `Sprite::SetOpacity`/`GetOpacity` (0..1, clamped, NaN ignored - the unit of a
+layer's `fOpacity`) and `SetTint`/`GetTint` (opaque white = none; RGB multiplies into the frame, alpha
+kept but unused). `Draw()` applies both to the frame it draws, for that draw only, so a canvas shared
+by two sprites is safe; `Unload()` keeps them; a sprite does not take its layer's opacity or tint.
+`Shape::MultiplyTint` moved to `SunLight::Base::MultiplyTint` (Scarab never used it). sunlight's code
+style now forward-declares only to break an include cycle; Scarab's `src/` has no forward declaration,
+so nothing to change.
+- **Lua (covered fully, the owner's rule):** `sprite_set_opacity(h, 0..1)` / `sprite_get_opacity(h)`
+  (strict on write - outside 0..1, NaN or not a number: `nil, "message"`, unchanged; read back as the
+  shortest decimal, like P7's layer opacity) and `sprite_set_tint(h, r, g, b[, a])` /
+  `sprite_get_tint(h) -> r, g, b, a` (0..255, `a` optional = 255, the shape of
+  `tilemap_set_layer_tint`). `ShortestDecimal` moved from `luatilemapapi.cpp` to `LuaEngineUtil` so
+  both opacities share it.
+- **Recycled slots:** `SpritePool::Release` resets opacity to 1 and tint to white (`__SPRITE_OPAQUE`,
+  `__SPRITE_NO_TINT`), like the world-space flag and blend mode, since sunlight keeps them across
+  `Unload()`.
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `ef1499d811e87c520a3669c9754cf4e6893ff4a8`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@ef1499d`; verified in `../sunlight`, two commits
+  after `8842ccc` (the I9 pin record and I10); reconfigured in place.
+- **Tests:** new `scripts/sprite_tint_smoke` (ci.yml, all 4 platforms): a fresh sprite's defaults,
+  0/0.1/0.25/0.3/0.5/0.69/0.75/1 round-trip exactly, tint with and without alpha, write-backs, every
+  rejection (1.5, 255, -0.1, NaN, "0.5", missing; channels 256/-1/3.5/missing, alpha 300/"x") leaving
+  the values as they were, bad/string/released handles, a recycled slot starting opaque and untinted,
+  no renderer created by any of it, two sprites on the same texture keeping their own values,
+  reconfiguring the texture and switching the sequence keeping them, and 5 frames of drawing.
+  `error_reporting_smoke` gained one check per kind of failure. Proven: fails on the published v0.1.25
+  (`sprite_get_opacity` is nil); mutation-checked twice (without the `Release` reset the recycled sprite
+  kept 0.5 and 1,2,3,4; pushing the raw float read `0.30000001192093`).
+- **Sample:** `samples/sprite` - `O` cycles Sunny's opacity 1 / 0.5 / 0.25 / 0, `T` its tint none / red
+  hit flash / blue team; a second Sunny on the same texture stays untouched; HUD on Caravellius 8x8
+  plates (the owner: the built-in font was unreadable). The owner's window check (2026-10-30): faded
+  at 0.25 with the grass showing through, red and blue-team tints, the twin unchanged.
+- **Docs:** new "Opacity and tint" group in the sprite reference.
+- **Caravellius:** calls none of them; acceptance PASS, fingerprint `hash=33897632`. Breakage entry 18
+  (informational).
+
+**P9 (DONE, 2026-11-01).** sunlight I12 (PR #239), grown out of Scarab's C1 planning: sunlight's
+`ActionMap::Load` read with a raw `std::ifstream`, so bindings in a `.zip`/encrypted pack couldn't load
+(reported 2026-10-31). The owner made it broader in sunlight: **path schemes** on every
+`IFileSystem` read, write and check - none, `vpath://` or `virtualpath://` for a virtual path (mounts,
+archives, the read filter; the default, so every existing path means what it did), `hpath://` or
+`hostpath://` for a real OS path, any other `<letters>://` refused; `WriteFile` + `SetWriteDirectory`
+(a virtual write goes into a real folder mounted ahead of every mount) + `SetWriteFilter`;
+`SetHostPathEnabled`; `ActionMap::Load`/`Save` through it. BREAKAGES 61 breaks only an `IFileSystem`
+implementer and an `ActionMap` caller passing a plain OS path - Scarab is neither, so no code changed.
+- **A bug found by Scarab's test, fixed by sunlight before the pin:** on the first pin, `6a039ec`, a
+  MAP could not be loaded through a scheme - `ExternalResources::JoinVirtualPath` collapsed the `://`
+  of `vpath://` (and `hpath:///abs`) into `:/`, so every path inside the map (external `.tsx`/`.tx`,
+  and through `TextureLoaderCallback` every tileset image) lost its scheme: `test.tmx` failed with
+  "cannot open extern tileset 'vpath://...'", and `shapes/rotation.tmx` (no external tileset) failed
+  silently. Reported with the owner's OK; sunlight fixed it (PR #241, `9789ac5`: the path helpers split
+  the scheme off with `IFileSystem::SplitPath`, work on the rest, put it back; five new tests), and
+  Scarab took the fix - `6a039ec` was never committed here.
+- **New `scripts/path_scheme_smoke.py`** (+ `scripts/path_scheme_smoke/`; ci.yml, all 4 platforms; and
+  `asan_run.py` picks it up): a plain path, `vpath://`, `virtualpath://`, `hpath://` and `hostpath://`
+  each load the same file through Scarab's own loaders (`load_json`, `dofile`) and a sunlight one
+  (`tilemap_load_map` on `test.tmx`, external tilesets included); `foo://` is refused. The driver passes
+  the repo's absolute path for the host paths. **Shown failing on both old pins:** on `6a039ec` the two
+  map cases; on the published v0.1.25 (sunlight v0.38.0) every scheme case (11 failures).
+- **Lua-visible change:** a path that looks like `<letters>://...` is now a scheme - an unknown one is
+  refused (`nil, "cannot open ..."` / a `dofile` error) instead of being taken as a file name, and
+  `hpath://` reaches a real OS file through every loader. Host paths stay ON: Scarab opens Lua's
+  standard libraries, so `io.open` already reaches any OS file - turning `hpath://` off would not make
+  a sandbox (that would be its own Phase C item). Caravellius uses no such paths: no breakage entry.
+- **One Scarab fix, found while checking the docs:** a project file's `main_script` with a scheme was
+  glued onto the project file's folder (`scripts/x/vpath://main.lua`), so the game failed to start.
+  `EngineHost::ResolveEntryScript` now uses a scheme-carrying `main_script` as it stands (`HasPathScheme`,
+  both the `.json` and the `.zip` branch) - sunlight's own rule for a path inside a map. The smoke test
+  runs a second time from `scheme_project.json` (`"main_script": "vpath://..."`); shown failing without
+  the fix, and the `.zip` branch checked by hand with a scheme `project.json` in an archive. The
+  COMMAND-LINE entry point stays an OS path (CLI11 checks it exists; `scarab vpath://...` exits 105).
+- **Then sunlight I13 (PR #243, `4cb7262`, BREAKAGES 62), at Scarab's request (owner-approved):** that fix
+  showed Scarab kept its own copy of sunlight's path rules (`GetVirtualParentPath`/`JoinVirtualPath` in
+  `enginehost.cpp`, not scheme-aware). Asked sunlight to make its scheme-aware helpers public rather than
+  have Scarab include the map loader's internals; sunlight's owner placed them in a new stateless
+  **`FilePath`** (`SplitPath`, `ParentPath` - trailing '/' kept -, `JoinPath`, `ToVirtualPath`), and made
+  `IFileSystem` a pure interface again, with the shared behaviour in a new `BaseFileSystem`. For Scarab:
+  `IFileSystem::ToVirtualPath` -> `FilePath::ToVirtualPath` (`main.cpp`, `luaengine.cpp`), and
+  `EngineHost`'s three helpers (and the `HasPathScheme` bridge) are gone -
+  `ResolveEntryScript`'s `.json` and `.zip` branches both go through a new `EngineHost::ResolveMainScript`
+  = `FilePath::JoinPath( FilePath::ParentPath( project ), main_script )`, and the in-archive `--entry` is
+  `JoinPath( APP_DIR + "/", entry )` (a leading '/' stays inside the folder, as sunlight documents - no more
+  stripping). `JoinPath` also turns backslashes into '/', which replaces the `generic_string()` Windows
+  fix, and gives "" for a ".." above the root, now reported ("main_script climbs above the root"). Both
+  pins were kept on one local branch and shipped as ONE PR (the owner's choice), so `9789ac5` was never
+  merged on its own. Checked by hand: default `project.json`, `--entry /main.lua`, `--entry main.lua`,
+  `--entry sub/game.json` with `../main.lua`, a scheme `main_script` in a `.zip`, and the error cases.
+- **Not used yet:** writing (`WriteFile`/`SetWriteDirectory`) - C1b decides the game's write directory.
+- **Proof:** clean build, 26/26 unit tests (also under ASan), 15 smoke tests, the headless smoke test,
+  19 samples headless, all 36 `asan_run.py` runs, the docs generator, style check 0; Caravellius'
+  acceptance PASS and fingerprint `hash=33897632`.
+
+**P10 (DONE, 2026-11-04).** sunlight I14 (PR #245, BREAKAGES 63), asked for by Scarab while planning C1c
+(owner-approved). Owner's decision: both the safe write and the delete belong in sunlight's `IFileSystem`,
+next to `WriteFile`, under the same path rules.
+- **What sunlight changed:**
+  - **`WriteFile` is atomic and durable on both paths** (virtual and `hpath://`). The bytes, after the write
+    filter, go to `<target>.tmp` in the same folder. They are written, flushed, synced to the disk (`fsync`
+    on POSIX, `_commit` on Windows) and closed, then renamed over the target. Any failure removes that temp
+    file, leaves the target byte-identical and returns false. A virtual write goes to the write directory's
+    real folder, and PhysFS's own path rules keep it inside that folder. `ActionMap::Save` is atomic too.
+  - **New `bool IFileSystem::RemoveFile( path )`.** It uses the same scheme handling as `WriteFile`.
+    - A virtual path removes a file inside the write directory only, never one inside a mounted archive or
+      loose folder. Because the write directory is mounted first, removing a save makes a shipped file with
+      the same name readable again.
+    - `hpath://` works only while host paths are enabled.
+    - It removes files only, never a folder.
+    - A missing file returns false.
+- **Scarab impact: none.** No Scarab class implements `IFileSystem`, so the new method costs nothing. The
+  `FilePath` functions Scarab uses changed only in comments. No Caravellius breakage entry.
+- **For C1c:**
+  - A process killed mid-write can leave `<name>.tmp` beside a save, and the next write of that name
+    replaces it. The save API should hide `*.tmp` from listings and refuse save names ending in `.tmp`.
+  - `IFileSystem::Exists` on a virtual path is also true for a FOLDER, so "is there a save" must check for
+    a file, not use `Exists` alone.
+- **Proof:**
+  - a clean reconfigure, with `--version` printing `feat/master_plan@b778188`;
+  - 32/32 unit tests, also under ASan;
+  - 17 smoke tests, plus the encrypted runs of `tileset_archive` and `action_map`;
+  - the headless smoke test;
+  - all 39 `asan_run.py` runs, both on the normal build and on the ASan build;
+  - the docs generator, and a style check with 0 findings;
+  - Caravellius' acceptance PASS and fingerprint `hash=33897632` (unchanged).
+  - Every run used a fake home: no file was written outside temp folders.
+
+## Phase D: design items
+
+| # | Item | Status |
+|---|------|--------|
+| D1 | `use_default_key_handler` (BREAKAGES entry 26) - keep the Lua shape, back it with `DefaultControllerBindings::Install` | DONE |
+| D2 | `renderer_create{ preferred_zoom }` - a new, optional option for the zoom `zoom_reset` returns to (Scarab only, no sunlight change) | DONE |
+| D3 | Consistent error reporting: every Lua function that can fail returns `nil, "message"` instead of silently ignoring bad input | DONE |
+
+**D1 (DONE, 2026-10-21 - implemented inside P2, not as its own separate PR, since P2 could
+not compile without it; see P2's own write-up above).** `RendererConfig::bUseDefaultKeyHandler`
+and the classic 5-argument `TileMapRenderer` constructor are both removed in sunlight. Option
+B, as agreed: `renderer_create`'s/`renderer_get_config`'s `use_default_key_handler` keeps its
+exact name and meaning. Implementation:
+- `Scarab::Engine::IRendererProvider::CreateRenderer` gains a second parameter,
+  `bool bUseDefaultKeyHandler` - a plain bool, not a new method naming
+  `DefaultControllerBindings` anywhere in this interface, so `IRendererProvider` stays exactly
+  as Lua-agnostic *and* sunlight-input-agnostic as its own doc comment already claimed (it
+  names no sunlight input type, only one bool). A new `GetUseDefaultKeyHandler()` getter
+  mirrors `GetEffectiveConfig()`'s own "read back what creation was actually given" shape, for
+  `renderer_get_config` to use.
+- `Scarab::Host::RendererProvider` (the one, sole implementer) stores what it was given in a
+  new `m_bUseDefaultKeyHandler` member, and calls
+  `SunLight :: Input :: DefaultControllerBindings :: Install( *m_pRenderer, m_pRenderer -> GetControllerManager() )`
+  right after `Start()` inside `Create()`, exactly as planned - confirmed only one implementer
+  of `IRendererProvider` and one caller of `CreateRenderer` exist, so no other code needed
+  updating for the interface change.
+- `src/lua/luarendererapi.cpp`: `ParseOptions` gains a matching output parameter (no longer
+  writes into `RendererConfig` at all, since the field is gone there); `RendererCreate`
+  threads the parsed bool through to `CreateRenderer`; `RendererGetConfig` reads
+  `pProvider -> GetUseDefaultKeyHandler()` instead of a `RendererConfig` field.
+- `main.cpp`'s `MakeDefaultRendererConfig` no longer sets a now-nonexistent field (the
+  default renderer's own call site, `RendererProvider::GetOrCreateDefault`, never passes
+  `bUseDefaultKeyHandler=true` to `Create()`, so this is still a no-op behaviourally, exactly
+  as before).
+- The open question from this item's own design ("confirm `Install` is safe to call before
+  any map is loaded") is answered: yes, confirmed with a scratch headless script - see P3's
+  own write-up.
+
+**D2 (DONE, 2026-10-22, reviewed and approved by the owner - added 2026-10-22 during V1, done right after V1 by the owner's decision, out of
+phase order).** Found by the owner in V1's real-window check of `samples/camera`: Home reset
+the zoom to `1.0`, not to the `3.8125` the sample starts at. Not a bug. `zoom_reset` returns
+to the view's *preferred* zoom, which is a separate setting from the current zoom (documented
+on `view_set_zoom`/`view_zoom_reset`), and renderer creation sets only the current zoom, so the
+preferred one stays at sunlight's own default, `1.0`. `samples/camera` itself was fixed inside
+V1 with `view_set_preferred_zoom(0, viewport_get_zoom_factor())` (option (c), the owner's
+choice). Option (a), making the creation zoom the preferred zoom too, was rejected: it would
+silently break that documented contract. D2 makes the preferred zoom something a game can set
+at creation instead:
+- Lua: `renderer_create{ preferred_zoom = <factor> }`, strict like every other option,
+  validated exactly like `zoom` (`LuaRendererApi::ValidateZoomFactor`). Left out, the
+  behavior is today's (preferred zoom `1.0`), so no Caravellius breakage.
+  `renderer_get_config` returns `preferred_zoom` live (`nPreferredZoomPos`).
+- C++: sunlight's `RendererConfig` has no preferred-zoom field, so the value is applied right
+  after creation with sunlight's existing `Viewport::SetPreferredZoom`, threaded through
+  `IRendererProvider::CreateRenderer`/`RendererProvider::Create` the same way D1 threads
+  `use_default_key_handler` - grouped with it into one small Scarab-side struct rather than a
+  further parameter. A real `RendererConfig::nPreferredZoomPos` in sunlight is possible later
+  (the owner's call); the Lua shape would not change.
+- Tests: `scripts/renderer_api_smoke.py` - `defaults` (`preferred_zoom == 1.0`), `create` (a
+  non-default value read back, and `zoom_reset()` lands on it), `errors` (a bad factor, a
+  wrong type). Docs: the `renderer_create` options table and `renderer_get_config`'s doc.
+
+**Built (2026-10-22):**
+- `Scarab::Engine::stRendererCreateExtras` (`src/engine/irendererprovider.h`) holds
+  `bUseDefaultKeyHandler` (D1) and `std::optional<unsigned> nPreferredZoomPos`.
+  `IRendererProvider::CreateRenderer` and `RendererProvider::Create` take it in place of D1's
+  bool. `Create` applies the preferred zoom right after `Start()` with
+  `GetViewport().SetPreferredZoom`. The lazy default renderer passes no extras, so it keeps
+  sunlight's `1.0`.
+- `renderer_create{ preferred_zoom }` is parsed like `zoom` (`ValidateZoomFactor`, errors
+  prefixed `option 'preferred_zoom': `). `renderer_get_config` returns `preferred_zoom` live
+  from `nPreferredZoomPos`. `FactorOfPosition` moved from `luaviewapi.cpp` to
+  `LuaRendererApi`, so both files share it.
+- Found while building it: sunlight keeps the upper zoom limit as an exclusive bound internally
+  (`SetMaxZoom` stores `max + 1`), so `SetPreferredZoom( ZOOM_POS_MAX )` is accepted. The new
+  `preferredzoom` scenario pins it with `ZOOM_FACTOR_MAX`.
+- Tests (`scripts/renderer_api_smoke.py`): `defaults` (`preferred_zoom == 1.0`), `create`
+  (`2.5`, distinct from `zoom = 2.0625`), `errors` (a string, `3.8` with the nearest valid
+  factor named, `20` outside the scale), `lazy` (the implicit default renderer keeps `1.0`), and a
+  new `preferredzoom` scenario (`zoom_reset` lands on `preferred_zoom`, `ZOOM_FACTOR_MAX` is
+  accepted, and a later `view_set_preferred_zoom` shows up live in `renderer_get_config` and is
+  followed by `zoom_reset`). Mutation check: with the `SetPreferredZoom` call removed, `create`
+  and `preferredzoom` fail with the exact reasons, and they pass again once it is restored.
+- All other checks pass: camera boundary, tileset archive (plain + encrypted), headless smoke,
+  the Lua API docs generator (the renderer page shows the new row, section and example), and
+  all 15 samples headless.
+- No CARAVELLIUS_BREAKAGES entry: the option is opt-in, and leaving it out keeps today's
+  behavior exactly. No real-window check is needed: nothing is drawn differently, and the
+  headless scenarios cover all of it.
+
+**D3 (DONE, added 2026-10-23 at the owner's request during B1; pulled forward by the owner
+on 2026-10-24, right after V6, then back to the natural order with V7).**
+Consistent error reporting. Only the newer `renderer_*`/`view_*` functions (and B1's) report a
+failure as `nil, "message"`. The other 116 registered Lua functions across 14 `src/lua/*api.cpp`
+files report nothing. For example, 13 `sprite_*` functions silently do nothing with a bad
+handle, and some getters return a "safe" value instead (`sprite_get_world_space` returns
+`false`). Scope:
+- Audit each of those functions and classify what bad input means for it: an invalid sprite
+  handle, an unknown sound/layer/timer id, a wrong argument type, or nothing that can fail.
+- Every function that can fail returns `nil, "message"` (using `LuaEngineUtil::PushError` from
+  B1), never silently, and never as a Lua error.
+- Extend the headless smoke tests, prove each new error path by mutation, and update every
+  `@luadoc`.
+- A CARAVELLIUS_BREAKAGES entry. It's mostly harmless, since `nil, msg` never raises, but a
+  script that reads a getter's old "safe" value sees `nil` instead.
+
+**D3 decisions (the owner, 2026-10-24):** (1) setters that returned nothing return `true` or
+`nil, "message"`, like `view_*`; (2) functions that returned `false` (or `0`) return
+`nil, "message"`; (3) a wrong argument type is `nil, "argument 'x' must be ..."`, with shared
+helpers in `LuaEngineUtil`; (4) a fractional number where an integer is expected is REJECTED
+(`3.0` accepted), not rounded down; (5) exceptions: `dofile` keeps raising like standard Lua, and
+functions with nothing to report (`input_is_*`, `app_get_*`, `screen_get_*`) only gain the
+argument checks; (6) one PR, reviewed "by average".
+
+**D3 as built:**
+- **Shared readers** in `LuaEngineUtil`: `ReadIntegerArg`, `ReadIntArg`, `ReadIntegerArgInRange`,
+  `ReadOptionalIntegerArg`, `ReadNumberArg`, `ReadNumberArgInRange`, `ReadBooleanArg`,
+  `ReadOptionalBooleanArg`, `ReadStringArg`, `CheckFunctionArg`, `ReadConstantArg` (checked
+  against the same `stNamedConstant` table that registers the group's globals, so a constant group
+  can't drift from its check), plus `FormatNumber`. `luaviewapi.cpp`, `luarendererapi.cpp` and
+  `luatextapi.cpp` dropped their private copies of `PushError`/`PushTrue`/`FormatNumber`/
+  `ReadIntegerArg`/`ReadBooleanArg`/`ReadOptionalBoolean` for them. Messages start
+  `"argument '<name>'"`. Arguments are checked before the first `GetTileMap`/`GetDrawSurface`/
+  `EnsureRenderer`, so a refused call never creates the default renderer (tested).
+- **The 3 old getters** (`GetSoundManager`, `GetSpritePool`, `GetScriptProcessor`) now pop what
+  they push.
+- **Every module converted** (about 130 functions in 13 files): sprite and pool, the `sp_*`
+  queue, sound and songs, tilemap, camera and zoom, collision, app, input, timers, json, crypto,
+  pack, and `draw_text`/`measure_text`. Notable rules: a queued command's parameter is `0..65535`
+  (it is kept in 16 bits and used to wrap silently); `sprite_acquire` fails with `nil, "message"`
+  for an unknown or full pool (it returned `0`); a sound id is tracked as loaded on the Scarab side
+  (`SoundManager` can't be asked), so an id never loaded is `"sound N is not loaded"` and a second
+  `sound_load` of an id is refused (sunlight silently kept the first sound); `screen_fade`,
+  `sound_set_volume` and `sprite_set_collision_inset` take `0..1`; colours `0..255`; layer ids for
+  sprites and collision rules `0..254` (sunlight's fixed `MAX_COLLIDER_LAYERS` array);
+  `sprite_add_to_layer` with no map loaded still accepts any id (V8); `draw_text`/`measure_text`
+  accept a number as the text, as Lua converts one wherever it expects a string; the `KEY_*`,
+  `GAMEPAD_BUTTON_*`, `GAMEPAD_AXIS_*`, `MAP_ALIGNMENT_*`, `FULLSCREEN_STRATEGY_*` and
+  `TEXTURE_ANIMATION_MODE_*` arguments must be one of their constants (a misspelt constant name
+  is `nil` in Lua and is now reported); tilemap layer opacity keeps V3's clamping. `tools/pack.lua`
+  reads the new results. `set_timer`'s background callback now prints and pops its Lua error.
+- **Found on the way: a sunlight bug** (reported to sunlight on the owner's request, fixed there
+  as I5 and pinned in P6 - see below): in
+  `CollisionManager::AddColliderToColliderRule` (`collisionmanager.cpp`), the `find_if` lambda
+  indexes `m_ColliderLayerList[id]` (a `std::array` of `MAX_COLLIDER_LAYERS` = 255) BEFORE any
+  bounds check, and the check that follows tests the FIRST id twice and never the second, so
+  `collision_add_rule(1, 300)` read and stored past the array's end. Scarab now range-checks both
+  ids first.
+- **Old pin (published v0.1.25 macOS x64):** the new test can't pass there; the old binary
+  segfaults on several of its calls (an unknown `MAP_ALIGNMENT_*` value, `tilemap_get_tile` far
+  outside the map, `load_json(nil)`), all of which now return `nil, "message"`.
+- **Regression test:** `scripts/error_reporting_smoke.py` (+ `scripts/error_reporting_smoke/`,
+  ci.yml on all 4 platforms): one check per kind of failure of every module, that no check raises
+  a Lua error, that successes return `true`, and that refused calls create no renderer.
+  Mutation-checked: fractions truncated instead of refused (10 failures), a double `sound_load`
+  accepted (2), setters returning nothing (28), `nil` accepted as a boolean (4).
+- **Existing tests updated** for the new results: `renderer_api_smoke` (`sprite_*_world_space` on
+  an invalid handle), `tilemap_layer_smoke` (an unknown layer), `font_api_smoke` (`draw_text`
+  returns `true`).
+- **Checked against Caravellius** (local checkout `22bbaaf`, a temporary trace printing every
+  `nil, "message"`, not committed): its headless acceptance passes (`ACCEPT RESULT PASS`) and its
+  state fingerprint is the reference (`hash=33897632 maxScore=3000`); the only error it meets is
+  `sprite_remove_from_layer` on a sprite not on the layer, which returned `false` before. A grep
+  found the real break: 23 `if handle == 0 then` pool-exhausted checks in 18 files (entry 9).
+- `docs/history/caravellius_breakages_11_2026.md` entry 9; `CLAUDE.md` gained the rule for new primitives.
+
+## Phase V: visual/behavioral re-verification
+
+| # | Item | Status |
+|---|------|--------|
+| V1 | `MoveCamera*` boundary behavior (BREAKAGES entries 24, 46) - 8 Lua wrappers (`camera_move_*`, `view_move_camera_*`) | DONE |
+| V2 | Pixel-snap/scroll-boundary rendering fixes at non-integer zoom (entry 35) | DONE |
+| V3 | `nOpacity` 0..255 round-trip (entry 41) | DONE |
+| V4 | `KEY_MENU` value change, 82 to 5 (entry 2) | DONE |
+| V5 | Tile/text/point objects now drawn where they were invisible before (entries 8, 11, 17) | DONE |
+| V6 | Rotated shape/tile/text objects (entries 18-20) | DONE |
+| V7 | Shape/text object opacity now respects layer opacity (entry 36) | DONE |
+| V8a | Scarab drew every sprite a second time each frame (`SpritePool::UpdateAll`), over the whole frame: layer visibility, layer order and view layer masks never applied to sprites (found in V8) | DONE |
+| V8 | `AddSprite` before a map loads is now actually drawn, not silently invisible (entry 39) | DONE |
+| V9 | `Sprite::Unload()` leaves no active sequence (entry 47); re-pin to `a6ac4f6` (I6, entry 55) | DONE |
+| V10 | `LoadMap` over a loaded map no longer leaks (entry 40) | DONE |
+| V11 | The collision lookup no longer reads a wrong tile past the map's far edge (entry 4, A6); tile collisions and lookups in map space, re-pin to `4189199` (I7, entry 56); Scarab's tile handler fixed | DONE |
+| V12 | A tile object resized away from its own tile's size takes its object layer's tint (entry 45); layer tint at runtime + group tint/opacity, re-pin to `4274ecb` (I8, entry 57) | DONE |
+| V13 | Tiled tile animations run by time, each frame once per cycle (entries 44, 60; moved here from O4); re-pin to `56a73cd4de2868fe30e124e79340ea19d71feae7` (I11) and `tilemap_get_tile_frame` / `tilemap_get_object_tile_frame` | DONE |
+| V14 | Map alignments that touch the right or bottom edge ignore the zoom (`TOP_RIGHT`, `BOTTOM_*`, `CENTER_HEIGHT_RIGHT`), and the bottom ones snap to whole unzoomed viewport heights - found in C5 planning; fixed by sunlight as I18 (BREAKAGES 67), pinned in P13 inside C5's branch (owner's choice); Caravellius' corsair stage starts at y 10003 instead of 10020 (recorded as accepted in sunlight's I18 commit; CARAVELLIUS_BREAKAGES 28) | DONE (2026-11-07) |
+
+**V1 (DONE, 2026-10-22 - V1d confirmed by the owner in a real window).** Not just a rename: the scroll clamp genuinely changed (the last step can now be
+partial, reaching the map's true edge where it used to stop a step short;
+`MoveCameraDown`/`Right` can now return exactly to origin, where a `< 0` vs `<= 0` bug used
+to block the single step that would). ~~Scope: extend the existing alignment/scroll probe
+(built for the sunlight v0.29.0 viewport semantics work) to cover this.~~ Corrected when the
+item started: that probe was never committed to this repo, so there is nothing to extend.
+The "32 call sites" in the first draft was also wrong: Scarab has 8 Lua wrappers
+(`camera_move_up/down/left/right` in `luacameraapi.cpp`, `view_move_camera_*` in
+`luaviewapi.cpp`) and no other caller.
+
+Sub-tasks, as agreed with the owner:
+- **V1a** - a committed headless regression test, run by `ci.yml` on all 4 platforms and
+  kept after `master_plan` merges to `main` (it pins sunlight's camera contract, not a
+  one-time migration): `scripts/camera_boundary_smoke.py` + `scripts/camera_boundary_smoke/`.
+  It uses `resources/tilemap/test.tmx` (640x640) and a 7 px step that divides none of the
+  distances. It checks the default view at Scarab's default zoom (3.8125, 1240x900), through
+  both `camera_move_*` and `view_move_camera_*(0)`, and an extra view at zoom 1.0 (300x200).
+  For each axis: the camera stops exactly on `-ceil(view size / zoom - map size)` (sunlight's
+  `Camera::FarCameraLimit`, negated as Lua sees it). The travel is not a whole number of
+  steps. It takes `ceil(distance / step)` moves each way and comes back to exactly `0`.
+- **V1b** - fix the Lua docs of `camera_move_*` and `view_move_camera_*`: the step was said
+  to be "configured on the C++ renderer, not from Lua", the direction was not stated, and
+  nothing said the position may not be a multiple of the step.
+- **V1c** - the first entry in `docs/history/caravellius_breakages_11_2026.md`.
+- **V1d** - a real-window check of `samples/camera` by the owner.
+
+**Found while building it:**
+- The test was shown failing on the old pin first, as a one-time proof: the published Scarab
+  v0.1.25 macOS x64 release binary (sunlight v0.38.0) fails every check on both APIs and both
+  views. The old behavior was **not** "a step short of the far edge" as the first draft (and
+  sunlight's BREAKAGES 46 wording) suggested. v0.38.0's far limit had a fudge term
+  (`+ tile_height`, `+ tile_width / round(zoom)`) and was measured against the viewport's
+  far edge including its offset, so the camera went past the map's edge, in whole steps:
+  315/427 instead of 314/403 at zoom 3.8125, and 371/469 instead of 340/440 at zoom 1.0.
+  Down/right stopped one step short of the origin (at 7, not 0), which is BREAKAGES 24.
+  The new pin passes every check.
+- The camera position Lua reads is the map point at the view's top-left, the negation of
+  sunlight's internal camera (`Camera::GetPosition` returns `-m_Position`). So up/left
+  make `camera_get_position()` grow, towards the far edge.
+- Confirmed with a scratch headless script: the default view's scroll step stays at
+  Scarab's default 1 px after a map loads (only extra views default to the tile size).
+- From the owner's real-window check of `samples/camera` (V1d), three sample changes made
+  inside V1. The text is now dark, so it can be read over the light sky. sunlight's shared
+  zoom keys were added next to the sample's own: `+`/`-` zoom, `=` resets the zoom, on the main
+  keyboard and the keypad (sunlight's `samples/shared/zoomkeys.h`). And Home/`=` now reset to
+  the sample's starting zoom (`view_set_preferred_zoom`, see D2 for why that is needed).
+- Also from that check (**since fixed by sunlight as its I1, reported by Scarab - checked 2026-11-11**):
+  semi-transparent layers (`test.tmx`'s `background_clouds`, 0.69, and `background`, 0.65) drew darker than in Tiled. It's a sunlight
+  bug, present in v0.38.0 too: the frame is drawn into a render texture whose own alpha drops
+  under every semi-transparent tile, and `TileMapRenderer::Run` then blends that texture onto a
+  black screen (about 70% brightness in those areas). It went to sunlight and was fixed there (I1).
+
+**V2.** Three real rendering bugs sunlight found and fixed at non-integer zoom - a
+rasterization seam between adjacent tiles, a scroll-boundary gap of tens of pixels, and a
+`std::round` tie-breaking bug at screen positions straddling x/y = 0. Scope: **this needs
+checking at Scarab's own actual default (zoom position 60, factor 3.8125), not only at zoom
+1.0** - every game using Scarab's unmodified defaults runs at exactly the kind of
+non-integer zoom where sunlight's own three bugs were found live (`samples/sprite`, at its
+own default zoom).
+
+**V2 (DONE, 2026-10-23 - every real-window test passed and the change was approved by the owner).** Sub-tasks, as agreed with the owner:
+- **V2a, scope check:** no Scarab C++ code does its own pixel snapping. The only
+  `std::round` in `src/` validates zoom factors (`LuaRendererApi::ValidateZoomFactor`), and
+  Scarab draws no tiles itself (`draw_text`/`draw_filled_rectangle` are screen space,
+  unzoomed). Samples at a non-integer zoom: `camera`, `sprite`, `collision` and `tilemap` at
+  the default 3.8125, the `views` minimap at 0.375 (`view_fit_to_map`, 240/640; its main
+  view is 1.0 and its close-up 2.0, both whole), and `renderer` after one zoom step (0.0625
+  each).
+- **Bug 2 (the scroll limit) was in effect verified by V1:** `scripts/camera_boundary_smoke.py`
+  showed the old pin scrolling past the far edge, and it pins the exact edge on all 4
+  platforms. Nothing more is needed here.
+- **No headless test for bugs 1 and 3:** they are about which screen pixel a tile lands on.
+  The null backend draws nothing, and no Lua function reads pixels back, so no Scarab test
+  can see a seam. sunlight covers this on its side with its own tests and GPU measurements;
+  Scarab's check is by eye.
+- **V2b, the owner's real-window check (2026-10-23), every sample launched one at a time,
+  all passed:**
+  1. `samples/camera`: slow scrolls, the edges, and zooms 3.81, 5.06, 5.38 and 16.00
+     (screenshots), with no seams. Home goes back to 3.81 (V1's preferred-zoom fix).
+  2. `samples/sprite` at 3.8125: no jitter and no seams. The camera did not follow Sunny,
+     so Sunny left the view at the border (found by the owner). The sample was changed in
+     V2 to follow it (below). Screenshots confirm: mid-scroll camera 20,313 with no seams,
+     the right edge exactly at camera x **314** (V1's pinned edge), and camera 313 when
+     centring Sunny at y 416 (⌊416 + 16 − 118.03⌋).
+  3. `samples/views`: the minimap at 0.375 had no seams, with Sunny moving across it,
+     and both with the clouds layer hidden (the default: that layer also holds the grass
+     islands, `tileset_cloud_soil`, so they look missing until `L`) and shown (screenshot).
+  4. `samples/renderer`: zoom steps above and below 1.0 while panning, with no seams.
+- **Sample changes made inside V2, from the owner's check:**
+  - `samples/sprite`: the camera follows Sunny. Sunny is in world space
+    (`sprite_set_world_space`) and is kept on the map. `follow` centres the camera with
+    `camera_set_position`, clamped to the map's edges, because `camera_set_position` doesn't
+    clamp. Dark text, as in `samples/camera`, plus a camera-position line. The README was
+    updated.
+  - `samples/renderer`: its zoom keys now match `samples/camera`'s (asked for by the owner),
+    the zoom keys every sunlight/Scarab sample shares. Page Up/Page Down or `+`/`-` (main
+    keyboard and keypad) zoom, `=` resets the zoom, and Home resets the zoom and the camera.
+    These replace `Z`/`X`/`R`; Space still asks for the invalid zoom.
+  - `samples/views` and `samples/renderer`: each text line is drawn on a dark translucent
+    plate (`draw_text_plate`, sized with `measure_text`). The text crosses both white clouds
+    and black areas, where neither light nor dark text alone reads.
+- **V2c:** `docs/history/caravellius_breakages_11_2026.md` entry 3.
+
+**V3.** `src/lua/luatilemapapi.cpp`'s `GetLayer`/`SetLayer` pass `nOpacity` straight to
+Lua - self-correcting now that both directions are 0..255 (an opaque layer used to read
+back as 256), but its own `@luaexample` doc comment ("fade a layer out") names a specific
+number that should be checked still reads right.
+
+**V3 (DONE, 2026-10-23 - the owner's window check passed and the change was approved).** Scarab passes the value straight through
+(`tilemap_get_layer`/`tilemap_set_layer` and their `_by_name` forms), so no code changed. This
+one *is* testable headless, because it is numbers, not pixels. Sub-tasks, as agreed with the
+owner:
+- **V3a:** `scripts/tilemap_layer_smoke.py` + `scripts/tilemap_layer_smoke/`, in `ci.yml` on
+  all 4 platforms, on `resources/tilemap/test.tmx`. An opaque layer reads 255, and the
+  authored 0.69/0.65 layers read 176/166 (`lround(x * 255)`). By id and by name agree.
+  Writing a layer's own values back changes nothing. 0, 1, 128, 254 and 255 round-trip exactly,
+  by id and by name. Writing 255 keeps the layer visible. 300 and -5 clamp to 255 and 0. The
+  other fields round-trip with the opacity. An unknown layer gives `nil`/`false` (today's
+  behavior; D3 may change it). **Shown failing on the old pin first** (the published Scarab
+  v0.1.25, sunlight v0.38.0), with 15 failures: opaque 256, 0.69/0.65 both 255, write-back
+  256 -> 254, 0/1/128/254 read back 510/509/382/256, and 300/-5 read back 210/515 (no
+  clamping). One check passed on the old pin: "writing 255 keeps it visible". Old sunlight
+  stored 0.0 for 255 (an invisible layer), but its read formula turned 0.0 back into 255, so
+  that bug can't be seen from Lua. The check's comment says so; the other checks catch the
+  old pin.
+- **V3b:** the docs. `tilemap_get_layer` documents the 0..255 range, 255 = opaque and the
+  rounding (0.69 reads 176). `tilemap_set_layer` gained a `@luadoc` covering the range, the
+  clamping, `false` for an unknown layer, and that it writes all four values, so read first,
+  with hiding a layer also hiding its sprites. The example now fades to 128 while keeping
+  the other values.
+- **V3c, the owner's real-window check:** `samples/tilemap` changes the *clouds* layer's
+  opacity, with the value read back on screen. At first `O` cycled 255/128/0 (screenshots
+  confirm each step matches its number, and the round trip restores it exactly). The owner
+  then asked for ↑/↓ in steps of 15 (which divides 255, so both ends are exact). Screenshots
+  at 15, 120, 135, 195 and 255 show a smooth fade that matches the numbers. The sample's text
+  is on dark plates, like `views`/`renderer`, and its README has a controls table.
+- **V3d:** `docs/history/caravellius_breakages_11_2026.md` entry 4.
+
+**V4.** `src/lua/luainputapi.cpp` exposes `KEY_MENU` to Lua *by value* - the value itself
+(82 to 5) is what a script sees, not just an internal rename. Scope: check whether anything
+stored the old number (a saved binding, a hard-coded 82).
+
+**V4 (DONE, 2026-10-23 - approved by the owner, merged once CI was green).** Found when the item started: the old 82 was **also `KEY_R`**.
+sunlight v0.38.0's `iinputhandler.h` had `KEY_R = 82` and `KEY_MENU = 82`, and its backend
+passed the number straight to raylib (`::IsKeyDown( key )`). So in Lua `KEY_MENU == KEY_R`,
+and `input_is_key_down( KEY_MENU )` fired on R. Now `KEY_MENU` is 5, raylib's own (Android's
+menu button), and sunlight translates by name. No Scarab code changed: the constants table
+takes sunlight's values. Nothing in `samples/`, `scripts/`, `docs/` or `resources/` uses
+`KEY_MENU`. The only `82`s are y positions in three samples. Scarab has no saved bindings
+(there is no Lua action map yet; that's C1). Sub-tasks, as agreed with the owner:
+- **V4a:** `scripts/input_constants_smoke.py` + `scripts/input_constants_smoke/`, in
+  `ci.yml` on all 4 platforms. The Python driver reads the expected names straight from
+  `luainputapi.cpp`'s arrays (110 `KEY_*`, 18 `GAMEPAD_BUTTON_*`, 6 `GAMEPAD_AXIS_*`), so the
+  list can't drift. The Lua side checks `KEY_MENU == 5`, `KEY_BACK == 4`, `KEY_R == 82`,
+  `KEY_MENU ~= KEY_R`, that every constant exists as an integer, and that **no two in a
+  group share a value**. That last check catches the whole class of bug, and the owner chose
+  to cover the gamepad groups too. It passes on the new pin, so none of the 134 has a
+  legitimate duplicate. **Coverage, added at the owner's request:** the driver also reads
+  sunlight's own enums (`KeyboardKey`, `GamepadButton`, `GamepadAxis`, `ControllerType` in the
+  fetched checkout's `src/input/iinputhandler.h`, `build/_deps/sunlight-src` or
+  `--sunlight-src DIR`) and fails if Scarab's matching array misses one or holds one sunlight
+  doesn't have. So a key sunlight adds later and Scarab forgets fails CI. A missing checkout
+  fails too, never skips. Today all four match one to one (110/18/6/5), and the
+  `CONTROLLER_*` group joined the value checks. Checked by mutation: with `KEY_MENU` removed
+  from `s_aKeyboardKeys`, it fails naming `KEY_MENU`. sunlight's other two input enums,
+  `InputDispatchMode` and `ActionBindingType`, are deliberately not exposed: they belong to the
+  controller manager/action map, which is C1, an open decision. **Shown failing on the old pin first** (the published Scarab v0.1.25):
+  "KEY_MENU is 82" and "KEY_MENU and KEY_R are the same number (82)", from both the direct
+  check and the no-duplicates check.
+- **V4b:** the "Keyboard keys" constants doc now says the values are raylib's own, and that
+  `KEY_BACK`/`KEY_MENU`/`KEY_VOLUME_UP`/`KEY_VOLUME_DOWN` are Android buttons a desktop
+  keyboard never sends.
+- **V4c:** `docs/history/caravellius_breakages_11_2026.md` entry 5.
+- No real-window check: the change is purely constant values, which the test pins directly.
+
+**V13 (DONE, 2026-10-30; added 2026-10-23, moved here from O4).** O4 said "no animated tiles in any
+Scarab map", and so did sunlight's BREAKAGES entry 44. That was wrong for Scarab: `resources/tilemap/test.tmx`'s
+tilesets have animated tiles (`tileset_house.tsx` 1, `tileset_house_var1.tsx` 2,
+`tileset_monke_variants.tsx` 4), and every sample that loads it shows them. Caravellius has none (checked
+by sunlight and here: no `<animation>` anywhere in `../caravellius/resources`). The old plan said "Lua
+cannot read a tile's current frame, so no headless test can see it"; under the owner's "cover every item
+fully" rule (V12) that was the gap to close.
+- **sunlight I11 (asked for by Scarab, PR #235, BREAKAGES 60):** the frame an animated tile shows was a lazy,
+  draw-driven state per tile (`__stTileAnimInfo`), so a tile not drawn (off screen, hidden layer, view mask)
+  PAUSED and resumed one frame on, and each frame's deadline was set from the draw that noticed it was due,
+  so a duration that was not a whole number of frames was held until the next draw (40 ms at 60 fps held
+  50 ms) and the cycle stretched. Now the animation is a pure function of time, as Tiled animates: the frame
+  shown is (now - LoadMap time) modulo the cycle, walked through the durations. No pause, no drift, no
+  state; every cell and tile object of a tile in step. New read-only queries `ITileMap::GetTileFrame( layer,
+  cell, gid )` and `GetObjectTileFrame( name, gid )`.
+- **A sunlight bug found by this item's test (fixed as PR #237):** an animation whose durations are all 0 ms
+  showed its LAST frame (the walk stepped past every zero-length frame, `0 >= 0`), though I11 said the first.
+  Reported on the owner's go-ahead; now the first frame, drawn and queried.
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `56a73cd4de2868fe30e124e79340ea19d71feae7`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@56a73cd` (via `06009d4`, I11 before the fix); verified
+  on `origin/feat/master_plan`; reconfigured in place.
+- **Lua:** `tilemap_get_tile_frame(row, col, layerId) -> gid` and `tilemap_get_object_tile_frame(name) -> gid`
+  (flip bits removed). sunlight answers only false for every refusal, so Scarab checks the reasons first and
+  reports each: no map, no such layer, not a tile layer, a cell off the map, an empty cell; no such object,
+  not a tile object. The `@luadoc` ("Animated tiles") explains the time-based animation and the change.
+- **Test map:** `resources/tilemap/animation/` (`animation.tmx`, `tileset_anim.tsx`, README) - one tile over
+  gids 1 / 6 / 11 for 100 / 50 / 300 ms (50 ms is not a whole number of 60 fps frames), in two cells, flipped,
+  far to the right, on a hidden layer and as two tile objects, next to a static tile and an all-0 ms animation.
+  (A comment placed before the `.tsx`'s root element made libtmx fail with "missing 'name' attribute in the
+  'tileset' element"; it now sits inside the element.)
+- **Tests:** new `scripts/tile_animation_smoke` (ci.yml, all 4 platforms). The map loads at a virtual time
+  that is not a whole millisecond; then every frame for 300 frames (11 cycles) every copy must equal EXACTLY
+  the gid the virtual clock predicts (`llround` ms, as sunlight's `VirtualClock`), also while the layer is
+  hidden, masked out of the default view and scrolled off screen; a second query gives the same answer; the
+  static tile and the 0 ms cycle never change; every gid is seen; every refusal. `error_reporting_smoke`
+  gained one check per kind. Proven: it failed on `06009d4` (the 0 ms cycle read gid 7, the last frame), and
+  with sunlight's `FrameGidOf` mutated in the fetched source - frame 0 held twice per cycle (gid 11 at 450 ms
+  where 1 was due) and a frame skipped (gid 11 at 100 ms where 6 was due) - then restored.
+- **Sample:** `samples/shapes` key 6 shows the map at real speed; the HUD reads the frame back. The owner's
+  window check (2026-10-30): every copy and both tile objects change face together (gids 1, 6 - the 50 ms
+  flash - and 11 caught), the static and 0 ms tiles stay. Labels respaced after the first look.
+- **Caravellius:** no animated tiles, nothing reads `tmx_tile::user_data`; acceptance PASS, fingerprint
+  `hash=33897632`. Breakage entry 19.
+
+**V5 (DONE, 2026-10-24 - checked by the owner in a real window and approved; fully planned 2026-10-23, open questions settled 2026-10-24, started 2026-10-24 after C6).** sunlight entries 8, 11
+and 17: **text**, **tile** (`OT_TILE`, drawn at their own size or stretched into their box,
+clipped to the viewport, animated) and **point** objects (a filled square, `point_size`
+property, default one map unit, scaled by zoom) are now drawn. Up to v0.38.0 all three were
+invisible, so a map that used one as hidden data or a marker would now show it. The row used
+to list entry 1 too, but that is the non-orthogonal refusal, already O1, so it was dropped.
+
+**Map audit (2026-10-23, measured):**
+
+| Map | Object layers | Objects | Text / tile / point |
+|---|---|---|---|
+| Scarab `resources/tilemap/test.tmx` (Scarab's only map) | 0 | 0 | none |
+| Caravellius `resources/tilemap/corsair/corsair.tmx` | 7 | 3 | none: all 3 are rectangle triggers (`SubBossIntervalStart`, `SubBossIntervalEnd`, `CephalonPosition`) |
+| Caravellius `resources/tilemap/cover/cover.tmx` | 6 | 0 | none |
+
+The Caravellius figures come from the local checkout `../caravellius` (commit `22bbaaf`,
+2026-09-23), read-only. So nothing changes on screen in either project. Scarab's only object
+function, `tilemap_get_object_by_name`, reads an object's position and size, not how it is
+drawn, so it is unaffected.
+
+**Side finding, O3, for Caravellius:** O3 (shape outlines scale with zoom) is "not
+applicable" for Scarab, which has no shape objects. But Caravellius' 3 trigger markers are
+rectangles (`OT_SQUARE`) on an object layer with no `visible="0"`. sunlight drew rectangles
+before (v0.38.0 has `case OT_SQUARE`) and still does, so they are probably drawn in the game,
+now with zoom-scaled outlines. Whether they are actually visible (colour, opacity, where the
+camera goes) can't be told from the map alone. That goes in V5c below.
+
+**Sub-tasks (agreed with the owner 2026-10-23):**
+- **V5a:** record the audit above (done in this text).
+- **V5b, a new `samples/objects` sample**, asked for by the owner so V5 has something to see
+  by eye. It is built from sunlight's own object samples, read from the local sunlight repo at
+  the pinned commit (`git -C ../sunlight show 9c8c6bf:samples/...`), from the vendored
+  `build/_deps/sunlight-src`, or by asking the sunlight session:
+  - `samples/objects/resources/map/objects.tmx` (60x40, 32 px): 6 **tile** objects, one row
+    per case (own size, stretched to a 64 px box, cut by the left viewport edge, animated,
+    flip bits ignored, cut by the bottom edge), each with a numbered **text** object label.
+    It uses `tileset_house.tsx` + `images/house.png`, the same house tileset Scarab already
+    ships in `resources/tilemap/`. A green rectangle object frames the viewport. sunlight's
+    `docs/README.md` for that sample lists what to look for per case.
+  - **point** objects: only `samples/shapes/resources/map/thick.tmx` has any (3, with 11 text
+    objects and 9 shapes). `samples/text/resources/map/text.tmx` has 17 text objects.
+  - Shape (`rotation.tmx`, `shapes.tmx`, `stress.tmx`) and opacity maps (`opacity.tmx`,
+    13 text + 7 tile objects) exist too. They cover V6 (rotation) and V7 (opacity), so pick
+    the maps with those items in mind: one Scarab map per item, or one shared objects map.
+  - The three open questions, settled with the owner (2026-10-24):
+    1. **Font:** text objects draw only with a registered font, otherwise `??????`, so the
+       owner promoted C6 (fonts by handle, incl. `register_font`), done right before V5. The
+       sample loads `resources/fonts/caravellius8x8.fnt` once with `load_font`, registers it
+       as "Sans", and can use the same handle for its HUD text.
+    2. **Location:** a new `resources/tilemap/objects/` with its own README and provenance
+       (from sunlight's `samples/objects` at `9c8c6bf`), reusing the house tileset already in
+       `resources/tilemap/`.
+    3. **Zoom:** start at 1.0 (sunlight's sample does too), so all six cases and labels fit,
+       with the shared zoom keys to look closer. Adjust after the owner's eye test.
+  - Controls follow the shared scheme (arrows pan, Page Up/Down or `+`/`-` zoom, `=` reset
+    zoom, Home reset), with the text on dark plates. The owner checks it in a real window.
+    Add it to `samples/README.md` and to the VSCode template `launch.json` picker.
+- **V5c:** `docs/history/caravellius_breakages_11_2026.md` entry: text, tile and point objects in a map are
+  now drawn (Caravellius' maps have none today, so any marker added later should be a
+  rectangle or sit on a hidden layer), and its 3 rectangle trigger markers, probably already
+  drawn, now have zoom-scaled outlines (O3). Check they are hidden or harmless.
+- **V5d:** the plan write-up, CI green, then DONE.
+
+**Built (2026-10-24):**
+- **Point objects decided (the owner):** V5 keeps to `objects.tmx`, tile and text objects, so
+  it stays close to a sample sunlight has tested. Point objects (only in sunlight's
+  `thick.tmx`) come with V6/V7's shape maps.
+- `resources/tilemap/objects/objects.tmx`: sunlight's `samples/objects` map at `9c8c6bf`. The
+  only change is its tileset path, `../tileset_house.tsx`, because sunlight's copy of the house
+  tileset and its image are **byte-identical** to Scarab's in `resources/tilemap/`. A comment in
+  the map and the folder's new README say so. Checked headless: the map loads (60x40, 32 px),
+  `tilemap_get_object_by_name( "viewport" )` gives (100, 100, 1000, 800), and "Sans" registers.
+- `samples/objects` (+ `docs/README.md`, listed in `samples/README.md` and in both VSCode
+  `launch.json` pickers): the layout of sunlight's own sample (render 1260x920, viewport
+  1000x800 at (40, 40), zoom 1.0 with `preferred_zoom` 1.0, map `TOP_LEFT`, camera at (100, 100),
+  scroll step 4). `load_font` loads Caravellius 8x8 once, `register_font( "Sans", ... )` gives it
+  to the map's text objects, and the same handle draws the HUD. Shared controls (arrows/WASD pan
+  in the same direction as `samples/camera`; Page Up/Down or `+`/`-` zoom; `=`; Home resets zoom
+  and camera).
+- **The owner's real-window check (2026-10-24, screenshots at zoom ~0.75, 1.0, 1.44, 1.69,
+  panned):** every label is drawn from the map's text objects in Caravellius 8x8, with no
+  `??????`, and the title in its own yellow. Case 1 is at own size, 2 stretched, 3 cut by the left
+  edge (whole once panned left), 5 identical to 1, 6 cut by the bottom edge. Case 4 animates: its
+  tile showed a different frame in each screenshot. Long labels are clipped cleanly at the
+  viewport's right edge, and everything scales together when zooming. Expected, not a bug: the
+  green frame's top and left lines lie on the viewport's clip border at the start (the frame is
+  the viewport's own edges), and its right and bottom lines move inside when zoomed out. The
+  first HUD's second line overflowed the window; it was split into two shorter lines, re-checked.
+- No headless test: drawing can't be seen headless, and nothing in Lua reads an object's drawn
+  pixels. The map loading and font registering are covered by the checks above and by C6's font
+  test.
+- V5c: `docs/history/caravellius_breakages_11_2026.md` entry 7.
+
+**V6 (DONE, 2026-10-24).** sunlight entries 18-20: rectangles, polylines, polygons
+(D1a), ellipses (D1b), tile objects and text objects (D1d) with a Tiled rotation are drawn turned
+clockwise about their stored point; before, the rotation was ignored. The new `IEngine`/`IFont`
+methods only concern implementers, and Scarab implements neither.
+- **Audit:** no map in either project has a rotated object, a tinted object layer or a
+  per-object opacity (Scarab's `test.tmx` and `objects/objects.tmx`; Caravellius' `corsair.tmx`
+  and `cover.tmx`), so nothing changes on screen. That also answers the map side of V7 and V12.
+- **Decisions (the owner):** one `samples/shapes` with keys `1`/`2`/`3` switching maps at runtime
+  (which also exercises V10, `LoadMap` over a loaded map); no `stress.tmx` (a benchmark, and
+  Scarab has no stress tests); V7's map is decided when V7 starts.
+- **Found while building it: a sunlight bug.** `rotation.tmx`'s embedded tileset image, pointed at
+  Scarab's byte-identical `../../sprites/sunny_idle_down.png`, made `tilemap_load_map` refuse the
+  map ("an error occured in the delegated image loading function"). The same path without `..`
+  loaded. The cause, in sunlight's `TextureLoaderCallback` (`mapdata.cpp`): `..` was collapsed
+  only for external tilesets' images, and PhysFS rejects `..`. Reported to sunlight on the
+  owner's request. The owner chose to wait for the fix rather than copy the image (V6 on hold).
+  sunlight fixed it (I4, PR #221, BREAKAGES 53; every image path now goes through
+  `ExternalResources::JoinVirtualPath`, with tests incl. from a scrambled `.zip`).
+- **Re-pin (inside V6, the owner's choice):** `SCARAB_SUNLIGHT_REF`
+  `f651accc2291a2ea9020dad3bfc2f1245e76858f`, `SCARAB_SUNLIGHT_DISPLAY_VERSION`
+  `feat/master_plan@f651acc`. Verified: on `origin/feat/master_plan`, descends from `9c8c6bf`
+  (3 commits: the handoff record, `CODE_STYLE.md`'s forward-declaration rules, the fix; 1 `src`
+  file). Real fetch exact, clean build, `--version` shows `feat/master_plan@f651acc`, every
+  smoke test, the docs generator and all 17 samples pass, and `rotation.tmx` now loads.
+- **Built:** `resources/tilemap/shapes/` (`shapes.tmx`, `rotation.tmx`, `thick.tmx` from
+  sunlight's `samples/shapes` at `9c8c6bf`; only `rotation.tmx`'s image path changed; README
+  with provenance, linked from `resources/tilemap/README.md`). `samples/shapes`: sunlight's
+  layout (viewport 1000x800 at (40, 40), zoom 1.0, camera at the origin, scroll step 4),
+  Caravellius 8x8 loaded once and registered as "Sans" (it survives every map switch, since the
+  registration is the renderer's), shared controls, a three-line HUD that fits. Listed in
+  `samples/README.md` and both VSCode pickers.
+- **The owner's real-window check (2026-10-24, screenshots):** map 1's shapes are clipped
+  cleanly at the viewport, also at zoom 1.75 and 0.38. In map 2, every object is turned about
+  its pivot: rectangle, polyline and polygon at 90 and 45, the ellipse at 45, Sunny's tile objects
+  at 90 and 45, "turned text" vertical, "text 45" diagonal. In map 3, line widths 1/2/3/5 are
+  distinct, the point objects are filled squares, and both scale at zoom 1.25 and 1.50.
+  Switching maps was clean, with no `??????`.
+- **The point objects V5 deferred** are covered by map 3.
+- `docs/history/caravellius_breakages_11_2026.md` entry 8.
+
+**V7 (DONE, 2026-10-24).** sunlight entry 36 (L2): a Tiled object's own `opacity` custom
+property (0 to 1) overrides its layer's opacity, and shape and text objects follow layer opacity at
+all (before, only tile objects did; shapes and text were always drawn at their colour's own alpha).
+- **Audit:** no object layer below opacity 1.0 and no object `opacity` property in any Scarab map
+  or in Caravellius' `corsair.tmx`/`cover.tmx`, so nothing changes on screen for either.
+- **Decisions (the owner):** the map goes to `resources/tilemap/objects/opacity.tmx` (next to
+  `objects.tmx`, same `../tileset_house.tsx` path); it is key `4` of `samples/shapes`, the
+  extensible map switcher V6 built; no automated test (a headless run can't see opacity; that
+  the map loads is checked), the owner's window check instead.
+- **Built:** `opacity.tmx` from sunlight's `samples/opacity` at `f651acc` (tileset and image
+  byte-identical to Scarab's; only the tileset path changed, noted in the map and the objects
+  README). `samples/shapes` gained per-map starting cameras (map 4 starts at (100, 100), where its
+  frame is, as in sunlight's sample; `Home` returns to the current map's start). Docs: the objects
+  README, `resources/tilemap/README.md`, the shapes sample README and `samples/README.md`.
+- **The owner's real-window check (2026-10-24, screenshot):** tile objects, rectangle outlines and
+  text each fade 1.0 / 0.75 / 0.5 / 0.25 with the 0.0 one invisible; the two row-4 tiles (no
+  property, invalid `5`) look the same at the layer's 0.4; labels in Caravellius 8x8, no `??????`.
+- `docs/history/caravellius_breakages_11_2026.md` entry 10.
+
+**V8a (DONE, 2026-10-27).** Found while building V8's `samples/mapless`: its layer keys
+changed the view's layer mask (`view_is_layer_shown` read it back) but nothing disappeared. sunlight
+was right (`DrawPassContent` checks the active view's mask, also for mapless layers); Scarab was the
+cause. `EngineHost::RunStageStateHandler` called `SpritePool::UpdateAll()` every frame: a second
+`Sprite::Update()` (`Advance()` + `Draw()`) of every live pool sprite, AFTER sunlight's layer pass
+had already advanced and drawn each one, on top of the whole frame and with no layer or mask check.
+It predates the Scarab/Caravellius split. So hiding a layer (`tilemap_set_layer(id, false, ...)`,
+an authored `visible="0"`) never hid its sprites, a view's layer mask never hid them in that view,
+and every sprite was drawn above the map layers meant to cover it.
+- **Measured before deciding (the owner's request):** with the call removed, `samples/mapless`' layer
+  keys really hide sprites (owner's window check); animation pace unchanged (a temporary probe, never
+  committed, counted a 4-frame `AUTOMATIC_RIGHT_LEFT` sprite's tile changes over 600 headless
+  frames: 101 with and without the call, with and without a map - each step waits for its delay);
+  Caravellius' acceptance PASS and its state fingerprint the reference `hash=33897632` (5 runs); and
+  a sprite never added to a layer is invisible even WITH the call (owner's window check of a probe),
+  so removing it hides nothing that is visible today.
+- **Fix:** the call and `SpritePool::UpdateAll()` are removed; sunlight's layer pass is the one place
+  a sprite is advanced and drawn. A comment at the call site says why.
+- **The owner's window checks (2026-10-27, screenshots):** `samples/sprite`: Sunny (layer 4,
+  `clouds`) now goes under the `houses` roof and the `monke` layer above him; `samples/mapless`: keys
+  `1`/`2`/`3` hide and show each sprite, all off leaves only the HUD; `samples/views`: Sunny once in
+  the main view, the minimap and the close-up, `L` toggles the minimap's clouds only, `C` the close-up.
+- No automated test: it is purely drawing, which a headless run can't see.
+- `CLAUDE.md`'s layer-visibility gotcha corrected (it was only true for drawing since this fix);
+  `docs/history/caravellius_breakages_11_2026.md` entry 11.
+
+**V8 (DONE, 2026-10-27).** sunlight entry 39 (M2): a sprite added with `AddSprite` while
+no map is loaded is now drawn (before: accepted, collider updated, never drawn); with no map, the
+layer ids draw in ascending order and a view's layer mask hides them by id; `Stop()`/the destructor
+now also release sprites registered with no map (they leaked). With a map loaded nothing changes.
+- **Audit:** every Scarab sample and test script loads its map before adding a sprite. Caravellius:
+  a temporary trace (never committed) printing every `sprite_add_to_layer` with no map loaded counted
+  ZERO over its acceptance and state fingerprint runs (both still the reference); the same trace
+  fired on a 5-line script that adds a sprite before any map, so the zero is real. Not covered:
+  code reached only by player input.
+- **Decisions (the owner):** a new `samples/mapless`; the runtime audit as above; a breakage entry
+  either way.
+- **Built:** `samples/mapless` (no map: shadow, Sunny and glow on layer ids 1-3, Sunny moved with the
+  arrows, `1`/`2`/`3` toggle each layer through `view_show_layer`, the shared zoom keys, a four-line
+  HUD on plates), its README, `samples/README.md` and both VSCode pickers. Docs: `CLAUDE.md`'s
+  "sprite setup before the map loads" gotcha (a sprite added early is now drawn over an empty
+  background), `samples/sprite`'s header comment, and `sprite_add_to_layer`'s `@luadoc`.
+- **Found while building it:** the layer keys changed the mask but hid nothing - Scarab drew every
+  sprite a second time (V8a, fixed and merged first).
+- **The owner's real-window check (2026-10-27, screenshots, after V8a):** all three sprites draw with
+  no map, Sunny over the shadow and under the glow, each key hides its sprite and the HUD matches,
+  all off leaves only the HUD, zoom scales everything.
+- `docs/history/caravellius_breakages_11_2026.md` entry 12.
+
+**V9 (DONE, 2026-10-29).** sunlight entry 47: `Sprite::Unload()` leaves no active sequence
+(before, the active sequence stayed marked valid over freed memory), and `UnloadMap()`/`Stop()`
+unload every sprite registered on a layer. Loading a map over a loaded one does not.
+- **Audit:** neither Scarab's samples and scripts nor Caravellius call `tilemap_unload_map` (the only
+  call is D3's error test, with no map loaded). A reconfigure after an unload works: `Sprite::Unload`
+  empties the sequences, so `sprite_configure_texture` takes its "add" path, and
+  `sprite_set_active_sequence` returns `nil, "sequence N is not configured"` until then.
+- **Found: a sunlight bug.** `UnloadMap` unloaded and unregistered the sprites but left their
+  colliders in the `CollisionManager`. Measured on the `fa953f3` pin (a temporary headless script, two
+  overlapping sprites on layers 2 and 3 of `test.tmx`, a rule between them, collision calls per 60
+  frames): map loaded 60; map unloaded **60** (unloaded sprites kept colliding); map loaded again and
+  sprites re-added **240** (each collider registered twice). The published v0.1.25 segfaulted
+  (exit 139) on the frame after the unload. Reported to sunlight on the owner's request; fixed there
+  as I6 (PR #225, BREAKAGES 55): `UnloadSprites()` removes each unloaded sprite's own collider, for
+  `UnloadMap`, `Stop()` and the destructor; a collider the game added itself and the collision rules
+  are kept.
+- **Re-pin (inside V9, the owner's choice):** `SCARAB_SUNLIGHT_REF`
+  `a6ac4f6bea9973795c1668dd8eabfc67defc03c1`, `SCARAB_SUNLIGHT_DISPLAY_VERSION`
+  `feat/master_plan@a6ac4f6`. Verified on `origin/feat/master_plan`, two commits after `fa953f3`
+  (the I5 pin record, docs only, and the fix; 3 files in `src/`, no public API change).
+  Reconfigured in place (not a clean `build/`), fetch exact.
+- **Checks:** clean build, `--version` shows `feat/master_plan@a6ac4f6`; every smoke test (incl. the
+  new one), the headless test and its budget run, the tileset archive test (plain and encrypted),
+  the docs generator and all 19 samples pass; Caravellius' acceptance PASS and its reference state
+  fingerprint (`hash=33897632`, 3 runs).
+- **Regression test:** `scripts/unload_map_smoke.py` (+ `scripts/unload_map_smoke/`, ci.yml on all 4
+  platforms): the same scenario, expecting exactly 60 / 0 / 60, `-1` as the active sequence after the
+  unload and `set_active_sequence` refused until reconfigured. Passes at `a6ac4f6`; the measurement
+  above is what it rejects at `fa953f3`; the published v0.1.25 crashes on it (exit -11).
+- **Docs:** `tilemap_unload_map`'s `@luadoc` (every sprite on a layer is unloaded and taken out of
+  collisions; set it up again after the next map; the rules stay; a map loaded over a map unloads
+  nothing). No window check: collisions and sequence state are counted headless.
+- `docs/history/caravellius_breakages_11_2026.md` entry 13.
+
+**V10 (DONE, 2026-10-29).** sunlight entry 40 (T2): `LoadMap` over a loaded map frees the
+old map (tile textures, Resource Manager, tile animations); before, it overwrote the map pointer and
+leaked the whole previous map on every switch. Sprites stay registered across it, as before. The new
+map is parsed first, so a map that fails to parse leaves the loaded map loaded (before, the old map
+was lost and no map was left).
+- **Measured (headless, peak memory, `test.tmx` loaded over itself; no GPU, so the CPU side only):**
+  current pin 10 loads 11 MB, 200 loads 11 MB; published v0.1.25 10 MB and 16 MB. In the final test:
+  20 vs 1000 loads, +0.0-0.1 MB at the pin, **+27.9 MB** on v0.1.25 (about 30 KB per load).
+- **Audit:** Caravellius switches stages exactly this way (`core/bootstrap.lua`, no unload), so it
+  leaked every previous stage and is fixed with nothing to change; its failure path
+  (`if not tilemap_load_map(...)` -> print, `return false`) works with `nil` and now leaves the
+  previous stage's map loaded. `samples/shapes` switches maps on keys 1-4 the same way.
+- **Decisions (the owner):** test the leak in CI too, option (a) - a Python peak-memory comparison on
+  Linux/macOS (Windows has no peak-memory reading in Python's standard library; the functional
+  checks still run there).
+- **Regression test:** `scripts/load_map_smoke.py` (+ `scripts/load_map_smoke/` with a deliberately
+  malformed `broken.tmx`; ci.yml on all 4 platforms). Each of two runs (`LOADS` = 20 and 1000):
+  `broken.tmx` returns `nil, "cannot load map ..."` and `tilemap_get_map_info` still reports
+  `test.tmx` (20x20, 32 px), a sprite added to a layer is still on it after the loads, and the
+  peak memory of the 1000-load run is at most 8 MB above the 20-load one (`os.wait4`'s `ru_maxrss`,
+  bytes on macOS, KB on Linux). Fails on v0.1.25: no map left after `broken.tmx`, and +27.9 MB.
+- **Docs:** `tilemap_load_map`'s `@luadoc` (a load over a loaded map frees the old one and keeps
+  sprites; a failed load keeps the loaded map; one map at a time, shown by every view).
+- **Asked during V10 (the owner):** does multi-view mean several maps? No - checked in sunlight's
+  `multiview`/`multiview_overlap` samples, `IView` (no map of its own) and `TileMapRenderer` (one
+  `m_pMap`): views are cameras on the one loaded map. The owner added C7 (several maps at once).
+- `docs/history/caravellius_breakages_11_2026.md` entry 14.
+
+**V11 (DONE, 2026-10-30).** sunlight entry 4 (A6): the collision lookup refused only a
+negative row/column, so a position past the map's far edge read past the layer's tile array.
+Checking it opened up the whole sprite-vs-tile path, which no project had ever seen work: no tileset
+in Scarab or Caravellius has a collision shape (only sunlight's isometric/staggered/hexagonal
+obstacles, whose samples deliberately ignore the callback because of "spurious hits").
+- **A Scarab bug, from before the split:** `LuaCollisionListener`'s tile callback pushed six values
+  and called `lua_pcall(..., 5, ...)`, so Lua called the sprite handle ("attempt to call a number
+  value") and `collision_set_tile_handler` never ran in any Scarab release. Fixed (5 -> 6).
+- **Measured on the `a6ac4f6` pin (with that fix), the owner shown first:** a 32x32 sprite swept past
+  one collision tile (map 160..191), default viewport (10,10). It collided for x 150..180 instead of
+  129..191 (only the tile under its top-left corner, shifted by the viewport origin); with the camera
+  at (64,64) a world-space sprite collided 64 px away from itself (the camera added again) and never
+  with the tile it was on; the tile came back camera-relative (96,96). Zoom made no difference.
+  Reported to sunlight on the owner's request; fixed as I7 (PR #227, BREAKAGES 56), which also found
+  three more: a tile with two collision shapes hung the frame, the bounds check and the cell index
+  disagreed about zoom, `GetTile` with no map dereferenced null. The new model: everything in MAP
+  space - `TileMapToTileMatrix` takes a map position, `GetTile`/the collision callback give the tile's
+  map rectangle, a collision tests every tile the collider overlaps (view-relative sprites with the
+  camera, world-space as is), one callback per tile, half-open overlap (touching edges don't count).
+- **Re-pin (inside V11):** `SCARAB_SUNLIGHT_REF` `4189199f7b3af75e590792f85d51051916f4a206`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@4189199`. Verified on `origin/feat/master_plan`,
+  two commits after `a6ac4f6` (the I6 pin record and the fix, 18 files in `src/`). Reconfigured in
+  place, fetch exact, content key kept.
+- **Regression test:** `scripts/tile_collision_smoke.py` (+ `scripts/tile_collision_smoke/` with its
+  own `collision.tmx`; ci.yml on all 4 platforms), at zoom 1 and 3.8125: `tilemap_to_tile_matrix` /
+  `tilemap_get_tile` in map space; the exact windows (view-relative camera 0: 129..191; camera 64:
+  65..127; world-space: 129..191 whatever the camera, none two rows away); the tile's map rectangle,
+  gid and the handle in the callback; two calls a frame for a sprite on two tiles; one for a tile with
+  two shapes (hung before I7); the far corner tile, and nothing past the far edge. Fails with Scarab's
+  old argument count (no collision reaches Lua - checked by mutation), and the `a6ac4f6` measurement
+  above is what it rejects.
+- **Docs:** `collision_add_tile_rule` (only tiles with a collision shape; map space; touching edges
+  don't count), `collision_set_tile_handler` (map rectangle; once per tile touched; undo a frame's
+  movement once and all of it - sunlight's lesson from its own sample), `tilemap_get_tile` (map
+  rectangle), `tilemap_to_tile_matrix` (a map position; it said "world/screen pixel coordinate").
+- **`samples/collision` (the owner's choice: wall tiles):** now on `resources/tilemap/collision.tmx`
+  (sunlight's collision sample map at `4189199`: `test.tmx` plus a `walls` layer, id 9, drawn with the
+  new `tileset_wall.tsx` and `images/wall.png`, unmodified). Sunny (world-space) starts inside a box
+  of brick walls that stop her from every side (the handler undoes the frame's movement once), the gap
+  on the right lets her out to the second Sunny (hits counted as before), the shared zoom keys, HUD on
+  plates. Created with `renderer_create{ zoom = 3.8125, preferred_zoom = 3.8125 }` so a zoom reset returns
+  to the start zoom (the owner noticed the default renderer resets to 1.0). The owner's real-window
+  check (2026-10-30, screenshots): flush against a wall and in a corner at zoom 3.81 and 4.56, the
+  gap and the sprite hit at zoom 1.0, and the zoom reset back to 3.81.
+- `docs/history/caravellius_breakages_11_2026.md` entry 15.
+
+**V12 (DONE, 2026-10-30).** sunlight entry 45: a tile object stretched away from its tile's
+size takes its object layer's tint (before, it was drawn untinted). The owner asked for V12 to be
+covered fully rather than kept small (after what testing everything found in V11): "100% compliant
+with the new sunlight features, even if it breaks Caravellius".
+- **Audit:** no map in Scarab, Caravellius or sunlight's samples used `tintcolor`; at the `4189199`
+  pin a tint existed only in the map file (`stLayer` had no tint), so nothing could read or change it.
+- **Decisions (the owner):** a Scarab-made tint test map with every case; key `5` in `samples/shapes`;
+  a runtime tint API, option (b) - asked of sunlight first, V12 held until its pin.
+- **sunlight I8** (PR #229, BREAKAGES 57): `stLayer::tint` (RGBA, opaque white by default), read by
+  `GetLayer` from the authored `tintcolor` alpha included, for tile, image, object and group layers,
+  written by `SetLayer`; RGB multiplies into what the layer draws, alpha kept but ignored for drawing.
+  Also: group layers drawn as Tiled draws them (a group's opacity and tint multiply into its children;
+  shapes and text take only the opacity), and image layers apply their own opacity. Caravellius'
+  one image layer has no opacity, so nothing changes for it.
+- **Re-pin (inside V12):** `SCARAB_SUNLIGHT_REF` `4274ecbf6cdd71c3625254f68ae14e0ed6631acb`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@4274ecb`; verified on `origin/feat/master_plan`,
+  two commits after `4189199` (the I7 pin record and the feature); reconfigured in place.
+- **Lua API (separate functions, the owner's choice over extending `tilemap_set_layer`):**
+  `tilemap_get_layer_tint(layerId) -> r, g, b, a`, `tilemap_set_layer_tint(layerId, r, g, b, a)` and
+  their `_by_name` forms; strict `0..255`, `nil, "message"` on failure, read-before-write so the
+  layer's other values are kept; `tilemap_set_layer` keeps the tint.
+- **Regression test:** `scripts/layer_tint_smoke.py` (+ `scripts/layer_tint_smoke/`, ci.yml on all 4
+  platforms) on `resources/tilemap/tint/tint.tmx`: every authored tint read back exactly (alpha 64
+  kept; white without one; image, object and group layers), by name, set then get, a write-back
+  changing nothing, `tilemap_set_layer` keeping the tint and the tint keeping the other values, every
+  error. Mutation-checked (the alpha not stored: the set-then-get checks fail).
+- **The map and the sample:** `resources/tilemap/tint/tint.tmx` (Scarab-made, README) with five
+  labelled rows - tile layer, image layer (incl. opacity 0.5), tile objects own/turned/stretched with an
+  untinted shape and text, tint alpha ignored vs opacity, a group's tint and opacity on its children.
+  Key `5` in `samples/shapes`; `T` cycles a layer's tint and `G` a group's opacity at runtime.
+- **The owner's real-window check (2026-10-30, screenshots):** the first look found three sample
+  problems, all fixed: an overlapping label, invisible rectangles (their object layers had no colour),
+  and a red tint barely visible on red roof tiles (now cyan). Then: every row as described, `T` and
+  `G` working, shapes and text untinted, the group's opacity on its rectangle and text.
+- `docs/history/caravellius_breakages_11_2026.md` entry 16.
+
+**V14 (TODO, added by the owner 2026-11-07, found while planning C5).** sunlight's `Camera::Align` (the camera
+`tilemap_load_map` sets for a `MAP_ALIGNMENT_*`) computes its right and bottom alignments without the zoom, while
+the `CENTER` variants include it.
+- **Affected:** `TOP_RIGHT`, `BOTTOM_RIGHT`, `BOTTOM_LEFT`, `CENTER_HEIGHT_RIGHT` (x), and the y of
+  `CENTER_WIDTH_BOTTOM`. The bottom ones also snap to whole UNZOOMED viewport heights
+  (`|floor(H / vpBottom) * vpBottom - H|`).
+- **Measured** at zoom 3.8125: `BOTTOM_RIGHT` on the orthogonal 20x20x32 `test.tmx` puts the camera at
+  (-600, 10), not the map's bottom-right corner (315, 404); `CENTER` gives the right (157, 202). It is the same
+  on the isometric, staggered and hexagonal maps.
+- **Related, by design (sunlight documents it):** `TOP_LEFT` sets no axis, so it keeps the previous camera rather
+  than going to 0, 0.
+- **Why it needs care:** Caravellius loads every stage with `MAP_ALIGNMENT_CENTER_WIDTH_BOTTOM` and relies on its
+  current vertical behaviour, so a fix could move its starting view.
+- **To plan with sunlight** (sunlight-db has an FYI note, with a request not to change anything from it):
+  - what each alignment should mean at any zoom;
+  - whether to fix the existing ones or add zoom-aware ones;
+  - Caravellius' acceptance and fingerprint before and after.
+
+## Phase O: confirmed not applicable, recorded anyway
+
+Every reason below was re-checked against the code on 2026-10-23, after the pin had moved
+twice (P4, P5). Twelve held. Two did not: O4 (moved to V13) and O8 (reworded below).
+
+| # | Change | BREAKAGES entry | Why |
+|---|--------|------------------|-----|
+| O1 | Non-orthogonal maps refused | 1 | All Scarab maps were orthogonal when this was recorded; since C5 (2026-11-07) `resources/tilemap/` holds isometric, staggered and hexagonal maps too, all of which load |
+| O2 | `SetPixel` removed | 15 | Zero calls anywhere in Scarab (confirmed by grep across `src/`, `resources/`, `docs/`, `samples/`, `README.md`) |
+| O3 | Polyline/polygon/rectangle/ellipse width-by-zoom | 16 | No polyline/shape object in any Scarab map |
+| O4 | ~~Tile animation first-frame-double-duration fix~~ - **moved to V13** (2026-10-23) | 44 | ~~No animated tiles in any Scarab map~~ - wrong: `test.tmx`'s tilesets have animated tiles, see V13 |
+| O5 | Layer parallax placement correction | 34, 49 | No parallax in any Scarab map, sample or source (confirmed by grep) |
+| O6 | Listener dispatch reentrancy now well-defined | 42 | Scarab registers its listeners once at startup, never from inside a dispatch |
+| O7 | Isometric/staggered/hexagonal maps now load | 21-23 | All Scarab maps were orthogonal when this was recorded; new capability, not a requirement - surfaced to game authors by C5 (2026-11-07) |
+| O8 | TTF/OTF accented glyphs | 43 | Applies, harmless: `samples/text` really loads a TTF (`resources/fonts/pressstart2p-regular.ttf`; the first reason, "Scarab's docs name a TTF only as an example", was wrong, found 2026-10-23). ASCII text is drawn exactly as before, and accented letters now draw instead of `?`. Nothing to do |
+| O9 | `IEngine` gains `LoadFont`/`BeginClip`/`EndClip` | 6 | Scarab doesn't implement `IEngine` |
+| O10 | `SetWindowBackgroundColor` takes `stColor` | 10 | Nothing in Scarab calls it |
+| O11 | `doc/TODO.txt`/`FIXME.txt`/`MISSING_FEATURES.md` removed from sunlight | 3 | No link to them anywhere in Scarab |
+| O12 | `IFont` is a new interface in its own module | 9 | Only code that uses `IFont` directly; Scarab doesn't |
+| O13 | `FileSystem::Mount` sets PhysFS up itself, so it can be the first call | 12 | Scarab already calls `Init(argv[0])` first |
+| O14 | Sample fonts moved to `samples/shared/fonts` in sunlight | 13 | Samples only, no API change |
+
+## Phase C: new capabilities, not required
+
+**Why "not required":** each item is a new sunlight capability that Scarab doesn't expose yet.
+Scarab compiles and behaves exactly as before without it, so whether to offer it to Lua games
+is a product decision, not integration work. B1 (blend modes) was one, promoted by the owner.
+**When the plan reaches this phase, ask the owner, item by item, whether to make a detailed
+plan for it** (the owner's instruction, 2026-10-23). None is started or scheduled without
+that.
+
+| # | Item | BREAKAGES entry | Scope |
+|---|------|------------------|-------|
+| C1 | `GetControllerManager`/hot-plug/player slots/action map/haptics | 25, 27-33, 48 | **C1a DONE (2026-11-02); C1b DONE (2026-11-04)** (save directory, action map, rumble); **C1c DONE (2026-11-04)** (save files); see below |
+| C2 | `IShapeSurface` (shapes without a loaded map) | 38, 65 | **DONE (2026-11-06)**, with P12 (sunlight I16): `shape_draw_*` for Lua; see below |
+| C3 | Sprite z-order | 37, 64 | **DONE (2026-11-04)**, with P11 (sunlight I15): `sprite_set_z_order`/`sprite_get_z_order`; see below |
+| C4 | Layer parallax (a code API, not just Tiled-declared) | 34, 49 | **DONE (2026-11-07)**: `tilemap_get/set_layer_parallax` for Lua, `samples/parallax`; see below |
+| C5 | Non-orthogonal map support, surfaced to game authors | 21-23 | **DONE 2026-11-07**: isometric, staggered and hexagonal maps checked and shown, with P13 (sunlight I17, I18); see below |
+| C6 | Fonts by handle: re-pin to sunlight `9c8c6bf` (I3, entry 52) + a handle-based Lua font API, incl. `register_font` for text objects | 7, 52 | **Promoted by the owner (2026-10-24): DONE, done right before V5** - see below |
+| C7 | Several maps loaded at the same time, each view showing one of them (split-screen with players in different areas, a world map beside the local one, a picture-in-picture dungeon, a menu over a different map, a cross-fade between two maps) | - | **DONE 2026-11-09**, planned with sunlight (both owners agreed): WORLDS, as Godot's World2D - a world holds maps at offsets and owns its sprites and collisions, a view shows one world; sunlight delivered all of it in one pin (P14, `d9c71d2`); Scarab's side in two parts: view opacity (#92) and worlds - see below |
+| C8 | A sandbox for game scripts: nothing outside the game's own files and its save directory can be read or written | - | **DONE 2026-11-11 (on P16)**: one path rule for every function (save directory, then the game's own files; writes to the save directory), the core `io`/`os`/`require`/`loadfile`/`load` functions overridden in C++ (never removed), on by default with `--no-sandbox` - see below |
+| C9 | An image layer drawn in screen space, as before sunlight's L1 (Caravellius' cover screen) | - | **DONE 2026-11-11 (on P17)**: sunlight's `screen_space` image-layer property, a test map, `samples/backdrop`, the Tile map reference's "Tiled custom properties" - see below |
+| C10 | An image layer is drawn at its picture's real size, whatever size the map declares | - | **DONE 2026-11-11 (on P18)** - see below |
+
+**C1 (planned 2026-10-31 with the owner; C1a DONE 2026-11-02 on pin `4cb7262`, C1b not started).** Lua can poll
+keys, buttons and raw axes today (`input_is_*`, `input_get_gamepad_axis`, `input_add_gamepad`); none of
+sunlight's controller layer reaches Lua. Left out on purpose: sunlight's key/button event handlers and
+input dispatch mode (Lua games poll each frame; D1 covers the default key handler). Split by the owner:
+
+**C1a - pure input (first):**
+- **Connected pads and hot-plug:** `input_get_connected_gamepads()` -> `{ {id=0, name="..."}, ... }`,
+  `input_is_gamepad_available(id)`, `input_get_gamepad_name(id)`,
+  `input_set_gamepad_connection_handler(fn(id, connected))` - `ControllerManager::GetConnectedGamepads`/
+  `SetGamepadConnectionHandler`; it polls every slot 0..MAX_GAMEPAD_COUNT-1, so a pad never added is still
+  reported. The handler runs on the main thread inside the frame, like the collision handler.
+- **Dead zones - the owner's decision, after comparing engines:** game engines apply a stick dead zone by
+  default with an opt-out (XNA/MonoGame `GetState` vs `GamePadDeadZone.None`, Unity `GetAxis`/`GetAxisRaw`
+  and the Input System's stick processor, Unreal's per-axis/Enhanced Input dead zone, Godot actions, Phaser's
+  0.1 `threshold`); low-level libraries (SDL, GLFW, raylib, LOVE) return raw values. Scarab is the engine
+  layer, so:
+  - `input_get_gamepad_axis(pad, axis)` becomes the AUTOMATIC read: the pad/axis dead zone applied (a value
+    strictly inside it reads 0, sunlight's rule; no rescaling). Default 0.1, as sunlight's
+    `DEFAULT_AXIS_DEADZONE`.
+  - NEW `input_get_gamepad_axis_raw(pad, axis)`: the raw value, for games that filter themselves (radial
+    dead zone, curves, calibration). The owner chose this pair (Unity's naming) over keeping the default
+    raw with a `_filtered` extension, so the obvious call is the one that doesn't drift.
+  - `input_set_axis_deadzone(pad, axis, value)` / `input_get_axis_deadzone(pad, axis)` - stored in
+    `ControllerManager` (sunlight applies it only in its own axis-to-D-pad dispatch, never to a raw read,
+    which is why the Lua read must apply it). They tune the automatic read only.
+  - A behaviour change for `input_get_gamepad_axis` (values in (-0.1, 0.1) now read 0): logged in
+    `CARAVELLIUS_BREAKAGES`. Caravellius is unaffected (its `pausemenu.lua` already treats |v| < 0.1 as 0).
+  - Later, not in C1: a radial (whole-stick) dead zone and rescaling past the threshold.
+- **Player slots:** `input_claim_player_slot(slot, pad)`, `input_release_player_slot(slot)`,
+  `input_get_gamepad_for_slot(slot)`, `input_get_slot_for_gamepad(pad)` - a `PlayerSlotManager` Scarab owns.
+
+**C1a done (2026-11-02).** As planned, with what the work found:
+- **Plumbing:** `IRendererProvider::GetControllerManager` (the controller manager is on the concrete
+  renderer only) and `LuaEngineUtil::GetControllerManager` (renderer access, creates the default renderer
+  like `GetTileMap`); `LuaEngine` owns a `SunLight::Input::PlayerSlotManager` (global
+  `LuaInputApi::PLAYER_SLOTS_GLOBAL`, renderer-free); the renderer-created hook also calls
+  `LuaEngine::AttachToControllerManager`, which installs the hot-plug handler. 14 new or changed Lua
+  functions, all `nil, "message"`, with `@luaname` docs.
+- **Decisions made while implementing** (the owner reviewed them): the dead zone applies to the four
+  STICK axes only - a trigger rests at -1, so a dead zone around 0 would cut its travel, and sunlight does
+  the same; `input_set/get_axis_deadzone` refuse a trigger. "No pad" / "no slot" from the two slot lookups
+  is `false`, never `nil` (which means an error). Slots are 0 or more (`-1` is sunlight's
+  `NO_SLOT_ASSOCIATION`).
+- **Found:** `input_add_gamepad`'s doc said a pad must be registered before it is read - wrong, reads go
+  straight to raylib for any pad; `AddGamePad` only feeds sunlight's own dispatch, which only the default
+  key handler uses. Doc corrected. And the OS numbers pads in connection order, so the same pad got a
+  different id in two launches - the slot doc now says never to hard-code "pad 0 = player 1".
+- **A race fixed on the way (owner: fix it in this branch):** `LuaCollisionListener::OnCollision` (both
+  overloads) called into Lua WITHOUT `s_LuaMutex`, while sunlight dispatches collisions after `on_update`
+  has released it - so a `set_timer` callback (which runs whenever the mutex is free) could run Lua at the
+  same time. Both overloads now take the lock (safe: `HandleUserCollisions` is the only dispatch site and
+  never runs under the lock; the timer only `try_lock`s). **Proof, ThreadSanitizer** (`build-tsan/`, a
+  temporary probe: 1 ms timer + a collision handler firing every frame, real time): with the lock 0 reports
+  twice (1500 collision calls, ~15500 timer ticks); without it 59 data races
+  (`OnCollision` vs the timer callback, both in `lua_pcall`) and a crash (exit 134).
+- **Tests:** `tests/test_deadzone.cpp` (`LuaInputApi::ApplyDeadzone`, the rule; failed on a `<=` mutation);
+  new `scripts/input_api_smoke.py` (ci.yml, all 4 platforms, and `asan_run.py`): no pads headless, the
+  handler accepted, dead zones per pad and axis with round trips and trigger refusal, automatic and raw
+  reads, the slots in full (claim, conflict, replace, release, lookups), that slots and the handler create
+  no renderer, every error - failed on v0.1.25 and on a mutated claim; 8 new rows in `error_reporting_smoke`.
+- **`samples/input` rewritten:** two players, pads joining slots with A and leaving with B, the live pad
+  list and last hot-plug event, automatic vs raw stick values, `[`/`]` changing the dead zone.
+  **Window check with the owner, two real pads (Xbox Wireless, DUALSHOCK 4):** names listed, connect and
+  disconnect reported (macOS's own "Controller Disconnected" at the same moment), a slot kept across unplug
+  and replug, B/A leaving and rejoining, at rest raw `0.02` -> automatic `0.00`, and at dead zone 0.25 raw
+  `0.29, -0.04` -> automatic `0.29, 0.00` (past it unchanged, inside it zeroed).
+- **Caravellius:** breakage entry 21 (informational): every one of its 9 stick reads already applies its
+  own 0.1 dead zone with the same rule, so nothing it reads changes; acceptance PASS, fingerprint
+  `hash=33897632`.
+- **Also in this branch, at the owner's request:** every function in `src/host/rendererprovider.cpp` got
+  its own full comment - CI had passed it, because the guide let an override rely on its interface's
+  comment. The owner then made the rule strict: **every function definition has its own comment, interface
+  overrides included** (an implementation has details its interface can't know). `docs/CODE_STYLE.md` and
+  `style_audit.py`'s `cpp-undocumented-function` changed (it no longer reads sunlight's headers); measured
+  first, the strict rule found only `tests/test_fontpool.cpp`'s stand-in font - and fixing the audit's
+  blind spot for a function right after `public:` (taken for a line continuation) added one more there;
+  all four documented. Shown catching an override with its comment removed (`IsHeadless`).
+- **Proof:** clean build, unit tests (also under ASan), 16 smoke tests, the headless smoke test, 19 samples
+  headless, all 37 `asan_run.py` runs, style check 0, the docs generator.
+
+**C1b - save directory, action map and rumble (PLANNED 2026-11-03 with the owner; pin `4cb7262` has what it
+needs: sunlight I12's `IFileSystem::WriteFile`/`SetWriteDirectory`, and `ActionMap::Load`/`Save` through the
+FileSystem - the bindings-in-a-`.zip` bug reported while planning C1, fixed there).**
+- **Save directory (the owner's decisions):**
+  - A game names its folder in `project.json` (`"save_directory": "<name>"`) and/or with
+    `app_set_save_directory( name )`; when both are given, `app_set_save_directory` wins; `--save-dir <path>` on
+    the command line wins over both (tests, CI, portable installs - like `--headless`'s options winning).
+  - The per-user data folder is **Scarab's job, not sunlight's** (no sunlight request): macOS
+    `~/Library/Application Support/<name>`, Windows `%APPDATA%\<name>`, Linux `$XDG_DATA_HOME/<name>` or
+    `~/.local/share/<name>`. Scarab creates it and calls `IFileSystem::SetWriteDirectory`: mounted at the
+    virtual root ahead of every mount, so a save reads back by the same virtual path and overrides a file of
+    that name shipped in the `.zip` (user settings over defaults).
+  - The name is validated (letters, digits, `-` `_` `.`; no separator, no `..`). With no save directory a
+    save is `nil, "message"`, never a silent write elsewhere.
+  - Saves are plain (no write filter); where Scarab picks a format it is JSON (C1c).
+  - **No sandbox in C1b** (the owner: C8 plans it): C1b's save functions take a path the way sunlight's do -
+    a plain path is the save directory, `hpath://` is allowed. C8 will restrict them.
+- **Action map:** `input_bind_action_key( name, key )`, `input_bind_action_button( name, button )`,
+  `input_bind_action_axis( name, axis, direction )`, `input_unbind_action( name )`,
+  `input_get_action_binding( name ) -> type, code, direction` (new `ACTION_BINDING_*` constants),
+  `input_is_action_active( name[, gamepadId[, threshold]] )` (pad 0 and axis threshold 0.5 by default),
+  `input_save_action_map( path )` / `input_load_action_map( path )` - an `ActionMap` Scarab owns. **The file
+  keeps sunlight's own text format** (`name=TAG,code[,dir]`; the owner accepted the recommendation: it is
+  tested in sunlight, including a `.zip` and the read filter, and JSON would need Scarab to track the action
+  names, which `IActionMap` can't list).
+- **Rumble:** `input_is_rumble_supported( gamepadId )`, `input_set_rumble( gamepadId, left, right, seconds )`
+  (0..1, stops by itself), `input_stop_rumble( gamepadId )` - sunlight's `GamepadHapticsFactory` (SDL2),
+  created with the renderer and ticked once per frame (sunlight needs the tick for the timed stop); headless
+  sees no pad, so rumble reports unsupported. To check: SDL's haptics start on a CI runner with no device.
+- **Tests:** doctests for the save-name validation and the per-OS folder; a new headless
+  `scripts/action_map_smoke.py` (CI on all 4 platforms, `asan_run.py`) with `--save-dir` on a temp folder:
+  every binding type, a save -> load round trip, a default loaded from a `.zip` and from an encrypted pack, a
+  save overriding the shipped default, the `--save-dir` > `app_set_save_directory` > `project.json` priority,
+  no save directory, rumble unsupported, every error - shown failing on the old binary; rows in
+  `error_reporting_smoke`.
+- **Sample:** a new `samples/actions` - rebind "jump" by pressing a key or button, save, restart, still bound;
+  a rumble key per pad. **Window check with the owner on both pads** (Xbox Wireless, DUALSHOCK 4): rumble can
+  only be felt.
+- **Caravellius:** nothing breaks (all new) - an informational breakage entry.
+
+**C1b done (2026-11-04).** As planned, with what the work found:
+- **Save directory:** `Scarab::Engine::SaveDirectory` (`src/engine/savedirectory.{h,cpp}`), owned by `EngineHost`:
+  `--save-dir` (main.cpp) > `app_set_save_directory` > `project.json`'s `"save_directory"` (read by
+  `EngineHost::ApplyProjectSaveDirectory` in both entry branches; a bad value is fatal like a bad
+  `main_script`). `app_set_save_directory` returns the folder in effect - under `--save-dir` it changes nothing
+  and says where saves go, never a silent no-op. `app_get_save_directory`. Name and per-OS folder logic are
+  pure helpers with an injectable environment (doctests).
+- **Found: a save does not shadow a file inside the game's `.zip`.** sunlight mounts the write folder at `/`;
+  Scarab mounts a `.zip` at `APP_DIR`. So the documented pattern (docs, `samples/actions`, the smoke test) is:
+  the player's file under a plain name, the shipped defaults loaded from `APP_DIR` when it is missing. Raised
+  with the owner; a sunlight mount point for the write directory is the alternative, not needed. `CLAUDE.md`
+  gotcha added.
+- **Action map:** the 8 functions + `ACTION_BINDING_*` constants; sunlight's text format kept; action names
+  checked by Scarab (`LuaInputApi::IsValidActionName`: `=`, a line break or `#` would corrupt the file).
+  sunlight refuses a binding only when the input is already another action's - reported as
+  `nil, "that key is already bound to another action ..."`.
+- **Rumble:** `LuaEngine::AttachHaptics` from the renderer-created hook - SDL2 haptics in a window, sunlight's
+  `NullGamepadHaptics` under `--headless` (no pad there anyway, and CI never starts SDL); ticked from
+  `EngineHost::OnUpdate`, released in `OnStop`. The Lua global holds the address of the `unique_ptr`, set once
+  in `Init`, so creating the haptics later never writes the Lua state outside the mutex.
+- **Tests never touch the real per-user folder** (learned the hard way: a mutated build that ignored
+  `--save-dir` created test folders in the real `~/Library/Application Support`, removed): every
+  `action_map_smoke` run points `HOME`/`APPDATA`/`XDG_DATA_HOME` at a temp folder, and `asan_run.py` gives the
+  samples a temp `--save-dir`.
+- **Tests:** `tests/test_savedirectory.cpp` (names, the per-OS folder, action names; failed on two mutations);
+  `scripts/action_map_smoke.py` (ci.yml, all 4 platforms with `--require-encrypted`; `asan_run.py`): `api`
+  under `--save-dir`, `priority` under a fake home, `nodir`, and a `.zip` and an encrypted pack each run
+  twice (shipped defaults -> save -> the save next run; the packed defaults confirmed ciphertext) - failed on
+  v0.1.25 and on a priority mutation; 6 rows in `error_reporting_smoke`.
+- **`samples/actions`** (new): actions instead of keys, R rebinds jump, S saves, D defaults, T rumble test.
+  **Window check with the owner:** rebinding jump to Left Ctrl, saving and relaunching brought it back
+  ("loaded your saved bindings"); and **T made the connected controller vibrate** (the owner).
+- **Caravellius:** breakage entry 22 (informational); acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:** clean build, 32 unit tests (also under ASan), 17 smoke tests, the headless smoke test, 20 samples
+  headless, 39/39 `asan_run.py` runs, style check 0, the docs generator.
+
+**C1c - a general save-file API (PLANNED and approved 2026-11-04 with the owner; pin `b778188` = P10 has what it needs:
+sunlight I14's atomic, durable `WriteFile` and `IFileSystem::RemoveFile`, both asked for by Scarab for
+this item).** Any Scarab game can keep options, high scores and save slots as JSON in C1b's save directory.
+Scarab owns the format, so it is JSON.
+- **Functions** (a new module, `src/lua/luasaveapi.{h,cpp}`, its own reference page `save.html`; every
+  failure is `nil, "message"`):
+  - `save_write( name, table ) -> true` writes the table as pretty-printed JSON (2-space indent), through
+    sunlight's atomic `WriteFile` (a crash never leaves a half-written save).
+  - `save_read( name ) -> table` reads a save back, ONLY from the save directory.
+  - The names are short and say nothing about the format (owner, 2026-11-04); the docs say every save is JSON.
+  - `save_exists( name ) -> boolean` is true only for a FILE (sunlight's `Exists` is also true for a folder).
+  - `save_delete( name ) -> true` uses sunlight's `RemoveFile`; a missing save is `nil, "no save named ..."`.
+- **Save names:** relative, `/`-separated (`"options.json"`, `"slots/1.json"`), each part checked like the
+  save-directory name (letters, digits, `-` `_` `.`); no `.`/`..` part, no scheme, no leading `/`, and never
+  ending in `.tmp` (sunlight's temp-file suffix). So a save can never leave the save directory, which is
+  what C8's sandbox will want anyway. With no save directory every call is `nil, "no save directory ..."`.
+- **Reading only the save directory:** a plain path through `ReadFile` also finds a file of the same name in
+  the CWD mount of a loose run, but never in a `.zip` (at `APP_DIR`). So loose and packed games would behave
+  differently. Scarab reads and checks a save through `hpath://<save folder>/<name>`; that path is built by
+  Scarab, never taken from Lua. Writes and deletes stay plain virtual paths, which sunlight keeps inside the
+  write directory. C8 must keep these internal host paths working when it restricts the Lua-supplied ones.
+- **Lua -> JSON (strict; a refusal names where in the table, eg. `"value.scores[3]: ..."`):**
+  - A table whose keys are exactly `1..n` becomes an array. A table with only string keys becomes an object.
+    An empty table becomes `{}`.
+  - Refused:
+    - mixed keys, holes (`{1, nil, 3}`), or any other kind of key (a float, a boolean, a table);
+    - functions, userdata and threads;
+    - a table met twice on the same branch (a cycle);
+    - nesting deeper than a named limit (64);
+    - NaN and infinity;
+    - a string that is not valid UTF-8.
+  - Lua integers stay JSON integers and floats stay floats (`3.0` writes `3.0`), so `save_read` gives
+    back the same Lua types. Object keys come out sorted, so the same table always writes the same bytes on
+    every launch, whatever Lua's per-launch hash order (see the `pairs()` gotcha).
+  - JSON -> Lua is `load_json`'s existing conversion, shared rather than copied.
+- **Not in C1c (owner, 2026-11-04):** `save_list()` for a "load game" menu. sunlight has no listing call;
+  it would be asked for (like `RemoveFile`) when a game needs save slots.
+- **Saves are plain** (C1b's decision): never encrypted, even when the game itself is an encrypted pack.
+- **Tests:**
+  - doctests for the converter (on a bare `lua_State`, every accepted and refused case) and for the save-name
+    rules;
+  - a new headless `scripts/save_api_smoke.py` (ci.yml on all 4 platforms, `asan_run.py`; always
+    `--save-dir` plus a fake home):
+    - round trip of every value type;
+    - the exact bytes written (indent, sorted keys), identical across two launches;
+    - every refusal;
+    - no save directory;
+    - names with subfolders;
+    - a `.tmp` name refused, and no `.tmp` left behind after a save;
+    - a FOLDER with a save's name: `save_exists` false;
+    - delete then `save_exists` false, delete of a missing save;
+    - a shipped file of the same name never read as a save, from a loose folder, a `.zip` and an encrypted
+      pack;
+  - each test shown failing (the v0.1.25 binary has none of these functions; mutations for the converter
+    and the name rules);
+  - rows in `error_reporting_smoke`.
+- **Sample:** a new `samples/saves`:
+  - options (volume, fullscreen) and a high-score table, saved on a key press;
+  - restart, and they are still there;
+  - a key deletes the save and shows the defaults again.
+  - Window check with the owner (save, quit, relaunch).
+- **Caravellius:** nothing breaks (all new); an informational breakage entry. Its `score.lua` could keep a
+  high score with `save_write` later, which is Caravellius' choice.
+
+**C1c done (2026-11-04).** Built as planned:
+- **Code:**
+  - `src/lua/luasaveapi.{h,cpp}` holds the four functions and `IsValidSaveName`.
+  - `LuaJsonApi` gained `ToJson`, the strict Lua -> JSON conversion, plus `IsValidUtf8` and a public
+    `PushJsonValue`.
+  - `LuaEngineUtil` gained `CheckTableArg`.
+  - The docs page is `save.html`, with its `SOURCE_TO_DOC` entry and a row in the `docs/lua-api` index.
+- **Decision 1 (reading only the save folder) shown to matter:** a mutation that read a save through the plain
+  name made `save_read( "shipped.json" )` return the loose game's own file. The `.zip` scenarios still passed,
+  which is exactly the loose-vs-packed difference the decision avoids. `CLAUDE.md` gotcha added.
+- **One change to `load_json`:** the way back (`PushJsonValue`) now has the same 64-table limit and checks the
+  Lua stack. A deeper file is `nil, "cannot read ..."`; before, it could overflow Lua's stack (no
+  `lua_checkstack`). Breakage entry 23.
+- **Tests:**
+  - **`tests/test_savejson.cpp`, 7 doctests:**
+    - the converter: arrays, objects, `{}`, integers vs floats, `math.maxinteger`/`mininteger`;
+    - every refusal message, and the stack left as it was;
+    - a table shared by two branches, and the depth limit;
+    - the round trip back, with `PushJsonValue` refusing a document past the limit;
+    - UTF-8 (overlong, surrogate, above U+10FFFF, cut short);
+    - the save-name rules.
+
+    Failed on two mutations (no hole check; no `.`/`..` check). `CheckTableArg` got its own doctest.
+  - **`scripts/save_api_smoke.py`** (ci.yml on all 4 platforms with `--require-encrypted`; `asan_run.py`; a
+    fake home for every run):
+    - `api`: every function and refusal; a FOLDER named like a save; a loose game's shipped file never read
+      or deleted as a save; no `.tmp` left;
+    - `fixed`: the exact bytes, identical on two launches;
+    - `nodir`: no save directory;
+    - `spoiled`: hand-edited saves, one not JSON and one a bare number;
+    - a `.zip` and an encrypted pack, each run twice. The save on disk stays plain JSON.
+
+    Failed on the v0.1.25 binary, and on the read-path mutation.
+  - **8 rows in `error_reporting_smoke`.**
+- **`samples/saves`** (new): options (volume, FPS counter, colour) and a top-5 score table; S saves, X deletes,
+  and everything is back on the next launch.
+  **Window check with the owner, on macOS, from an empty save folder:**
+  - The first launch said `no save named ...` and showed the defaults.
+  - Changing the options and scores, then S, wrote `options.json` and `scores.json`, with no `.tmp` left.
+  - The relaunch read both back: `... loaded`, volume 9, FPS on, teal, `P1 7957`.
+  - X deleted both, and the next launch was back to the defaults.
+  - The screenshots showed the square over the save-folder line; it moved to the bottom right.
+- **Caravellius:** breakage entry 23. Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - a clean build;
+  - 40 unit tests, also under ASan;
+  - 18 smoke tests, plus the headless smoke test;
+  - 21 samples headless;
+  - 41/41 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
+
+**Tests and sample (each part):** every function `nil, "message"` with `@luaname` docs and rows in
+`error_reporting_smoke`; a new headless `scripts/input_api_smoke.py` (no pads under the null input: empty
+pad list, slot logic in full - claim, conflict, release, both lookups -, dead-zone round trips and the
+automatic-vs-raw reads, action-map binding and a save -> load round trip, rumble "unsupported", argument
+errors); doctests for any pure logic Scarab adds; `samples/input` extended (live pad list on hot-plug,
+players 1 and 2 claiming pads by a button press, a rebindable "jump" saved to a file, a rumble key, a
+dead-zone slider showing automatic vs raw); a window check with the owner and a real gamepad with rumble
+(hot-plug and rumble can only be seen by hand).
+
+**C6 (DONE, 2026-10-24 - tested by the owner in a real window, reviewed and approved; promoted by the owner 2026-10-24, done right before V5, out of phase order;
+reshaped the same day into "fonts by handle").**
+
+*How it got here.* C6 began as "expose `RegisterFont( family, path, bold, italic )`". Without a
+registered font, sunlight draws every Tiled text object as `??????` (`textobjectrenderer.cpp`,
+`__MISSING_FONT_PLACEHOLDER`), and V5's `samples/objects` labels every case with text objects.
+Planning it showed that `set_font` (for `draw_text`) and text objects would each load their own
+copy of the same file, because sunlight's `FontRegistry` took only a path and owned a
+`unique_ptr<IFont>`. The owner re-planned font handling with sunlight (as its 2026-10-04 Phase B
+discussion had started), and sunlight shipped **I3, "fonts by handle"** (PR #218, pin
+`9c8c6bf421a1147d1e8c099e698dfbe7c1885af2`, on top of `bfce598`; sunlight BREAKAGES entry 52,
+**deliberately breaking**: the owner chose to break compatibility).
+
+*sunlight's model at `9c8c6bf`: load once, then use the handle.* A font is loaded once into a
+`std::shared_ptr<SunLight::Font::IFont>`. The same handle can be the active font for
+`DrawText`/`MeasureText`, be registered for any number of text-object families and styles, and be
+drawn with directly. One file means one load and one GPU copy.
+- `IDrawSurface::LoadFont( path )`: new. It returns the handle, or `nullptr` if the file can't load
+  or the renderer isn't started. It reads TTF/OTF (with Latin accents) or BMFont `.fnt`, through
+  the filesystem mounts.
+- `IDrawSurface::SetFont( font )`: takes a handle now, not a path. `nullptr` selects the built-in
+  font. It returns `false`, keeping the active font, for a font another backend loaded or an
+  invalid one. `IDrawSurface::GetFont()`: new, the active font or `nullptr`.
+- `TileMapRenderer::RegisterFont( family, font, bold, italic )`: takes a handle, not a path. It is
+  on the concrete renderer only, not on `IDrawSurface`. Registering a key again replaces its font,
+  and one font may fill several keys. `UnregisterFont( font )` (every slot that font serves) and
+  `UnregisterFont( family, bold, italic )` (one slot) are new. An unregistered family draws
+  `??????` again, with a warning once.
+- `IFont`: `IsValid`, `MeasureText( text, size )`, `DrawText( text, x, y, size, color )`,
+  `DrawTextRotated(...)`. These are screen space and honour the clip and blend modes (I2).
+- Ownership is shared: the game's handle, the engine while the font is active, and each registry
+  slot. The last owner releases it. `Stop()` lets go of every registered font and selects the
+  built-in font again while the window is open. When the window closes, every live font becomes
+  invalid (calls do nothing, nothing dangles).
+- References in sunlight: `doc/BREAKAGES.md` entry 52, `docs/history/master_plan_11_2026.md` "Integration
+  follow-ups" I3, `src/drawsurface/idrawsurface.h`, `src/font/ifont.h`, `samples/text` (each face
+  loaded once and registered; the Mono face also selected for a HUD line),
+  `tests/test_textobjects.cpp`, `tests/test_objectrenderers.cpp`.
+
+*Why the re-pin and the Lua API are one item.* Scarab's `set_font` calls
+`IDrawSurface::SetFont( szFilePath )` (`src/lua/luatextapi.cpp`), which no longer exists, so the
+re-pin alone does not compile.
+
+*Decisions (the owner, 2026-10-24):*
+1. **`set_font` takes a path, a handle, or `nil`**, told apart by the argument's Lua type. A
+   string loads and selects in one step, like today; that font is owned only by the engine, so it
+   is freed when another font replaces it. A handle (from `font_load`) selects that font. `nil`
+   selects the built-in font. Errors are `nil, "message"` (B1/D3), where today's `set_font`
+   returns `false`.
+2. **A font in Lua is an opaque integer handle with an explicit release**, like `sprite_*`/`view_*`.
+   A Scarab-side pool holds the `shared_ptr<IFont>` per handle. Releasing a handle drops only the
+   pool's reference, so a font that is still active or registered keeps working.
+3. **`draw_text` and `measure_text` get an optional last font argument**. Left out, they use the
+   active font, exactly as today. Given, they draw or measure with that font through `IFont`
+   directly.
+4. **One item**, done right before V5.
+
+*Planned Lua API (names to confirm when the item starts):*
+```lua
+local sans, err = font_load( APP_DIR .. "resources/fonts/caravellius8x8.fnt" )  --> handle | nil, message
+set_font( sans )                      -- draw_text/measure_text use it
+set_font( APP_DIR .. "x.ttf" )        -- or load + select in one step, as before
+set_font( nil )                       -- the built-in font
+register_font( "Sans", sans )         -- map text objects of family "Sans" use the SAME loaded font
+register_font( "Sans", sans, true )   -- it may also stand in for "Sans bold"
+unregister_font( sans )               -- every slot it serves; or unregister_font( "Sans", false, false )
+draw_text( "Hi", 20, 20, 24, 255, 255, 255, 255, sans )   -- optional last argument
+local w = measure_text( "Hi", 24, sans )
+font_release( sans )                  -- the handle is no longer needed
+```
+
+*C++ (to detail when the item starts):* a Lua-agnostic font pool in `src/engine/`, like
+`SpritePool`, holding `shared_ptr<IFont>` per handle, with generation-checked handles so a released
+handle is never reused by mistake. `RegisterFont`/`UnregisterFont` reach the concrete renderer
+through narrow methods on `IRendererProvider`. `LoadFont` needs a started renderer: a window-needing
+call under the `renderer_create`-first rule. Every font is released before the window closes (the
+same shutdown-order rule as `SpritePool::Clear` in `EngineHost::OnStop`).
+
+*Tests:* headless smoke scenarios (sunlight's null backend loads a font iff the file exists):
+load/select/register/unregister/release round trips, every error path, a released handle being
+rejected, a handle still drawing after release while active or registered, and `set_font`'s three
+forms, each proven by mutation. Re-pin checks as in P4/P5 (real fetch, `--version`, every smoke
+test). `samples/text` and `samples/hello-world`/`samples/renderer` move to the new API where it
+helps, and the owner checks text by eye. V5's `samples/objects` is the eye check for text objects.
+
+*Breakages:* a `docs/history/caravellius_breakages_11_2026.md` entry. Caravellius' `Text.set_font`
+(`src/core/text.lua`, called from `src/main.lua` with `caravellius8x8_bold.fnt`) keeps working
+through the path form, but now gets `nil, "message"` instead of `false` on a bad path. The handle
+form lets it load each font once. Per the owner (2026-10-24): try not to break Caravellius, but
+prefer the best design even if it does, and log every break for the integration conversation.
+
+*Fonts available* (the owner's point: our own, or open-license ones compatible with ours):
+
+| Family | File | In Scarab's `resources/fonts/`? | License |
+|---|---|---|---|
+| "Sans" | `caravellius8x8.fnt` (+ `_bold`) | yes | the project's own (zlib; sunlight also lists SIL OFL 1.1) |
+| "Pixel" | `pressstart2p-regular.ttf` | yes | SIL OFL 1.1 |
+| "Mono" | `AnonymousPro-Regular/Bold/Italic/BoldItalic.ttf` | no | SIL OFL 1.1 (compatible; copy with `OFL-anonymouspro.txt`) |
+
+Every map V5 (and V6/V7) would use (`objects.tmx`, `thick.tmx`, `rotation.tmx`, `opacity.tmx`)
+uses only "Sans" regular, which is already in Scarab. Anonymous Pro is needed only for sunlight's
+`text.tmx` ("Mono").
+
+**Built (2026-10-24):**
+- **Names confirmed by the owner:** `load_font`, `release_font`, `set_font`, `register_font`,
+  `unregister_font`, `draw_text`, `measure_text`. The owner noted that a category prefix (like
+  `sprite_*`) fits sprites, but not fonts, because `set_font` already exists. `get_font` is left
+  out for now: a font selected by path has no Lua handle, and nothing needs to read the active
+  font back.
+- **Re-pin:** `SCARAB_SUNLIGHT_REF` `9c8c6bf421a1147d1e8c099e698dfbe7c1885af2`,
+  `SCARAB_SUNLIGHT_DISPLAY_VERSION` `feat/master_plan@9c8c6bf`. Real fetch verified. Against
+  the new pin, exactly one compile error, as expected: `set_font` passing a path to the old
+  `SetFont`.
+- `src/engine/fontpool.{h,cpp}`: `Scarab::Engine::FontPool`, Lua-agnostic like `SpritePool`.
+  Each slot holds one `shared_ptr<IFont>`, and `FontHandle`s use the same generation packing as
+  `SpriteHandle`, so a released handle never resolves to the font that reuses its slot.
+  `EngineHost` owns it and clears it in `OnStop()`, before the window closes, like
+  `SpritePool`. `LuaEngine::Init` stashes it as `fontPoolPtr`, read by
+  `LuaEngineUtil::GetFontPool`.
+- `IRendererProvider` gained `RegisterFont( family, font, bold, italic, trigger )` and the two
+  `UnregisterFont` forms, because sunlight has them only on the concrete `TileMapRenderer`.
+  `RegisterFont` creates the default renderer first, like `GetTileMap`. The unregister forms
+  create none and report false without one. `LoadFont`/`SetFont` come from `IDrawSurface`.
+- `src/lua/luatextapi.cpp`: the bindings. `set_font` tells a string, an integer handle and
+  `nil` apart. `draw_text`/`measure_text` draw or measure through the given `IFont` directly.
+  Every error is `nil, "message"`.
+- **Found while building it:** the first probe showed `register_font( "Sans", f )` failing with
+  "'bold' must be a boolean". `LuaEngineUtil::GetFontPool` left the pool pointer pushed on the
+  Lua stack, so an omitted 3rd argument read as that pointer. `GetFontPool` now pops it, like
+  `GetRendererProvider`. `GetSoundManager`, `GetSpritePool` and `GetScriptProcessor` have the
+  same leak but are harmless today, because their callers read every argument first. **Record
+  for D3**: make them pop too.
+- **Test:** `scripts/font_api_smoke.py` + `scripts/font_api_smoke/`, in `ci.yml` on all 4
+  platforms. It checks `load_font` handles and errors, `set_font`'s three forms and every error,
+  `draw_text`/`measure_text`'s font argument, `register_font`/`unregister_font` by slot and by
+  handle with every error, that releasing a handle keeps a font that is active or registered
+  working, slot reuse with a stale handle rejected, and drawing with a handle inside a frame.
+  **Mutation checks:** without the generation bump, it fails with "a reused slot gave back the
+  released handle" and "stale handle after reuse". Without the stack pop, every
+  `register_font` with an omitted flag fails. (Restoring needed the object files deleted, not
+  just `touch`ed, before make rebuilt them; worth remembering for every mutation check.)
+- `samples/text`: moved to the new API. It loads three fonts once (caravellius8x8 regular and
+  bold, Press Start 2P), draws a line in each at the same time through `draw_text`'s font
+  argument, keys `1`-`3`/`0` select the active font by handle or the built-in one, it shows a
+  Portuguese/Spanish accented line in the TTF, and it shows `set_font`'s error for a bad path.
+  README updated.
+- Docs: the Text page has "Fonts" and "Fonts for the map's text objects" sections, and the
+  `docs/lua-api/README.md` index row was updated. `docs/history/caravellius_breakages_11_2026.md` entry 6.
+- **Two review changes (the owner, 2026-10-24):**
+  - `screen_get_width`/`screen_get_height` moved from `LuaTextApi` to `LuaAppApi`: they return
+    the fixed render-area size every screen-space call uses, and have nothing to do with
+    text. Their C++ names changed from `GetWindowWidth`/`GetWindowHeight`, which misleadingly
+    said "Window" for something that is deliberately not the window size, to `GetScreenWidth`/
+    `GetScreenHeight`, matching their Lua names. **The Lua names are unchanged**, since 8
+    sample uses and 9 Caravellius files call them. Their docs moved from the Text page to the
+    App page. `LuaTextApi`'s outdated class comment ("a thin wrapper over `ITileMap::SetFont`")
+    now describes the font API.
+  - The forward declarations in `luaengine.h` were removed (see Phase S, "Forward
+    declarations: sunlight's rule").
+  - The owner noticed `LuaEngineUtil` mixes shared and category-specific helpers. This became
+    a new item, **S4**. `GetFontPool`, brand new in C6, moved right away (the owner's call): it
+    is now a file-local function in `luatextapi.cpp`, the only file that uses it, and pops what
+    it pushes. Its global's name is defined once, as the public
+    `LuaTextApi::FONT_POOL_GLOBAL`, which `LuaEngine::Init` uses to set it. That is the pattern
+    S4 follows for the others.
+- Checks: every other smoke test passes, as do the docs generator and all 16 samples headless.
+
+**C5 - non-orthogonal maps (PLANNED 2026-11-07 with the owner; sunlight E1-E2 load them, BREAKAGES 21-23).**
+sunlight draws isometric, staggered and hexagonal Tiled maps. Its own samples ship one map of each:
+`isometric.tmx` (8x6, 64x32), `staggered.tmx` (8x6, 64x48, axis y, odd) and `hexagonal.tmx` (8x6, 60x50, side
+20). Each has a `ground`, an `obstacles` (tiles with a collision shape) and a `sprites` layer. No new Lua API is
+planned: `tilemap_load_map` takes any map. C5 checks every existing function on them, shows them, and documents
+what works.
+- **Checked while planning (2026-11-07), headless on sunlight's maps:**
+  - **Works on all three:**
+    - loading, and `tilemap_get_map_info`;
+    - `tilemap_get_tile` (each cell's rectangle in map pixels, projection-aware);
+    - the camera's scroll limits;
+    - `view_fit_to_map`;
+    - world-space sprites;
+    - tile collisions: a sprite on an obstacle collides, and off the map it doesn't.
+  - **Collisions use each tile shape's BOUNDING BOX.** The obstacles' shape is a rectangle over the tile image,
+    so a sprite centred on one isometric diamond also touches the boxes of the diamonds next to it (4 hits per
+    frame among 4 adjacent obstacles, against 1 on staggered and hexagonal). Documented, not a bug.
+  - **FOUND, CONFIRMED, REPORTED to sunlight (sunlight-db, owner-approved):** tile picking is wrong on isometric
+    and staggered maps.
+    - The centre of a cell's own shape picks itself on 0 of 48 isometric cells (each gives its right
+      neighbour) and 0 of 48 staggered cells (each gives the cell below), against 48 of 48 on hexagonal.
+    - `MapToTileMatrix` inverts the cell's bounding-box corner, not the diamond. sunlight's tests check only
+      a point 1 px inside each box's corner.
+    - Until a fixed pin, the docs state the limit. The plan's picking tests are written for the right answer
+      and enabled when the fix is pinned.
+  - **Also found, not C5's (its own item V14):** right and bottom map alignments ignore the zoom.
+- **Resources:** the three maps, their tilesets and images, copied into `resources/tilemap/isometric/`,
+  `staggered/` and `hexagonal/`, each with a README giving their origin (sunlight's own samples at the pin).
+- **Tests:** a new headless `scripts/projection_smoke.py` (ci.yml on all 4 platforms, `asan_run.py`), for each
+  of the three maps:
+  - the map info and `tilemap_get_tile` rectangles for chosen cells (exact values);
+  - obstacle cells found on the `obstacles` layer;
+  - points outside the map refused by `tilemap_to_tile_matrix`;
+  - the camera's scroll limits;
+  - `view_fit_to_map`'s zoom;
+  - a world-space sprite colliding with an obstacle and not off the map;
+  - every cell's centre picking itself: hexagonal now, isometric and staggered once sunlight's fix is pinned
+    (until then the test asserts today's known-wrong answer, so the change can't go unnoticed);
+  - shown failing on a mutation.
+- **Sample:** a new `samples/projections`, switching between the three maps (keys 1/2/3):
+  - Kepi walks cell to cell (the cell's position from `tilemap_get_tile`), blocked by obstacle cells;
+  - the camera follows, with zoom;
+  - a shape outline (C2) marks the cell Kepi is on;
+  - the HUD shows the map's projection, the cell and its rectangle.
+- **Window check with the owner** on all three maps:
+  - the diamonds and hexes are drawn right;
+  - Kepi lands on cells;
+  - obstacles block;
+  - the outline matches the cell;
+  - scrolling and zoom work.
+- **Docs:**
+  - a "Map projections" part in the tile map reference page: what works, the bounding-box collisions, the
+    picking limit until the fix;
+  - the README feature list (non-orthogonal maps) and sample list;
+  - a `CLAUDE.md` line.
+- **Caravellius:** nothing breaks (its maps are orthogonal); an informational breakage entry.
+
+**C5 done (2026-11-07).** Built as planned, with P13 (sunlight `44f64a1`: I17 picking, I18 alignments) in the same
+branch (owner's choice):
+- **Pin:** `SCARAB_SUNLIGHT_REF` `44f64a1648fa55fabc9708e6736d4368ee2bf844`, display `feat/master_plan@44f64a1`; a clean
+  build, `--version` and the unit tests (963 assertions) pass on it.
+- **Resources:** `resources/tilemap/isometric/`, `staggered/` and `hexagonal/` - sunlight's sample maps, unmodified,
+  each with a README; and `resources/tilemap/orthogonal/`, Scarab's own 8x6 orthogonal map with the same layout
+  (the shared grass and brick tilesets; added at the owner's request, so the sample shows all four Tiled styles);
+  `resources/tilemap/README.md` lists them.
+- **Test:** `scripts/projection_smoke.py` + `scripts/projection_smoke/` (ci.yml, all 4 platforms; `asan_run.py`
+  picks it up). For each of the four maps: the map info; exact cell rectangles; the four obstacles; points outside the map
+  refused; every cell's centre AND bottom tip picking itself (48/48 each, I17); an isometric empty corner picking
+  no cell; the scroll limits; `view_fit_to_map`'s zoom; a world-space sprite colliding with the obstacles its
+  bounding box overlaps (the expected count worked out from the shape rectangles: 3 per frame on isometric, 1 on
+  staggered and hexagonal) and with nothing off the map. A failed run never quits (exit 3).
+  - **Shown failing:** on the v0.1.25 binary (wrong rectangles and picking), and with row and column swapped in
+    `LuaTilemapApi::ToTileMatrix` (6 of 48 cells pick themselves); passes again once restored.
+  - **Found writing it:** collision rules survive loading another map, so adding the same tile rule once per map
+    made every hit call the handler once per copy - the test adds its rule once; documented in `CLAUDE.md`.
+- **Sample:** `samples/projections` - keys 1-4 load the maps, listed on the HUD with the loaded one in brackets
+  (the owner's request); Kepi (world space, on the `sprites` layer) walks
+  cell to cell with the arrows, blocked by obstacles and the map's edge, its cell outlined in white with
+  `shape_draw_polygon` (a diamond, or a pointy-top hexagon); WASD move a cursor whose picked cell is outlined in
+  yellow, or "no cell"; the camera follows Kepi with zoom; `view_set_preferred_zoom` set at the first load. A
+  controller works too (the owner's request): the D-pad moves Kepi, the left stick the cursor, L1/R1 change the
+  map, L2/R2 zoom and Y resets it - one step per press, from each button's state on the frame before.
+  - **Window check with the owner (2026-11-07):** all four maps (outlines, blocking, the picking cursor, zoom,
+    the labels) and the controller checked: "working". The owner noticed the obstacle blocks drawn half a cell below their cells: sunlight places a tile
+    image taller than the grid from the cell's top-left (`TileDrawPosition`), where Tiled anchors it at the
+    bottom. The owner decided to leave the sample as it is - not reported.
+- **Docs:** a "Tiles and map projections" group on the tile map reference (`tilemap_get_tile`,
+  `tilemap_to_tile_matrix`); README features and sample list; `samples/README.md` (and the parallax entry's
+  "Sunny" corrected to Kepi); `samples/projections/docs/README.md`; a `CLAUDE.md` gotcha.
+- **V14 (I18) checked:** no Scarab script or sample uses a right or bottom alignment; a probe of all nine
+  alignments on two maps at zoom 1, 2 and 3.8125 gives identical `CENTER` rows on both binaries, and only the
+  far-edge rows move. Caravellius: see BREAKAGES 28.
+- **Checks:** every smoke test (22) and the unit tests pass; the AddressSanitizer run passes 49 of 49 (every
+  smoke test and sample); the style check has no findings; Caravellius' acceptance PASS and fingerprint
+  `hash=33897632` on both pins.
+- **Caravellius:** BREAKAGES 27 (informational) and 28 (the corsair stage starts 17 px higher).
+
+**C4 - layer parallax for Lua (PLANNED 2026-11-06 with the owner; the pin `ad84cca` has what it needs, nothing
+asked of sunlight).** sunlight draws each layer's Tiled `parallaxx`/`parallaxy` factor as Tiled does: a layer is
+shifted by `(1 - factor) x (view centre + the map's parallax origin)`, about each view's own centre, and a group's
+factor multiplies into its children (sunlight L1, BREAKAGES 34, corrected in 49). The factors are also writable at
+runtime: they are fields of the `stLayer` that `ITileMap::GetLayer`/`SetLayer` read and write (`fParallaxX`/
+`fParallaxY`; `TileMapRenderer::SetLayerParallax` does the same). Scarab's `tilemap_get_layer`/`tilemap_set_layer`
+read them and write them back untouched, so Lua has never seen them. The map's parallax origin
+(`parallaxoriginx`/`y`) has no setter in sunlight; it is readable through `GetMapInfo`'s `tmx_map`.
+- **Functions** (in `LuaTilemapApi`, the same shape as the layer-tint functions of V12; every failure is
+  `nil, "message"`):
+  - `tilemap_get_layer_parallax( layerId ) -> fx, fy`
+  - `tilemap_get_layer_parallax_by_name( layerName ) -> fx, fy`
+  - `tilemap_set_layer_parallax( layerId, fx, fy ) -> true`
+  - `tilemap_set_layer_parallax_by_name( layerName, fx, fy ) -> true`
+  - `tilemap_get_parallax_origin() -> x, y`: read-only, the map's authored origin. Setting it would be a sunlight
+    request if a game ever needs it.
+  - A factor is any finite number: 1 is a normal layer, 0.5 moves at half the camera's speed, 0 stays fixed on
+    the view, and negative moves the other way (Tiled allows all of these). NaN and infinity are refused. A factor
+    reads back as written (shortest decimal, like layer opacity). The setter writes through `SetLayer`, keeping
+    every other field (visible, opacity, offset, tint) as it is. With no map, or an unknown layer, the message
+    says so.
+  - Loading the map again brings back its authored factors (they live in the loaded map).
+- **To verify while building (sunlight is asked only if one is wrong):**
+  - **Sprites on a parallax layer:** a screen-space sprite ignores the layer's factor (sunlight's docs). A
+    world-space sprite should take its layer's parallax camera (`GetCameraOffset` per layer). Check both.
+  - **Picking and collisions:** `tilemap_to_tile_matrix`/`tilemap_get_tile` and tile collisions are in map
+    space. Find out whether they ignore a layer's parallax (then what is drawn and what is hit differ on a
+    parallax layer), and document whichever it is.
+  - **Shapes (C2)** always use the view's own camera (parallax 1), so a shape drawn over a parallax layer does not
+    follow it. Document it.
+  - **Groups and several views:** a group's factor multiplies into its children; with several views, each view
+    applies the factors about its own centre.
+- **Tests:**
+  - **Doctests** for any pure logic that appears (eg. the shortest-decimal read-back, if not already covered).
+  - **A headless `scripts/layer_parallax_smoke.py`** (ci.yml on all 4 platforms, `asan_run.py`):
+    - the authored factors of `parallax.tmx` read back exactly (1, 0.5, 0.25);
+    - set/get round trips by id and by name, including 0, negative and fractional factors;
+    - other layer fields untouched by a parallax change;
+    - every refusal (bad id or name, NaN, infinity, non-numbers, no map loaded);
+    - the authored values back after a reload;
+    - the parallax origin read back (-640, -416);
+    - the default renderer created only after the arguments are checked.
+
+    Shown failing on the v0.1.25 binary and on mutations.
+  - **Rows in `error_reporting_smoke`.**
+  - **Drawing can't be seen headless.** sunlight's own parallax tests pin the drawing, and the window check is
+    the real proof.
+- **Sample:** a new `samples/parallax`, Scarab's counterpart of sunlight's own, on its `parallax.tmx` and
+  tilesets, copied into `resources/tilemap/parallax/` with a README giving their origin (sunlight's own sample,
+  commit `ad84cca`, the same project, as for the other shared maps):
+  - Sunny at the screen's centre, walking moves the camera, and the map wraps on the four marker objects
+    (`tilemap_get_object_by_name`);
+  - zoom limited so the view never leaves the map, as sunlight's sample does;
+  - keys to change the clouds' and sky's factors live (eg. 1/2/3 pick a layer, Up/Down change its factor,
+    R restores the map's values);
+  - the HUD shows each layer's factor and the parallax origin.
+- **Window check with the owner:**
+  - the layers move at their speeds;
+  - live changes take effect at once;
+  - 0 keeps a layer fixed on the view, and a negative factor reverses it;
+  - R restores the map's values;
+  - the wrap works.
+- **Docs:** `@luaname` docs (the formula, what each factor means, what parallax does NOT move: picking,
+  collisions, shapes, screen-space sprites), the README feature and sample lists, and a `CLAUDE.md` line.
+- **Caravellius:** nothing breaks (all new; `corsair.tmx` and `cover.tmx` have no parallax, checked); an
+  informational breakage entry.
+
+**C4 done (2026-11-07).** Built as planned, with nothing asked of sunlight:
+- **Code:** `LuaTilemapApi::GetLayerParallax`/`SetLayerParallax` (and `_ByName`) plus `GetParallaxOrigin`, through
+  `ITileMap::GetLayer`/`SetLayer`'s `stLayer::fParallaxX/Y`, read back with `ShortestDecimal`. A factor must be
+  finite once stored as a float, so 1e39 is refused. The setters check their arguments before the renderer.
+- **The checks, from sunlight's code and the window:**
+  - collisions are parallax-aware: a screen-space collider is tested against the layer's parallax camera;
+  - world-space sprites take their own layer's factor, not a parent group's (sunlight documents this);
+  - tile picking (`tilemap_to_tile_matrix`, `tilemap_get_tile`) stays in plain map coordinates;
+  - shapes (C2) use the view's own camera;
+  - screen-space sprites are not moved.
+
+  All of this is written into the Lua docs.
+- **Tests:**
+  - **`scripts/layer_parallax_smoke.py`** (ci.yml on all 4 platforms; `asan_run.py`), on `parallax.tmx`:
+    - 10 argument refusals before any window, with no renderer created;
+    - no map loaded;
+    - the declared factors and origin, by id and by name;
+    - exact round trips (0, 0.3/-0.7, 1.75, -1, 1e30);
+    - other fields and tint untouched, and `tilemap_set_layer` keeping the factors;
+    - refusals with a map loaded;
+    - the declared values back after a reload;
+    - frames drawn at 0 and at negative/large factors.
+
+    Failed on the v0.1.25 binary (`attempt to call a nil value`) and on a mutation that removed the finite check.
+  - **3 rows in `error_reporting_smoke`.**
+- **Map:** `resources/tilemap/parallax/` (sunlight's map, unmodified, at `ad84cca`, with a README).
+- **`samples/parallax`** (new):
+  - walking moves the camera, the map wraps on its four markers, and zoom-out is limited by `view_set_zoom_limits`;
+  - 1-4 pick a layer, `[` `]` change its factor by 0.25, 0 sets it to 0, N negates it, and R restores the map's
+    values;
+  - the HUD is three header lines after the owner found the first line cut off.
+- **Kepi (the owner's request during the window check):** Scarab's mascot got a name, **Kepi** (a softer form of
+  Khepri, the Egyptian scarab who rolls the sun; the owner's choice).
+  - It also got a sprite, `resources/sprites/kepi_idle.png`: a 128x32 strip of four 32x32 frames, the same shape
+    as Sunny's, in pixel art with the logo's palette. The idle loop bobs the sun, pulses its rays and shifts the
+    legs. It is temporary art, drawn by `scripts/kepi_sprite.py` (standard library only, deterministic: it rewrites
+    the committed PNG byte for byte; the owner asked to keep it).
+  - `samples/parallax` walks Kepi in Sunny's place.
+  - The logo was renamed `docs/images/kepi.svg`/`kepi.png`, as sunlight's README shows `sunny.png`.
+- **Window check with the owner:**
+  - each layer moved at its own speed, and buildings at 0 stayed at the same screen spots at three camera positions;
+  - clouds at -0.5 moved against the ground;
+  - `]` and R worked;
+  - the zoom-out limit held;
+  - the wrap worked;
+  - Kepi: "perfect, approved".
+- **Caravellius:** breakage entry 26 (nothing breaks). Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - unit tests, also under ASan;
+  - 21 smoke tests, plus the headless smoke test;
+  - 47/47 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
+
+**C2 - shapes for Lua (PLANNED 2026-11-05 with the owner; the pin `51a3bbb` has what it needs: sunlight M1,
+BREAKAGES 38).** sunlight's `IShapeSurface` (on `TileMapRenderer`) draws rectangle, ellipse, polyline and
+polygon outlines and filled points, with a thickness and a rotation. It uses the same `ShapeRenderer` code that
+draws Tiled shape objects, with or without a map loaded. Unlike `draw_filled_rectangle`/`draw_text` (screen
+space, the HUD), its coordinates are **map units**: a shape follows the view's camera and zoom and is clipped to
+the viewport. Uses: debug hitboxes, paths, range rings, selection boxes, simple vector art.
+- **Functions** (a new module, `src/lua/luashapeapi.{h,cpp}`, its own reference page `shape.html`; every failure
+  is `nil, "message"`; the arguments are checked before the renderer is touched):
+  - `shape_draw_rectangle( x, y, width, height, r, g, b, a[, options] ) -> true`
+  - `shape_draw_ellipse( x, y, width, height, r, g, b, a[, options] ) -> true`
+  - `shape_draw_polyline( x, y, points, r, g, b, a[, options] ) -> true`: an open path, at least 2 points.
+  - `shape_draw_polygon( x, y, points, r, g, b, a[, options] ) -> true`: a closed path, at least 3 points.
+  - `shape_draw_point( x, y, r, g, b, a[, size] ) -> true`: a filled square, `size` in map units (default 1,
+    must be > 0).
+- **The owner's decisions (2026-11-05):**
+  - The colour is `r, g, b, a` (each 0..255), like `draw_filled_rectangle`, for consistency.
+  - `points` is a flat list `{ x1, y1, x2, y2, ... }`, as LÖVE uses, relative to `(x, y)`. An odd count, too few
+    points, or anything that is not a number is refused, naming the index.
+  - `options` is a strict table `{ thickness = 1, rotation = 0 }`, like `renderer_create`'s. An unknown key, a
+    wrong type, or a thickness <= 0 is refused.
+    - Thickness is in map units: 1 is a hairline, more is a stroked path.
+    - Rotation is in degrees, clockwise: about `(x, y)` for a rectangle, polyline and polygon, and about the
+      box's centre for an ellipse (sunlight's rules).
+  - Positions, sizes and thickness are numbers (fractions allowed, as sunlight takes doubles), but must be
+    finite.
+- **When to call them:** from `on_update`, once per frame, like the HUD. A shape is drawn over the map and the
+  sprites, once, in the default view.
+- **Found while planning (2026-11-05), CONFIRMED in sunlight's own test harness, REPORTED to sunlight
+  (sunlight-34, owner-approved):** with a map loaded, a shape drawn after the map pass takes the PARALLAX CAMERA OF
+  THE LAST LAYER sunlight drew. `CurrentDrawContext` reads `m_EffectiveLayerCameraPos`, which `DrawAllLayers` sets
+  per layer and nothing resets.
+  - **The probe:** a temporary doctest in a scratch copy of sunlight, never committed. A point at map (500, 500),
+    zoom 1, viewport origin (10, 10), camera (200, 160):
+    - with a parallax-1 top layer it lands at 310, 350 (correct);
+    - with 0.5 it lands at 660, 630;
+    - with 0 it lands at 1010, 910;
+    - opacity is not carried over (alpha 255).
+  - **Why sunlight never saw it:** its tests and its `surface` sample use `IShapeSurface` only with no map.
+  - **FIXED by sunlight as I16 (`ad84cca`, BREAKAGES 65), pinned in P12 inside C2's branch (owner's choice):**
+    outside layer drawing, `CurrentDrawContext` uses the active view's own camera, so the probe's three cases
+    all land at 310, 350. From `on_update` that is the default view's camera, with no opacity or tint carried
+    over. sunlight's owner also made it one rule, map or no map: with no map a shape follows the camera too
+    (before, it ignored it). Four sunlight tests fail with the old code. The Lua docs carry no caveat.
+- **Tests:**
+  - **Doctests** for the pure parsing: the point list (flat pairs, odd count, too few, non-numbers, non-finite)
+    and the options table (defaults, every refusal).
+  - **A headless `scripts/shape_api_smoke.py`** (ci.yml on all 4 platforms, `asan_run.py`):
+    - every function returns `true` with valid arguments, with no map and with a map loaded;
+    - every refusal;
+    - a refusal never creates the renderer (`renderer_get_current() == nil`);
+    - a few frames of drawing many shapes run cleanly.
+
+    Shown failing on the v0.1.25 binary and on mutations of the parsers.
+  - **Rows in `error_reporting_smoke`.**
+  - **Drawing itself can't be seen headless** (the null renderer draws nothing a script can read). It is pinned by
+    sunlight's own shape tests and by the window check.
+- **Sample:** a new `samples/surface`, Scarab's counterpart of sunlight's `surface` sample, over a map you can
+  scroll and zoom:
+  - every shape: a thick rotating square, an ellipse ring, a rectangle, a travelling sine-wave polyline, and a row
+    of points growing in size;
+  - a hitbox outline drawn around a moving sprite;
+  - a key toggling the map off, to show the same shapes with no map;
+  - the HUD in screen space for contrast.
+- **Window check with the owner:**
+  - the shapes follow the camera and the zoom and are clipped to the viewport;
+  - thickness and rotation look right;
+  - the hitbox stays on the sprite while scrolling;
+  - with no map, the shapes are at their view positions.
+- **Docs:** `@luaname` docs (with the map-units/space rule, the call-from-`on_update` rule and the parallax limit),
+  the README feature list and sample list, and a `CLAUDE.md` line.
+- **Caravellius:** nothing breaks (all new); an informational breakage entry.
+
+**C2 done (2026-11-06).** Built as planned, on P12's pin `ad84cca`, which went into the same branch (owner's choice):
+- **Code:**
+  - `src/lua/luashapeapi.{h,cpp}` holds the five functions and the public parsers `ReadPoints`/`ReadOptions`.
+  - `IRendererProvider::GetShapeSurface` and `LuaEngineUtil::GetShapeSurface` reach the renderer (which
+    implements `IShapeSurface`), creating the default one only after the arguments are checked.
+  - The docs page is `shape.html`, with its `SOURCE_TO_DOC` entry and an index row. No parallax caveat, since
+    I16 is pinned.
+- **Tests:**
+  - **`tests/test_shapeargs.cpp`**, 3 doctests: the flat point list (pairs, odd count, too few points, a
+    non-number, NaN/infinity, nested pairs, extra keys, a hole) and the options table (defaults, both options,
+    every refusal), each leaving the stack as it was.
+  - **`scripts/shape_api_smoke.py`** (ci.yml on all 4 platforms; `asan_run.py`):
+    - 26 refusals across the five functions, with no renderer created by any of them;
+    - every function returning `true`, with no map and with a map loaded and the camera scrolled;
+    - thick, rotated and fractional shapes, `nil` and `{}` options, and 200 points in one frame.
+
+    Failed on the v0.1.25 binary (`attempt to call a nil value`) and, together with the doctest, on a mutation
+    that lowered the polygon minimum to 2 points.
+  - **5 rows in `error_reporting_smoke`.**
+- **`samples/surface`** (new), over `test.tmx` (scroll, zoom, `M` to unload and reload the map):
+  - every shape;
+  - a red hitbox outline around Sunny, made world-space so the sprite and the shapes share map units;
+  - a screen-space HUD and progress bar for contrast.
+
+  The sample sets its preferred zoom to the starting zoom (`view_set_preferred_zoom`, as `samples/camera` does,
+  D2), so `=`/`Home` come back to 3.81. The owner found it missing in the first window run, and confirmed both
+  resets in a second one.
+- **Window check with the owner:**
+  - at 3.81, 5.69 and 1.75 zoom, the shapes scaled with the map and thick lines stayed thick;
+  - the viewport clipped them;
+  - the hitbox stayed on Sunny;
+  - panned to camera (243, 0), the shapes kept their places on the map's art;
+  - with the map unloaded they stayed at the same screen positions, following the camera (I16's one rule);
+  - reloading put the map back under them;
+  - the HUD and the bar never moved.
+- **Caravellius:** breakage entry 25 (nothing breaks). Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - a clean reconfigure, with `--version` printing `feat/master_plan@ad84cca`;
+  - unit tests, also under ASan;
+  - 20 smoke tests, plus the headless smoke test;
+  - 45/45 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
+
+**C3 - sprite z-order (PLANNED 2026-11-04 with the owner; the pin `b778188` has what it needs: sunlight L3,
+BREAKAGES 37).** sunlight's `Sprite::SetZOrder( int )`/`GetZOrder()` (default 0) decide which of a LAYER's
+sprites draws on top: `SpriteRegistry::UpdateLayer` stable-sorts a layer's sprites by ascending z-order every
+frame, so a higher z-order draws later, on top. Z-order only orders sprites on the same layer; layers still
+draw in their own order, so a sprite on a higher layer is always above, whatever its z-order. It applies in
+every view.
+- **Functions** (in `LuaSpriteApi`, renderer-free like the other sprite handle functions; every failure is
+  `nil, "message"`):
+  - `sprite_set_z_order( handle, z ) -> true`, where `z` is any integer that fits a C `int`, negative included
+    (`ReadIntArg`).
+  - `sprite_get_z_order( handle ) -> z`.
+  - A bad handle or a fractional or out-of-range `z` is refused.
+- **A recycled sprite slot starts at z-order 0:** `SpritePool::Release` resets it, next to world space, blend
+  mode, opacity and tint. Without that, a pooled bullet could inherit an earlier sprite's "always on top".
+- **Kept across layers:** z-order is stored on the sprite, so moving a sprite to another layer
+  (`sprite_remove_from_layer` + `sprite_add_to_layer`) keeps it.
+- **Found while planning (2026-11-04), CONFIRMED in sunlight's own test harness:** sprites with EQUAL z-order
+  do not keep the order they were added in once any z-order has changed. sunlight's BREAKAGES entry 37 and its
+  test names say they do. The cause: `SpriteRegistry::UpdateLayer` sorts the layer's own list IN PLACE every
+  frame (`std::stable_sort`), so each frame starts from the previous frame's order.
+  - **The probe:** a temporary doctest in a scratch copy of sunlight at the pin, never committed. Add A then B,
+    both 0, and A draws first. Set A to 1, and B draws before A. Set A back to 0, and B still draws before A:
+    the added order is not restored.
+  - **Why sunlight never saw it:** its tests check ties only on the first frame from fresh sprites; its
+    `samples/zorder` only ever RAISES a card, each time to a new, always-higher value, so no two cards share a
+    value after a change.
+  - **For a game:** a sprite raised for a moment (a hit flash in front) and then lowered ends up in a
+    different place among its equals than before.
+  - **FIXED by sunlight as I15 (`51a3bbb`, BREAKAGES 64), pinned in P11 inside C3's branch (owner's choice):**
+    each layer's list stays in added order and every pass stable-sorts a copy, so equal z-orders always keep
+    the order they were added in (a sprite removed and added again is last among its equals). sunlight's
+    tests now change a z-order and check later frames (they fail with the old sort put back).
+  - **Reported to sunlight (sunlight-c1), owner-approved, 2026-11-04.** The fix suggested, sunlight's to choose: break ties by
+    the order a sprite was added (a sequence number stored at `Add`), or sort a copy instead of the list.
+- **Tests:**
+  - **Headless, a new `scripts/sprite_zorder_smoke.py`** (ci.yml on all 4 platforms, `asan_run.py`):
+    - the default is 0;
+    - round trips of negative, zero, positive, `INT_MAX` and `INT_MIN`;
+    - every refusal (bad handle, a released handle, a fraction, past the `int` range, not a number);
+    - a recycled slot starts at 0;
+    - the value survives a layer move and a reconfigure (`sprite_configure_texture`);
+    - two sprites keep their own values;
+    - no renderer is created.
+
+    Shown failing on the v0.1.25 binary (the functions don't exist) and on a mutation (no reset in
+    `Release`).
+  - **Rows in `error_reporting_smoke`.**
+  - **Draw order itself can't be seen headless** (the null renderer draws nothing Lua can read). It is pinned
+    by sunlight's own tests (`test_spritezorder.cpp`, `test_spriteregistry.cpp`) and by the window check below.
+- **Sample:** a new `samples/zorder`, needing no map (layer ids as grouping keys, like `samples/mapless`):
+  - three overlapping cards (distinct colours and labels) on one layer;
+  - keys 1/2/3 bring a card to the front (the highest z-order + 1), and Shift+1/2/3 send it to the back;
+  - R resets every card to 0, which shows the tie order;
+  - a fourth sprite on a HIGHER layer that stays above all three whatever their z-order (layers order before
+    z-order);
+  - the HUD lists each card's z-order and the draw order.
+- **Window check with the owner:** front/back on each card, the higher-layer sprite always on top, and the
+  equal-z-order question above (R after a few raises).
+- **Docs:** `@luaname` docs on both functions (with the layer rule and the recycled-slot reset), the README
+  sample list, and `CLAUDE.md`'s sprite line.
+- **Caravellius:** nothing breaks (new functions, default unchanged); an informational breakage entry. Its
+  sprites keep their draw order (all 0, as today).
+
+**C3 done (2026-11-04).** Built as planned, on P11's pin `51a3bbb`, which went into the same branch (owner's choice):
+- **Code:**
+  - `LuaSpriteApi::SetZOrder`/`GetZOrder` (`ReadIntArg`, so any C `int`).
+  - `SpritePool::Release` resets the z-order to 0 (`__SPRITE_DEFAULT_Z_ORDER`).
+  - The docs promise "equal z-orders keep the order they were added in" with no caveat, since I15 makes it
+    true on every frame.
+- **Tests:**
+  - **The `test_spritepool.cpp` recycled-slot doctest** now checks the z-order too.
+  - **`scripts/sprite_zorder_smoke.py`** (ci.yml on all 4 platforms; `asan_run.py`) checks:
+    - the fresh 0;
+    - round trips of -5, 0, 1, 42, `INT_MAX` and `INT_MIN`, and that `3.0` is accepted;
+    - every rejection, which leaves the value as it was;
+    - bad and released handles;
+    - the recycled slot at 0;
+    - two sprites keeping their own values;
+    - a layer move and a reconfigure keeping the value;
+    - a change between frames;
+    - that no renderer is created.
+
+    Failed on the v0.1.25 binary (`attempt to call a nil value`) and, together with the doctest, on a
+    mutation that removed the reset.
+  - **3 rows in `error_reporting_smoke`.**
+- **`samples/zorder`** (new): four of sunlight's card images, copied into `resources/sprites/`. 1-4 bring a card
+  to the front, Shift+1-4 send it to the back, and 0 sets all to 0. A glow on a higher layer stays above them.
+  The HUD shows each z-order and the draw order. **Window check with the owner:**
+  - with z-orders 4/0/5/-1, the cards drew as the HUD's "gold < green < red < blue";
+  - after 0 the starting stack red < green < blue < gold came back, which is sunlight I15 confirmed in a window;
+  - the glow stayed on top throughout.
+  - a second, step-by-step run (launch, 1, 3, Shift+4, Shift+1) matched the expected HUD order and stacking at every step.
+- **Caravellius:** breakage entry 24 (nothing breaks). Acceptance PASS, fingerprint `hash=33897632`.
+- **Proof:**
+  - a clean reconfigure, with `--version` printing `feat/master_plan@51a3bbb`;
+  - unit tests, also under ASan;
+  - 19 smoke tests, plus the headless smoke test;
+  - 22 samples headless;
+  - 43/43 `asan_run.py` runs, on the normal build and the ASan build;
+  - style check 0, and the docs generator.
+
+**C10 - an image layer drawn at its picture's real size (PLANNED and BUILT 2026-11-11 with the owner, on P18).**
+Found by Caravellius (caravellius-89) by eye after C9: its cover picture is really 1206x880, but `cover.tmx`'s
+`<image>` declares `width="1260" height="920"`. sunlight's `DrawScreenSpaceImageLayer` (and the map-space
+`DrawImageLayer`) take the source AND destination rectangles from the declared size, so `DrawTextureTiled` reads 54x40
+pixels past the texture and repeats it: a slice of the picture's left edge down its right side, a strip of its top
+along the bottom.
+- **Checked here:** before sunlight's L1, `DrawImageLayer` was `DrawTexture( image, 0, 0 )` - the picture at its REAL
+  size, at window pixel (0,0), ignoring the declared size (and the layer's offset): it never stretched. Tiled shows an
+  image layer at the picture's real size too; the `<image>` `width`/`height` only record the size when the map was
+  saved, and go stale when the picture changes.
+- **Options weighed with the owner:** (A) draw at the picture's real size in both image-layer paths - chosen: what Tiled
+  and pre-L1 sunlight do, never reads past the texture, a stale declared size stops mattering; (B) stretch to the
+  declared size (Caravellius' first suggestion) - neither Tiled nor pre-L1 did it, and it distorts a picture whenever
+  the map's numbers are stale; (C) call it a data error and change nothing - the repeat would stay for the next map.
+- **Scarab's side, once sunlight has it:** re-pin (P18); `resources/tilemap/screenspace/` gains an image layer whose
+  declared size differs from its picture's, for the eye check (no headless test sees drawing); docs (the Tile map
+  reference's image-layer notes); a BREAKAGES entry; the new commit to Caravellius.
+- **Done (2026-11-11), as designed:** sunlight built it as its I24 (`3a2f1c5`, BREAKAGES 77): both image-layer paths
+  draw the loaded texture's real size (a new pure virtual `IEngine::GetTextureSize`; the null backend keeps the size it
+  reads from the image header; the declared size only when an engine can't tell), the source never past the texture.
+  Scarab implements no `IEngine`, so nothing in its code changed. Scarab: P18 re-pin; `screenspace.tmx` gained a
+  map-space and a screen-space layer declaring a larger size than their picture (200x80 and 240x96 for a 160x64
+  house), shown by `samples/backdrop`; the Tile map reference, `CLAUDE.md`, BREAKAGES 35. Out of scope (sunlight's
+  note): a tileset whose declared image size is stale - tiles are cut by tile coordinates, a different case nobody has
+  reported.
+
+**C9 - an image layer drawn in screen space (PLANNED and BUILT 2026-11-11 with the owner, on P17 - see "Done" below).** Found by
+Caravellius (caravellius-6a) checking its cover screen by eye on `master_plan@61ff524`: `cover.tmx`'s full-screen image
+layer (1260x920, layer 1, which is also the anchor of the player ship's sprite) is drawn at the default zoom 3.8125, so
+only its top-left part shows. Cause, read in sunlight's source: its L1 made `LayerRenderer::DrawImageLayer` follow the
+camera, zoom and viewport like a tile layer; before, it drew at the raw screen pixel (0,0). Missed by Scarab's C4 and
+BREAKAGES 26 (parallax only checked) and by sunlight's BREAKAGES 34 ("bit-identically to before"); no headless test can
+see it, since the null backend draws nothing.
+- **Options weighed with the owner:** (A) an opt-in, per-layer screen-space image layer in sunlight - chosen; (B) a
+  standalone screen-space `Image` primitive (SCARAB_TODO item 2) - useful, but Lua draws after the map and sprites, so it
+  would cover the ship sprite and cannot fix this screen on its own; (C) no engine change, Caravellius sets the zoom to
+  1.0 while the cover shows - the workaround it would rather not need.
+- **The design to ask sunlight for (A):** an image layer with a Tiled custom property (name to agree with sunlight, eg.
+  `screen_space = true`) is drawn as before L1: at its offset in screen pixels, unscaled, not moved by the camera or the
+  zoom, in its own place in the layer order (sprites on it and above it still draw over it). Every other image layer
+  keeps L1's behaviour, so no game changes unless its map asks. Open points for sunlight: whether the viewport's origin
+  and clip apply; opacity and tint (expected: as today); extra views (image layers draw only in the default view).
+- **Scarab's side, once sunlight has it:** re-pin (P17); a smoke test reading the layer back where possible, and an eye
+  check with the owner (nothing headless can see it); `samples/` or a test map with a screen-space image layer; the
+  tile map reference; a BREAKAGES entry; tell Caravellius the commit to re-pin to.
+- **Also:** sunlight's BREAKAGES 34 to be corrected (told to sunlight with this request).
+- **Done (2026-11-11), as designed:** sunlight built it as its I23 (`fa7575a`, BREAKAGES 76) and corrected its BREAKAGES
+  34. The property is exactly `screen_space`, type bool, on an image layer: drawn at its offset in window pixels, its own
+  size, no camera, zoom, parallax or viewport origin, and not cut to the viewport; its place in the layer order, opacity
+  and tint kept; default view only. sunlight's three unit tests pin the drawing (they fail drawn the L1 way).
+  - **Scarab:** P17 re-pin (unit tests, all 25 smoke tests, AddressSanitizer, Caravellius' acceptance and fingerprint);
+    `resources/tilemap/screenspace/` (a screen-space backdrop - `backdrop.png`, 1260x920, drawn by
+    `scripts/backdrop_image.py`, a gold frame, corner squares and a ring so a missing part shows - beside three
+    map-space house layers); `samples/backdrop` (pan, zoom, Kepi on the backdrop layer); the Tile map reference's
+    "Tiled custom properties" section listing every property sunlight reads, as sunlight asked; `CLAUDE.md`;
+    BREAKAGES 34. No headless check can see the drawing (the null backend draws nothing): the map loading with the
+    property, and the sample running under the ASan job, are the headless part; the owner's eye check is the rest.
+
+**C8 - a sandbox for game scripts (PLANNED 2026-11-09 with the owner; BUILT 2026-11-11 on P16 - see "Done" at the end).** Added by the owner on
+2026-11-03, split out of C1b. The goal: a game script cannot read or write anything outside the game's own files and
+its save directory - forbidden, not discouraged - while a Lua developer keeps the core Lua functions they know.
+- **Found while planning (2026-11-09):**
+  - Lua's standard libraries are all open (`luaL_openlibs`): `io.open`/`io.popen`, `os.execute`/`os.remove`/
+    `os.rename`, `require` (which can load native C libraries), `loadfile`, `load` of precompiled bytecode.
+  - Every Scarab loader accepts `hpath://` (a real OS path, on since P9), and `pack_*` (real OS read and write) is
+    registered for every game, not only for the `--pack` tool.
+  - Paths can already not climb out of the mounts: sunlight refuses `..` and does not follow symlinks.
+  - **Used today** (samples, smoke tests, tools, Caravellius' `src/`): `io.stdout:setvbuf`, `os.getenv` (Scarab's
+    tests and packing tool, Caravellius' debug scripts), `os.time`/`os.clock`, `dofile`, and `pack_*` in the packing
+    tool only. Nothing uses `io.open`, `require`, `loadfile`, `load`, `os.execute` or `debug`.
+  - **There is no single path rule today.** A plain path (`"settings.json"`) given to `dofile`, `load_json`, maps,
+    textures, fonts, sounds or the action map is looked up in the save directory, then the launch folder - and a
+    `.zip` game's files are NOT among them (the zip is mounted at `APP_DIR` only, so only `APP_DIR .. "/x"` reaches
+    it). `save_read`/`save_exists` read the save directory only (through `hpath://`, C1c). So the same code behaves
+    differently loose and packed.
+- **Decisions (owner, 2026-11-09):**
+  1. **One path rule, for every function, in every mode** (the owner: define one default and document it for all io
+     functions). Reading a relative path: **(1) the save directory, (2) the game's own files** - the `.zip` when
+     launched from one, otherwise the launch folder. Writing a relative path: **always the save directory**. It
+     applies to `io.*`, `dofile`, `require`, `loadfile`, `load_json`, maps (and their tilesets and images), textures,
+     fonts, sounds and the action map; `APP_DIR .. "/x"` keeps reaching the same game files. To make a `.zip` game
+     behave exactly like a loose one, the zip is also mounted at the root, and a launch from a `.zip` no longer adds
+     the launch folder (the zip IS the game's files).
+  1b. **`APP_DIR` paths follow the same rule** (the owner, on Claude's recommendation, 2026-11-09). `APP_DIR` is
+     Scarab's own Lua global (set in `LuaEngine::Init`: the executable's folder as a file-system path, ending in `/`;
+     the executable's folder - or the game's `.zip` - is mounted there). Today an `APP_DIR .. "x"` path is absolute,
+     so the save folder (mounted at the root) never answers it: a game that writes every path that way (Caravellius)
+     would be outside the rule, and its files could never be replaced by a save. So a path that STARTS with `APP_DIR`
+     gains the save-first step and nothing else changes: (1) the save directory, under the path after `APP_DIR`
+     (`APP_DIR .. "src/ai.lua"` -> the save's `src/ai.lua`); (2) exactly where `APP_DIR` points today - the
+     executable's folder, or the game's `.zip`. Only the leading `APP_DIR` is recognised. Why not simply treat it as
+     the plain path after it (the first wording): in a LOOSE run `APP_DIR` (the executable's folder, eg. `build/`) and
+     the launch folder (eg. the repo root) are often different folders, so a game keeping its files next to the
+     executable and launched from elsewhere - Caravellius' loose build - would have looked in the wrong folder (found
+     while writing the rule down, corrected with the owner). So every path follows "the save directory first, then the
+     game's own files", where the game's own files are, for a plain path, the launch folder (or the `.zip`) and, for an
+     `APP_DIR` path, the executable's folder (or the `.zip`) - from a `.zip` both are the same zip. Plain relative paths
+     become the recommended form in the docs; `APP_DIR` keeps working, so existing games (Caravellius) do not change.
+  2. **Code follows the same rule:** a saved `ai.lua` takes the place of the game's own for `dofile`/`require` - how
+     mods and patches work; a crafted save could run code, but only inside the sandbox. Documented, no exception.
+  3. **The `save_*` functions stay saves-only:** they are Scarab's functions for the player's saved data, not core Lua
+     functions, so they never fall back to a game file - not a second path rule but their own contract.
+  4. **Override, never remove** (the owner: Lua developers are welcome and will use the core functions they know):
+     the unsafe core functions are replaced IN C++, in place in Lua's own `io`/`os`/`package` tables, so the
+     originals are gone (not reachable through `package.loaded` either). Every failure follows Lua's own convention
+     (`nil, message`, as for a missing file), so error handling written for standard Lua keeps working.
+  5. **`debug` is kept whole** (the owner): the in-place overrides leave nothing for it to restore. *Amended in
+     C8a (the owner, 2026-11-11): `debug.setmetatable` on a userdata and `debug.getregistry` are refused.*
+  6. **On by default; only the command line turns it off** (`--no-sandbox`) - a `project.json` cannot, or a game could
+     opt out of its own sandbox. `--pack` runs without it (the packing tool needs real paths).
+  7. **"The game's own files"** are what the file system mounts: the launch folder (or the `.zip`), and the
+     executable's folder. Documented caveat: launched from a home folder, the home folder is the game's root;
+     narrowing it to the project's own folder would break Scarab's samples (they use repo-root paths) - a possible
+     follow-up.
+  8. `os.getenv` and `os.exit` are kept (no file access; the tests and tools need `getenv`).
+- **The sandboxed core functions (C++):**
+
+  | Function | In the sandbox |
+  |---|---|
+  | `io.open` reading (`"r"`, `"rb"`) | the path rule: save directory, then the game's files |
+  | `io.open` writing (`"w"`, `"a"`, `"r+"`, `"w+"`, `"a+"`, with or without `"b"`) | into the save directory, written atomically on `close`/`flush` (sunlight's `WriteFile`); `"a"`/`"r+"` start from the saved file, or the game's file when there is no save |
+  | `io.lines( name )`, `io.input( name )`, `io.output( name )` | through `io.open`, same rules |
+  | `io.tmpfile()` | a file kept in memory, never on disk |
+  | `io.popen`, `os.execute` | still exist; fail the standard way (`nil, "not available in the sandbox"`) |
+  | `os.remove`, `os.rename` | inside the save directory only |
+  | `os.tmpname` | a fresh name inside the save directory |
+  | `require` | Lua modules through the path rule (`package.path` patterns, read through the file system); the C-module searchers and `package.loadlib` fail the standard way |
+  | `loadfile` | through the path rule, like `dofile` |
+  | `load` | text chunks only (`mode "t"`); precompiled bytecode refused (it can crash the interpreter) |
+  | `io.write`, `io.read`, `io.stdout`, `io.stderr`, `os.time`/`os.clock`/`os.date`/`os.difftime`/`os.getenv`/`os.exit`, `debug` | unchanged |
+
+  - **Scarab's file object (C++):** Lua's own file handles wrap a C `FILE*` opened straight from the operating system,
+    and there is no portable in-memory `FILE*` (none on Windows), so sandboxed files are Scarab's own object with the
+    same methods: `read( "a" / "l" / "L" / "n" / count )`, `lines`, `write`, `seek`, `flush`, `setvbuf`, `close`, and
+    `io.type` answering `"file"`/`"closed file"` for it. Its read/seek/line logic is pure C++ - unit-tested (doctest)
+    against standard Lua's own results.
+- **Scarab's own functions:** `hpath://` refused through sunlight's existing switch (`SetHostPathEnabled( false )`);
+  `pack_*` registered only in `--pack` mode; the save functions, which read through `hpath://` today, read through a
+  private mount of the save folder instead (sunlight's `Mount` takes a mount point; remounted when the game changes its
+  save folder) - no sunlight change needed.
+- **BLOCKED on sunlight (found 2026-11-10, when the code was about to start; nothing built):** the rule must hold
+  for every read, sunlight's own included (tilesets, images, textures, fonts), so it is done with mounts - and two
+  things stand in the way. (1) PhysFS silently ignores a second mount of a path already mounted, at any mount point
+  (`doMount` in physfs.c, "already in search path?", still returns success), while the plan needs the game's `.zip` at
+  `APP_DIR` and `/`, and the save folder at `/` (the write directory), at `APP_DIR` and at a private mount point (for the
+  save functions, replacing `hpath://`). (2) `IFileSystem` has no `Unmount`, while a game can change its save folder
+  while running, so the extra save mounts would go stale. Scarab cannot work around it alone: rewriting paths in its own
+  functions would miss everything sunlight reads itself. **Asked sunlight (sunlight-96, owner-approved); accepted by its
+  owner as sunlight I22:** the same real folder or archive mountable at several mount points through `Mount`, each in
+  its own place in the search order (its own PhysFS name per extra mount, archives through `PHYSFS_mountIo`), and
+  `IFileSystem::Unmount( realPath, mountPoint )` removing just that mount (false when none) - not an alias between
+  virtual prefixes, which could not give a private mount that sees only the save folder. sunlight confirms the final API
+  if it changes, and sends the commit; Scarab pins it as **P16**, then builds C8 as planned (the design is unchanged).
+- **Caravellius, checked here (no question to it before code; the owner, 2026-11-09):** it uses none of the new
+  features, so it follows Scarab's decisions; the breakage entry and the release notice are its handoff. Every path it loads is built from `APP_DIR` (`BASE_PATH = APP_DIR .. "resources/"`, `SRC_PATH = APP_DIR .. "src/"`),
+  it uses none of the overridden functions except `io.stdout` and `os.getenv` (kept), it packs with `scarab --pack`
+  (no sandbox there), and its Lua unit tests run under a plain `lua`, not Scarab. For its handoff (breakage entry): (1)
+  with 1b a save can replace one of its files (mods, patches) once it saves anything; (2) its save names (high score,
+  settings) must not collide with its `src/`/`resources/` paths; (3) a module using `io.open` would read different
+  places in its unit tests (plain Lua, the real disk) and in the game (the path rule). Its acceptance and fingerprint are
+  run here, loose and from `caravellius.zip`, with the sandbox on.
+- **Tests:**
+  - a new `scripts/sandbox_smoke.py` (ci.yml, all 4 platforms; `asan_run.py`), loose and from a `.zip`: on by default;
+    the path rule for every kind of loader, through a plain path and an `APP_DIR` path alike (a file in both places: the save wins; only in the game: the game's;
+    writes land in the save directory); every overridden function confined (`hpath://` refused everywhere, writing
+    outside the save directory impossible); `io.*` results matching standard Lua's (read formats, lines, seek, append,
+    `io.type`); bytecode refused; `pack_*` absent outside `--pack`; saves working; `--no-sandbox` restoring the
+    standard functions;
+  - each part shown failing by a mutation;
+  - `scripts/path_scheme_smoke` (it tests `hpath://`) runs with `--no-sandbox`, plus a check that `hpath://` is refused
+    with the sandbox on; `--pack` still packs, plain and encrypted (`tileset_archive_smoke`); every other test and
+    sample unchanged.
+- **Docs:** "How paths are found" and "The sandbox" in the Lua API reference, pointed to from the README and every
+  loader's doc; `--no-sandbox` in the README's command line; `CLAUDE.md` (and its C1b/C1c save-path gotchas updated).
+- **Checks:** AddressSanitizer; Caravellius acceptance and fingerprint; a breakage entry (on by default is a behaviour
+  change: a game using `hpath://`, `pack_*` or native modules stops working, and a `.zip` game's plain paths now reach
+  its own files, no longer the launch folder).
+- **Done (2026-11-11), as planned - the design did not change:**
+  - **Mounts (the path rule):** the save folder at `/` (sunlight's write directory), at `APP_DIR` (prepended) and at a
+    private mount point (`SaveDirectory::SAVE_MOUNT_POINT`), all moved when the folder changes (`Unmount` first); a
+    `.zip` at `APP_DIR` and at `/`, the save folder mounted again ahead of it (`SaveDirectory::Remount`), and no
+    launch-folder mount for a `.zip`; `SetHostPathEnabled( false )` unless `--no-sandbox` or `--pack`.
+  - **`Engine::SandboxFile`:** the in-memory file (modes, `read` formats, `write`, `seek`, append), copied from Lua
+    5.4.7's `liolib.c`; 14 doctests, every expected value checked against stock Lua first.
+  - **`LuaSandboxApi`:** `io.open`/`lines`/`input`/`output`/`read`/`write`/`close`/`type`/`popen`/`tmpfile`,
+    `os.remove`/`rename`/`tmpname`/`execute`, `require`'s searchers (Lua modules through the file system, C ones
+    refusing), `package.loadlib`/`searchpath`, `loadfile` and `load` (text only), the file methods and `__gc`/`__close`/
+    `__tostring`; no original kept anywhere (not even an upvalue: `debug` is whole). The entry script, `dofile`,
+    `loadfile` and `require` share one loader (`LuaFileSystemApi::LoadChunk`). `LuaEngine` has a mode
+    (`LUA_ENGINE_MODE_SANDBOX` / `_NO_SANDBOX` / `_PACK`); `pack_*` only in `_PACK`.
+  - **Save functions:** read through the private mount (no more `hpath://`); "exists" = reads as a file.
+  - **Tests:** `scripts/sandbox_smoke.py` (ci.yml, all 4 platforms; `asan_run.py` picks it up) - loose, from a plain
+    `.zip` and an encrypted pack, no save directory, a save-folder change, `--no-sandbox`; it runs from temp copies and
+    refuses to write unless the sandbox is installed (found the hard way: the "sandbox not installed" mutation ran the
+    suite against Lua's own `io`/`os` and removed and rewrote files in the repo - restored, and both guards added).
+    `tests/test_sandboxfile.cpp`, `tests/test_sandboxpath.cpp` (`ToSavePath`), `tests/test_packapi.cpp` (the `pack_*`
+    rows `error_reporting_smoke` could no longer run). `path_scheme_smoke` runs `--no-sandbox` plus a sandboxed run
+    where every loader and `io.open` refuse host paths; `action_map_smoke`'s `nodir` runs both ways.
+  - **Mutations, each caught:** sandbox not installed; save not mounted at `APP_DIR`; no remount after the zip; zip not
+    at the root; launch folder mounted for a zip; old save mounts never removed; host paths left on (caught when re-run
+    by hand - the scripted run had a stale build); save functions reading the plain name; `pack_*` in a game; `load`
+    taking bytecode; append mode not appending and an exponent without digits (doctests).
+  - **Checks:** every unit test and smoke test; AddressSanitizer; Caravellius acceptance PASS loose and from
+    `caravellius.zip` (intro sync 84.000s), fingerprint `hash=33897632` three times out of three; BREAKAGES 32.
+  - **C8a, found while building C8 and fixed with the owner's go-ahead (2026-11-11):** engine objects reached C++
+    through light-userdata Lua GLOBALS (`saveDirectoryPtr`, `rendererProviderPtr`, ... - 11 of them) that a script
+    could overwrite with any userdata, which the engine then used as its own object (shown: forging them with
+    `io.stdout` crashed with a bus error, exit -10). Now `LuaEngine::m_EngineObjects`, a map whose address is in the
+    Lua state's extra space (`lua_getextraspace` - unreachable from Lua, `debug` included; copied to coroutines),
+    read by `LuaEngineUtil::GetEnginePointer` under `*_KEY` constants (the old `*_GLOBAL` names). Also the
+    `io.lines` iterator's file, a C upvalue `debug.setupvalue` can replace, is checked (`luaL_testudata`). Tests: a
+    doctest (a global of the same name is ignored, coroutines see the objects) and `sandbox_smoke`'s forgery checks;
+    the old global lookup mutated back in fails both (the smoke run crashes), and the unchecked upvalue fails the
+    smoke test.
+  - **Decision 5 amended (the owner, 2026-11-11):** `debug.setmetatable` on a userdata, or swapping the file
+    metatables in `debug.getregistry()`, made a Lua file pass for a sandbox file or the other way round (shown: exit
+    134 when it was collected). So in the sandbox `debug.setmetatable` refuses a FULL userdata (`nil, message`; every
+    other value as Lua's) and `debug.getregistry` gives `nil, message`; the rest of `debug` is Lua's own, and
+    `--no-sandbox` gives the whole library back. Pinned by `sandbox_smoke` (the refusals, a table's metatable still
+    set); without the install the smoke test fails.
+
+**C7 - several maps at once, as WORLDS (PLANNED 2026-11-07 with sunlight, sunlight-cf, both owners agreed; nothing
+built on either side yet).** Added by the owner on 2026-10-29, during V10. Today a renderer holds ONE map
+(`TileMapRenderer::m_pMap`), `LoadMap` replaces it, every view shows that one map, and there is one renderer per
+process (one raylib window). Games want different maps at once: split-screen with players in different areas, a
+world map beside the local one, a picture-in-picture dungeon, a menu over another map, a cross-fade between two maps.
+- **The design (sunlight's proposal, accepted): the unit is a WORLD, not a map** (as Godot's World2D):
+  - a world holds one or more maps, each at an offset in the world's own coordinates, and owns its sprites and its
+    collision rules; a view shows one world (`IView::SetWorld`);
+  - isolated maps (all the examples above) are several worlds of one map each, at (0, 0); a Tiled `.world` file is
+    one world of several maps at their offsets, and a sprite walks across a map edge without being moved anywhere;
+  - **the default world:** the default view shows it, `LoadMap` puts its single map there at (0, 0), and every
+    single-map call (`LoadMap`, `GetTile`, `TileMapToTileMatrix`, ...) acts on it - NOT on "the default view's
+    world", which a view could switch; mapless sprites stay in it. Existing games are unchanged;
+  - coordinates: each world has its own; a map's tiles sit at their map position plus the map's offset, so with
+    one map at (0, 0) world coordinates are map coordinates, as today. A sprite moves to another world by being
+    removed from one and added to the other (the game converts the position);
+  - every map of a world is loaded at once (Tiled's load-adjacent-maps option is later); every live world updates
+    each frame (animations, collisions), shown by a view or not.
+- **The answers to Scarab's six points (agreed):**
+  1. **Layer ids:** a world-level id per layer NAME. A name in the world's first map keeps that map's Tiled id; a
+     name that first appears in a later map gets a new id above every id assigned so far, so two names never share
+     one. Sprites, collision rules and view layer masks take these ids, with a lookup by name. A one-map world (any
+     `.tmx`, the default world) uses that map's own ids, so nothing changes. Within a world, layers are drawn layer
+     by layer over every visible map, so a sprite on "objects" draws right on both sides of a map edge.
+  2. **Unloading a world (or one of its maps) DETACHES its sprites** (colliders and registrations), without
+     destroying or unloading them; Scarab then releases or moves them. The legacy `UnloadMap` stays as it is: it
+     also calls `Sprite::Unload()` on every registered sprite (textures and sequences gone) - what
+     `tilemap_unload_map` already documents, so nothing changes for it.
+  3. **Which world a hit is in:** each world has its own collision manager and listener, so `ICollisionListener`
+     keeps its signatures; Scarab registers one small adapter per world that calls the one Lua handler with the
+     world's handle.
+  4. **The clock:** every map's animation clock already reads the process-global `Clock` (`mapdata.cpp`), so the
+     null backend's virtual time drives every world exactly; worlds keep it so.
+  5. **Order:** per-view opacity first (cross-fade, a menu over a map), then the rest.
+  6. **Scarab's API**, below.
+- **sunlight's phases, in the agreed order, each a PR Scarab pins:**
+  1. per-view opacity;
+  2. the world container (the default world; `LoadMap` unchanged);
+  3. views show a world (`IView::SetWorld`);
+  4. several worlds;
+  5. map offsets, several maps drawn per view;
+  6. collisions across map edges;
+  7. `.world` loading - JSON, read with nlohmann/json declared exactly as Scarab declares it (`FetchContent` name
+     `nlohmann_json`, the `nlohmann_json` target), so Scarab's build shares one copy; sunlight links it privately.
+- **Still open on sunlight's side (verified before it builds):** the exact `.world` format against Tiled's own
+  source (the explicit map list, and the pattern form placing maps by file name); how Tiled places isometric,
+  staggered and hexagonal maps in a world (orthogonal first); a tileset shared by two maps is loaded twice for now.
+- **Scarab's side, one item per sunlight phase once pinned (each planned with the owner, fully covered):**
+  - after phase 1: per-view opacity for Lua (`view_set_opacity` / `view_get_opacity`, a smoke test, a sample with
+    a cross-fade and a menu over a map);
+  - after phases 2-4: `world_load( path )` (a `.tmx`) returning a world handle, `world_unload( world )` (detaching
+    its sprites, which Scarab's `SpritePool` then releases), `view_set_world( view, world )`, an optional world on
+    the sprite and collision functions (the default world when omitted), the per-world collision adapter passing
+    the world to the Lua handler, and a split-screen sample;
+  - after phases 5-7: `world_load` takes a `.world` too, a world-layer lookup by name, and a sample walking across
+    map edges;
+  - throughout: `tilemap_load_map` and every existing call keep acting on the default world, so Caravellius and
+    every sample are unchanged (checked by its acceptance and fingerprint at every pin); smoke tests headless, in
+    ci.yml and `asan_run.py`, each shown failing; window checks with the owner.
+- **Delivered by sunlight (2026-11-08, sunlight-a0):** ALL seven phases in one pin, `d9c71d2` (I19a-f, plus I20:
+  stagger axis X), not phase 1 alone. Built as agreed: `IView::SetOpacity`; `CreateWorld`/`RemoveWorld`/
+  `GetDefaultWorld`/`GetWorldCount` with inert `std::shared_ptr<IWorld>` handles; `IView::SetWorld` (extra views
+  only - the default view always shows the default world); `IWorld::AddMap( path, x, y )`/`RemoveMap`/
+  `GetMapCount`/`GetMapOffset`/`GetBounds`/`GetLayerId( name )`; picking and tiles per map; `IWorld::LoadWorld`
+  (only the `maps` list; a file with `patterns` is refused); a sprite in one world at a time. Reference sample:
+  sunlight's `samples/worlds`. **Scarab's side split in two (owner's choice, (b)):** part 1 = P14 + view opacity;
+  part 2 = worlds, several maps and `.world` files (`world_load`, `world_unload`, `world_add_map`,
+  `view_set_world`, `world_layer_id`, an optional world on sprites and collisions), planned with the owner next.
+
+**C7 part 1 done (2026-11-08): P14 + view opacity.**
+- **Pin:** `d9c71d2` builds with no Scarab change; the unit tests, all 22 smoke tests and Caravellius' acceptance
+  (PASS) and fingerprint (`hash=33897632`) are unchanged on it.
+- **Functions** (`LuaViewApi`, under a new "View opacity" heading of the views reference):
+  `view_set_opacity( view, opacity ) -> true` and `view_get_opacity( view ) -> opacity`, on every view, the default
+  one included. Strict: anything but a number from 0 to 1 (NaN and infinity included) is refused, not clamped as
+  sunlight does; it reads back exactly as written (`LuaEngineUtil::ShortestDecimal`), and a map load keeps it.
+- **Test:** `scripts/view_opacity_smoke.py` + `scripts/view_opacity_smoke/` (ci.yml, all 4 platforms;
+  `asan_run.py` picks it up): before any window it is "unknown view 0" and creates no renderer; every view starts
+  at 1; exact round trips on the default and an extra view; each view its own; kept over a map load; every
+  refusal; a destroyed view; frames drawn faded. **Shown failing:** with the getter returning sunlight's raw float,
+  `0.3` reads `0.30000001192093`. Three rows in `error_reporting_smoke`.
+- **Sample:** `samples/fade` - a cross-fade between two places of one map (two views over one rectangle, F fades
+  the upper one over one second with `app_get_time`), and a menu view (`M`, the whole map in a square at 85%,
+  `[`/`]` change its opacity, its text drawn over it); Kepi walks in map coordinates; a controller works too.
+  **Window check with the owner (2026-11-08):** the fade, the menu at 0.85, 1 and 0.4 by screenshot; the owner's
+  two findings fixed (Kepi started outside the view; the 400x300 menu left a black strip beside the square map,
+  now a 320x320 square).
+- **Caravellius:** BREAKAGES 29 (nothing changes).
+
+**C7 part 2 done (2026-11-09): worlds, several maps per world, `.world` files** (planned with the owner; on P14's pin).
+- **Decisions (owner, on Claude's recommendation):** `sprite_release` takes the sprite off every layer it is on, in
+  whichever world (before, it stayed registered, only hidden - a recycled handle would then be refused by another
+  world); layer SETTERS stay default-world only (sunlight's `IWorld` has no `SetLayer`; a known limit, asked of
+  sunlight when a game needs it); the layer and map-info GETTERS take an optional world.
+- **Code:** `src/lua/luaworldapi.{h,cpp}` (`world_create`, `world_load` - a `.tmx` or a `.world`, all or nothing,
+  no world left behind on failure - `world_unload`, `world_get_count`, `world_add_map`, `world_remove_map`,
+  `world_get_map_count`, `world_get_map_offset`, `world_get_bounds`, `world_layer_id`, `world_get_tile`,
+  `world_to_tile_matrix`); world ids are sunlight's own (`IWorld::GetId`, never reused, 0 = the default world),
+  kept with one `LuaCollisionListener` per world in LuaEngine's `WorldTable`; `world_unload` drops the world
+  before its listener (sunlight's collision manager cannot drop a listener). `view_set_world`/`view_get_world`
+  (extra views only; `view_set_world( 0, 0 )` accepted as a no-op - sunlight refuses SetWorld on the default view
+  whatever the world). An optional last `world` on `sprite_add_to_layer`/`sprite_remove_from_layer`,
+  `collision_add_rule`/`collision_add_tile_rule`, `tilemap_get_layer(_by_name)` and `tilemap_get_map_info`. Both
+  collision handlers get the world id as their LAST argument. `SpritePool` records each sprite's (world, layer)
+  registrations (sunlight does not say which world holds a sprite): a sprite in another world is refused naming
+  it, `sprite_release` detaches it, `world_unload`/`tilemap_unload_map` forget theirs (doctests).
+- **Resources:** `resources/tilemap/worlds/grid.world` (three orthogonal maps and the isometric one, 2x2).
+- **Test:** `scripts/world_api_smoke.py` + `scripts/world_api_smoke/` (ci.yml, all 4 platforms; `asan_run.py`):
+  before any window, lifetime, maps at offsets (negative too), bounds, `.world` (order, `..` paths, a missing map
+  all or nothing, `patterns` refused), layer ids, tiles and picking per map (an isometric one included), the
+  getters with a world, `view_set_world`, one world per sprite, the three detaches, and collisions counted over
+  frames: per world, the world id in both handlers, two worlds never colliding, a sprite over two maps hitting
+  both (I19e). **Shown failing** under five mutations: release not detaching, the handler always given world 0,
+  `world_unload` and `tilemap_unload_map` not forgetting, no one-world check (the release one needed a one-slot
+  pool type, so the released slot is the one reused). Twelve rows in `error_reporting_smoke`.
+- **Sample:** `samples/worlds` - split screen (default world left, the isometric or grid world right), Kepi per
+  world, the grid world's obstacles blocking its Kepi across map edges, a cross-fade between two different maps,
+  unload/reload; every view fits its whole world; keyboard and controller. **Window check with the owner
+  (2026-11-09):** the HUD cut off and the worlds shown only in part (fixed: 1280x800, HUD above the views,
+  `view_fit_to_map`), and the cloud map showing around the isometric map at overlay 1 (fixed: an opaque overlay
+  backdrop); then split screen, edges, obstacles, cross-fade and unload/reload all confirmed by screenshot.
+- **Checks:** unit tests, 24/24 smoke tests, ASan 53/53, style clean; Caravellius acceptance PASS and fingerprint
+  `hash=33897632` (unchanged: it takes every sprite off its layer before releasing it).
+- **Caravellius:** BREAKAGES 30.
+
+**P15 done (2026-11-09): layer setters per world, re-pin to `df589ce` (sunlight I21).** After C7 Scarab sent sunlight
+two proposals (owner-approved): `IWorld::SetLayer` (sunlight's world had only GetLayer, so a layer could be changed
+only in the default world) and `SetWorld( default world )` on the default view returning true (sunlight refused the
+default view whatever the world; Scarab answered `view_set_world( 0, 0 )` itself). sunlight did both as I21.
+- **Code:** an optional last `world` on `tilemap_set_layer(_by_name)`, `tilemap_set_layer_tint(_by_name)`,
+  `tilemap_set_layer_parallax(_by_name)` and on the tint and parallax getters (the layer getters had it since C7
+  part 2); in a world of several maps a setter changes that layer in every map that has it. Scarab's
+  `view_set_world( 0, 0 )` special case removed (sunlight answers it; the test still checks it is true).
+- **Test:** `scripts/world_api_smoke` writes layer, tint and parallax in the grid world and checks the default world
+  untouched, plus the refusals; **shown failing** with the setters ignoring the world (the default world changed
+  instead). That mutation also exposed a bug in the test's own `same()` helper (`table.concat` of a boolean), fixed.
+  Three rows in `error_reporting_smoke`.
+- **Sample:** `samples/worlds` - `T` (X) tints the grid world's "ground" layer; **window check with the owner
+  (2026-11-09):** all four maps, the isometric one included, tinted and untinted together; the cloud map untouched.
+- **Caravellius:** BREAKAGES 31 (nothing changes).
+
+## Phase R: requisites
+
+| # | Item | Status |
+|---|------|--------|
+| R1 | AddressSanitizer CI job (Linux) | DONE |
+| R2 | First doctest suite | DONE |
+
+**R1 (DONE, 2026-10-30).** Mirrors sunlight's own "AddressSanitizer (Linux)" job - Linux only, for CI time;
+also runs LeakSanitizer, which macOS's AddressSanitizer does not.
+- **Job:** `ci.yml` "AddressSanitizer (Linux)" - Scarab and every fetched dependency (sunlight, raylib,
+  libtmx, libxml2, Lua) built Debug with `-fsanitize=address -fno-omit-frame-pointer -g`, with the CI content
+  key, so the encrypted archive test runs too. Scarab has no unit tests yet (R2), so the job runs the
+  executable: `scripts/asan_run.py` runs the headless smoke test (and its budget run), every
+  `scripts/*_smoke.py` and every sample headless for 120 frames, with
+  `detect_leaks=1:halt_on_error=1:abort_on_error=1`. Every report goes to a log directory (`log_path`), so
+  a report fails the run even where a smoke driver would only print its output's tail. New smoke tests and
+  samples are picked up automatically.
+- **Leaks:** `scripts/lsan.supp` is for leaks PROVEN to be inside a third-party library, one entry each with
+  its reason; it is empty - the first CI run found no leak anywhere (35 of 35 runs).
+- **One test adjusted:** `load_map_smoke`'s peak-memory comparison (V10) grew 365 MB under ASan: its
+  quarantine keeps freed memory, so peak memory grows whatever the code does. The driver skips only that
+  comparison under a sanitizer (`SCARAB_SANITIZER`, set by the wrapper); LeakSanitizer covers leaks there
+  more strictly, and the normal builds still compare (0.0 MB).
+- **Local (macOS, no LeakSanitizer):** the same build in `build-asan/` (now ignored by git): 35 of 35 runs
+  clean (`--no-leaks`); Caravellius' acceptance PASS and fingerprint `hash=33897632` under ASan, no report;
+  `leaks --atExit` on the normal build: 0 leaks for the headless smoke test and samples sprite, shapes and
+  mapless.
+- **Proven:** a deliberate heap use-after-free in `sprite_get_opacity` was caught locally by the wrapper (in
+  `sprite_tint_smoke` and `samples/sprite`, naming `luaspriteapi.cpp:735`), then restored; a deliberate leak
+  (a `new` with no `delete` in the same function) was pushed as a throwaway commit to the PR branch: the CI
+  job failed with LeakSanitizer reports naming `luaspriteapi.cpp:734` (`sprite_tint_smoke`, 72 bytes in 18
+  allocations; `samples/sprite`, 476 bytes in 119; 33 of 35 passed), every other job stayed green, and the
+  commit was reverted.
+- **Docs:** `CLAUDE.md`'s CI section. CI only - no Caravellius breakage entry.
+
+**R2 (DONE, 2026-10-31).** Scoped with the owner (2026-10-30): all five window-free units below, the option off
+by default like sunlight's, and `EngineHost::ResolveEntryScript` left for later (it needs `EngineHost` and the
+filesystem, and the headless and archive smoke tests already cover it).
+- **Build split:** everything in `src/` but `main.cpp` is the static library `scarab_core`, linked by `scarab`
+  (`main.cpp`) and by `scarab_tests` (`tests/`, doctest `v2.4.11` - sunlight's pin), built only with
+  `-DSCARAB_BUILD_TESTS=ON` (OFF by default). `scarab_tests` lands next to `scarab` with the same relocatable
+  rpath and depends on `scarab_copy_binaries`. The compile definitions (version, content key) are `scarab_core`'s,
+  PUBLIC. It is not registered with `ctest`: the fetched Lua project registers its own `lua-testsuite`, which
+  failed there.
+- **The split changes nothing:** `--version`, a relocated copy of the build output (as release.yml's smoke step),
+  all 14 smoke tests, the headless smoke test, all 19 samples, and Caravellius' acceptance PASS and fingerprint
+  `hash=33897632` are all as before; a build with tests OFF builds no test target.
+- **Suites (25 test cases, 711 assertions):** `test_spritepool` (handle packing and the pointer tag, per-type
+  capacity and `MAX_SPRITE_SLOTS`, acquire/exhaust, a released or stale handle never resolving even after its slot
+  is reused, foreign handles refused, a recycled slot reset to hidden/view space/no blend mode/opaque/untinted,
+  `Clear`); `test_fontpool` (a stand-in `IFont`; release drops only the pool's reference, stale handles, `Clear`
+  freeing the last reference); `test_luaengineutil` (every strict reader's accept/refuse cases and exact
+  messages on a bare `lua_State`, `PushError`/`PushTrue`, `FormatNumber`, `ShortestDecimal` round trips);
+  `test_zoomfactor` (all 256 positions round-trip, 3.8 refused naming 3.8125, range and NaN/infinity);
+  `test_crypto` (with the content key: `crypto_encrypt_data` output decrypts exactly through `TryDecryptBytes`,
+  tampered or cut data and plain data refused, a fresh nonce each time; without a key: nothing encrypts).
+- **Proven:** one mutation per suite, each failing its own suite and restored - no generation bump on release,
+  a release that keeps the font, `3.5` accepted as an integer, the zoom position off by one, a failed MAC check
+  accepted. Also clean under the local ASan build.
+- **CI:** every platform configures with `-DSCARAB_BUILD_TESTS=ON` and runs `scarab_tests` after the build; the
+  AddressSanitizer (Linux) job runs it under ASan/LeakSanitizer too.
+- **Docs:** `CLAUDE.md` (Build: the split, how to build and run the tests, and the rule "new pure logic gets a
+  doctest in the same change"; CI). No Caravellius breakage entry (build and tests only).
+
+## Phase S: code style
+
+| # | Item | Status |
+|---|------|--------|
+| S1 | Audit against sunlight's `doc/CODE_STYLE.md`, with real measured counts; Scarab's own guide `docs/CODE_STYLE.md` (C++ copied from sunlight, plus Lua rules) | DONE |
+| S2a | Mechanical C++ alignment (spacing, `*`/`&` side, guards, `extern "C"` braces, `@param ;`, declaration columns), proven by identical object files | DONE |
+| S2b | C++ names and code (Hungarian renames, `override`, `using namespace`, `#define __NAME` constants, named numbers, `unique_ptr`), proven by behaviour | DONE |
+| S2c | Lua (`__NAME <const>`, license headers, names, named numbers in samples) + a CI style check, proven by the smoke tests and a window check | DONE |
+| S3 | `CLAUDE.md` rule change: "match existing style, don't fix it" becomes "the guide is the reference now" | DONE |
+| S4 | `LuaEngineUtil` keeps only helpers several Lua modules share; category-specific ones move to their own modules | DONE |
+
+**S1 (DONE, 2026-10-31).** The owner widened it (2026-10-31): Lua gets rules too, so Scarab now has its
+own guide, **`docs/CODE_STYLE.md`**. Its C++ part is sunlight's `doc/CODE_STYLE.md` (sunlight `ef1499d`)
+copied word for word, with headings one level down and sunlight's Design section replaced by Scarab's.
+Its Lua part is Scarab's own, since sunlight has no Lua. The Lua part takes in Caravellius' own rules
+(its `CLAUDE.md`, "Code style", `22bbaaf`: the `__` module-constant prefix it has used since 2026-08-11,
+the cases that are not constants, its `tools/lua_lint.py`). The owner's decisions:
+- **Private constants are `__NAME`, public ones `NAME`, in both languages** (the owner's long-standing
+  habit, already Caravellius' rule). In Lua a private constant is `local __NAME <const> = value`;
+  `<const>` makes Lua itself refuse a reassignment (checked on Scarab's Lua 5.4.7:
+  `attempt to assign to const variable`).
+- **Lua calls and definitions take spaces inside the parentheses, `f( x )`, as in C++** - Caravellius
+  mostly writes `f(x)` (1631 against 297) and changes at integration.
+- **The guide lives in `docs/`** (reference material that stays); `doc/` was renamed `plans/` (#66) for
+  the master plan, the breakage log and research.
+
+**The audit tool: `scripts/style_audit.py`.** C++ rules over `src/` and `tests/`, Lua rules over
+`samples/`, `scripts/` and `tools/`. Like Caravellius' lint, it blanks out comments and strings before
+matching, so a rule never fires on text in a comment or a message; `--list RULE` prints every finding.
+**Calibrated on sunlight's own `src/`**, the code the C++ guide describes: every rule was refined until
+none of its findings there is a false one (a leading `::PHYSFS_init`, a call split after `(`, a braced
+initializer, a value-less `#define WIN32_LEAN_AND_MEAN`, a `@param` continued on the next line, a
+keyword before `::`, an aligned `Type  *pName`, the `s_` prefix of a static, an array's `anRect`). What it
+still finds in sunlight is real: 31 Hungarian mismatches, 72 `Type *pName`, 28 `@param`s without `;`,
+15 `case X:`, 13 bodies without a leading blank line, 5 include guards, 15 raw `new`/`delete`, 2
+`std ::make_pair`, `nCount++)` and `push_back(fZoomStep+=` - sunlight's code is not fully aligned
+with its own guide either.
+
+**Scarab, measured (2026-10-31, `master_plan` at `69143e1`):**
+
+| Rule | Count | Files | What it is | S2 |
+|---|---|---|---|---|
+| `Type *pName` (`*`/`&` with the name) | 529 | 47 | 444 of them `lua_State *pLuaState` | mechanical |
+| `@param` without `;` | 40 | 9 | | mechanical (comments) |
+| `extern "C"` then `{` on its own line | 30 | 30 | every Lua header include block | mechanical |
+| include guard's `#endif  /* */` (two spaces) | 25 | 25 | every Scarab header | mechanical |
+| `->` unspaced | 14 | 2 | `it->second` (luapackapi, luatimerapi) | mechanical |
+| brace without two spaces before it | 12 | 5 | `)  : m_X( ... ) {`, `) {` | mechanical |
+| unspaced `::`, `( x)`, `switch (`, `default:`, other `{` alone, body without a blank line, own header not first (`main.cpp`) | 10 | 6 | | mechanical |
+| names whose prefix doesn't fit their type | 24 | 9 | `SpriteHandle handle` (guide: `hName`), `m_CurrentSong` (`uint16_t`), `int bIsInteger` (x3); 13 in the new tests | rename |
+| `override` missing on an interface method | 19 | 3 | `EngineHost` 4, `RendererProvider` 13, `LuaCollisionListener` 2 | code |
+| `using namespace` | 5 | 5 | `enginehost.cpp` (`std :: chrono`), `luainputapi`, `luaspriteapi`, `luarendererapi`, `luatilemapapi` (5 more in tests, allowed) | code |
+| file-local constant not a `#define __NAME` | 4 | 4 | `NO_CONTENT_KEY`, `NO_AUDIO_SOUND_ID`, `NO_MAP_LOADED`, a test's `PLAIN_TEXT` | code |
+| raw `new`/`delete` | 8 | 3 | the collision listener and timers (`LuaEngine`, `LuaTimerApi`), the zip writer (`LuaPackApi`) | code (`unique_ptr`) |
+| numbers outside a named constant | 81 lines | 15 | mostly Lua argument positions (`lua_tointeger( L, 3 )`), bit masks in `spritehandle.h`, `char szMsg[50]` | read each |
+| declarations not in one column | 45 of 141 blocks | | | mechanical |
+| Lua: private constant without `__` | 176 | 23 | `local GLOW_LAYER = 4` | rename |
+| Lua: `__NAME` without `<const>` | 18 | 7 | | mechanical |
+| Lua: magic numbers in samples | 135 lines | 19 | HUD layout and colours (`draw_text( t, 20, 50, 20, 200, ... )`) | code |
+| Lua: no license header | 12 | 12 | every smoke test's `main.lua` | mechanical |
+| Lua: function not `snake_case` / local not `lowerCamel` | 3 / 6 | 4 | `startPos`, `onSecondTick`, `platform_name`, `os_time_start`, ... | rename |
+| Lua: numbers in smoke tests | 261 lines | 11 | expected values - allowed | none |
+
+Zero today: C++ license headers, tabs, one-line namespaces, forward declarations, `()` for `( void )`,
+`} else`; Lua tabs, parenthesis spacing, single quotes.
+
+**S2's proof, tested:** a whitespace-only change must leave every object file byte for byte the same.
+That needs debug info off (`-g0`), since `-g2` records line numbers: compiled from the flags in
+`build/CMakeFiles/scarab_core.dir/flags.make` with `-g0`, `luatimerapi.cpp` gave identical objects
+twice, identical again after three real spacing fixes (`Timer:: Interval`, `pTImer)`,
+`(int nId ) {`), and a different one after a one-character code change - so the proof can fail. No
+Scarab C++ uses `__LINE__`, `__FILE__` or `assert` (the 15 `assert` hits are Lua examples in doc
+comments).
+
+**What this means for S2** (to plan with the owner when it starts): the "mechanical" rows can be done
+with the identical-object proof; the "rename" and "code" rows change object files, so they need the
+usual proof (unit tests, every smoke test and sample, Caravellius' acceptance and fingerprint); the
+Lua rows are proven by the smoke tests, the samples headless and a window check. That is three kinds of
+proof, so S2 is probably three PRs.
+
+**S2 (planned 2026-10-31 with the owner).** Three PRs, one per kind of proof, in this order: S2a, S2b,
+S2c. The owner's decisions: numbers in Lua API calls that are argument or stack positions
+(`lua_setfield( pLuaState, -2, ... )`, `lua_pcall( L, 6, 0, 0 )`) stay as they are - "very local and
+visible"; the other C++ numbers (array sizes, loop bounds, bit masks) get names in S2b; and once the audit
+is at 0, a CI step fails on any new finding (S2c).
+
+**S2a (DONE, 2026-10-31).** Whitespace and layout only, over `src/` and `tests/` (54 files):
+- `Type *pName` -> `Type* pName` (and `&`), keeping each column (699, incl. 444 `lua_State* pLuaState` and
+  every `const std :: string& strName`); `extern "C"  {` (30); `#endif /* __X_H__ */` (25); `@param ... ;`
+  (40, comments); `->` and `::` spacing; braces with two spaces; `switch(`; `default :`; two function bodies
+  given a blank first line; `main.cpp` includes its own `main.h` first; and every block of declarations
+  aligned to one column (78 blocks; each to the right-most column it already used, so the fewest lines
+  move).
+- **The audit was sharpened on the way (and recalibrated on sunlight each time):** the pointer rule had
+  skipped any line with a scoped type, taking `std ::`'s colon for an operator, so S1's "529" missed 170
+  (`const std :: string &strX`); sunlight's own count rose from 72 to 107, all real. A new rule,
+  `cpp-decl-columns` (48 real blocks in sunlight; a parameter continued on its own line is not a
+  declaration). A bare scope block's lone `{` is exempt (nothing to end - sunlight has none).
+- **Every function has a Doxygen comment (the owner, 2026-10-31).** The owner noticed
+  `spritehandle.h`'s six inline helpers had none; the guide gained a Scarab section, "Documentation
+  (Scarab)" (every function - inline helpers, file-local statics, private helpers, `main` - documented
+  where declared or defined; an interface's comment covers its implementations; `@brief`, `@param ;`,
+  `@return ;`), and the audit a rule, `cpp-undocumented-function` (doctest's `TEST_CASE` is named by its
+  description; sunlight's headers count for the interfaces Scarab implements). 20 functions were
+  documented: the 6 handle helpers, `FontPool`'s 3, `LuaRendererApi`'s 4 file-local helpers, 3
+  `RegisterEnums`, `main`, and 3 test helpers. Calibrated on sunlight: 51 real ones there (eg.
+  `NullBackend :: GetClock`). The pointer rule also learned the range-based `for` (`for( stSlot &slot :`,
+  3 in Scarab).
+- **Proof:** a second build, `build-proof/`, with debug info off (`-g0`, `SCARAB_DEBUG_SYMBOLS_UNIX=OFF`) -
+  first shown deterministic (all 31 objects of `scarab_core`, `scarab` and `scarab_tests` identical after
+  a rebuild from the same source). After S2a: **all 25 objects of `src/` byte-identical** (`main.cpp`'s
+  include reorder included). The 6 test objects can't be compared that way: doctest records each
+  `CHECK`'s `__LINE__`, and the new comments and the joined `extern "C"` brace move lines. So they were
+  compiled with `-D__LINE__=0`, once from `master_plan`'s test sources and once from the new ones, at the
+  same path: **all 6 identical**; the same compile of one test with a single changed expected value
+  differs, so the method catches a real change. (A first attempt reported every test object "different"
+  - its `old` compile had never run, a script bug, not a code difference; rerun step by step.) Also:
+  25/25 unit tests, 14 smoke tests, 19 samples headless, the docs generator.
+- **Audit after S2a:** every mechanical rule at 0; left for S2b - 24 names, 5 `using namespace`, 4
+  constants, 8 `new`/`delete`.
+
+**S2b (DONE, 2026-10-31).** The C++ changes that do change object code; the audit's C++ rules are now
+all at 0 in `src/` (the guide allows `using` in a test; numbers in unit tests are test data).
+- **Names:** variables and - a new audit rule, `cpp-hungarian-param` (33 real in sunlight) -
+  parameters: `SpriteHandle handle` -> `hSprite` and `FontHandle handle` -> `hFont` (the guide's `h`
+  prefix), `handleA`/`handleB` -> `hFirst`/`hSecond`, `uint16_t id` -> `nId`, `int bIsInteger` ->
+  `nIsInteger`, `m_CurrentSong` -> `m_nCurrentSong`, and the tests' handles. Code positions only, plus each
+  `@param`; `main`'s `argc`/`argv` are C++'s own names and stay.
+- **`override`** on the 19 interface methods (`EngineHost` 4, `RendererProvider` 13, `LuaCollisionListener`
+  2) - the compiler confirms each one overrides.
+- **No `using namespace` in `src/`:** each name fully qualified, found by compiling without the directive.
+  The constant tables keep their Lua names because the namespace goes inside each file's macro
+  (`#define __CONST( name )  { #name, ( int ) SunLight :: Input :: name }`) - qualifying the argument would
+  have made the Lua global `"SunLight :: Input :: KEY_A"`. (A first pass qualified some parameter names
+  too, after the compiler's error recovery; `luatilemapapi.cpp` was redone from a clean copy with only
+  the namespace's own type names.)
+- **Constants:** `NO_CONTENT_KEY`, `NO_AUDIO_SOUND_ID`, `NO_MAP_LOADED` and a test's `PLAIN_TEXT` are
+  `#define __NAME`. Numbers named, per the owner's rule (Lua API positions stay): rectangle fields and
+  colour channels (`__RECT_FIELDS`, `__RGB_CHANNELS`, `__RGBA_CHANNELS`, `__INSET_SIDES`) for array sizes
+  and their loop bounds, text buffer sizes, `__OPAQUE_ALPHA`, and the handle's layout in
+  `spritehandle.h` as public constants (`SPRITE_HANDLE_INDEX_MASK`, `SPRITE_HANDLE_GENERATION_SHIFT`,
+  `SPRITE_HANDLE_PTR_TAG_MASK`, `SPRITE_HANDLE_PTR_VALUE_MASK`); `+ 0.5` rounding -> `std :: llround`
+  (identical for the non-negative times it rounds). Kept as they are, with the owner's reasoning: a Lua
+  function's `return N` (how many results it pushes) and subscripts of small local arrays. A new audit
+  rule, `cpp-magic-number`, encodes this (41 real in sunlight; unit tests reported apart).
+- **`std :: unique_ptr` instead of raw `new`/`delete`:** `LuaEngine`'s collision listener, the timers
+  (`TimerMap` now owns them; `~Timer` stops its own thread), and `LuaPackApi`'s open zip archives
+  (`std :: make_unique<mz_zip_archive>()` value-initialises, as miniz requires). `~LuaEngine` still releases
+  the timers and the listener explicitly before `lua_close` - a timer's thread calls back into the Lua
+  state, so leaving them to the members' own destructors (which run after the destructor's body) would
+  let them outlive it.
+- **Audit sharpened again:** the pointer rule had skipped a whole line when anything on it looked like
+  an expression (a cast like `static_cast<TimerMap *>` hid `TimerMap  *pTimerMap`) - now per match
+  (sunlight: 118 real); number literals with a type suffix (`0xFFFFFFFFULL`) were missed by the listing.
+- **Proof:** 25/25 unit tests, 14 smoke tests, the headless smoke test, 19 samples headless, the docs
+  generator; Caravellius' acceptance PASS and state fingerprint `hash=33897632`; locally under
+  AddressSanitizer the unit tests and all 35 `asan_run.py` runs (the encrypted `--pack` path included)
+  clean, and `leaks --atExit` 0 leaks for the headless smoke test and the timers and collision samples.
+
+**S2c (DONE, 2026-10-31).** The Lua side - all 19 samples, the 14 smoke tests' scripts and
+`tools/pack.lua` - aligned with `docs/CODE_STYLE.md`, and the audit made a CI gate.
+- **Constants:** every top-level private constant is `local __NAME <const> = value` (renamed in code
+  positions only - a first pass also renamed inside strings, `os.getenv( "__LOADS" )` and smoke markers,
+  and broke two smoke tests; redone from git with a tool that skips strings and comments). Samples name
+  their numbers; the exemptions the guide documents (HUD row numbers, table-field values, subscripts,
+  constant bodies, a smoke test's expected values) are reported apart.
+- **Fallible calls checked:** samples `assert` their setup (`tilemap_load_map`, `sprite_*`,
+  `pool_register_type`, `renderer_create`, ...); where a failure is a normal outcome the sample shows it on
+  its HUD instead (`sound_load` with no audio device - CI has none; `tilemap`/`json` load errors). One
+  marked exception: `tools/pack.lua`'s `app_set_name` (`-- lint: allow lua-unchecked-load (...)`).
+- **Names and headers:** functions `snake_case`, locals `lowerCamel` (`timers` `on_second_tick`, `input`
+  `start_pos`, `app` `platformName`, `headless_smoke`'s locals); the zlib header added to 12 smoke scripts
+  and `tools/pack.lua`.
+- **Shared HUD helper `samples/shared/hud.lua`** (owner agreed): Caravellius 8x8 at 16 px on dark
+  translucent plates, loaded lazily (a font needs a renderer, and `renderer_create` must come first);
+  `Hud.line`, `Hud.lines` (wraps to the window's width), `Hud.line_from_bottom`, `Hud.line_at`,
+  `Hud.row_y` (one row lower while the FPS counter is on). 18 samples use it; `hello-world` keeps the
+  built-in font on purpose. Long HUD lines were split into rows; `blend`'s labels shortened.
+- **Window check, all 13 samples whose HUD changed, with the owner:** every HUD readable and clear of
+  the FPS counter. Found on the way: `views`' close-up box sat under the two bottom hint rows (moved from
+  y 380 to 320); `samples/scripting/docs/README.md` claimed a period the sample doesn't have (measured
+  4 s: 0.03, 4.55, 8.55, 12.55 s - corrected); `timers` measured at the expected 4:1 (5/20, 10/39, 14/59 over
+  15 s; the owner's 115:19 included time with the 1-second timer stopped by F1).
+- **Audit:** new rules `lua-unchecked-load` (and `-test`), `-- lint: allow <rule> (why)` support, and
+  `--check` (exit 1 on any finding in an enforced rule) - 36 enforced rules, 0 findings; shown failing on
+  an injected `local SPEED = 5`. `ci.yml` runs `python3 scripts/style_audit.py --check` on Linux after the
+  build (the C++ documentation rule reads sunlight's headers from `build/_deps`).
+- **Proof:** 14 smoke tests, the headless smoke test, 19 samples headless, the docs generator, and all
+  35 `asan_run.py` runs clean.
+
+**S3 (DONE, 2026-10-31).** `CLAUDE.md`'s "Code style (existing convention - match it, don't fix it)"
+is now "Code style": `docs/CODE_STYLE.md` is the reference for C++ and Lua, new and touched code follows
+it, and `scripts/style_audit.py --check` (CI, Linux) enforces it; `-- lint: allow <rule> (why)` marks an
+exception. The bullets the guide now covers became a short summary of the most-hit rules (the owner
+chose a summary over a bare pointer: `CLAUDE.md` is loaded every session, the guide is not), which also
+writes in the rules this plan reserved for S3 - include rather than forward-declare, never
+forward-declare an external library's class - and `#define __NAME` for file-private constants. The old
+Doxygen bullet ("don't add commentary the surrounding code doesn't already have") contradicted S2a's
+"every function has a Doxygen comment" and now follows the guide. The project rules (`@luaname`,
+`@luaconstants`, `nil, "message"`, the zlib header) stay as they were. Build and CI sections: the "no
+linter, match the existing style" line points to the guide, and the Style check step is described.
+Documentation only.
+
+**S4 (DONE 2026-10-31; added 2026-10-24 by the owner during C6's review).** `src/lua/luaengineutil.{h,cpp}`
+mixes helpers every Lua module shares with ones only one category uses. Each new engine object
+got another "fetch the light-userdata global" getter there (C6's `GetFontPool` too), so
+`luaengineutil.h` includes the sound, sprite-pool, font-pool, script-processor and timer headers,
+and a change to any of them recompiles all 16 `src/lua/*api.cpp` files. Usage today (2026-10-24):
+
+| Member | Used by | Where it belongs |
+|---|---|---|
+| `GetRendererProvider`, `GetTileMap`, `GetDrawSurface`, `EnsureRenderer` | renderer, view, app, text, tilemap, camera, input, sprite, collision, blend | stays (shared renderer access) |
+| `RegisterConstants` + `stNamedConstant`, `RegisterRealConstants` + `stNamedRealConstant` | input, tilemap, sprite, renderer, app, blend (the real-valued one renderer only, but generic in kind) | stays |
+| `PushError` / `PushTrue` | sprite, text, blend (every module after D3) | stays |
+| `s_LuaMutex` | `LuaEngine`, timer | stays |
+| `GetSoundManager` | sound only | `LuaSoundApi` |
+| `GetSpritePool` | sprite only | `LuaSpriteApi` |
+| `GetFontPool` | text only | **done in C6**: a file-local function in `luatextapi.cpp`, global name `LuaTextApi::FONT_POOL_GLOBAL` |
+| `GetScriptProcessor`, `AddOneParmCommandScript` | scripting, sound (queued song commands) | `LuaScriptingApi`; sound calls it there |
+| `TimerMap` typedef | timer (and `LuaEngine`, which owns the timers) | `luatimerapi.h` |
+
+Scope:
+- A single shared `LuaEngineUtil::GetGlobalPointer( lua_State*, const char* name )` that always
+  pops what it pushed. Today each getter repeats `lua_getglobal` + `lua_touserdata`, and
+  `GetSoundManager`, `GetSpritePool` and `GetScriptProcessor` leave the value on the stack (the
+  leak C6 hit through `GetFontPool`, which was fixed there). Each category getter then becomes
+  one line in its own module, with its global's name defined once next to where `LuaEngine::Init`
+  sets it.
+- Move the category-specific members as in the table. `luaengineutil.h` then includes only
+  what the shared helpers need.
+- Behavior unchanged: a pure refactor, proven the way S2 plans (object-file-identical where the
+  code didn't move, otherwise every smoke test and sample unchanged). It is deliberately kept out
+  of D3, so every PR is either a refactor or a behavior change, never both.
+
+**S4 done (2026-10-31).** As planned, with what the work found:
+- `LuaEngineUtil :: GetGlobalPointer( L, szName )` replaces six copies of "get global, touserdata, pop"
+  (renderer provider, sound manager, sprite pool, script processor, font pool, timer map). The stack
+  leak this plan described was already gone - every getter popped since the C6 fix - so the gain is
+  one copy instead of six. A new doctest pins it (the value, nullptr for a missing global, the stack
+  top unchanged), shown failing with the `lua_pop` removed (top 2 and 3 instead of 1).
+- Each global's name is a `static constexpr` on the module that reads it, C6's `FONT_POOL_GLOBAL` form:
+  `LuaEngineUtil :: RENDERER_PROVIDER_GLOBAL`, `LuaSoundApi :: SOUND_MANAGER_GLOBAL`,
+  `LuaSpriteApi :: SPRITE_POOL_GLOBAL`, `LuaScriptingApi :: SCRIPT_PROCESSOR_GLOBAL`,
+  `LuaTimerApi :: TIMER_MAP_GLOBAL`; `LuaEngine` sets every global through them. The strings are
+  unchanged (`"soundManagerPtr"`, ...).
+- Moved: `GetSoundManager`/`GetSpritePool` are file-local in their modules; `GetScriptProcessor` and
+  `AddOneParmCommandScript` are public on `LuaScriptingApi` (the sound module calls them there);
+  `TimerMap` is in `luatimerapi.h`. `luaengineutil.h` no longer includes the sound, sprite-pool,
+  script-processor or timer headers, nor `<map>`/`<memory>`; `luaengine.h` includes what it really
+  uses (`luatimerapi.h`, `engine/spritepool.h`). `CLAUDE.md`'s `src/lua/` paragraph says where a new
+  engine object's getter goes.
+- **Effect** (objects of `scarab_core`'s 24 that depend on each header, from the build's depfiles):
+
+  | Header | Before | After |
+  |---|---|---|
+  | `sound/soundmanager.h` | 19 | 3 (sound, `LuaEngine`, `EngineHost`) |
+  | `engine/spritepool.h` | 20 | 4 (sprite, `SpritePool`, `LuaEngine`, `EngineHost`) |
+  | `scripting/scriptprocessor.h` | 19 | 4 (scripting, sound, `LuaEngine`, `EngineHost`) |
+  | `concurrent/timer.h` | 19 | 3 (timer, `LuaEngine`, `EngineHost`) |
+
+- **Proof:** 26/26 unit tests (also under ASan), 14 smoke tests, the headless smoke test, 19 samples
+  headless, all 35 `asan_run.py` runs clean, Caravellius' acceptance PASS and state fingerprint
+  `hash=33897632`, style check 0 findings. No Lua API change, no Caravellius breakage.
+
+**Rules the owner has already decided (S1 records them, S3 writes them into `CLAUDE.md`):**
+- **A class from sunlight (or any other external library) is never forward-declared: include
+  its header** (decided 2026-10-22). The header is then the only place that says where the
+  class lives, so a namespace move on sunlight's side (like P2's `TileMap` to `Base`) can't leave
+  a stale declaration in Scarab that silently declares a phantom class. After a move, the
+  build fails cleanly at each line that still names the old path, or not at all. Applied to the
+  only two headers that had any: `src/engine/irendererprovider.h` (`ITileMap`,
+  `IDrawSurface`) and `src/lua/luaengine.h` (`ITileMap`, `SoundManager`).
+- **Forward declarations: sunlight's rule** (decided by the owner in the sunlight session,
+  2026-10-24, and drafted for sunlight's `doc/CODE_STYLE.md` on its branch
+  `doc/code-style-forward-declarations`, not on `feat/master_plan` yet). This **replaces** the
+  one-line C++17 form Scarab adopted on 2026-10-22, which sunlight's guide and code never use.
+  - The form is nested and indented, one level each, like every namespace. A class in the
+    header's own namespace is declared inside that namespace's existing block. A class from
+    another namespace gets its own nested block (sunlight's `NullBackend` in
+    `tilemaprenderer.h`).
+  - When: forward-declare only the project's own classes, only where the header needs just the
+    name (a pointer, a reference, a smart pointer, a friend), and only to break an include cycle
+    (sunlight's `View` <-> `TileMapRenderer`) or to keep a backend out of a public header
+    (`NullBackend`). Everything else is included, and so is every external library's class.
+  - Applied in C6: `src/lua/luaengine.h`'s three forward declarations were all unnecessary
+    (`SpritePool`/`FontPool` are already included through `luaengineutil.h`;
+    `LuaCollisionListener` has no cycle and is no backend), so they were removed and
+    `lua/luacollisionlistener.h` is included. Scarab now has no forward declarations at all.
+- **Also for S1's audit:** sunlight's guide forbids `using namespace` in a project's own code,
+  and Scarab has 5 (`luainputapi.cpp`, `luaspriteapi.cpp`, `luarendererapi.cpp`,
+  `luatilemapapi.cpp`, `enginehost.cpp`).
+
+## Phase B: blend modes
+
+| # | Item | Status |
+|---|------|--------|
+| B1 | Lua bindings, tests and a sample for sunlight's blend modes (I2, sunlight BREAKAGES entry 51) | DONE |
+
+**B1 (DONE, 2026-10-23 - samples tested in a real window and code reviewed and approved by the owner; added 2026-10-22 at the owner's request, before Phase T so its docs are part of
+that review; done right after D2, out of phase order, by the owner's decision).** Exposes sunlight's I2 (see P5) to Lua. Names are suggestions, decided when the
+item starts:
+- A scoped mode around a script's own drawing, e.g. `draw_begin_blend(mode)` /
+  `draw_end_blend()`, with the modes as constants (e.g. `BLEND_NORMAL`, `BLEND_ADD`,
+  `BLEND_MULTIPLY`, `BLEND_SUBTRACT`) tagged `@luaconstants`.
+- A sprite's own mode, e.g. `sprite_set_blend_mode(sprite, mode)`,
+  `sprite_clear_blend_mode(sprite)`, and a getter.
+- Tests now, as the owner decided, not waiting for R2's doctest suite: a headless Lua smoke
+  scenario covering argument checks, unknown mode values, round trips through the getters, and
+  that a recycled sprite slot does not inherit its previous owner's mode (`SpritePool`, like
+  `sprite_set_world_space`; sunlight's `Unload()` keeps the mode). A headless run cannot see
+  colour, so what each mode looks like is checked by eye.
+- A new `samples/blend`, modelled on sunlight's `samples/blend` (a glow sprite whose mode keys
+  choose, a soft shadow that always multiplies, panels drawn per mode), for the owner's
+  real-window check.
+- The generated Lua API pages (the `@luaname`/`@luadoc` tags), and a mapping in
+  `scripts/_lua_api_shared.py`'s `SOURCE_TO_DOC` if a new `src/lua/*api.cpp` file is added.
+- Any file that includes `raylib.h` must write `SunLight :: Base :: BlendMode` in full.
+
+Reference in sunlight: `docs/history/master_plan_11_2026.md` "Integration follow-ups" I2,
+`samples/blend/docs/README.md`, `CHANGELOG.md` [Unreleased].
+
+**Decided with the owner (2026-10-23):**
+- Names in Scarab's own style, not sunlight's shorter suggestions: `draw_begin_blend_mode` /
+  `draw_end_blend_mode`, `sprite_set_blend_mode` / `sprite_clear_blend_mode` /
+  `sprite_get_blend_mode`, and the constants `BLEND_MODE_*`, which mirror sunlight's enum one to
+  one like every other Scarab constant set.
+- Every new function reports a failure as `nil, "message"` (like `renderer_*`/`view_*`), never
+  silently. The owner also asked for item D3, which brings the older functions in line.
+- The sample follows sunlight's: keys `1` (no mode of its own) and `2`-`5` (normal, add (the
+  default), multiply, subtract), and sunlight's `glow.png`/`shadow.png` copied into
+  `resources/sprites/`.
+
+**Built (2026-10-23):**
+- `src/lua/luablendapi.{h,cpp}` (new page "Blend modes", `blend.md` in `SOURCE_TO_DOC`, linked
+  from `docs/lua-api/README.md`). It holds the four `BLEND_MODE_*` constants (`@luaconstants`),
+  `draw_begin_blend_mode(mode)` / `draw_end_blend_mode()` (pass-throughs to
+  `IDrawSurface::BeginBlendMode`/`EndBlendMode`), and `LuaBlendApi::ReadBlendMode`, the strict
+  mode reader shared with the sprite functions. It is registered with the renderer-free modules,
+  so the constants exist before any window. The draw functions reach the renderer only when
+  called.
+- `src/lua/luaspriteapi.cpp`: `sprite_set_blend_mode`, `sprite_clear_blend_mode` and
+  `sprite_get_blend_mode` (the mode, or `nil` when the sprite has none of its own, which differs
+  from `BLEND_MODE_NORMAL`), with a strict handle reader (`"invalid sprite handle"`).
+- `SpritePool::Release` calls `ClearBlendMode()` next to `SetWorldSpace( false )`, so a recycled
+  handle never inherits a mode (sunlight's `Unload()` keeps it on purpose).
+- `LuaEngineUtil::PushError`/`PushTrue`: the shared `nil, "message"` / `true` helpers, for D3 to
+  reuse. The renderer and view files keep their own copies until D3 (or S).
+- Test: `scripts/blend_api_smoke.py` + `scripts/blend_api_smoke/`, in `ci.yml` on all 4
+  platforms. It checks the constants' values, set/get/clear round trips for every mode, every
+  error (unknown mode, negative, string, fraction, missing, bad, string and released handles),
+  that a rejected call changes nothing, the recycled slot, that no sprite call creates the
+  renderer, the scoped pair around real drawing for every mode, that a second begin replaces the
+  first, an end with no begin, and a begin with no end over the next 5 frames. Mutation check:
+  without the `ClearBlendMode()` line in `Release`, the test fails with "a recycled sprite
+  inherited blend mode 1", and it passes again once the line is restored. (A first rerun after
+  restoring still failed: the restored file had the same mtime second as the mutated build, so
+  make skipped it. A `touch` fixed it. Worth knowing for every mutation check here.)
+- `samples/blend` (+ `docs/README.md`, listed in `samples/README.md`), modelled on sunlight's:
+  Sunny with a glow under it (keys `1`-`5`), a shadow that always multiplies, and four panels
+  (red/green/blue squares, alpha 200) drawn with `draw_filled_rectangle` between begin and end,
+  each over its own backdrop (sky; night for add). It uses `renderer_create{ zoom = 1.0,
+  preferred_zoom = 1.0 }` so the map and the 128x128 glow fit next to the panels.
+- `resources/sprites/glow.png` and `shadow.png` come from sunlight's `samples/blend`
+  (`bfce598`), unmodified, with provenance in `resources/sprites/README.md`.
+- `docs/vscode/.vscode/launch.json` (the tracked VSCode template; the root `.vscode/` is
+  git-ignored): the "Launch sample" picker had fallen behind `samples/`. It now lists all 16,
+  adding `blend` plus the `renderer`, `views` and `crypto` samples that earlier work never
+  added. The owner's local copy was updated the same way.
+- No CARAVELLIUS_BREAKAGES entry: nothing changes for a game that uses no mode.
+
+## Phase T: documentation review
+
+Done last, the same reasoning sunlight's own Phase T used: a documentation pass is only
+accurate once the features it describes are actually settled, not before.
+
+| # | Item | Status |
+|---|------|--------|
+| T1 | A full documentation pass once every other phase's changes have landed | DONE (2026-11-11) |
+| T2 | Simplify `README.md` | DONE |
+| T3 | Every source file and script carries the project's copyright/license notice | DONE |
+| T4 | Every function in the samples has a comment of its own saying what it does (the samples are the reference for people learning Scarab), and a style rule that keeps it so | DONE (2026-11-09) |
+
+**T4 (added by the owner, 2026-11-07).** The samples are educational: people read them to learn Scarab and copy
+their patterns, so every function in them should say what it does, the way every C++ function has a Doxygen
+comment of its own (CLAUDE.md's code-style rules). Measured on 2026-11-07 (a function counts as commented when a
+`--` comment or a `--[[ ]]` block ends on the line above it, blank lines skipped): **41 of the 80 functions in
+`samples/` had no comment**, in 24 of the 26 files (`samples/hello-world` and `samples/shared/hud.lua` were the
+only complete ones). `samples/projections`' 5 were commented in C5 itself (the owner's choice), so **36 remain**:
+- `on_update` itself in 23 samples - the function every sample is built around, and the first one a reader
+  looks for;
+- helpers: `actions` (`load_bindings`), `app` (`control_line`), `blend` (`set_glow_mode`, `draw_panels`),
+  `collision` (`add_sunny`), `input` (`set_deadzone`, `move`, `keyboard_step`), `shapes` (`show_map`,
+  `runtime_tint_keys`), `sprite` (`clamp`), `timers` (`on_quarter_tick`), `views` (`clamp`).
+- **To do:**
+  - a comment for each of them, saying what the function does and anything a reader could not see from its
+    name (what it returns, when the engine calls it, which keys or buttons it reads);
+  - `on_update`'s comment says what the sample does each frame;
+  - while there, check each sample's header block and `docs/README.md` still match the code;
+  - a new Lua rule in `docs/CODE_STYLE.md` (every function in `samples/`, `tools/` and `scripts/` has a comment
+    of its own, the Lua counterpart of the C++ rule), checked by `scripts/style_audit.py` in CI and proven by
+    a mutation (a comment removed fails the check). Whether `scripts/` and `tools/` come under the rule is to
+    be decided when T4 is planned: measure them first.
+- Can be done before T1, since the samples are already settled; T1 stays last.
+
+**T4 done (2026-11-09).** Measured again when T4 started (at `94cdcc2`, after C5, C7 and P15 added samples):
+`samples/` 36 of 98 functions without a comment, `tools/` 1 of 1, `scripts/` (smoke tests) 94 of 127. **Scope (owner):
+all three, enforced** - the smoke tests too, not just reported.
+- **131 comments**, each written from the function's code (two first drafts were wrong and fixed before commit:
+  `samples/sprite` clamps the camera, not Sunny; `on_update` is optional, so `tools/pack.lua`'s empty one is not
+  "required"). Every `on_update` says what the script does each frame; the 23 identical smoke-test `check`s, the 24
+  `on_load_stage`s and the report-only `on_update`s share one wording each.
+- **Rule:** `lua-function-comment` in `docs/CODE_STYLE.md`'s Lua part ("Comments") and in `CLAUDE.md`, checked by
+  `scripts/style_audit.py` in `samples/`, `scripts/` and `tools/` (a `--` line or the end of a `--[[ ]]` block just above
+  the function, blank lines skipped, read in the raw source), enforced by `--check` in CI. **Shown failing:** with the
+  comment above `samples/sprite`'s `clamp` and `scripts/projection_smoke`'s `next_map` removed, `--check` exits 1
+  naming both lines; with them back, 0 findings in 38 enforced rules.
+- **READMEs:** every key a sample reads is in its `docs/README.md` (a script compared them; the only differences
+  were spellings - "Page Up", arrow symbols - and the key names `samples/actions` offers for rebinding). A full read
+  of the samples' text stays part of T1.
+- **Checks:** comments only - every smoke test (24/24) and every sample runs headless as before; AddressSanitizer 53 of
+  53.
+
+**T1.** Scope: `README.md`; the generated Lua API reference's own source comments
+(`@luadoc`/`@luaexample` tags in `src/lua/`); `samples/*/docs/README.md`; `CLAUDE.md`'s own
+"Known gotchas" (several will need a new entry or an update from this plan's own
+findings - the `use_default_key_handler` design (D1), the non-integer-zoom pixel-snap
+fixes (V2), `MoveCamera*`'s new boundary behavior (V1)); `doc/lua-integration.md`.
+
+**T1 planned (2026-11-11, with the owner; every other item is DONE).** Measured first (branch `t1-docs`):
+- **Mechanical checks, all 50 tracked `.md` files outside `plans/`:** 0 broken relative links; every backticked
+  `snake_case(` name is a real Lua function, except C++/CMake names in `CLAUDE.md` and `docs/lua-integration.md` and
+  one hypothetical, `viewport_set_dimension`, in a `CLAUDE.md` history note. The generated reference (230 registered
+  functions, 128 Lua examples): every function an example calls exists; 120 examples parse (`luac -p`), the 8 that
+  don't are signature lists (`sprite_get_visible(handle) -> visible`) written as Lua code.
+- **Not yet in `CLAUDE.md`:** the D1 (`use_default_key_handler` over `DefaultControllerBindings`), V1 (`MoveCamera*`
+  boundaries) and V2 (pixel snap at non-integer zoom) gotchas the scope names.
+- **The work (one PR):**
+
+  | # | Part | What | Status |
+  |---|---|---|---|
+  | 1 | `CLAUDE.md` | add the D1, V1, V2 gotchas; read all 40 gotchas and the Build/CI/Architecture sections against today's code (superseded statements, pins and versions, file lists) | ✅ |
+  | 2 | `README.md` | features (every master-plan feature: worlds, views, shapes, saves, actions, rumble, projections, the sandbox, ...), the 28 samples, the `--version` example, the command line | ✅ |
+  | 3 | Lua API reference (`src/lua` tags) | read every page (230 functions) against the code: behaviour, errors, defaults, examples; the 8 signature lists as plain text or Lua comments | ✅ |
+  | 4 | `samples/*/docs/README.md` (27) | each against its `main.lua`: what it shows, controls, the functions it names | ✅ |
+  | 5 | `docs/lua-integration.md` | its findings and plan against today's `CMakeLists.txt` | ✅ |
+  | 6 | the other docs | `docs/lua-api/README.md`, `samples/README.md`, `tools/README.md`, `resources/*/README.md`, `docs/CODE_STYLE.md` (its C++ part against sunlight's own copy, which it mirrors word for word), `docs/vscode` launch list | ✅ |
+  | 7 | checks that keep it so | the owner chose all three (2026-11-11): no broken relative link in any `.md`, every Lua function a doc or reference example names exists, every reference example parses as Lua - `style_audit` rules, run by CI | ✅ |
+
+  The owner also chose (2026-11-11) to keep the gotchas' history: T1 fixes what is wrong, it does not cut the stories.
+
+**T1 done (2026-11-11).** Every document read against the code; what was wrong is corrected, the history kept.
+- **The checks (part 7):** four `style_audit` rules, run by CI's style step after the build: `doc-link` (no broken
+  relative link in any tracked `.md` outside `plans/`), `doc-lua-name` (no Lua function a user document or a
+  reference example calls that Scarab lacks, unless the text defines it), `doc-example-parse` (every ` ```lua ` block
+  in those documents and the generated reference parses, `luac -p`), and `doc-sample-list` (every sample in
+  `README.md`, `samples/README.md` and the VSCode picker - the picker had fallen behind twice). Each shown firing on
+  a planted fault. They found 11 problems: 8 signature lists written as Lua code (now Lua comments), a placeholder
+  name, an example calling an undefined `player_jump()`, and a code block in `docs/CODE_STYLE.md` that did not parse.
+- **`CLAUDE.md` (part 1):** the D1, V1 and V2 gotchas added; superseded statements fixed (the `.zip`/launch-folder
+  mounts, the CI branches and style step, `sprite_add_to_layer` with no map, the save path, `pack_*` lists, the zoom
+  limits heading, the fixed `AddTextureSequence` duplicates, `RunFile`'s loader, `set_font` from a `.zip` - checked
+  headless - and the unit-test list).
+- **The reference (part 3), every page read:** the pages' "Error reporting" paragraphs had been put on their first
+  function as a heading, which dropped that function's own (`app_set_name`, `tilemap_load_map`, `sound_load`,
+  `pool_register_type`) - moved to the class comments; **the Timers page said engine calls are safe from a timer
+  callback, the opposite of the real rule** (corrected, with the flag pattern); stale text fixed on the App, Camera,
+  Collision, Callbacks, Input, JSON, Pack, Renderer, Sandbox, Sound, Sprites, Text, Tile map and Views pages (the
+  window existing before the script, handles and `0`, `sprite_release` detaching, one map per renderer, every view
+  showing one map, the shipped-defaults pattern under the path rule).
+- **A real gap found reading it (fixed):** `input_save_action_map( APP_DIR .. "x" )` wrote under the executable's
+  whole absolute path inside the save folder, so reading the same path never found it - against C8's path rule.
+  It now writes through `LuaSandboxApi::ResolveWritePath`, which the sandbox shares; `APP_DIR` is an engine object
+  (`APP_DIRECTORY_KEY`), so the rule holds with or without the sandbox. `action_map_smoke` pins it (the file lands at
+  the save folder's top, and reads back through both forms); shown failing without the fix.
+- **Samples (part 4):** the 27 READMEs read with their code's keys: fixed `crypto` (the tamper message), `fade`
+  (worlds exist now), `hello-world` (the `..` launch error), `json`, `renderer`, `sound`, `mapless`, `worlds`.
+- **Others (parts 5-6):** `docs/lua-integration.md` (the variable renamed by P1; the style check's use of `luac`);
+  `docs/CODE_STYLE.md`'s C++ part compared with sunlight's copy in the current pin - word for word as before, only
+  the pin note updated, and the one Lua block fixed; the VSCode picker gained its 8 missing samples; `tools/README.md`
+  (packed bundles do run) and `resources/fonts/README.md` (plain paths reach a `.zip`).
+
+**T2.** The owner's own assessment (2026-10-20): Scarab's `README.md` reads as "too much
+polluted." Measured, not assumed: it is 197 lines with 17 section headings, against
+sunlight's own `README.md` at 193 lines with 22 headings - comparable in raw size, so
+whatever makes it feel polluted is density or structure, not length alone. sunlight's
+`README.md` can be used as a base. Scope, left open: what moves out (to `CLAUDE.md`, to a
+dedicated `docs/` file, or is dropped), what stays, and the target structure - discussed in
+full when this item starts, not decided here.
+
+**T2 done (2026-10-31).** Rewritten on sunlight's own `README.md` as the model (the owner's choice): a centred
+header with a logo, CI/release/license badges and a two-line pitch; a table of contents whose first entries
+are the external references (Lua API, C++ reference, license); **Features**, **Requirements** (each
+dependency with its install command, taken from `ci.yml`), **HowTo** (building, running a game, headless
+mode, running tests - new, content encryption, VSCode) and **Samples** grouped by topic, all 19 with one
+line each (the old text named 11). Kept: the owner's Motivation, and the content-encryption AS-IS warning,
+shortened but still prominent (a GitHub warning box). Measured: 2733 words -> 1574 (sunlight's: 1391).
+- **Dropped:** the repository layout (stale, and `CLAUDE.md` covers the architecture), and the internals
+  explained to readers (how the API reference is generated, the `lua_register` name mapping, the post-build
+  copy step, the mount-based filesystem). **Corrected:** the `--version` example, the sample list, the
+  license line (T3).
+- **Moved:** the content key's safe-keeping (per-game keys, never committed, CI secrets, no recovery) to
+  `tools/README.md`, next to the packaging steps it belongs to. Links to the old `#running-rocket` and
+  `#content-encryption-lock` anchors (4 files) repointed.
+- **Logo:** the owner asked for a temporary Scarab logo the size of sunlight's Sunny (200x200), to be replaced
+  by a team-made one: `docs/images/scarab_logo.svg` (source, marked temporary) and its render
+  `scarab_logo.png` (renamed `kepi.svg`/`kepi.png` in C4, after the mascot's name, Kepi, the owner's choice) - a glossy scarab holding up a small sun, over italic blue lettering in sunlight's style.
+  Kept out of `resources/`, which is the shared game-asset area.
+- **Deleted:** `docs/README-DEBUG.txt` (only the debug-flags line, which the README and `CLAUDE.md` have).
+
+**T3 (TODO, added 2026-10-23 at the owner's request).** The owner noticed that some scripts,
+and maybe some source code, don't carry the project's copyright/license notice
+(`docs/HEADER.txt`, zlib). `CLAUDE.md` already requires it for every `.cpp`/`.h` under `src/`
+("a copyright/licensing requirement, not a style nicety"), but says nothing about other
+files. A first count over the tracked files (2026-10-23, grepping for the notice's first line):
+- `.cpp`/`.h`: all 50 have it. The root `CMakeLists.txt` has it.
+- `.lua`: 5 of 22 don't, all under `scripts/` (the smoke-test projects: `headless_smoke`,
+  `renderer_api_smoke`, `camera_boundary_smoke`, `blend_api_smoke`, `tilemap_layer_smoke`).
+  Every `samples/` script has it.
+- `.py`: 5 of 7 don't (`renderer_api_smoke.py`, `tileset_archive_smoke.py`,
+  `camera_boundary_smoke.py`, `blend_api_smoke.py`, `tilemap_layer_smoke.py`). The two docs
+  scripts have it.
+- `.github/workflows/*.yml`: none of the 3 have it.
+- V4's new `input_constants_smoke.py` and `main.lua` got it when they were written, so the
+  list did not grow.
+
+Scope, to settle when the item starts:
+- Which file kinds need it. Code and scripts surely. Probably workflows and other config
+  (`Doxyfile`, `CMakePresets.json` - JSON has no comments). Docs (`.md`) and assets probably
+  not; `resources/` keeps its own per-folder license READMEs.
+- The exact comment style per language (C++ `/* */`, Lua `--[[ ]]`, Python/YAML/CMake `#`),
+  matching what already exists.
+- Whether to add a CI check, like the `lua-api-docs` hard fail, so a new file without the
+  notice fails CI instead of being found by eye again.
+- Write the rule into `CLAUDE.md` for every file kind it covers, not only `src/`.
+
+**T3 done (2026-10-31).** Measured again before starting (tracked files, `resources/` aside): the `.cpp`/`.h`
+(58) and `.lua` (35) files all had it - S2c had added the five Lua ones listed above - but 14 of 19 `.py`
+files, the 3 workflows, `Doxyfile`, `scripts/lsan.supp` and `tests/CMakeLists.txt` did not, and the root
+`CMakeLists.txt` had only the copyright line. The 2026-10-23 count had also called `style_audit.py` covered
+by mistake: it matched the audit's own search string. The owner's decisions:
+- **Covered:** every code, script, build and config file that takes a comment - C++, Lua, Python, CMake,
+  the workflows, `Doxyfile`, `lsan.supp`. **Exempt:** `.md`, JSON (no comments), `.gitignore`, and
+  `resources/` (per-folder license READMEs). The notice was added to those 21 files, in a `#` block after
+  any shebang, like `generate_lua_api_docs.py` already had it.
+- **CI check:** `style_audit.py` checks the WHOLE notice (`has_notice`: every line of `docs/HEADER.txt`, in
+  order, comment markers aside, near the top) - for `cpp-license` and `lua-license` too, which before only
+  looked for the copyright line (and so passed the root `CMakeLists.txt`'s truncated notice). A new rule,
+  `script-license`, covers the `#` kinds through `SCRIPT_GLOBS`; it runs in the existing Style check step.
+  Shown failing on a removed line in a script, a Lua file and a C++ header.
+- **Rule** in `CLAUDE.md` for every kind, and the README's License line.
+- **Proof the files still work:** every `.py` compiles, the three workflows parse as YAML, Doxygen gives the
+  same 5 (pre-existing) warnings before and after, CMake reconfigures, build, unit tests and smoke tests pass.
+
+## Process
+
+- **Peer impact for Caravellius**: [docs/history/caravellius_breakages_11_2026.md](caravellius_breakages_11_2026.md),
+  the same strategy sunlight used for `doc/BREAKAGES.md` - an entry is added the moment an
+  item that affects Caravellius merges, not collected at the end. It lives on `master_plan`
+  only and is removed once this plan merges to `main`, after Caravellius has been told.
+- A large phase may get its own staging branch (`feat/complete_<phase>_plan`, created from
+  `master_plan`); its items' PRs go there first, and one final PR closes the phase into
+  `master_plan` - the same pattern sunlight used for its own Phases E, F, L, M, S, T. A
+  staging branch is added to `.github/workflows/ci.yml`'s branch list while its phase runs,
+  and dropped right after the phase merges.
+- Items are closed one at a time, in phase order, unless the owner decides otherwise.
+- Each item is closed only when its test items pass and the owner has confirmed it.
+- Sub-tasks for an item are detailed when that item starts, not all upfront.
+- **`master_plan` merges to `main`, and this plan's own items here close, only on the
+  owner's own explicit command** - after Scarab's own work in this plan is integrated with
+  Caravellius, and after Caravellius has been told what changed. Not automatically once
+  every item above shows `DONE`, and not before the owner gives that command. No Scarab
+  version is tagged before then either (per the handoff brief's own §1 - sunlight, Scarab
+  and Caravellius all merge to their own `main` together, not one at a time as each
+  finishes). `--version` reports the branch and a short commit hash for the whole plan (see
+  P1).
+- This document and `docs/history/caravellius_breakages_11_2026.md` are removed from the tree in the same PR
+  that merges `master_plan` into `main`, after Caravellius has been told.

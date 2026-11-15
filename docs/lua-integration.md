@@ -82,6 +82,11 @@ under the `mingw` target). Where that source tree lands for Scarab's
 `ExternalProject` is not currently well defined (see the undefined
 `SOURCE_DIR` above) and has **not** been verified.
 
+Scarab itself uses the fork's `luac` too: since T1 (2026-11-11), the style check's
+documentation rule `doc-example-parse` runs `build/_deps/lua_library-build/luac -p`
+on every Lua code block in the docs - an official-only integration must give it a
+`luac` (or the rule a new path).
+
 Downstream consequence: a game repo that discovers `lua`/`luac` through
 the fork's CMake targets or build tree (as Caravellius's
 `check_project.py`/`run_lua_tests.py` do) would find nothing under an
@@ -109,7 +114,7 @@ A sketch of what that will need, to be refined when work actually begins
    "no `lua`/`luac` CMake targets" problem for every platform at once.
 2. Pin the exact Lua release deliberately (the fork currently floats on
    `master`), download over `https://` with `URL_HASH`, and record the
-   version in one place, the same way `SCARAB_SUNLIGHT_VERSION` is.
+   version in one place, the same way `SCARAB_SUNLIGHT_REF` is.
 3. Decide readline explicitly rather than inheriting it from the
    Makefile's per-platform choice (the official path enables it on macOS
    implicitly).

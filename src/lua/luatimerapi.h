@@ -21,18 +21,29 @@
 #ifndef __LUATIMERAPI_H__
 #define __LUATIMERAPI_H__
 
+#include <map>
+#include <memory>
 #include <string>
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
   #include "lauxlib.h"
 }
+
+#include "concurrent/timer.h"
 
 
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
+
+            /**
+             * @brief Shared type for LuaEngine's m_Timers member and LuaTimerApi's
+             * casts of the TIMER_MAP_KEY global - both need the exact same type,
+             * not just structurally identical ones.
+             */
+            typedef std :: map<int, std :: unique_ptr<SunLight :: Concurrent :: Timer>> TimerMap;
+
             /**
              * @brief Background-thread periodic/delayed callback Lua
              * primitives (set_timer/reset_timer), backed by
@@ -51,13 +62,35 @@ namespace Scarab  {
              * ## Thread safety — read this before using timers
              *
              * A timer's callback runs on its **own background thread**,
-             * not the main game thread. The engine already serializes
-             * every one of its own Lua entry points (per-frame update,
-             * wave dispatch, etc.) against timer callbacks internally, so
-             * calling ordinary engine primitives (`sound_play`,
-             * `sprite_get_pos`, ...) from inside a timer callback is safe.
+             * not the main game thread. The engine serializes its own
+             * Lua entry points (per-frame update, wave dispatch, etc.)
+             * against timer callbacks, so the callback may read and
+             * write **plain Lua data** safely - but that lock covers the
+             * Lua state only, not the engine objects behind the
+             * functions. **Call no engine function from a timer
+             * callback** - not `sound_*`/`*_song`, not `sprite_*`, not
+             * any drawing, map or view call (and under `--headless` not
+             * `os.time`/`os.clock`, which read the engine's clock): the
+             * main thread uses the same objects every frame without
+             * that lock, and racing it can corrupt the game's state or
+             * hang it. Set a flag instead, and act on it in `on_update`:
              *
-             * What *isn't* automatically safe: **don't call `reset_timer`
+             * ```lua
+             * local tick = false
+             *
+             * set_timer(3, 1000, function()
+             *   tick = true                -- plain Lua data only
+             * end)
+             *
+             * function on_update(dt)
+             *   if tick then
+             *     tick = false
+             *     sound_play(1)            -- on the main thread
+             *   end
+             * end
+             * ```
+             *
+             * Also: **don't call `reset_timer`
              * on a timer's own id from inside that same timer's
              * callback** — behavior in that specific case isn't
              * gracefully handled and this pattern hasn't been exercised.
@@ -79,17 +112,20 @@ namespace Scarab  {
             class LuaTimerApi  {
 
                 static std :: string GetTimerName( int nId );
-                static void DeleteGlobal( lua_State *pLuaState, const char *szVarName );
+                static void DeleteGlobal( lua_State* pLuaState, const char* szVarName );
 
-                static int SetTimer( lua_State *pLuaState );
-                static int ResetTimer( lua_State *pLuaState );
+                static int SetTimer( lua_State* pLuaState );
+                static int ResetTimer( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                // The key LuaEngine keeps its TimerMap under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  TIMER_MAP_KEY = "timerMapPtr";
+
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUATIMERAPI_H__ */
+#endif /* __LUATIMERAPI_H__ */

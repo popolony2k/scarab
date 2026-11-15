@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+#
+# Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+#
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+#
 """
 Smoke test for the renderer Lua API (renderer_create / renderer_get_* / renderer_destroy).
 
@@ -22,6 +41,8 @@ scripts/renderer_api_smoke/main.lua, selected with RENDERER_SMOKE_SCENARIO:
   viewsmulti  real extra views: view_create/view_destroy, counts, ids never reused, visible/draw
             order/backdrop/layer-mask round trips (by id and by name), view_fit_to_map, every
             rejection, and that configuring one view never touches another;
+  preferredzoom  preferred_zoom is separate from zoom: zoom_reset returns to it, it is read back
+            live (a later view_set_preferred_zoom shows up), and ZOOM_FACTOR_MAX is accepted;
   views_norenderer  a view call before any renderer is an error and creates none.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each
@@ -34,7 +55,7 @@ import os
 import subprocess
 import sys
 
-SCENARIOS           = ["defaults", "create", "fullscreen", "errors", "lazy", "nowindow", "views", "viewsmulti", "views_norenderer"]
+SCENARIOS           = ["defaults", "create", "fullscreen", "errors", "lazy", "nowindow", "views", "viewsmulti", "preferredzoom", "views_norenderer"]
 MAX_FRAMES          = 200
 RUN_TIMEOUT_SECONDS = 120
 PROJECT             = "scripts/renderer_api_smoke/project.json"

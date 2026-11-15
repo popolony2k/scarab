@@ -5,3 +5,15 @@ Shared sprite-sheet assets — part of `resources/` at the repo root, the genera
 `sunny_idle_down.png` — a 128×32 strip of four 32×32 frames, [sunlight](https://github.com/popolony2k/sunlight)'s own sample character from its [`sprite` sample](https://github.com/popolony2k/sunlight/tree/main/samples/sprite) — shared here unmodified since both repos are owned/authored by the same project (the same rationale as [resources/tilemap/](../tilemap/README.md)'s map).
 
 Used in [samples/sprite](../../samples/sprite/docs/README.md) as a `TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR` animated, keyboard-movable sprite.
+
+`glow.png` (128×128, a warm radial glow whose alpha falls off from the centre; its transparent pixels keep the warm colour) and `shadow.png` (128×64, a soft bluish ellipse; its transparent pixels are **white on purpose**) — both from [sunlight](https://github.com/popolony2k/sunlight)'s own [`blend` sample](https://github.com/popolony2k/sunlight/tree/feat/master_plan/samples/blend) (commit `bfce598`), shared here unmodified for the same reason as above. The white transparent pixels in `shadow.png` are a deliberate test: a naive multiply blend paints them as a white box around the shadow, sunlight's exact one must not.
+
+Used in [samples/blend](../../samples/blend/docs/README.md): the glow as a sprite whose blend mode the number keys choose, the shadow as a sprite that always multiplies.
+
+`card_red.png`, `card_green.png`, `card_blue.png` and `card_gold.png` (120×120 each, opaque coloured cards) — from [sunlight](https://github.com/popolony2k/sunlight)'s own [`zorder` sample](https://github.com/popolony2k/sunlight/tree/feat/master_plan/samples/zorder) (commit `51a3bbb`), shared here unmodified for the same reason as above.
+
+Used in [samples/zorder](../../samples/zorder/docs/README.md): four overlapping cards on one layer, ordered by `sprite_set_z_order`.
+
+`kepi_idle.png` (a 128×32 strip of four 32×32 frames, like `sunny_idle_down.png`) — **Kepi**, Scarab's own mascot: a scarab carrying a small sun, the same character as the logo ([docs/images/kepi.png](../../docs/images/kepi.png)), in pixel art with the logo's palette. Its idle loop: the sun bobs a pixel, its rays pulse and the legs shift. Made for Scarab, temporary art like the logo, under Scarab's own zlib licence. It is drawn by [scripts/kepi_sprite.py](../../scripts/kepi_sprite.py) (standard library only; `python3 scripts/kepi_sprite.py` rewrites it byte for byte, and a second argument writes an 8x preview), so change the script and re-run it rather than editing the PNG.
+
+Used in [samples/parallax](../../samples/parallax/docs/README.md), where Kepi walks the map in Sunny's place.

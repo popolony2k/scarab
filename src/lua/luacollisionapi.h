@@ -21,8 +21,7 @@
 #ifndef __LUACOLLISIONAPI_H__
 #define __LUACOLLISIONAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -46,20 +45,26 @@ namespace Scarab  {
              * pair. There's no per-sprite "on hit" registration — dispatch
              * to the right game logic based on the two handles is entirely
              * up to your handler.
+             *
+             * ## Error reporting
+             *
+             * Every collision function reports a failure as `nil, "message"`
+             * and never raises a Lua error. Layer ids are integers from `0` to
+             * `254`.
              */
             class LuaCollisionApi  {
 
-                static int AddRule( lua_State *pLuaState );
-                static int AddTileRule( lua_State *pLuaState );
-                static int SetHandler( lua_State *pLuaState );
-                static int SetTileHandler( lua_State *pLuaState );
+                static int AddRule( lua_State* pLuaState );
+                static int AddTileRule( lua_State* pLuaState );
+                static int SetHandler( lua_State* pLuaState );
+                static int SetTileHandler( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUACOLLISIONAPI_H__ */
+#endif /* __LUACOLLISIONAPI_H__ */

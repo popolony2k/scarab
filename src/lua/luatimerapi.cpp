@@ -20,7 +20,9 @@
 
 #include "lua/luatimerapi.h"
 #include "lua/luaengineutil.h"
+#include <climits>
 #include <cstdio>
+#include <memory>
 
 
 #define __MAX_TIMER_NAME   50
@@ -48,23 +50,31 @@ namespace Scarab  {
             /**
              * @brief Delete global variable declared in Lua or through set_global call.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @param szVarName The variable name that will be removed;
              */
-            void LuaTimerApi :: DeleteGlobal( lua_State *pLuaState, const char *szVarName )  {
+            void LuaTimerApi :: DeleteGlobal( lua_State* pLuaState, const char* szVarName )  {
 
                 lua_pushnil( pLuaState );
                 lua_setglobal( pLuaState, szVarName );
             }
 
             /**
+             * @brief Fetch the timer map stashed as a Lua light userdata global.
+             */
+            static TimerMap* GetTimerMap( lua_State* pLuaState )  {
+
+                return static_cast<TimerMap *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaTimerApi :: TIMER_MAP_KEY ) );
+            }
+
+            /**
              * @brief Add a timer event handling function that will be triggered
              * to a Lua routine passed by parameter;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{set_timer(id, intervalMilli, callback)}
+             * @luaname{set_timer(id, intervalMilli, callback) -> true | nil, message}
              * @luadoc
              * Register a new periodic timer. `id` is any integer you
              * choose, used later to cancel it via `reset_timer`.
@@ -73,8 +83,10 @@ namespace Scarab  {
              * is called.
              *
              * Registering a `set_timer` with an `id` that's already
-             * active is a no-op (logs an error) — always `reset_timer`
-             * before re-registering the same id.
+             * active fails with `nil, "timer N is already set"` — always
+             * `reset_timer` before re-registering the same id.
+             * `intervalMilli` must be at least `1`, and `callback` a
+             * function. Failures are `nil, "message"`, never a Lua error.
              * @luaexample
              * local shotsFired = 0
              *
@@ -83,125 +95,110 @@ namespace Scarab  {
              *   print("ticks: " .. shotsFired)
              * end)
              */
-            int LuaTimerApi :: SetTimer( lua_State *pLuaState )  {
+            int LuaTimerApi :: SetTimer( lua_State* pLuaState )  {
 
-                if( lua_gettop( pLuaState ) == 3 )  {
+                std :: string   strError;
+                int             nId       = 0;
+                lua_Integer     nInterval = 0;
+                TimerMap*       pTimerMap = GetTimerMap( pLuaState );
 
-                    lua_getglobal( pLuaState, "timerMapPtr" );
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "id", nId, strError ) ||
+                    !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 2, "intervalMilli", 1, INT_MAX, nInterval, strError ) ||
+                    !LuaEngineUtil :: CheckFunctionArg( pLuaState, 3, "callback", strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                    TimerMap     *pTimerMap = static_cast<TimerMap *>( lua_touserdata( pLuaState, -1 ) );
-                    lua_Unsigned nId        = lua_tointeger( pLuaState, 1 );
-                    bool         bExists    = ( pTimerMap -> find( nId ) != pTimerMap -> end() );
+                if( pTimerMap -> find( nId ) != pTimerMap -> end() )
+                    return LuaEngineUtil :: PushError( pLuaState, "timer " + std :: to_string( nId ) + " is already set (reset_timer it first)" );
 
-                    if( !bExists )  {
-                        lua_Unsigned nInterval     = lua_tointeger( pLuaState, 2 );
-                        bool         bIsCallBackFn = lua_isfunction( pLuaState, 3 );
+                ( *pTimerMap )[nId] = std :: make_unique<SunLight :: Concurrent :: Timer>( nId );
 
-                        if( bIsCallBackFn )  {
-                            SunLight :: Concurrent :: Timer *pTImer = new SunLight :: Concurrent :: Timer( nId );
+                lua_pushvalue( pLuaState, 3 );
+                lua_setglobal( pLuaState, GetTimerName( nId ).c_str() );
 
-                            luaL_ref( pLuaState, LUA_REGISTRYINDEX );
-                            lua_setglobal( pLuaState, GetTimerName( nId ).c_str() );
+                SunLight :: Concurrent :: Timer*  pTimer = ( *pTimerMap )[nId].get();     // the map owns it
 
-                            pTimerMap -> insert( std :: make_pair( nId, pTImer) );
+                pTimer -> Start( SunLight :: Concurrent :: Timer :: Interval( nInterval ),
+                                 [pLuaState]( int nId )  {
+                                    /*
+                                     * This callback runs on Timer's own
+                                     * background thread - lua_State isn't
+                                     * thread-safe, so this must serialize
+                                     * against every main-thread entry
+                                     * point via the same mutex, or the
+                                     * two threads racing on the
+                                     * interpreter's internal state
+                                     * corrupts it and crashes. try_lock
+                                     * (not lock_guard) is required here:
+                                     * ResetTimer runs reentrantly on the
+                                     * main thread while an outer entry
+                                     * point already holds this mutex, and
+                                     * it calls Timer::Stop(), which joins
+                                     * this very thread. If this callback
+                                     * blocked on the mutex instead of
+                                     * backing off, that join would wait
+                                     * forever on a thread stuck waiting
+                                     * for a lock the joining thread
+                                     * itself holds - a deadlock. Skipping
+                                     * an occasional tick when the main
+                                     * thread is busy is harmless for a
+                                     * game timer.
+                                     */
+                                    std :: unique_lock<std :: mutex>  lock( LuaEngineUtil :: s_LuaMutex, std :: try_to_lock );
 
-                            pTImer -> Start( SunLight :: Concurrent :: Timer:: Interval( nInterval ),
-                                             [pLuaState](int nId ) {
-                                                /*
-                                                 * This callback runs on Timer's own
-                                                 * background thread - lua_State isn't
-                                                 * thread-safe, so this must serialize
-                                                 * against every main-thread entry
-                                                 * point via the same mutex, or the
-                                                 * two threads racing on the
-                                                 * interpreter's internal state
-                                                 * corrupts it and crashes. try_lock
-                                                 * (not lock_guard) is required here:
-                                                 * ResetTimer runs reentrantly on the
-                                                 * main thread while an outer entry
-                                                 * point already holds this mutex, and
-                                                 * it calls Timer::Stop(), which joins
-                                                 * this very thread. If this callback
-                                                 * blocked on the mutex instead of
-                                                 * backing off, that join would wait
-                                                 * forever on a thread stuck waiting
-                                                 * for a lock the joining thread
-                                                 * itself holds - a deadlock. Skipping
-                                                 * an occasional tick when the main
-                                                 * thread is busy is harmless for a
-                                                 * game timer.
-                                                 */
-                                                std :: unique_lock<std :: mutex>  lock( LuaEngineUtil :: s_LuaMutex, std :: try_to_lock );
+                                    if( !lock.owns_lock() )
+                                        return;
 
-                                                if( !lock.owns_lock() )
-                                                    return;
+                                    lua_getglobal( pLuaState, GetTimerName( nId ).c_str() );
 
-                                                lua_getglobal( pLuaState, GetTimerName( nId ).c_str() );
+                                    if( lua_pcall( pLuaState, 0, 0, 0 ) != 0 )  {
+                                         fprintf( stderr, "Error calling Timer Id [%d] function: %s\n", nId, lua_tostring( pLuaState, -1 ) );
+                                         lua_pop( pLuaState, 1 );
+                                    }
+                                 }  );
 
-                                                if( lua_pcall( pLuaState, 0, 0, 0 ) != 0 )  {
-                                                     fprintf( stderr, "Error calling Timer Id [%d] function.\n", nId );
-                                                }
-                                             }  );
-                        }
-                        else  {
-                            fprintf( stderr, "Invalid callback function parameter.\n" );
-                        }
-                    }
-                    else  {
-                        fprintf( stderr, "Timer Id [%llu] already registered.\n", nId );
-                    }
-                }
-                else  {
-                    fprintf( stderr, "Invalid number of arguments on SetTimer call.\n" );
-                }
-
-                return 0;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
              * @brief Remove a timer previously added by SetTimer;
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return int number os return data (if any - required by lua engine)
              *
-             * @luaname{reset_timer(id)}
+             * @luaname{reset_timer(id) -> true | nil, message}
              * @luadoc
              * Stop and remove a timer previously registered with
              * `set_timer`. Safe to call even if you're not sure the timer
-             * is still running — logs an error (not a crash) if `id`
-             * doesn't exist.
+             * is still running — returns `nil, "timer N is not set"` (not a
+             * crash, and not a Lua error) if `id` doesn't exist.
              * @luaexample
              * reset_timer(1)
              */
-            int LuaTimerApi :: ResetTimer( lua_State *pLuaState )  {
-                if( lua_gettop( pLuaState ) == 1 )  {
-                    lua_getglobal( pLuaState, "timerMapPtr" );
+            int LuaTimerApi :: ResetTimer( lua_State* pLuaState )  {
 
-                    TimerMap     *pTimerMap = static_cast<TimerMap *>( lua_touserdata( pLuaState, -1 ) );
-                    lua_Unsigned nId        = lua_tointeger( pLuaState, 1 );
-                    auto         itItem     = pTimerMap -> find( nId );
+                std :: string   strError;
+                int             nId       = 0;
+                TimerMap*       pTimerMap = GetTimerMap( pLuaState );
 
-                    if( itItem != pTimerMap -> end() )  {
-                        DeleteGlobal( pLuaState, GetTimerName( nId ).c_str() );
-                        itItem -> second -> Stop();
-                        delete itItem -> second;
-                        pTimerMap -> erase( itItem );
-                    }
-                    else  {
-                        fprintf( stderr, "Timer Id [%llu] doesn't exist.\n", nId );
-                    }
-                }
-                else  {
-                    fprintf( stderr, "Invalid number of arguments on ResetTimer call.\n" );
-                }
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "id", nId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 0;
+                auto  itItem = pTimerMap -> find( nId );
+
+                if( itItem == pTimerMap -> end() )
+                    return LuaEngineUtil :: PushError( pLuaState, "timer " + std :: to_string( nId ) + " is not set" );
+
+                DeleteGlobal( pLuaState, GetTimerName( nId ).c_str() );
+                itItem -> second -> Stop();
+                pTimerMap -> erase( itItem );           // destroys the timer
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
              * @brief Register the timer Lua-callable functions.
              */
-            void LuaTimerApi :: Register( lua_State *pLuaState )  {
+            void LuaTimerApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "set_timer", LuaTimerApi :: SetTimer );
                 lua_register( pLuaState, "reset_timer", LuaTimerApi :: ResetTimer );

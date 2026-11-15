@@ -4,7 +4,7 @@ Lua-based tooling for Scarab itself, run via `scarab.exe` the same way any game 
 
 ## pack.lua — content encryption packaging tool
 
-See the root [README.md](../README.md#content-encryption-lock)'s own "Content encryption" section for the full design. Encrypts a game's own loose source directory (Lua scripts + every asset) into a single `.zip` bundle, using a shared secret compiled into *this specific build* of `scarab` — only that same build can decrypt what it packs. This is deterrence, not unbreakable DRM.
+See the root [README.md](../README.md#content-encryption)'s own "Content encryption" section for the full design. Encrypts a game's own loose source directory (Lua scripts + every asset) into a single `.zip` bundle, using a shared secret compiled into *this specific build* of `scarab` — only that same build can decrypt what it packs. This is deterrence, not unbreakable DRM.
 
 Two equivalent ways to run it — `--pack` (recommended) needs no `cd` into this repo at all; the direct form is the underlying mechanism `--pack` is sugar for, useful for e.g. scripting a build from inside this repo's own tree.
 
@@ -21,7 +21,19 @@ A 64-character hex string decodes to the 32 raw bytes `crypto_secretbox` needs. 
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-**Never commit a real key to version control.** Keep it in a local, gitignored file or a CI secret, not typed into any tracked file.
+Keeping your key:
+
+* Generate one **per game/project**, and never use a value from any documentation as a real key (every example here is a placeholder).
+* **Never commit a real key to version control** - not in a `CMakeCache.txt`, a script or a CI config file in the repo. Keep it in a local, gitignored file (this repo's own `pack-config.json` is gitignored, and holds only paths) or in your CI provider's secret store.
+* In CI (e.g. GitHub Actions), pass it as a repository or environment secret and forward it to the configure step, never typed into the workflow file:
+
+  ```yaml
+  - run: cmake -B build -S . -DSCARAB_CONTENT_KEY=${{ secrets.GAME_CONTENT_KEY }}
+  ```
+
+* Losing the key locks you out of every `.zip` packed with it, just as it locks out anyone else - there is no recovery, by design (a recoverable key would be a weaker one). Treat it like a code-signing certificate.
+
+Official release binaries are built with a **shared, public** key, for trying the feature out only - see the root [README.md](../README.md#content-encryption)'s warning.
 
 ### 2. Write a `pack-config.json`
 
@@ -34,7 +46,7 @@ Where this file itself can live depends on which invocation form you use (step 3
 - **`--pack`**: anywhere on disk — `main.cpp` reads it via a plain native file read, no location restriction at all.
 - **Direct form**: at **this repo's own root** — `pack.lua` reads it via `load_json`, which (like every other resource load in this engine) goes through the mount-based virtual filesystem, so it must be reachable from wherever you run `scarab` from (the repo root, by convention — see step 3). It's gitignored (`.gitignore`), so it's safe to keep one there pointing at paths private to your own machine.
 
-`source_dir`/`output` themselves are read/written via `pack_*`/`crypto_*` primitives, which bypass the mount-based virtual filesystem entirely and take real native OS paths regardless of invocation form — a **relative** path in either field resolves against **`pack-config.json`'s own directory** (relocatable, like a `project.json`'s `main_script` — not against whatever your shell's current directory happens to be); an **absolute** path is used unchanged, anywhere on disk, including a different project altogether having nothing to do with this repo. See [pack-config.example.json](pack-config.example.json) for a starting point.
+`source_dir`/`output` themselves are read/written via `pack_*`/`crypto_*` primitives (the `pack_*` ones exist only in `scarab --pack`, which runs without the sandbox - a game never has them), which bypass the mount-based virtual filesystem entirely and take real native OS paths regardless of invocation form — a **relative** path in either field resolves against **`pack-config.json`'s own directory** (relocatable, like a `project.json`'s `main_script` — not against whatever your shell's current directory happens to be); an **absolute** path is used unchanged, anywhere on disk, including a different project altogether having nothing to do with this repo. See [pack-config.example.json](pack-config.example.json) for a starting point.
 
 ### 3. Run the packer
 
@@ -63,4 +75,4 @@ Either way: every file under `source_dir`, recursively, gets encrypted and added
 /path/to/scarab my_game.zip
 ```
 
-...once Scarab's own runtime decrypt hook exists (checkpoint 3 of the plan doc — not done yet as of this writing). Until then, a packed bundle's content can be produced but not yet read back by a running game.
+A `scarab` built with the same `SCARAB_CONTENT_KEY` decrypts every file as it reads it - scripts, JSON, maps with their tilesets, textures, fonts and sounds - so the bundle runs from anywhere, with no loose copy of anything.

@@ -39,6 +39,12 @@
 -- script needs at least one, even one with nothing to sequence.
 sp_wait( 1 )
 
+local Hud = dofile( "samples/shared/hud.lua" )
+
+local __MIN_ZOOM     <const> = 0.5      -- the view's zoom limits, inclusive factors
+local __MAX_ZOOM     <const> = 4.0
+local __INVALID_ZOOM <const> = 3.8      -- not a whole multiple of ZOOM_STEP (0.0625)
+
 -- FIRST window-needing call. Anything you leave out keeps Scarab's default.
 local renderer, err = renderer_create{
     title      = "Scarab - renderer sample",
@@ -59,24 +65,32 @@ end
 local view = renderer_get_default_view( renderer )
 
 -- Zoom limits are factors too, and inclusive.
-view_set_zoom_limits( view, 0.5, 4.0 )
+assert( view_set_zoom_limits( view, __MIN_ZOOM, __MAX_ZOOM ) )
 
 -- Now the window exists, so window-needing calls are fine.
-tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER )
+assert( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER ) )
 
 local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
 
 -- Rejected calls come back as nil + a message - shown on screen, to see the exact text.
-local lastMessage = "press Space to try an invalid zoom (3.8)"
+local lastMessage = "press Space to try an invalid zoom (" .. __INVALID_ZOOM .. ")"
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): zoom and pan the default view through
+-- the view_* functions, one step per frame a key is held, and draw the renderer's settings read back live.
 function on_update( dt )
 
-    -- Held keys give continuous zoom/pan: each call is one fixed step.
-    if input_is_key_down( KEY_Z ) then
+    -- Held keys give continuous zoom/pan: each call is one fixed step. The zoom keys are
+    -- the ones every sunlight/Scarab sample shares (see samples/camera): Page Up/Page Down
+    -- and + / - zoom, on the main keyboard and the keypad; + and = are one physical key
+    -- (+ is Shift and =), told apart by whether Shift is held.
+    local shift = input_is_key_down( KEY_LEFT_SHIFT ) or input_is_key_down( KEY_RIGHT_SHIFT )
+
+    if input_is_key_down( KEY_PAGE_UP ) or input_is_key_down( KEY_KP_ADD ) or
+       ( shift and input_is_key_down( KEY_EQUAL ) ) then
         view_zoom_in( view )
     end
 
-    if input_is_key_down( KEY_X ) then
+    if input_is_key_down( KEY_PAGE_DOWN ) or input_is_key_down( KEY_MINUS ) or input_is_key_down( KEY_KP_SUBTRACT ) then
         view_zoom_out( view )
     end
 
@@ -96,14 +110,20 @@ function on_update( dt )
         view_move_camera_down( view )
     end
 
-    if input_is_key_released( KEY_R ) then
+    -- = resets the zoom only (to the preferred zoom, 1.0 here - the zoom this sample
+    -- starts at); Home resets the zoom and the camera.
+    if ( not shift and input_is_key_released( KEY_EQUAL ) ) or input_is_key_released( KEY_KP_EQUAL ) then
+        view_zoom_reset( view )
+    end
+
+    if input_is_key_released( KEY_HOME ) then
         view_zoom_reset( view )
         view_reset_camera( view )
     end
 
     if input_is_key_released( KEY_SPACE ) then
-        -- 3.8 is not a whole multiple of ZOOM_STEP (0.0625): rejected, never rounded.
-        local ok, message = view_set_zoom( view, 3.8 )
+        -- Not a whole multiple of ZOOM_STEP: rejected, never rounded.
+        local ok, message = view_set_zoom( view, __INVALID_ZOOM )
         lastMessage = ok and "zoom set" or message
     end
 
@@ -114,10 +134,14 @@ function on_update( dt )
     local x, y, w, h   = view_get_dimension( view )
     local stepW, stepH = view_get_scroll_step( view )
 
-    draw_text( string.format( "renderer_get_config: %dx%d  fps %d  title '%s'", config.width, config.height, config.fps, config.title ), 20, 20, 18, 255, 255, 255, 255 )
-    draw_text( string.format( "view %d   zoom %.4f   limits %.4f .. %.4f   ZOOM_STEP %.4f", view, view_get_zoom( view ), minZoom, maxZoom, ZOOM_STEP ), 20, 44, 18, 255, 255, 255, 255 )
-    draw_text( string.format( "viewport %d,%d %dx%d   camera %d,%d   scroll step %d,%d", x, y, w, h, camX, camY, stepW, stepH ), 20, 68, 18, 255, 255, 255, 255 )
-    draw_text( "map " .. tostring( mapWidth ) .. "x" .. tostring( mapHeight ) .. " tiles   backend " .. tostring( renderer_get_backend( renderer ) ), 20, 92, 18, 200, 200, 200, 255 )
-    draw_text( lastMessage, 20, 116, 18, 255, 200, 120, 255 )
-    draw_text( "Z / X zoom   arrows pan   R reset   Space invalid zoom   Esc quit", 20, config.height - 32, 16, 180, 180, 180, 255 )
+    Hud.line( string.format( "renderer_get_config: %dx%d  fps %d", config.width, config.height, config.fps ), 1, Hud.TITLE )
+    Hud.line( string.format( "title '%s'", config.title ), 2, Hud.TITLE )
+    Hud.line( string.format( "view %d   zoom %.4f", view, view_get_zoom( view ) ), 3, Hud.INFO )
+    Hud.line( string.format( "zoom limits %.4f .. %.4f", minZoom, maxZoom ), 4, Hud.INFO )
+    Hud.line( string.format( "ZOOM_STEP %.4f   viewport %d,%d %dx%d", ZOOM_STEP, x, y, w, h ), 5, Hud.INFO )
+    Hud.line( string.format( "camera %d,%d   scroll step %d,%d", camX, camY, stepW, stepH ), 6, Hud.INFO )
+    Hud.line( "map " .. tostring( mapWidth ) .. "x" .. tostring( mapHeight ) .. " tiles   backend " .. tostring( renderer_get_backend( renderer ) ), 7, Hud.INFO )
+    Hud.lines( lastMessage, 8, Hud.ALERT )
+    Hud.line_from_bottom( "PageUp/PageDown or +/- zoom  = reset zoom  Home reset", 2, Hud.DIM )
+    Hud.line_from_bottom( "arrows pan   Space invalid zoom   Esc quit", 1, Hud.DIM )
 end

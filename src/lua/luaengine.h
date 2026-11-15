@@ -21,33 +21,41 @@
 #ifndef __LUAENGINE_H__
 #define __LUAENGINE_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
   #include "lualib.h"
   #include "lauxlib.h"
 }
 
 #include "scripting/scriptprocessor.h"
+#include "tilemap/itilemap.h"
+#include "sound/soundmanager.h"
 #include "lua/luaengineutil.h"
+#include "lua/luatimerapi.h"
+#include "engine/spritepool.h"
+#include "lua/luacollisionlistener.h"
+#include "lua/luaworldapi.h"
+#include "engine/fontpool.h"
+#include "input/icontrollermanager.h"
+#include "input/playerslotmanager.h"
+#include "input/actionmap.h"
+#include "input/igamepadhaptics.h"
+#include "engine/savedirectory.h"
 #include <string>
 #include <cstdint>
-
-namespace SunLight  {
-    namespace TileMap  { class ITileMap; }
-    namespace Sound  { class SoundManager; }
-}
+#include <memory>
 
 namespace Scarab  {
-    namespace Engine  {
-        class SpritePool;
+    namespace Lua  {
 
-        namespace Lua  { class LuaCollisionListener; }
-    }
-}
+        /** @brief What a Lua engine runs: a game (sandboxed, or not with --no-sandbox), or the --pack tool. */
+        enum LuaEngineMode  {
+            LUA_ENGINE_MODE_SANDBOX,        // a game, in the sandbox (docs/history/master_plan_11_2026.md item C8): the default
+            LUA_ENGINE_MODE_NO_SANDBOX,     // a game, with Lua's own io/os/require/loadfile/load (--no-sandbox)
+            LUA_ENGINE_MODE_PACK,           // the --pack tool: no sandbox, and the pack_* functions
+            LUA_ENGINE_MODE_LAST
+        };
 
-namespace Scarab  {
-    namespace Lua {
         /**
          * @brief Implements a C++ abstraction for using
          * Lua engine;
@@ -76,17 +84,23 @@ namespace Scarab  {
          */
         class LuaEngine  {
 
-            lua_State                                 *m_pLuaState;
-            SunLight :: Scripting :: ScriptProcessor  *m_pScriptProcessor;
-            Engine :: Lua :: TimerMap                  m_Timers;
-            Engine :: Lua :: LuaCollisionListener     *m_pCollisionListener;
-            std :: string                              m_strAppDirectory;
+            lua_State*                                                m_pLuaState;
+            SunLight :: Scripting :: ScriptProcessor*                 m_pScriptProcessor;
+            Engine :: Lua :: TimerMap                                 m_Timers;
+            std :: unique_ptr<Engine :: Lua :: LuaCollisionListener>  m_pCollisionListener;
+            Engine :: Lua :: WorldTable                               m_Worlds;        // world_create/world_load (C7)
+            SunLight :: Input :: PlayerSlotManager                    m_PlayerSlots;   // input_claim_player_slot & co (C1a)
+            SunLight :: Input :: ActionMap                            m_ActionMap;     // input_bind_action_* & co (C1b)
+            std :: unique_ptr<SunLight :: Input :: IGamepadHaptics>   m_pHaptics;      // rumble (C1b): made with the renderer
+            std :: string                                             m_strAppDirectory;
+            LuaEngineMode                                             m_Mode;
+            Engine :: Lua :: LuaEngineUtil :: EngineObjectMap         m_EngineObjects; // out of every script's reach (C8a)
 
             void RegisterCalls( void );
 
             public:
 
-            LuaEngine( SunLight :: Scripting :: ScriptProcessor *pScriptProcessor );
+            LuaEngine( SunLight :: Scripting :: ScriptProcessor* pScriptProcessor, LuaEngineMode mode );
             virtual ~LuaEngine( void );
 
             bool RunFile( std :: string strFileName );
@@ -95,12 +109,18 @@ namespace Scarab  {
             bool TryDispatchLoadStage( uint16_t nStageId );
             int GetActiveEnemyCount( void );
             const std :: string& GetApplicationDirectory( void ) const;
-            void Init( Engine :: IRendererProvider *pRendererProvider,
-                      SunLight :: Sound :: SoundManager *pSoundManager,
-                      Engine :: SpritePool *pSpritePool );
-            void AttachToTileMap( SunLight :: TileMap :: ITileMap &tileMap );
+            void Init( Engine :: IRendererProvider* pRendererProvider,
+                      SunLight :: Sound :: SoundManager* pSoundManager,
+                      Engine :: SpritePool* pSpritePool,
+                      Engine :: FontPool* pFontPool,
+                      Engine :: SaveDirectory* pSaveDirectory );
+            void AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap );
+            void AttachToControllerManager( SunLight :: Input :: IControllerManager& controllerManager );
+            void AttachHaptics( SunLight :: Input :: IInputHandler& inputHandler, bool bHeadless );
+            void UpdateHaptics( void );
+            void ReleaseHaptics( void );
             void InstallVirtualClock( void );
         };
     }
 }
-#endif  /* __LUAENGINE_H__ */
+#endif /* __LUAENGINE_H__ */

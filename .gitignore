@@ -36,6 +36,7 @@ CMakeSettings.json
 **/GeneratedFiles/
 **/Build/
 **/build/
+**/build-*/
 **/CMakeFiles/
 **/out/
 **/_deps/

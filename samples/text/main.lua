@@ -19,66 +19,78 @@
 ]]
 
 --[[
- text - HUD-style text layout (docs/lua-api/text.html), beyond
- hello-world's minimal single draw_text call.
+ text - HUD-style text layout and fonts by handle (docs/lua-api/text.html),
+ beyond hello-world's minimal single draw_text call.
 
- Demonstrates measure_text (right-aligning a growing counter against
- screen_get_width), screen_get_width/screen_get_height (drawing a border
- exactly on the render target's edges), and set_font three times over:
- first a path that can't exist, to show its documented graceful-failure
- behavior (returns false, leaves the previously-active font untouched,
- no error or crash); then "Press Start 2P" (resources/fonts/,
- OFL-licensed - see resources/fonts/README.md and ofl-pressstart2p.txt
- for full attribution), a single-file TrueType font; then
- "caravellius8x8" (resources/fonts/, an original bitmap font made for
- Caravellius), a multi-file AngelCode BMFont atlas - the last set_font
- call wins, so caravellius8x8 ends up the font actually used for the
- rest of this sample, same call shape either way regardless of format
- (set_font has no format-specific logic of it's own; raylib's LoadFont
- auto-detects TrueType/OpenType vs. a BMFont ".fnt" atlas purely from
- the file's own extension).
-
- NOTE: multi-file BMFont loading (like caravellius8x8.fnt's separate
- ".png" atlas) used to fail here - a real, verified engine bug in how
- Scarab's mount-based filesystem hook interacted with raylib's own
- internal BMFont loading, root-caused and fixed upstream in sunlight
- v0.17.3 (see root CLAUDE.md's "Known gotchas" and
- resources/fonts/README.md for the full story). This sample now
- demonstrates the real, working multi-file BMFont load as a result.
+ Demonstrates:
+ - load_font: each font file is loaded ONCE into a handle - "caravellius8x8"
+   regular and bold (resources/fonts/, the project's own multi-file
+   AngelCode BMFont atlases) and "Press Start 2P" (a single-file TrueType
+   font, SIL OFL 1.1 - see resources/fonts/README.md and ofl-pressstart2p.txt);
+ - draw_text's optional last argument: one line in each font, all on screen
+   at once, without switching the active font;
+ - set_font's forms: a handle (keys 1-3 pick the active font), nil (key 0,
+   the built-in font), and a path that can't exist (its error is shown);
+ - measure_text with the active font: a counter right-aligned against
+   screen_get_width, which follows whichever font is active;
+ - a line with Portuguese and Spanish accents in the TrueType font (a TTF
+   loads with Latin accents; a bitmap .fnt only has the glyphs its atlas
+   holds);
+ - screen_get_width/screen_get_height: a border drawn exactly on the
+   render target's edges.
 ]]
 
-app_set_name( "Scarab - text sample" )
+assert( app_set_name( "Scarab - text sample" ) )
+
+local Hud = dofile( "samples/shared/hud.lua" )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
--- This path can't exist - expected to fail and fall back to the engine's
--- own built-in default font, exactly as set_font's own doc comment
--- describes. bogusFontLoaded is only ever used for the HUD line below.
-local bogusFontLoaded = set_font( "resources/fonts/this-font-does-not-exist.ttf" )
+-- Each font is loaded once; the handle can be the active font, be passed to
+-- draw_text/measure_text directly, and serve the map's text objects
+-- (register_font, see samples/objects) - one file, one load.
+local __FONTS <const> = {
+    { key = KEY_ONE,   name = "caravellius8x8",      font = assert( load_font( "resources/fonts/caravellius8x8.fnt" ) ) },
+    { key = KEY_TWO,   name = "caravellius8x8 bold", font = assert( load_font( "resources/fonts/caravellius8x8_bold.fnt" ) ) },
+    { key = KEY_THREE, name = "Press Start 2P",      font = assert( load_font( "resources/fonts/pressstart2p-regular.ttf" ) ) },
+}
+local __PIXEL <const> = __FONTS[3].font
 
--- "Press Start 2P" by The Press Start 2P Project Authors, SIL Open Font
--- License 1.1 (resources/fonts/ofl-pressstart2p.txt) - used here
--- unmodified, under it's own real name, per OFL's own Reserved Font
--- Name terms (see resources/fonts/README.md). A single-file TrueType
--- font - was never affected by the BMFont bug mentioned above.
-local pressStart2PLoaded = set_font( "resources/fonts/pressstart2p-regular.ttf" )
+-- A path that can't exist: set_font returns nil and the reason, and the
+-- active font stays as it was.
+local _, badPathMessage = set_font( "resources/fonts/this-font-does-not-exist.ttf" )
 
--- caravellius8x8 - an original bitmap font made for Caravellius
--- (resources/fonts/README.md). A multi-file AngelCode BMFont atlas -
--- this is the call that used to fail (see the module comment above);
--- fixed in sunlight v0.17.3. Called last, so this becomes the font
--- actually active for the rest of this sample.
-local caravelliusLoaded = set_font( "resources/fonts/caravellius8x8.fnt" )
+local activeName = __FONTS[1].name
+assert( set_font( __FONTS[1].font ) )
 
 local screenWidth  = screen_get_width()
 local screenHeight = screen_get_height()
 
-local counter = 0
-local __COUNT_INTERVAL_FRAMES = 30  -- ~0.5s at 60fps - see CLAUDE.md's dt gotcha for why frame-counting, not dt-accumulation, is used here
+local __COUNT_INTERVAL_FRAMES <const> = 30    -- ~0.5s at 60fps - see CLAUDE.md's dt gotcha for why frame-counting, not dt-accumulation, is used here
+local __LINE_SIZE             <const> = 20    -- the demonstration lines' size
+local __NOTE_SIZE             <const> = 14    -- the bad-path note's size
+local __MARGIN                <const> = 20    -- pixels from the screen's edges
+local __FONT_LIST_TOP         <const> = 60    -- y of the first "font: ..." line
+local __FONT_LIST_SPACING     <const> = 40    -- pixels between them
+local __ACCENTS_Y             <const> = 200
+local __BAD_PATH_Y            <const> = 240
+local __COUNT_FROM_BOTTOM     <const> = 44    -- pixels from the screen's bottom to the counter
+local __BORDER                <const> = 4     -- the border's thickness
+local __BORDER_COLOR          <const> = { r = 80, g = 80, b = 80 }
+local __WHITE                 <const> = { r = 255, g = 255, b = 255 }
+local __FONT_COLOR            <const> = { r = 200, g = 220, b = 255 }
+local __ACCENT_COLOR          <const> = { r = 255, g = 220, b = 120 }
+local __ERROR_COLOR           <const> = { r = 255, g = 140, b = 140 }
+local __OPAQUE                <const> = 255
+
+local counter          = 0
 local framesSinceCount = 0
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): count, pick the active font (1-3, 0 the
+-- built-in one), and draw the border, a line in each font, the accented line, the bad-path message and the
+-- right-aligned counter.
 function on_update( dt )
 
     framesSinceCount = framesSinceCount + 1
@@ -88,25 +100,50 @@ function on_update( dt )
         framesSinceCount = 0
     end
 
+    -- keys 1-3 select the active font by handle, 0 the built-in font
+    for _, entry in ipairs( __FONTS ) do
+        if input_is_key_released( entry.key ) then
+            assert( set_font( entry.font ) )
+            activeName = entry.name
+        end
+    end
+
+    if input_is_key_released( KEY_ZERO ) then
+        assert( set_font( nil ) )
+        activeName = "the built-in font"
+    end
+
     -- A border drawn exactly on the fixed render target's own edges -
     -- confirms screen_get_width/screen_get_height describe that fixed
     -- resolution, not the live/resizeable OS window size.
-    draw_filled_rectangle( 0, 0, screenWidth, 4, 80, 80, 80, 255 )
-    draw_filled_rectangle( 0, screenHeight - 4, screenWidth, 4, 80, 80, 80, 255 )
-    draw_filled_rectangle( 0, 0, 4, screenHeight, 80, 80, 80, 255 )
-    draw_filled_rectangle( screenWidth - 4, 0, 4, screenHeight, 80, 80, 80, 255 )
+    local b = __BORDER_COLOR
 
-    draw_text( "text sample - now using caravellius8x8 (a multi-file BMFont)", 20, 20, 20, 255, 255, 255, 255 )
-    draw_text( "set_font: bad path=" .. tostring( bogusFontLoaded )
-        .. "  Press Start 2P=" .. tostring( pressStart2PLoaded )
-        .. "  caravellius8x8=" .. tostring( caravelliusLoaded ), 20, 50, 14, 200, 200, 200, 255 )
+    draw_filled_rectangle( 0, 0, screenWidth, __BORDER, b.r, b.g, b.b, __OPAQUE )
+    draw_filled_rectangle( 0, screenHeight - __BORDER, screenWidth, __BORDER, b.r, b.g, b.b, __OPAQUE )
+    draw_filled_rectangle( 0, 0, __BORDER, screenHeight, b.r, b.g, b.b, __OPAQUE )
+    draw_filled_rectangle( screenWidth - __BORDER, 0, __BORDER, screenHeight, b.r, b.g, b.b, __OPAQUE )
+
+    -- with the active font (no font argument)
+    draw_text( "active font: " .. activeName, __MARGIN, __MARGIN, __LINE_SIZE, __WHITE.r, __WHITE.g, __WHITE.b, __OPAQUE )
+    Hud.line_from_bottom( "keys 1, 2, 3 pick the active font - 0 the built-in one", 3, Hud.DIM )
+
+    -- one line in each loaded font, all at once (draw_text's optional last argument)
+    for index, entry in ipairs( __FONTS ) do
+        draw_text( "font: " .. entry.name, __MARGIN, __FONT_LIST_TOP + ( index - 1 ) * __FONT_LIST_SPACING, __LINE_SIZE,
+            __FONT_COLOR.r, __FONT_COLOR.g, __FONT_COLOR.b, __OPAQUE, entry.font )
+    end
+
+    draw_text( "Ação, coração, açúcar - año, niño, mañana - café", __MARGIN, __ACCENTS_Y, __LINE_SIZE,
+        __ACCENT_COLOR.r, __ACCENT_COLOR.g, __ACCENT_COLOR.b, __OPAQUE, __PIXEL )
+    draw_text( "set_font( bad path ): " .. tostring( badPathMessage ), __MARGIN, __BAD_PATH_Y, __NOTE_SIZE,
+        __ERROR_COLOR.r, __ERROR_COLOR.g, __ERROR_COLOR.b, __OPAQUE )
 
     -- Right-align "Count: N" against the right edge via measure_text,
     -- rather than a hardcoded x - the text's own width changes as the
-    -- digit count grows (single digit vs. double digit, ...), and now
-    -- also reflects the active font's own real glyph metrics.
+    -- digit count grows, and follows whichever font is active.
     local countText = "Count: " .. tostring( counter )
-    local textWidth = measure_text( countText, 20 )
+    local textWidth = measure_text( countText, __LINE_SIZE )
 
-    draw_text( countText, screenWidth - textWidth - 20, screenHeight - 44, 20, 255, 220, 120, 255 )
+    draw_text( countText, screenWidth - textWidth - __MARGIN, screenHeight - __COUNT_FROM_BOTTOM, __LINE_SIZE,
+        __ACCENT_COLOR.r, __ACCENT_COLOR.g, __ACCENT_COLOR.b, __OPAQUE )
 end

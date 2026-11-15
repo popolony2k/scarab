@@ -89,6 +89,7 @@
 -- script keeps working for form 2 (a real window, app_set_name calling
 -- successfully) too.
 if app_set_name then
+    -- lint: allow lua-unchecked-load (only the window title, and only when a window exists)
     app_set_name( "Scarab - content packer" )
 end
 
@@ -107,10 +108,10 @@ local outputZip = os.getenv( "SCARAB_PACK_OUTPUT" )
 if sourceDir == nil or outputZip == nil then
     -- Direct-invocation form (USAGE form 2) - pack-config.json read from
     -- the current directory (this repo's own root, by convention).
-    local config = load_json( "pack-config.json" )
+    local config, err = load_json( "pack-config.json" )
 
     if config == nil then
-        error( "tools/pack.lua: could not read pack-config.json in the current directory - "
+        error( "tools/pack.lua: could not read pack-config.json in the current directory (" .. err .. ") - "
             .. "see tools/pack-config.example.json for a starting point, or use "
             .. "'scarab --pack <config.json>' instead (see this file's own USAGE comment)" )
     end
@@ -121,31 +122,42 @@ end
 
 print( "Packing '" .. sourceDir .. "' -> '" .. outputZip .. "'..." )
 
-local files = pack_list_directory( sourceDir )
+local files, err = pack_list_directory( sourceDir )
+
+if files == nil then
+    error( "tools/pack.lua: " .. err .. " - check pack-config.json's source_dir" )
+end
 
 if #files == 0 then
     error( "tools/pack.lua: no files found under '" .. sourceDir .. "' - check pack-config.json's source_dir" )
 end
 
-local archive = pack_create_archive( outputZip )
+local archive, err = pack_create_archive( outputZip )
 
-if archive == 0 then
-    error( "tools/pack.lua: could not create archive at '" .. outputZip .. "'" )
+if archive == nil then
+    error( "tools/pack.lua: " .. err )
 end
 
 local packedCount = 0
 
 for _, relativePath in ipairs( files ) do
-    local data = pack_read_file( sourceDir .. "/" .. relativePath )
-    local encrypted = crypto_encrypt_data( data )
+    local data, err = pack_read_file( sourceDir .. "/" .. relativePath )
 
-    if encrypted == nil then
-        error( "tools/pack.lua: encryption failed for '" .. relativePath
-            .. "' - is SCARAB_CONTENT_KEY configured for this build? (cmake -B build -S . -DSCARAB_CONTENT_KEY=<64 hex chars>)" )
+    if data == nil then
+        error( "tools/pack.lua: " .. err )
     end
 
-    if not pack_add_entry( archive, relativePath, encrypted ) then
-        error( "tools/pack.lua: failed to add '" .. relativePath .. "' to the archive" )
+    local encrypted, err = crypto_encrypt_data( data )
+
+    if encrypted == nil then
+        error( "tools/pack.lua: encryption failed for '" .. relativePath .. "': " .. err
+            .. " - is SCARAB_CONTENT_KEY configured for this build? (cmake -B build -S . -DSCARAB_CONTENT_KEY=<64 hex chars>)" )
+    end
+
+    local added, err = pack_add_entry( archive, relativePath, encrypted )
+
+    if not added then
+        error( "tools/pack.lua: failed to add '" .. relativePath .. "' to the archive: " .. err )
     end
 
     packedCount = packedCount + 1
@@ -153,8 +165,10 @@ for _, relativePath in ipairs( files ) do
     print( "  packed: " .. relativePath .. " (" .. #data .. " -> " .. #encrypted .. " bytes)" )
 end
 
-if not pack_close_archive( archive ) then
-    error( "tools/pack.lua: failed to finalize the archive at '" .. outputZip .. "'" )
+local closed, err = pack_close_archive( archive )
+
+if not closed then
+    error( "tools/pack.lua: failed to finalize the archive at '" .. outputZip .. "': " .. err )
 end
 
 print( "Done - packed " .. packedCount .. " file(s) into '" .. outputZip .. "'." )
@@ -167,5 +181,7 @@ if app_quit then
     app_quit()
 end
 
+-- Called by Scarab every frame in form 2 (a window), until app_quit above closes it: nothing to do - the packing
+-- already ran once, above. (on_update is optional; this empty one changes nothing.)
 function on_update( dt )
 end

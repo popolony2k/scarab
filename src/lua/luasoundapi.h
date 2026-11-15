@@ -21,8 +21,7 @@
 #ifndef __LUASOUNDAPI_H__
 #define __LUASOUNDAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -49,38 +48,54 @@ namespace Scarab  {
              * `caravellius/src/soundids.lua`) — the engine never
              * interprets what a specific id means, it's just a key into
              * `SoundManager`.
+             *
+             * The `sound_*` functions are unconditional, immediate calls — no
+             * queue involved, and they don't distinguish "background music" from
+             * "sound effect." Use them for anything you want to control
+             * precisely and immediately; the song functions below add the queue
+             * and background-music looping.
+             *
+             * ## Error reporting
+             *
+             * Every sound and song function reports a failure as
+             * `nil, "message"` and never raises a Lua error; one with nothing
+             * else to return returns `true`. Ids are integers; an id that was
+             * never loaded is `"sound N is not loaded (see sound_load)"`.
              */
             class LuaSoundApi  {
 
-                static int Load( lua_State *pLuaState );
-                static int Unload( lua_State *pLuaState );
-                static int Play( lua_State *pLuaState );
-                static int Stop( lua_State *pLuaState );
-                static int Pause( lua_State *pLuaState );
-                static int Resume( lua_State *pLuaState );
-                static int IsPlaying( lua_State *pLuaState );
-                static int SetVolume( lua_State *pLuaState );
+                static int Load( lua_State* pLuaState );
+                static int Unload( lua_State* pLuaState );
+                static int Play( lua_State* pLuaState );
+                static int Stop( lua_State* pLuaState );
+                static int Pause( lua_State* pLuaState );
+                static int Resume( lua_State* pLuaState );
+                static int IsPlaying( lua_State* pLuaState );
+                static int SetVolume( lua_State* pLuaState );
 
                 // Direct (non-queued) song commands - reach EngineHost::OnCommand synchronously
-                static void CallPlayCommandDirect( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd );
-                static int PlaySong( lua_State *pLuaState );
-                static int PlaySongLooping( lua_State *pLuaState );
-                static int PauseSong( lua_State *pLuaState );
-                static int StopSong( lua_State *pLuaState );
-                static int ResumeSong( lua_State *pLuaState );
+                static int CallPlayCommandDirect( lua_State* pLuaState, SunLight :: Scripting :: Commands cmd );
+                static int PlaySong( lua_State* pLuaState );
+                static int PlaySongLooping( lua_State* pLuaState );
+                static int PauseSong( lua_State* pLuaState );
+                static int StopSong( lua_State* pLuaState );
+                static int ResumeSong( lua_State* pLuaState );
 
                 // Queued song commands - paced by the ScriptProcessor like sp_wait/sp_move_sprites_to_screen
-                static int QueuePlaySong( lua_State *pLuaState );
-                static int QueuePauseSong( lua_State *pLuaState );
-                static int QueueStopSong( lua_State *pLuaState );
-                static int QueueResumeSong( lua_State *pLuaState );
+                static int QueuePlaySong( lua_State* pLuaState );
+                static int QueuePauseSong( lua_State* pLuaState );
+                static int QueueStopSong( lua_State* pLuaState );
+                static int QueueResumeSong( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                // The key LuaEngine::Init keeps the engine's SoundManager under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SOUND_MANAGER_KEY = "soundManagerPtr";
+
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUASOUNDAPI_H__ */
+#endif /* __LUASOUNDAPI_H__ */

@@ -31,7 +31,10 @@
 #include "sound/soundmanager.h"
 #include "lua/luaengine.h"
 #include "engine/spritepool.h"
+#include "engine/fontpool.h"
 #include "host/rendererprovider.h"
+#include "engine/savedirectory.h"
+#include <nlohmann/json.hpp>
 
 
 /*
@@ -62,13 +65,15 @@ namespace Scarab  {
             typedef std :: function<void( void )> FUNCTION_STATE_HANDLER;
             typedef std :: array<FUNCTION_STATE_HANDLER, MAX_STATE_HANDLERS> FunctionStateHandlers;
 
-            uint16_t                                   m_CurrentSong;
+            uint16_t                                   m_nCurrentSong;
             uint64_t                                   m_nClearInactiveSpriteQueueMilli;
             FUNCTION_STATE_HANDLER                     m_CurrentStateHandler;
             SunLight :: Scripting :: ScriptProcessor   m_ScriptProcessorMachine;
             SunLight :: Sound :: SoundManager          m_SoundManager;
             Scarab :: Lua :: LuaEngine                 m_LuaEngine;
             Engine :: SpritePool                       m_SpritePool;
+            Engine :: FontPool                         m_FontPool;
+            Engine :: SaveDirectory                    m_SaveDirectory;
 
             std :: string                              m_strEntryArg;
             std :: string                              m_strEntryOverride;
@@ -83,15 +88,17 @@ namespace Scarab  {
             void RunScriptMachine( void );
 
             // Sound support
-            bool PlaySound( uint16_t id, bool bIgnorePlaying = false );
-            bool PauseSound( uint16_t id );
-            bool StopSound( uint16_t id );
-            bool ResumeSound( uint16_t id );
+            bool PlaySound( uint16_t nId, bool bIgnorePlaying = false );
+            bool PauseSound( uint16_t nId );
+            bool StopSound( uint16_t nId );
+            bool ResumeSound( uint16_t nId );
 
             // Script management routines
             bool LoadLuaScript( std :: string strFileName );
             bool RunLuaScriptMainEntryPoint( void );
             bool ResolveEntryScript( const std :: string& strEntryArg, std :: string& strOutScriptPath );
+            bool ResolveMainScript( const std :: string& strProjectPath, const std :: string& strMainScript, std :: string& strOutScriptPath );
+            bool ApplyProjectSaveDirectory( const std :: string& strProjectPath, const nlohmann :: json& projectData );
 
             // Machine state handlers
             void FatalErrorHandler( void );
@@ -100,9 +107,10 @@ namespace Scarab  {
 
             public:
 
-            EngineHost( Scarab :: Host :: RendererProvider *pRendererProvider,
+            EngineHost( Scarab :: Host :: RendererProvider* pRendererProvider,
                        std :: string strEntryArg,
-                       std :: string strEntryOverride = std :: string() );
+                       std :: string strEntryOverride,
+                       bool bSandbox );
             virtual ~EngineHost( void );
 
             // Runs the entry script - before the window exists, see the definition
@@ -111,12 +119,15 @@ namespace Scarab  {
             // Headless (--headless) only - see LuaAppApi::InstallVirtualClock
             void UseVirtualTime( void );
 
-            // World listener event handler implementation
-            void OnUpdate( SunLight :: TileMap :: ITileMap& tileMap );
-            void OnStop( void );
+            // The command line's --save-dir (docs/history/master_plan_11_2026.md item C1b)
+            bool SetSaveDirectoryFromCommandLine( const std :: string& strRealPath, std :: string& strError );
 
-            void OnCommand( SunLight :: Scripting :: Commands cmd, uint16_t nEventId );
-            void OnError( std :: string strError );
+            // World listener event handler implementation
+            void OnUpdate( SunLight :: TileMap :: ITileMap& tileMap ) override;
+            void OnStop( void ) override;
+
+            void OnCommand( SunLight :: Scripting :: Commands cmd, uint16_t nEventId ) override;
+            void OnError( std :: string strError ) override;
         };
     }
 }

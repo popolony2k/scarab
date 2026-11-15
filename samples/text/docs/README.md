@@ -1,6 +1,6 @@
 # text sample
 
-HUD-style text layout, beyond `hello-world`'s single static `draw_text` call: a border drawn exactly on the fixed render resolution's own edges, a growing counter right-aligned against it via `measure_text`, and two real custom fonts loaded via `set_font` — a single-file TrueType font and a multi-file AngelCode BMFont atlas. See [samples/README.md](../../README.md) for the full sample list.
+HUD-style text layout and **fonts by handle**, beyond `hello-world`'s single static `draw_text` call: each font file is loaded once with `load_font`, several fonts are on screen at the same time, the active font can be switched by handle, and a counter is right-aligned with `measure_text`. See [samples/README.md](../../README.md) for the full sample list.
 
 ## Running
 
@@ -10,11 +10,24 @@ From the repo root:
 ./build/scarab samples/text/project.json
 ```
 
+## Controls
+
+| Key | Action |
+| --- | --- |
+| `1` / `2` / `3` | Make caravellius8x8, caravellius8x8 bold or Press Start 2P the active font (`set_font( font )`) |
+| `0` | Switch to the engine's built-in font (`set_font( nil )`) |
+| `Esc` | Quit |
+
 ## What it shows
 
-- [main.lua](../main.lua) — `screen_get_width()`/`screen_get_height()` draw a border exactly on the fixed `1260x920` render target's own edges, confirming these describe that fixed design resolution, not the live/resizeable OS window size.
-- `measure_text` right-aligns a "Count: N" counter against the right edge — the *x* position is recomputed every frame from the text's own measured width, not hardcoded, since the digit count grows over time (`Count: 9` vs. `Count: 10` are different widths), and now also reflects the active custom font's own real glyph metrics.
-- `set_font` is called **three** times: first with a path that can't exist, purely to show its documented graceful-failure behavior (returns `false`, leaves whatever font was already active — the engine's built-in default, at that point — untouched, no error or crash); then with [Press Start 2P](../../../resources/fonts/README.md) (OFL-licensed, single-file TrueType); then with `caravellius8x8.fnt` (an original bitmap font made for Caravellius, a *multi-file* AngelCode BMFont atlas — a separate `.png` referenced from the `.fnt`). The last call wins, so `caravellius8x8` ends up the font actually shown for the rest of the sample. Same call shape regardless of format — `set_font` has no format-specific logic of its own, raylib auto-detects TrueType/OpenType vs. a BMFont atlas purely from the file's own extension. The sample's own HUD shows all three return values on screen.
+- [main.lua](../main.lua) — **load once**: `load_font` loads three fonts, each once, into handles — [caravellius8x8](../../../resources/fonts/README.md) regular and bold (the project's own *multi-file* AngelCode BMFont atlases, a `.fnt` plus a separate `.png`) and [Press Start 2P](../../../resources/fonts/README.md) (SIL OFL 1.1, a single-file TrueType font). The format is told apart by the file's extension.
+- **Several fonts at once**: one line is drawn in each font through `draw_text`'s optional last argument, without changing the active font.
+- **The active font**: the title line and the counter use no font argument, so they follow whichever font `set_font` selected — a handle (keys `1`-`3`) or `nil` for the built-in font (key `0`).
+- **Accents**: a line in Portuguese and Spanish ("Ação, coração, açúcar - año, niño, mañana - café") in the TrueType font, which loads with Latin accents. A bitmap `.fnt` only has the glyphs its own atlas holds.
+- **Errors**: `set_font` with a path that can't exist returns `nil` and the reason, shown on screen, and leaves the active font as it was.
+- `measure_text` right-aligns a "Count: N" counter against `screen_get_width()`. Its *x* is recomputed every frame from the measured width, which changes with the digit count and with the active font.
+- `screen_get_width()`/`screen_get_height()` draw a border exactly on the fixed `1260x920` render target's edges, confirming they describe that fixed resolution, not the live OS window size.
+- The same handles could also serve a map's Tiled text objects (`register_font`), which the `objects` sample (master plan item V5) shows.
 
 ## A real engine bug this sample used to avoid — now fixed and demonstrated
 
@@ -22,5 +35,6 @@ From the repo root:
 
 ## Lua API reference
 
-- [`set_font`/`measure_text`/`screen_get_width`/`screen_get_height`](https://popolony2k.github.io/scarab/lua-api/text.html)
+- [`load_font`/`release_font`/`set_font`/`draw_text`/`measure_text`](https://popolony2k.github.io/scarab/lua-api/text.html)
+- [`screen_get_width`/`screen_get_height`](https://popolony2k.github.io/scarab/lua-api/app.html)
 - [`draw_filled_rectangle`](https://popolony2k.github.io/scarab/lua-api/app.html) (the border)

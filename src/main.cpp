@@ -23,6 +23,7 @@
  * runs whichever game argv[1] points at. Nothing here is specific to any
  * one game.
  */
+#include "main.h"
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
@@ -31,7 +32,6 @@
 #include <filesystem>
 #include <CLI/CLI.hpp>
 #include <nlohmann/json.hpp>
-#include "main.h"
 #include "enginehost.h"
 #include "lua/luacryptoapi.h"
 #include "lua/luaengine.h"
@@ -40,6 +40,7 @@
 #include "renderer/tilemaprenderer.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
+#include "filesystem/filepath.h"
 
 
 /**
@@ -54,7 +55,8 @@
  * precedent of small, explicit platform ifdefs for OS APIs (never
  * Autotools/etc - see CLAUDE.md's "Build" section).
  */
-static void SetPackEnvVar( const char *szName, const std :: string &strValue )  {
+static void SetPackEnvVar( const char* szName, const std :: string& strValue )  {
+
 #ifdef _WIN32
     _putenv_s( szName, strValue.c_str() );
 #else
@@ -70,14 +72,17 @@ static void SetPackEnvVar( const char *szName, const std :: string &strValue )  
  * one place so a future Lua-driven renderer setup has a single, obvious
  * thing to override rather than a scatter of setter calls.
  *
- * bUseDefaultKeyHandler is off deliberately (same as before this was a
- * config): every key a game reacts to goes through Lua's own input_*
- * primitives, not sunlight's built-in scroll/zoom key bindings.
+ * The default renderer never installs sunlight's own default camera/zoom key
+ * bindings (RendererProvider::GetOrCreateDefault never passes
+ * any stRendererCreateExtras to Create - see RendererProvider::Create):
+ * every key a game reacts to goes through Lua's own input_* primitives
+ * unless renderer_create{use_default_key_handler=true} asks for the preset
+ * explicitly (docs/history/master_plan_11_2026.md item D1).
  */
 static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )  {
 
     SunLight :: Renderer :: RendererConfig  config;
-    SunLight :: TileMap :: stDimension2D    viewport;
+    SunLight :: Base :: stDimension2D       viewport;
 
     viewport.pos.x = VIEWPORT_POS_X;
     viewport.pos.y = VIEWPORT_POS_Y;
@@ -90,7 +95,6 @@ static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )
     config.nTargetFps            = FRAMES_PER_SECOND;
     config.bResizeable           = true;
     config.bDrawFPS              = false;
-    config.bUseDefaultKeyHandler = false;
     config.viewControlMode       = SunLight :: Renderer :: ViewControlMode :: VIEW_CONTROL_MODE_ACTIVE;
     config.nScrollStepWidth      = W_SCROLL_STEP_SIZE;
     config.nScrollStepHeight     = H_SCROLL_STEP_SIZE;
@@ -101,7 +105,15 @@ static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )
 }
 
 
-int main( int argc, char **argv ) {
+/**
+ * @brief Parse the command line, then run the entry script, the --pack tool or a headless run (see
+ * CLAUDE.md, src/main.cpp).
+ * @param argc Argument count;
+ * @param argv Arguments;
+ * @return EXIT_SUCCESS, EXIT_FAILURE, EXIT_FRAME_BUDGET_EXHAUSTED when a --headless run's frame budget
+ * ran out, or CLI11's own code after --help/--version (0) or a bad command line (CLI11_PARSE);
+ */
+int main( int argc, char** argv )  {
 
     /*
      * Entry point argument parsing (Phase 12, archive-distribution).
@@ -127,11 +139,16 @@ int main( int argc, char **argv ) {
      */
     CLI :: App  app{ "Scarab - a thin, game-agnostic 2D engine host built on sunlight" };
 
-    // SCARAB_VERSION/SCARAB_SUNLIGHT_VERSION are compiler-defined string
-    // literals (target_compile_definitions, root CMakeLists.txt) - adjacent
-    // string literal concatenation joins them into one literal at compile
-    // time, so this always reflects the exact sunlight tag actually fetched,
-    // not a hand-copied value that could drift out of sync.
+    // SCARAB_VERSION/SCARAB_SUNLIGHT_DISPLAY_VERSION are compiler-defined
+    // string literals (target_compile_definitions, root CMakeLists.txt) -
+    // adjacent string literal concatenation joins them into one literal at
+    // compile time. SCARAB_SUNLIGHT_DISPLAY_VERSION is set alongside (not
+    // derived from) the ref sunlight's own FetchContent GIT_TAG actually
+    // fetches, so bumping the pin updates both together, in one place - see
+    // the comment on SCARAB_SUNLIGHT_REF/SCARAB_SUNLIGHT_DISPLAY_VERSION in
+    // CMakeLists.txt for why they are two variables, not one, and no "v" is
+    // hardcoded here: SCARAB_SUNLIGHT_DISPLAY_VERSION supplies the whole
+    // fragment printed after "sunlight ", exactly as set.
     //
     // LUA_RELEASE (eg. "Lua 5.4.7") is different - not a Scarab-owned
     // define at all, but Lua's own compile-time macro (lua.h, transitively
@@ -146,17 +163,17 @@ int main( int argc, char **argv ) {
     // straight from whichever lua.h actually got compiled against means
     // this always matches reality for either backend automatically, with
     // no separate tracking needed for the FTP path either.
-    app.set_version_flag( "--version,-v", "scarab v" SCARAB_VERSION " (sunlight v" SCARAB_SUNLIGHT_VERSION ", " LUA_RELEASE ")" );
+    app.set_version_flag( "--version,-v", "scarab v" SCARAB_VERSION " (sunlight " SCARAB_SUNLIGHT_DISPLAY_VERSION ", " LUA_RELEASE ")" );
 
     std :: string  strEntryPath;
     std :: string  strEntryOverride;
     std :: string  strPackConfigPath;
 
-    CLI :: Option  *pPathOption = app.add_option( "path", strEntryPath,
+    CLI :: Option*  pPathOption = app.add_option( "path", strEntryPath,
                     "Entry point: a .lua script, a .json project file, or a .zip bundle" )
-       ->check( CLI :: ExistingFile );
+       -> check( CLI :: ExistingFile );
 
-    CLI :: Option  *pEntryOption = app.add_option( "-e,--entry", strEntryOverride,
+    CLI :: Option*  pEntryOption = app.add_option( "-e,--entry", strEntryOverride,
                     "Actual entry point location - inside the .zip when entry is an archive "
                     "(a .lua path there runs directly, anything else is read as project.json "
                     "- default: project.json at its root), or overriding entry itself when "
@@ -175,18 +192,18 @@ int main( int argc, char **argv ) {
      * opens" philosophy ResolveEntryScript's own --entry/.lua check
      * already follows.
      */
-    CLI :: Option  *pPackOption = app.add_option( "--pack", strPackConfigPath,
+    CLI :: Option*  pPackOption = app.add_option( "--pack", strPackConfigPath,
                     "Encrypt + zip a game's own source directory (see README.md's "
                     "own \"Content encryption\" section) and exit - no window opens. "
                     "<config.json>: {\"source_dir\": \"...\", \"output\": \"...\"} - "
                     "relative paths inside it resolve against the config file's own "
                     "directory, not the current working directory." )
-       ->check( CLI :: ExistingFile );
+       -> check( CLI :: ExistingFile );
 
-    pPathOption->excludes( pPackOption );
-    pPackOption->excludes( pPathOption );
-    pEntryOption->excludes( pPackOption );
-    pPackOption->excludes( pEntryOption );
+    pPathOption -> excludes( pPackOption );
+    pPackOption -> excludes( pPathOption );
+    pEntryOption -> excludes( pPackOption );
+    pPackOption -> excludes( pEntryOption );
 
     /*
      * --headless runs the game on sunlight's null renderer: no window, no
@@ -215,27 +232,56 @@ int main( int argc, char **argv ) {
     unsigned  nMaxFrames    = 0;
     bool      bMaxFramesOk  = false;
 
-    CLI :: Option  *pHeadlessOption = app.add_flag( "--headless", bHeadless,
+    CLI :: Option*  pHeadlessOption = app.add_flag( "--headless", bHeadless,
                     "Run with no window on the null renderer (virtual clock, no GPU) - for "
                     "automated runs on machines with no display. Audio is unaffected." );
 
     app.add_flag( "--fast", bHeadlessFast,
                     "With --headless: run frames as fast as the game logic allows instead of "
                     "real-time paced (the virtual clock is unchanged)." )
-       ->needs( pHeadlessOption );
+       -> needs( pHeadlessOption );
 
-    CLI :: Option  *pMaxFramesOption = app.add_option( "--max-frames", nMaxFrames,
+    CLI :: Option*  pMaxFramesOption = app.add_option( "--max-frames", nMaxFrames,
                     "With --headless: stop after N frames. Exits with code 3 if this ends the "
                     "run before the game called app_quit() (a safety net against hangs)." )
-       ->check( CLI :: PositiveNumber )
-       ->needs( pHeadlessOption );
+       -> check( CLI :: PositiveNumber )
+       -> needs( pHeadlessOption );
 
     app.add_flag( "--max-frames-ok", bMaxFramesOk,
                     "With --max-frames: treat reaching the frame budget as success (exit 0)." )
-       ->needs( pMaxFramesOption );
+       -> needs( pMaxFramesOption );
 
-    pHeadlessOption->excludes( pPackOption );
-    pPackOption->excludes( pHeadlessOption );
+    pHeadlessOption -> excludes( pPackOption );
+    pPackOption -> excludes( pHeadlessOption );
+
+    /*
+     * --save-dir names the real folder a game's saves go into (docs/history/master_plan_11_2026.md item C1b) and wins
+     * over the folder the game names itself (project.json's "save_directory", app_set_save_directory) -
+     * for tests and CI, which must not write into the user's own data folder, and for portable installs.
+     */
+    std :: string  strSaveDirectory;
+
+    CLI :: Option*  pSaveDirOption = app.add_option( "--save-dir", strSaveDirectory,
+                    "The folder the game's saves go into, instead of the one it names itself in the "
+                    "per-user data folder (created if missing)." );
+
+    pSaveDirOption -> excludes( pPackOption );
+    pPackOption -> excludes( pSaveDirOption );
+
+    /*
+     * --no-sandbox gives a game Lua's own io/os/require/loadfile/load and host paths (hpath://) back
+     * (docs/history/master_plan_11_2026.md item C8). Only the command line can turn the sandbox off - a project file
+     * can't, or a game could opt out of its own sandbox. --pack never has one: the packing tool needs
+     * real paths.
+     */
+    bool  bNoSandbox = false;
+
+    CLI :: Option*  pNoSandboxOption = app.add_flag( "--no-sandbox", bNoSandbox,
+                    "Run the game without the sandbox: Lua's own io, os, require, loadfile and load, "
+                    "and real OS paths (hpath://). For tools and trusted scripts only." );
+
+    pNoSandboxOption -> excludes( pPackOption );
+    pPackOption -> excludes( pNoSandboxOption );
 
     CLI11_PARSE( app, argc, argv );
 
@@ -276,7 +322,7 @@ int main( int argc, char **argv ) {
      * SunLight::FileSystem.
      */
     std :: string  strAppDir        = SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory();
-    std :: string  strVirtualAppDir = SunLight :: FileSystem :: IFileSystem :: ToVirtualPath( strAppDir );
+    std :: string  strVirtualAppDir = SunLight :: FileSystem :: FilePath :: ToVirtualPath( strAppDir );
 
     if( !strPackConfigPath.empty() )  {
 
@@ -313,7 +359,7 @@ int main( int argc, char **argv ) {
         // directory (relocatable, like project.json's main_script - not
         // against whatever the caller's own CWD happens to be); an
         // already-absolute path is used unchanged.
-        auto ResolvePackPath = [ &packConfigDir ]( const std :: string &strRaw ) -> std :: string  {
+        auto ResolvePackPath = [ &packConfigDir ]( const std :: string& strRaw ) -> std :: string  {
             std :: filesystem :: path  rawPath( strRaw );
 
             return ( rawPath.is_absolute() ? rawPath : ( packConfigDir / rawPath ) ).string();
@@ -331,7 +377,7 @@ int main( int argc, char **argv ) {
     /*
      * Mounts the executable's own real directory (Mount()'s source
      * argument, safe in whatever native OS format GetApplicationDirectory()
-     * returns) at that same directory's own IFileSystem::ToVirtualPath()
+     * returns) at that same directory's own FilePath::ToVirtualPath()
      * equivalent - NOT at the real path itself. PHYSFS_mount()'s
      * destination/mountPoint argument must already be a legal virtual path
      * (see IFileSystem's own "virtual path" contract, ifilesystem.h); a raw
@@ -382,7 +428,7 @@ int main( int argc, char **argv ) {
      * with no key at all.
      */
     SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().SetReadFilter(
-        []( const std :: vector<unsigned char> &in, std :: vector<unsigned char> &out ) {
+        []( const std :: vector<unsigned char>& in, std :: vector<unsigned char>& out )  {
             return Scarab :: Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( in, out );
         } );
 
@@ -413,9 +459,19 @@ int main( int argc, char **argv ) {
      * plain fopen() always gave, for every relative path anywhere in this
      * codebase, not only this one call site.
      */
-    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( std :: filesystem :: current_path().string(), "/", true );
+    bool  bPackMode = !strPackConfigPath.empty();
+    bool  bZipEntry = !bPackMode && ( std :: filesystem :: path( strEntryPath ).extension() == ".zip" );
 
-    if( !strPackConfigPath.empty() )  {
+    // A game launched from a .zip has its files in the archive, mounted at the root by
+    // EngineHost::ResolveEntryScript (docs/history/master_plan_11_2026.md item C8: the save directory, then the game's
+    // own files) - the launch folder is not among them.
+    if( !bZipEntry )
+        SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( std :: filesystem :: current_path().string(), "/", true );
+
+    // Host paths (hpath://) reach the whole disk: refused in the sandbox.
+    SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().SetHostPathEnabled( bPackMode || bNoSandbox );
+
+    if( bPackMode )  {
         /*
          * Genuinely headless --pack: no TileMapRenderer/EngineHost is ever
          * constructed, so no window ever opens - there was never an actual
@@ -438,7 +494,7 @@ int main( int argc, char **argv ) {
          * this path never calls at all).
          */
         SunLight :: Scripting :: ScriptProcessor  packScriptProcessor;
-        Scarab :: Lua :: LuaEngine                packLuaEngine( &packScriptProcessor );
+        Scarab :: Lua :: LuaEngine                packLuaEngine( &packScriptProcessor, Scarab :: Lua :: LUA_ENGINE_MODE_PACK );
 
         bool  bPackOk = packLuaEngine.RunFile( strEntryPath );
 
@@ -465,7 +521,16 @@ int main( int argc, char **argv ) {
     headlessSettings.nMaxFrames = nMaxFrames;
 
     Scarab :: Host :: RendererProvider  rendererProvider( MakeDefaultRendererConfig(), headlessSettings );
-    Scarab :: Host :: EngineHost        engineHost( &rendererProvider, strEntryPath, strEntryOverride );
+    Scarab :: Host :: EngineHost        engineHost( &rendererProvider, strEntryPath, strEntryOverride, !bNoSandbox );
+
+    if( !strSaveDirectory.empty() )  {
+        std :: string  strError;
+
+        if( !engineHost.SetSaveDirectoryFromCommandLine( strSaveDirectory, strError ) )  {
+            fprintf( stderr, "scarab: --save-dir: %s\n", strError.c_str() );
+            return EXIT_FAILURE;
+        }
+    }
 
     if( bHeadless )
         engineHost.UseVirtualTime();
@@ -479,7 +544,7 @@ int main( int argc, char **argv ) {
     engineHost.RunEntryScript();
     rendererProvider.EnsureCreated( "the end of the entry script" );
 
-    SunLight :: Renderer :: TileMapRenderer  *pRenderer = rendererProvider.GetRenderer();
+    SunLight :: Renderer :: TileMapRenderer*  pRenderer = rendererProvider.GetRenderer();
 
     pRenderer -> Run();
 

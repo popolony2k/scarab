@@ -21,8 +21,7 @@
 #ifndef __LUAPACKAPI_H__
 #define __LUAPACKAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -49,34 +48,35 @@ namespace Scarab  {
              * runs against a real, not-yet-bundled source directory on
              * disk, before any of Scarab's own runtime mounting
              * concepts (`APP_DIR`, a loaded `.zip`) are even relevant.
-             * These primitives exist purely for `tools/pack.lua` - no
-             * running game should ever call them.
+             * These primitives exist purely for `tools/pack.lua`, and
+             * only in `scarab --pack`: a game never has them, sandboxed
+             * or not.
              * @luaoutro
              * ## Archive handles
              *
-             * `pack_create_archive`/`pack_add_entry`/`pack_close_archive`
-             * share one integer-handle convention: `0` always means
-             * failure (the same "0 is never a valid handle" shape
-             * `sprite_acquire` already uses), a real handle otherwise.
-             * Always call `pack_close_archive` once done with a handle
-             * - the underlying zip file isn't actually finalized/valid
-             * until then.
+             * `pack_create_archive` returns an integer handle that
+             * `pack_add_entry`/`pack_close_archive` take; a failure is
+             * `nil, "message"`, and a handle that isn't open is
+             * `nil, "invalid archive handle"`. Always call
+             * `pack_close_archive` once done with a handle - the
+             * underlying zip file isn't actually finalized/valid until
+             * then.
              */
             class LuaPackApi  {
 
-                static int ListDirectory( lua_State *pLuaState );
-                static int ReadFile( lua_State *pLuaState );
-                static int WriteFile( lua_State *pLuaState );
-                static int CreateArchive( lua_State *pLuaState );
-                static int AddEntry( lua_State *pLuaState );
-                static int CloseArchive( lua_State *pLuaState );
+                static int ListDirectory( lua_State* pLuaState );
+                static int ReadFile( lua_State* pLuaState );
+                static int WriteFile( lua_State* pLuaState );
+                static int CreateArchive( lua_State* pLuaState );
+                static int AddEntry( lua_State* pLuaState );
+                static int CloseArchive( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUAPACKAPI_H__ */
+#endif /* __LUAPACKAPI_H__ */

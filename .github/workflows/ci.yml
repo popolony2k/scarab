@@ -1,10 +1,30 @@
+#
+# Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+#
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
+#
+
 name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master_plan ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master_plan ]
 
 jobs:
   lua-api-docs:
@@ -15,6 +35,57 @@ jobs:
 
       - name: Check every Lua-callable primitive is tagged for docs generation
         run: python3 scripts/generate_lua_api_docs.py
+
+  # Scarab, sunlight, raylib, libtmx and Lua all built with AddressSanitizer, and every headless
+  # check run under it with LeakSanitizer on (docs/history/master_plan_11_2026.md item R1, mirroring sunlight's own
+  # "AddressSanitizer (Linux)" job): the smoke tests, the headless smoke test and every sample.
+  # Linux only - macOS's AddressSanitizer has no LeakSanitizer, and one platform keeps CI time down.
+  # Any sanitizer report fails the job (scripts/asan_run.py); known third-party leaks are suppressed
+  # only through scripts/lsan.supp, each with its reason.
+  asan:
+    name: AddressSanitizer (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            zlib1g-dev \
+            libasound2-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxcursor-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev
+
+      - name: Configure with AddressSanitizer
+        env:
+          SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
+          ASAN_FLAGS: -fsanitize=address -fno-omit-frame-pointer -g
+        run: >
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY" -DSCARAB_BUILD_TESTS=ON
+          "-DCMAKE_C_FLAGS=$ASAN_FLAGS" "-DCMAKE_CXX_FLAGS=$ASAN_FLAGS"
+          "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address" "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address"
+
+      - name: Build
+        run: cmake --build build -j 4
+
+      - name: Unit tests under AddressSanitizer and LeakSanitizer
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:abort_on_error=1
+          LSAN_OPTIONS: suppressions=scripts/lsan.supp
+        run: ./build/scarab_tests
+
+      - name: Run every headless check under AddressSanitizer and LeakSanitizer
+        run: python3 scripts/asan_run.py build/scarab --require-encrypted
 
   build:
     strategy:
@@ -53,14 +124,14 @@ jobs:
         if: runner.os != 'Windows'
         env:
           SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
-        run: cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY"
+        run: cmake -B build -S . -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DSCARAB_BUILD_TESTS=ON -DSCARAB_CONTENT_KEY="$SCARAB_CI_CONTENT_KEY"
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         env:
           SCARAB_CI_CONTENT_KEY: ${{ secrets.SCARAB_CI_CONTENT_KEY }}
-        run: cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" "-DSCARAB_CONTENT_KEY=$env:SCARAB_CI_CONTENT_KEY"
+        run: cmake -B build -S . "-DCMAKE_POLICY_VERSION_MINIMUM=3.5" "-DSCARAB_BUILD_TESTS=ON" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" "-DSCARAB_CONTENT_KEY=$env:SCARAB_CI_CONTENT_KEY"
 
       - name: Verify SCARAB_CONTENT_KEY actually configured (Linux/macOS)
         if: runner.os != 'Windows'
@@ -98,6 +169,27 @@ jobs:
 
       - name: Build
         run: cmake --build build --config Release -j 4
+
+      # The code follows docs/CODE_STYLE.md: C++ (sunlight's guide) and Lua (Scarab's own rules), measured
+      # by scripts/style_audit.py - any finding of an enforced rule fails (docs/history/master_plan_11_2026.md item S2c).
+      # Linux only, after configure: the documentation rule reads sunlight's headers from build/_deps.
+      - name: Style check
+        if: runner.os == 'Linux'
+        run: python3 scripts/style_audit.py --check
+
+      # Scarab's unit tests (doctest, tests/): what needs no window - the sprite and font
+      # pools, LuaEngineUtil's argument readers, the zoom rule, content encryption -
+      # docs/history/master_plan_11_2026.md item R2.
+      - name: Unit tests (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: ./build/scarab_tests
+
+      - name: Unit tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & build/Release/scarab_tests.exe
+          if ($LASTEXITCODE -ne 0) { throw "unit tests exited with code $LASTEXITCODE" }
 
       # --headless runs the game on sunlight's null renderer: no window, no
       # GPU - so, unlike everything before this step, it can actually RUN
@@ -157,3 +249,332 @@ jobs:
         run: |
           python scripts/renderer_api_smoke.py build/Release/scarab.exe
           if ($LASTEXITCODE -ne 0) { throw "renderer API smoke test exited with code $LASTEXITCODE" }
+
+      # camera_move_* / view_move_camera_*: the camera stops exactly on the map's far edge
+      # (a partial last step) and comes back to exactly 0, at zoom 3.8125 and 1.0, on the
+      # default view and an extra view - see the script's own header.
+      - name: Camera boundary smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/camera_boundary_smoke.py build/scarab
+
+      - name: Camera boundary smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/camera_boundary_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "camera boundary smoke test exited with code $LASTEXITCODE" }
+
+      # BLEND_MODE_*, draw_begin/end_blend_mode, sprite_set/clear/get_blend_mode: values, round
+      # trips, every error, a recycled sprite never inheriting a mode, and a begin with no end
+      # being harmless across frames - see the script's own header.
+      - name: Blend API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/blend_api_smoke.py build/scarab
+
+      - name: Blend API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/blend_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "blend API smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_get_layer / tilemap_set_layer: a layer's opacity is 0..255 (255 = opaque), the
+      # authored 0.69/0.65 layers read 176/166, exact round trips, clamping, and a write-back
+      # that changes nothing - see the script's own header.
+      - name: Tilemap layer smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/tilemap_layer_smoke.py build/scarab
+
+      - name: Tilemap layer smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/tilemap_layer_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "tilemap layer smoke test exited with code $LASTEXITCODE" }
+
+      # KEY_* / GAMEPAD_BUTTON_* / GAMEPAD_AXIS_* / CONTROLLER_*: every constant of sunlight's
+      # input enums (read from the fetched build/_deps/sunlight-src) is registered by
+      # luainputapi.cpp and nothing else, no two in a group share a value, and KEY_MENU is 5
+      # (it used to be 82, KEY_R's own number) - see the script's own header.
+      - name: Input constants smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/input_constants_smoke.py build/scarab
+
+      - name: Input constants smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/input_constants_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "input constants smoke test exited with code $LASTEXITCODE" }
+
+      # load_font / release_font / set_font (path, handle, nil) / register_font / unregister_font
+      # and draw_text / measure_text's optional font: every round trip and every error, a released
+      # handle never breaking a font still in use, and no stale handle after slot reuse - see the
+      # script's own header.
+      - name: Font API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/font_api_smoke.py build/scarab
+
+      - name: Font API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/font_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "font API smoke test exited with code $LASTEXITCODE" }
+
+      # Every Lua function that can fail returns nil + the reason (never a Lua error, never a
+      # silent no-op), a function with nothing else to return returns true, and arguments are
+      # checked strictly - one check per kind of failure of every module (docs/history/master_plan_11_2026.md
+      # item D3) - see the script's own header.
+      - name: Error reporting smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/error_reporting_smoke.py build/scarab
+
+      - name: Error reporting smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/error_reporting_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "error reporting smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_unload_map unloads every sprite on a layer and takes their colliders out: no
+      # collision while the map is unloaded, exactly one per frame after the sprites are added
+      # again (docs/history/master_plan_11_2026.md item V9) - see the script's own header.
+      - name: Unload map smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/unload_map_smoke.py build/scarab
+
+      - name: Unload map smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/unload_map_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "unload map smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_load_map over a loaded map: a map that fails to parse leaves the loaded one loaded,
+      # sprites stay registered, and 1000 loads don't grow peak memory over 20 (Linux/macOS; the
+      # functional checks only on Windows) - docs/history/master_plan_11_2026.md item V10, see the script's header.
+      - name: Load map smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/load_map_smoke.py build/scarab
+
+      - name: Load map smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/load_map_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "load map smoke test exited with code $LASTEXITCODE" }
+
+      # Sprite-vs-tile collisions and tile lookups in map space: exact collision windows (view-
+      # relative and world-space, camera offset, zoom 1 and 3.8125), the tile's map rectangle, one
+      # call per touched tile, two collision shapes, the far edge - docs/history/master_plan_11_2026.md item V11.
+      - name: Tile collision smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/tile_collision_smoke.py build/scarab
+
+      - name: Tile collision smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/tile_collision_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "tile collision smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_get/set_layer_tint (+ _by_name): every authored Tiled tintcolor read back exactly
+      # (alpha included) for tile, image, object and group layers, set then get, a write-back
+      # changing nothing, and every error - docs/history/master_plan_11_2026.md item V12.
+      - name: Layer tint smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/layer_tint_smoke.py build/scarab
+
+      - name: Layer tint smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/layer_tint_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "layer tint smoke test exited with code $LASTEXITCODE" }
+
+      # Path schemes (sunlight I12): a plain path, vpath://, virtualpath://, hpath:// and hostpath://
+      # load the same file through load_json, dofile and tilemap_load_map (a map with external
+      # tilesets), and an unknown scheme is refused - docs/history/master_plan_11_2026.md item P9.
+      - name: Path scheme smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/path_scheme_smoke.py build/scarab
+
+      - name: Path scheme smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/path_scheme_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "path scheme smoke test exited with code $LASTEXITCODE" }
+
+      # Controllers (C1a): no pads headless, stick dead zones per pad and axis, the automatic
+      # and raw stick reads, the connection handler, and the player slots in full -
+      # docs/history/master_plan_11_2026.md item C1a.
+      - name: Input API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/input_api_smoke.py build/scarab
+
+      - name: Input API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/input_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "input API smoke test exited with code $LASTEXITCODE" }
+
+      # Save directory, action map and rumble (C1b): every function under --save-dir, the
+      # --save-dir > app_set_save_directory > project.json priority under a fake home, no save
+      # directory, and a game's shipped defaults + a save from a .zip and an encrypted pack -
+      # docs/history/master_plan_11_2026.md item C1b.
+      - name: Action map smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/action_map_smoke.py build/scarab --require-encrypted
+
+      - name: Action map smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/action_map_smoke.py build/Release/scarab.exe --require-encrypted
+          if ($LASTEXITCODE -ne 0) { throw "action map smoke test exited with code $LASTEXITCODE" }
+
+      # Save files (C1c): save_write/save_read/save_exists/save_delete under --save-dir and a fake
+      # home - every value type round trip, the exact bytes written (the same on two launches),
+      # every refusal, no .tmp left, a shipped file never taken for a save, no save directory,
+      # hand-edited saves, and a save from a .zip and an encrypted pack - docs/history/master_plan_11_2026.md item C1c.
+      - name: Save API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/save_api_smoke.py build/scarab --require-encrypted
+
+      - name: Save API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/save_api_smoke.py build/Release/scarab.exe --require-encrypted
+          if ($LASTEXITCODE -ne 0) { throw "save API smoke test exited with code $LASTEXITCODE" }
+
+      # The sandbox and the path rule (C8): reading finds the save directory, then the game's own
+      # files; writing goes into the save directory - through Lua's io/os/require/loadfile/load and
+      # Scarab's loaders, loose, from a .zip and from an encrypted pack; no game file changed, no
+      # host path or launch folder reachable, a save-folder change leaves no stale mount, and
+      # --no-sandbox gives Lua's own functions back - docs/history/master_plan_11_2026.md item C8.
+      - name: Sandbox smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/sandbox_smoke.py build/scarab --require-encrypted
+
+      - name: Sandbox smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/sandbox_smoke.py build/Release/scarab.exe --require-encrypted
+          if ($LASTEXITCODE -ne 0) { throw "sandbox smoke test exited with code $LASTEXITCODE" }
+
+      # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
+      # rejection, two sprites sharing a texture keeping their own values, a recycled slot
+      # starting opaque and untinted - docs/history/master_plan_11_2026.md item P8.
+      - name: Sprite tint smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/sprite_tint_smoke.py build/scarab
+
+      - name: Sprite tint smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/sprite_tint_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "sprite tint smoke test exited with code $LASTEXITCODE" }
+
+      # sprite_set/get_z_order: a fresh 0, round trips to the C int limits, every rejection,
+      # own values per sprite, kept across a layer move and a reconfigure, a recycled slot
+      # starting at 0 - docs/history/master_plan_11_2026.md item C3.
+      - name: Sprite z-order smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/sprite_zorder_smoke.py build/scarab
+
+      - name: Sprite z-order smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/sprite_zorder_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "sprite z-order smoke test exited with code $LASTEXITCODE" }
+
+      # shape_draw_rectangle/_ellipse/_polyline/_polygon/_point: every kind of refusal (and no
+      # renderer created by one), then every function drawing with no map and with a map loaded -
+      # docs/history/master_plan_11_2026.md item C2.
+      - name: Shape API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/shape_api_smoke.py build/scarab
+
+      - name: Shape API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/shape_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "shape API smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_get/set_layer_parallax (and _by_name), tilemap_get_parallax_origin: the factors and
+      # origin parallax.tmx declares, exact round trips, other layer fields untouched, every refusal,
+      # the declared values back after a reload - docs/history/master_plan_11_2026.md item C4.
+      - name: Layer parallax smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/layer_parallax_smoke.py build/scarab
+
+      - name: Layer parallax smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/layer_parallax_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "layer parallax smoke test exited with code $LASTEXITCODE" }
+
+      # Isometric, staggered and hexagonal maps: map info, cell rectangles, tile picking at
+      # every cell's centre and bottom tip (sunlight I17), scroll limits and view_fit_to_map,
+      # obstacle collisions by bounding box - docs/history/master_plan_11_2026.md item C5.
+      - name: Map projection smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/projection_smoke.py build/scarab
+
+      - name: Map projection smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/projection_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "map projection smoke test exited with code $LASTEXITCODE" }
+
+      # view_set_opacity / view_get_opacity: every view starts at 1, exact round trips, each view its own, kept
+      # over a map load, every refusal, a destroyed view, frames drawn faded - docs/history/master_plan_11_2026.md item C7.
+      - name: View opacity smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/view_opacity_smoke.py build/scarab
+
+      - name: View opacity smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/view_opacity_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "view opacity smoke test exited with code $LASTEXITCODE" }
+
+      # Worlds: lifetime, maps at offsets, .world files, layer ids by name, tiles and picking per map,
+      # view_set_world, sprites in one world at a time and detached on release/unload, collisions per world with
+      # the world id in the handlers, across a map edge too - docs/history/master_plan_11_2026.md item C7, part 2.
+      - name: World API smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/world_api_smoke.py build/scarab
+
+      - name: World API smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/world_api_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "world api smoke test exited with code $LASTEXITCODE" }
+
+      # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
+      # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
+      # while hidden or off screen, checked exactly every frame for 11 cycles - docs/history/master_plan_11_2026.md
+      # item V13.
+      - name: Tile animation smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: python3 scripts/tile_animation_smoke.py build/scarab
+
+      - name: Tile animation smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/tile_animation_smoke.py build/Release/scarab.exe
+          if ($LASTEXITCODE -ne 0) { throw "tile animation smoke test exited with code $LASTEXITCODE" }

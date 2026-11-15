@@ -26,6 +26,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "engine/spritehandle.h"
 #include "sprite/sprite.h"
 #include "canvas/texturecanvas.h"
@@ -43,6 +44,20 @@ namespace Scarab  {
          * lifecycle policy - all of that is Lua's responsibility.
          */
         class SpritePool  {
+
+            public:
+
+            /**
+             * @brief Where a sprite is registered: a world (0 = the default world) and a layer of it
+             * (docs/history/master_plan_11_2026.md item C7). sunlight does not say which world holds a sprite, so the
+             * pool keeps it, to detach a released sprite and to name the world that holds one.
+             */
+            struct stRegistration  {
+                int  nWorldId;
+                int  nLayerId;
+            };
+
+            private:
 
             /**
              * @brief A sequence's cached native (un-frame-divided) pixel size -
@@ -81,9 +96,10 @@ namespace Scarab  {
                  * a recycled slot don't compute a frame width from stale/aliased
                  * data.
                  */
-                std :: map<int, stNativeTextureSize>                  nativeTextureSizes;
-                std :: string                                         strTypeTag;
-                uint16_t                                              nGeneration;
+                std :: map<int, stNativeTextureSize>                   nativeTextureSizes;
+                std :: string                                          strTypeTag;
+                std :: vector<stRegistration>                          registrations;   // the layers the sprite is on (item C7)
+                uint16_t                                               nGeneration;
                 bool                                                   bInUse;
             };
 
@@ -96,23 +112,32 @@ namespace Scarab  {
             std :: deque<stSlot>                              m_Slots;
             std :: unordered_map<std :: string, __FreeList>   m_FreeListsByType;
 
+            stSlot* FindLiveSlot( SpriteHandle hSprite );
+
             public:
 
             SpritePool( void );
             ~SpritePool( void );
 
-            bool RegisterType( const std :: string &strTypeTag, uint32_t nCapacity );
-            SpriteHandle Acquire( const std :: string &strTypeTag );
-            bool Release( SpriteHandle handle );
-            SunLight :: Sprite :: Sprite* Resolve( SpriteHandle handle );
-            SunLight :: Canvas :: TextureCanvas* GetTexture( SpriteHandle handle, int nSequenceId );
-            SunLight :: Canvas :: TextureCanvas* GetOrCreateTexture( SpriteHandle handle, int nSequenceId );
-            int GetOrCacheNativeWidth( SpriteHandle handle, int nSequenceId, int nCurrentWidth );
-            int GetOrCacheNativeHeight( SpriteHandle handle, int nSequenceId, int nCurrentHeight );
-            void UpdateAll( void );
+            bool RegisterType( const std :: string& strTypeTag, uint32_t nCapacity );
+            bool HasType( const std :: string& strTypeTag ) const;
+            uint32_t GetSlotCount( void ) const;
+            SpriteHandle Acquire( const std :: string& strTypeTag );
+            bool Release( SpriteHandle hSprite );
+            SunLight :: Sprite :: Sprite* Resolve( SpriteHandle hSprite );
+            SunLight :: Canvas :: TextureCanvas* GetTexture( SpriteHandle hSprite, int nSequenceId );
+            SunLight :: Canvas :: TextureCanvas* GetOrCreateTexture( SpriteHandle hSprite, int nSequenceId );
+            int GetOrCacheNativeWidth( SpriteHandle hSprite, int nSequenceId, int nCurrentWidth );
+            int GetOrCacheNativeHeight( SpriteHandle hSprite, int nSequenceId, int nCurrentHeight );
             void Clear( void );
+
+            bool NoteRegistered( SpriteHandle hSprite, int nWorldId, int nLayerId );
+            bool NoteUnregistered( SpriteHandle hSprite, int nWorldId, int nLayerId );
+            int GetWorld( SpriteHandle hSprite );
+            std :: vector<stRegistration> TakeRegistrations( SpriteHandle hSprite );
+            void ForgetWorld( int nWorldId );
         };
     }
 }
 
-#endif  /* __SPRITEPOOL_H__ */
+#endif /* __SPRITEPOOL_H__ */

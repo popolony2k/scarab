@@ -31,13 +31,25 @@
  sample later covers that API on it's own.
 ]]
 
-app_set_name( "Scarab - app sample" )
+local Hud = dofile( "samples/shared/hud.lua" )
+
+-- The meter bar under the HUD: where it is (x, and the HUD row it takes), its size, its background and
+-- its fill colour.
+local __METER_X      <const> = 20
+local __METER_ROW    <const> = 8
+local __METER_WIDTH  <const> = 300
+local __METER_HEIGHT <const> = 24
+local __METER_BACK   <const> = { r = 40, g = 40, b = 40 }
+local __METER_FILL   <const> = { r = 60, g = 160, b = 220 }
+local __OPAQUE       <const> = 255
+
+assert( app_set_name( "Scarab - app sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-app_set_draw_fps( true )
+assert( app_set_draw_fps( true ) )
 
 -- Pick a startup fullscreen strategy appropriate to this platform - see
 -- app_get_platform's own doc comment (src/lua/luaappapi.cpp) for why
@@ -45,27 +57,31 @@ app_set_draw_fps( true )
 -- measured Linux performance regression, Windows unaffected but kept
 -- consistent with Linux by deliberate choice).
 local platform         = app_get_platform()
-local platform_name    = "unknown"
+local platformName     = "unknown"
 local fullscreenStrategy = FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED
 
 if platform == PLATFORM_WINDOWS then
-    platform_name = "Windows"
+    platformName = "Windows"
 elseif platform == PLATFORM_MACOS then
-    platform_name      = "macOS"
+    platformName       = "macOS"
     fullscreenStrategy = FULLSCREEN_STRATEGY_REAL
 elseif platform == PLATFORM_LINUX then
-    platform_name = "Linux"
+    platformName = "Linux"
 end
 
 -- Fade in from black over ~1 second at 60fps, the exact pattern from
 -- screen_fade's own doc example.
-local __FADE_STEP = 1 / 60
+local __FADE_STEP <const> = 1 / 60
 local fadeAlpha    = 1.0
 
+-- One HUD line: the key, what it toggles and its current state ("F1 - FPS counter: true").
 local function control_line( key, label, state )
     return key .. " - " .. label .. ": " .. tostring( state )
 end
 
+-- Called by Scarab every frame (dt is a fixed step, not measured time): run the startup fade, toggle the FPS
+-- counter (F1), resizeable window (F2), fullscreen (F3) and stretch to fill (F4), change the target FPS (Up/Down),
+-- and draw the HUD and the meter bar.
 function on_update( dt )
 
     if fadeAlpha > 0 then
@@ -95,16 +111,18 @@ function on_update( dt )
         app_set_target_fps( math.max( 1, app_get_target_fps() - 1 ) )
     end
 
-    draw_text( "app sample - platform: " .. platform_name, 20, 20, 24, 255, 255, 255, 255 )
-    draw_text( control_line( "F1", "FPS counter", app_get_draw_fps() ), 20, 50, 20, 200, 200, 200, 255 )
-    draw_text( control_line( "F2", "Window resizeable", app_get_window_resizeable() ), 20, 74, 20, 200, 200, 200, 255 )
-    draw_text( control_line( "F3", "Fullscreen", app_get_fullscreen() ), 20, 98, 20, 200, 200, 200, 255 )
-    draw_text( control_line( "F4", "Stretch to fill", app_get_stretch_to_fill() ), 20, 122, 20, 200, 200, 200, 255 )
-    draw_text( "UP/DOWN - target FPS: " .. tostring( app_get_target_fps() ), 20, 146, 20, 200, 200, 200, 255 )
+    Hud.line( "app sample - platform: " .. platformName, 1, Hud.TITLE )
+    Hud.line( control_line( "F1", "FPS counter", app_get_draw_fps() ), 2, Hud.INFO )
+    Hud.line( control_line( "F2", "Window resizeable", app_get_window_resizeable() ), 3, Hud.INFO )
+    Hud.line( control_line( "F3", "Fullscreen", app_get_fullscreen() ), 4, Hud.INFO )
+    Hud.line( control_line( "F4", "Stretch to fill", app_get_stretch_to_fill() ), 5, Hud.INFO )
+    Hud.line( "UP/DOWN - target FPS: " .. tostring( app_get_target_fps() ), 6, Hud.INFO )
 
     -- A simple HUD "meter" bar, purely to demonstrate draw_filled_rectangle:
     -- a dark background plate, then a colored fill that tracks the startup
     -- fade so there's something visibly animated even after the fade ends.
-    draw_filled_rectangle( 20, 184, 300, 24, 40, 40, 40, 255 )
-    draw_filled_rectangle( 20, 184, math.floor( 300 * ( 1 - fadeAlpha ) ), 24, 60, 160, 220, 255 )
+    draw_filled_rectangle( __METER_X, Hud.row_y( __METER_ROW ), __METER_WIDTH, __METER_HEIGHT,
+        __METER_BACK.r, __METER_BACK.g, __METER_BACK.b, __OPAQUE )
+    draw_filled_rectangle( __METER_X, Hud.row_y( __METER_ROW ), math.floor( __METER_WIDTH * ( 1 - fadeAlpha ) ), __METER_HEIGHT,
+        __METER_FILL.r, __METER_FILL.g, __METER_FILL.b, __OPAQUE )
 end

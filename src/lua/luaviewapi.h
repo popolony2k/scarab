@@ -21,8 +21,7 @@
 #ifndef __LUAVIEWAPI_H__
 #define __LUAVIEWAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -39,11 +38,10 @@ namespace Scarab  {
              * The renderer owns one built-in view, the **default view** (id `0`, from
              * `renderer_get_default_view`), and it is the one the older global `camera_*`,
              * `zoom_*` and `viewport_*` functions act on — those keep working unchanged. The
-             * `view_*` functions here take the view *first*, so that when more views exist
-             * (several views in one window: a minimap, picture-in-picture, split screen) the
-             * same calls address any of them. `view_create` adds further views over the same world
-             * (a minimap, a close-up, picture-in-picture, split screen), each with its own
-             * rectangle, camera and zoom, and each drawn every frame.
+             * `view_*` functions here take the view *first*, so the same calls address any
+             * view. `view_create` adds further views (a minimap, a close-up,
+             * picture-in-picture, split screen), each with its own rectangle, camera and zoom,
+             * and each drawn every frame.
              *
              * View handles are opaque integers. Every function reports failure as
              * `nil, "message"` (never a Lua error) — an unknown view is
@@ -55,8 +53,10 @@ namespace Scarab  {
              * its camera:** the camera position is not re-clamped, so set it again afterwards
              * (`view_set_camera_position`).
              *
-             * **What an extra view is for, and its limits.** Every view shows the *same* map,
-             * sprites and layers — there is one world seen through several windows. A view can
+             * **What an extra view is for, and its limits.** A view shows one **world** - its
+             * maps, sprites and layers: the default world unless `view_set_world` picks another
+             * (see [worlds.md](worlds.md)), so several views of the default world are one world
+             * seen through several windows. A view can
              * hide layers (`view_show_layer`, `view_show_only_layers`), be hidden
              * (`view_set_visible`), be drawn above or below another (`view_set_draw_order`) and
              * have its own backdrop (`view_set_clear_background`, `view_set_background_color`).
@@ -68,50 +68,54 @@ namespace Scarab  {
              */
             class LuaViewApi  {
 
-                static int ViewCreate( lua_State *pLuaState );
-                static int ViewDestroy( lua_State *pLuaState );
-                static int ViewSetZoom( lua_State *pLuaState );
-                static int ViewGetZoom( lua_State *pLuaState );
-                static int ViewSetPreferredZoom( lua_State *pLuaState );
-                static int ViewGetPreferredZoom( lua_State *pLuaState );
-                static int ViewSetZoomLimits( lua_State *pLuaState );
-                static int ViewGetZoomLimits( lua_State *pLuaState );
-                static int ViewSetZoomEnabled( lua_State *pLuaState );
-                static int ViewGetZoomEnabled( lua_State *pLuaState );
-                static int ViewZoomIn( lua_State *pLuaState );
-                static int ViewZoomOut( lua_State *pLuaState );
-                static int ViewZoomReset( lua_State *pLuaState );
-                static int ViewSetDimension( lua_State *pLuaState );
-                static int ViewGetDimension( lua_State *pLuaState );
-                static int ViewSetScrollStep( lua_State *pLuaState );
-                static int ViewGetScrollStep( lua_State *pLuaState );
-                static int ViewSetCameraPosition( lua_State *pLuaState );
-                static int ViewGetCameraPosition( lua_State *pLuaState );
-                static int ViewMoveCameraUp( lua_State *pLuaState );
-                static int ViewMoveCameraDown( lua_State *pLuaState );
-                static int ViewMoveCameraLeft( lua_State *pLuaState );
-                static int ViewMoveCameraRight( lua_State *pLuaState );
-                static int ViewResetCamera( lua_State *pLuaState );
-                static int ViewSetVisible( lua_State *pLuaState );
-                static int ViewGetVisible( lua_State *pLuaState );
-                static int ViewSetDrawOrder( lua_State *pLuaState );
-                static int ViewGetDrawOrder( lua_State *pLuaState );
-                static int ViewSetClearBackground( lua_State *pLuaState );
-                static int ViewGetClearBackground( lua_State *pLuaState );
-                static int ViewSetBackgroundColor( lua_State *pLuaState );
-                static int ViewUseMapBackgroundColor( lua_State *pLuaState );
-                static int ViewShowLayer( lua_State *pLuaState );
-                static int ViewShowOnlyLayers( lua_State *pLuaState );
-                static int ViewShowAllLayers( lua_State *pLuaState );
-                static int ViewIsLayerShown( lua_State *pLuaState );
-                static int ViewFitToMap( lua_State *pLuaState );
+                static int ViewCreate( lua_State* pLuaState );
+                static int ViewDestroy( lua_State* pLuaState );
+                static int ViewSetZoom( lua_State* pLuaState );
+                static int ViewGetZoom( lua_State* pLuaState );
+                static int ViewSetPreferredZoom( lua_State* pLuaState );
+                static int ViewGetPreferredZoom( lua_State* pLuaState );
+                static int ViewSetZoomLimits( lua_State* pLuaState );
+                static int ViewGetZoomLimits( lua_State* pLuaState );
+                static int ViewSetZoomEnabled( lua_State* pLuaState );
+                static int ViewGetZoomEnabled( lua_State* pLuaState );
+                static int ViewZoomIn( lua_State* pLuaState );
+                static int ViewZoomOut( lua_State* pLuaState );
+                static int ViewZoomReset( lua_State* pLuaState );
+                static int ViewSetDimension( lua_State* pLuaState );
+                static int ViewGetDimension( lua_State* pLuaState );
+                static int ViewSetScrollStep( lua_State* pLuaState );
+                static int ViewGetScrollStep( lua_State* pLuaState );
+                static int ViewSetCameraPosition( lua_State* pLuaState );
+                static int ViewGetCameraPosition( lua_State* pLuaState );
+                static int ViewMoveCameraUp( lua_State* pLuaState );
+                static int ViewMoveCameraDown( lua_State* pLuaState );
+                static int ViewMoveCameraLeft( lua_State* pLuaState );
+                static int ViewMoveCameraRight( lua_State* pLuaState );
+                static int ViewResetCamera( lua_State* pLuaState );
+                static int ViewSetVisible( lua_State* pLuaState );
+                static int ViewGetVisible( lua_State* pLuaState );
+                static int ViewSetDrawOrder( lua_State* pLuaState );
+                static int ViewGetDrawOrder( lua_State* pLuaState );
+                static int ViewSetClearBackground( lua_State* pLuaState );
+                static int ViewGetClearBackground( lua_State* pLuaState );
+                static int ViewSetOpacity( lua_State* pLuaState );
+                static int ViewGetOpacity( lua_State* pLuaState );
+                static int ViewSetWorld( lua_State* pLuaState );
+                static int ViewGetWorld( lua_State* pLuaState );
+                static int ViewSetBackgroundColor( lua_State* pLuaState );
+                static int ViewUseMapBackgroundColor( lua_State* pLuaState );
+                static int ViewShowLayer( lua_State* pLuaState );
+                static int ViewShowOnlyLayers( lua_State* pLuaState );
+                static int ViewShowAllLayers( lua_State* pLuaState );
+                static int ViewIsLayerShown( lua_State* pLuaState );
+                static int ViewFitToMap( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUAVIEWAPI_H__ */
+#endif /* __LUAVIEWAPI_H__ */

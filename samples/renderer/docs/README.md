@@ -20,9 +20,10 @@ Also works headless (no window, no display needed) — it just draws nothing:
 
 | Key | Action |
 | --- | --- |
-| `Z` / `X` (held) | Zoom in/out (`view_zoom_in`/`view_zoom_out`) — one `ZOOM_STEP` (`0.0625`) per frame, within the limits `0.5 … 4.0` |
+| `Page Up` / `Page Down`, or `+` / `-` (held, main keyboard or keypad) | Zoom in/out (`view_zoom_in`/`view_zoom_out`) — one `ZOOM_STEP` (`0.0625`) per frame, within the limits `0.5 … 4.0`. The zoom keys every sunlight/Scarab sample shares (see [camera](../../camera/docs/README.md)) |
 | `Arrow keys` (held) | Pan the view's camera (`view_move_camera_*`) |
-| `R` | Reset the zoom to the preferred zoom and the camera to the origin (`view_zoom_reset`/`view_reset_camera`) |
+| `=` (main keyboard or keypad) | Reset the zoom only, to the preferred zoom (`view_zoom_reset`) — `1.0`, the zoom this sample starts at |
+| `Home` | Reset the zoom and the camera to the origin (`view_zoom_reset`/`view_reset_camera`) |
 | `Space` | Ask for an invalid zoom (`3.8`) and show the exact error `view_set_zoom` returns |
 
 ## What it shows
@@ -30,7 +31,7 @@ Also works headless (no window, no display needed) — it just draws nothing:
 - [main.lua](../main.lua) — `renderer_create` is the **first** window-needing call, on purpose: the entry script runs *before* any window exists, and `renderer_create` opens the window the moment it succeeds. Any window-needing call before it (`app_set_name`, `set_font`, `tilemap_load_map`, …) creates the default renderer first, and `renderer_create` then fails with a message naming that call. Renderer-free calls (`load_json`, `sound_*`, `sp_*`, …) are fine before it.
 - Every option is strictly checked, and every failure is `nil, "message"` — never a Lua error. Zoom is a **factor**, which must be a whole multiple of `ZOOM_STEP` (`0.0625`): `3.8125` is valid, `3.8` is rejected (with the nearest valid factor named), never silently rounded. The viewport must fit the render area.
 - The on-screen text is **read back** from the renderer every frame (`renderer_get_config`, `view_get_zoom`, `view_get_zoom_limits`, `view_get_camera_position`, `view_get_dimension`, `view_get_scroll_step`), so it always reflects the real current state, not what was requested at creation.
-- The older global `camera_*`/`zoom_*`/`viewport_*` functions keep working and act on this same default view (view `0`); the `view_*` functions take the view first so the same calls can address other views once they exist.
+- The older global `camera_*`/`zoom_*`/`viewport_*` functions keep working and act on this same default view (view `0`); the `view_*` functions take the view first so the same calls address any view (`view_create`; see the [views](../../views/docs/README.md) sample).
 
 ## Lua API reference
 

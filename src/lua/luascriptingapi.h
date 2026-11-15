@@ -21,10 +21,13 @@
 #ifndef __LUASCRIPTINGAPI_H__
 #define __LUASCRIPTINGAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
+
+#include <string>
+
+#include "scripting/scriptprocessor.h"
 
 
 namespace Scarab  {
@@ -64,20 +67,25 @@ namespace Scarab  {
              */
             class LuaScriptingApi  {
 
-                static int Wait( lua_State *pLuaState );
-                static int Clear( lua_State *pLuaState );
-                static int WaitQueueEmpty( lua_State *pLuaState );
-                static int MoveSpritesToScreen( lua_State *pLuaState );
-                static int AddLabel( lua_State *pLuaState );
-                static int GotoLabel( lua_State *pLuaState );
-                static int LoadStage( lua_State *pLuaState );
+                static int Wait( lua_State* pLuaState );
+                static int Clear( lua_State* pLuaState );
+                static int WaitQueueEmpty( lua_State* pLuaState );
+                static int MoveSpritesToScreen( lua_State* pLuaState );
+                static int AddLabel( lua_State* pLuaState );
+                static int GotoLabel( lua_State* pLuaState );
+                static int LoadStage( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                // The key LuaEngine keeps the engine's ScriptProcessor under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SCRIPT_PROCESSOR_KEY = "scriptProcessorPtr";
+
+                static void Register( lua_State* pLuaState );
+                static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State* pLuaState );
+                static bool AddOneParmCommandScript( lua_State* pLuaState, SunLight :: Scripting :: Commands cmd, const char* szName, std :: string& strError );
             };
         }
     }
 }
 
-#endif  /* __LUASCRIPTINGAPI_H__ */
+#endif /* __LUASCRIPTINGAPI_H__ */

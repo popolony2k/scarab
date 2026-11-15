@@ -21,6 +21,7 @@
 #include "host/enginehost.h"
 #include "lua/luacryptoapi.h"
 #include "filesystem/filesystemfactory.h"
+#include "filesystem/filepath.h"
 #include <chrono>
 #include <fstream>
 #include <filesystem>
@@ -28,7 +29,6 @@
 #include <nlohmann/json.hpp>
 #include "general/clock.h"
 
-using namespace std :: chrono;
 namespace fs = std :: filesystem;
 
 
@@ -46,6 +46,9 @@ namespace fs = std :: filesystem;
  * tracked") that nothing in Lua ever references by name.
  */
 #define __SOUND_ID_NO_AUDIO                                0
+
+/** Room for an engine error message ("Error loading stage id [65535]" and the like). */
+#define __ERROR_MESSAGE_SIZE  50
 
 /*
  * There is no compiled-in default entry script anymore - main.cpp requires
@@ -68,43 +71,6 @@ enum __EngineStateHandlers  {
     STATE_STAGE_RUNNING
 };
 
-/**
- * @brief Directory-of-a-virtual-path, for the .zip branch of @see
- * Scarab::Host::EngineHost::ResolveEntryScript only - a virtual path
- * inside an archive always uses '/' regardless of platform (matches
- * SunLight::FileSystem::IFileSystem's own documented contract), so this
- * deliberately does its own plain string split rather than reusing
- * std::filesystem::path (which would use '\' on Windows, not matching
- * what PhysFS itself expects for a virtual path). The .json/.lua
- * branches keep using std::filesystem::path as before - those really are
- * native OS paths, not virtual ones.
- * @param strVirtualPath A virtual path;
- * @return Everything before the last '/', or "" if there isn't one;
- */
-static std :: string GetVirtualParentPath( const std :: string &strVirtualPath )  {
-
-    std :: string :: size_type  nSlash = strVirtualPath.find_last_of( '/' );
-
-    return ( nSlash == std :: string :: npos ) ? std :: string() : strVirtualPath.substr( 0, nSlash );
-}
-
-/**
- * @brief Joins a virtual directory and a relative virtual path with '/' -
- * see @see GetVirtualParentPath for why this doesn't use
- * std::filesystem::path. Strips a leading '/' off strRelative first (a
- * user-supplied --entry/-e value is the one place this can come from,
- * eg. "--entry /main.lua") - PhysFS itself already tolerates the
- * resulting redundant "//" without one (confirmed live), but stripping it
- * here keeps the built path itself clean rather than relying on that
- * tolerance.
- */
-static std :: string JoinVirtualPath( const std :: string &strDir, const std :: string &strRelative )  {
-
-    std :: string  strCleanRelative = ( !strRelative.empty() && strRelative.front() == '/' ) ? strRelative.substr( 1 ) : strRelative;
-
-    return strDir.empty() ? strCleanRelative : ( strDir + "/" + strCleanRelative );
-}
-
 namespace Scarab  {
     namespace Host  {
 
@@ -116,7 +82,7 @@ namespace Scarab  {
          * actually pointed the program at (see ResolveEntryScript).
          * @param strFileName The already-resolved script file path to load;
          */
-        bool EngineHost :: LoadLuaScript( std :: string strFileName ) {
+        bool EngineHost :: LoadLuaScript( std :: string strFileName )  {
 
             if( !m_LuaEngine.RunFile( strFileName ) )  {
                 OnError( "Error executing stage Lua script => " + strFileName );
@@ -180,22 +146,45 @@ namespace Scarab  {
             std :: string strExtension = entryPath.extension().string();
 
             if( strExtension == ".zip" )  {
-                const std :: string  &strAppDir = m_LuaEngine.GetApplicationDirectory();
+                const std :: string&  strAppDir = m_LuaEngine.GetApplicationDirectory();
 
-                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( strEntryArg, strAppDir, false ) )  {
+                SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
+
+                /*
+                 * The path rule (docs/history/master_plan_11_2026.md item C8): the archive IS the game's own files - at APP_DIR,
+                 * as before, and at the root too (after the save folder, which sunlight mounts there first), so a
+                 * plain path reads the save, then the archive, exactly as a loose game reads the save, then the
+                 * launch folder (main.cpp does not mount the launch folder for a .zip). The save folder's own
+                 * mount at APP_DIR must come first there too, so it is mounted again after the archive.
+                 */
+                if( !fileSystem.Mount( strEntryArg, strAppDir, false ) || !fileSystem.Mount( strEntryArg, "/", true ) )  {
                     OnError( "Error mounting archive => " + strEntryArg );
                     return false;
                 }
 
+                std :: string  strRemountError;
+
+                if( !m_SaveDirectory.Remount( strRemountError ) )  {
+                    OnError( "Error: " + strRemountError );
+                    return false;
+                }
+
                 std :: string  strInnerEntry = m_strEntryOverride.empty() ? "project.json" : m_strEntryOverride;
-                std :: string  strInnerEntryPath = JoinVirtualPath( strAppDir, strInnerEntry );
+                // FilePath::JoinPath keeps a leading '/' of --entry inside the folder ("/main.lua" is
+                // the archive's own main.lua), and wants the folder with its trailing '/'.
+                std :: string  strInnerEntryPath = SunLight :: FileSystem :: FilePath :: JoinPath( strAppDir + "/", strInnerEntry );
+
+                if( strInnerEntryPath.empty() )  {
+                    OnError( "Error: --entry climbs out of the archive => " + strInnerEntry );
+                    return false;
+                }
 
                 if( fs :: path( strInnerEntry ).extension() == ".lua" )  {
                     strOutScriptPath = strInnerEntryPath;
                     return true;
                 }
 
-                std :: string  strEntryJsonPath = strInnerEntryPath;
+                std :: string                 strEntryJsonPath = strInnerEntryPath;
                 std :: vector<unsigned char>  data;
 
                 if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strEntryJsonPath, data ) )  {
@@ -226,9 +215,10 @@ namespace Scarab  {
                     return false;
                 }
 
-                strOutScriptPath = JoinVirtualPath( GetVirtualParentPath( strEntryJsonPath ), projectData["main_script"].get<std :: string>() );
+                if( !ApplyProjectSaveDirectory( strEntryJsonPath, projectData ) )
+                    return false;
 
-                return true;
+                return ResolveMainScript( strEntryJsonPath, projectData["main_script"].get<std :: string>(), strOutScriptPath );
             }
 
             if( strExtension != ".json" )  {
@@ -258,16 +248,38 @@ namespace Scarab  {
                 return false;
             }
 
-            /*
-             * generic_string(), not string(): on Windows, path::operator/ joins with
-             * a backslash ("scripts/headless_smoke\\main.lua" for a relative project
-             * file in a subdirectory), but this path is read through
-             * SunLight::FileSystem (PhysFS), whose virtual paths only treat "/" as a
-             * separator - the mixed path failed with "cannot open". Found by
-             * ci.yml's own headless smoke test, the first thing to launch a project
-             * from a subdirectory on Windows. Identical to string() elsewhere.
-             */
-            strOutScriptPath = ( effectiveEntryPath.parent_path() / projectData["main_script"].get<std :: string>() ).generic_string();
+            if( !ApplyProjectSaveDirectory( strEffectiveJsonPath, projectData ) )
+                return false;
+
+            return ResolveMainScript( strEffectiveJsonPath, projectData["main_script"].get<std :: string>(), strOutScriptPath );
+        }
+
+        /**
+         * @brief A project file's "main_script", as the path the entry script is read from:
+         * relative to the project file's own folder, through sunlight's FilePath (docs/history/master_plan_11_2026.md
+         * items P9, I13 in sunlight). A "main_script" with a scheme of its own ("vpath://...") is used
+         * as it stands; backslashes become '/' - on Windows, a relative project file in a
+         * subdirectory once gave "scripts/headless_smoke\\main.lua", which the FileSystem can't
+         * read (found by ci.yml's headless smoke test); and ".." is collapsed, so one that climbs
+         * above the root is an error here rather than a path nothing can open.
+         *
+         * @param strProjectPath The project file's own path;
+         * @param strMainScript Its "main_script" value;
+         * @param strOutScriptPath Receives the entry script's path on success;
+         * @return true if "main_script" resolved to a path;
+         */
+        bool EngineHost :: ResolveMainScript( const std :: string& strProjectPath, const std :: string& strMainScript,
+                                              std :: string& strOutScriptPath )  {
+
+            std :: string  strScriptPath = SunLight :: FileSystem :: FilePath :: JoinPath( SunLight :: FileSystem :: FilePath :: ParentPath( strProjectPath ),
+                                                                                            strMainScript );
+
+            if( strScriptPath.empty() )  {
+                OnError( "Error: \"main_script\" climbs above the root => " + strMainScript + " (in " + strProjectPath + ")" );
+                return false;
+            }
+
+            strOutScriptPath = strScriptPath;
 
             return true;
         }
@@ -330,55 +342,55 @@ namespace Scarab  {
             /*
              * Loop current BGM song when it finishes.
              */
-            PlaySound( m_CurrentSong );
+            PlaySound( m_nCurrentSong );
         }
 
         /**
          * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to play;
+         * @param nId The sound id to play;
          * @param bIgnorePlaying If set will ignore if player is playing any sound and will
-         * play again (cutting current playing).
+         * play again (cutting current playing);
          */
-        bool EngineHost :: PlaySound( uint16_t id, bool bIgnorePlaying )  {
+        bool EngineHost :: PlaySound( uint16_t nId, bool bIgnorePlaying )  {
 
-            if( ( id != __SOUND_ID_NO_AUDIO ) && ( !m_SoundManager.IsPlaying( id ) || bIgnorePlaying ) )
-                return m_SoundManager.Play( id );
+            if( ( nId != __SOUND_ID_NO_AUDIO ) && ( !m_SoundManager.IsPlaying( nId ) || bIgnorePlaying ) )
+                return m_SoundManager.Play( nId );
 
             return true;
         }
 
         /**
          * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to pause;
+         * @param nId The sound id to pause;
          */
-        bool EngineHost :: PauseSound( uint16_t id )  {
+        bool EngineHost :: PauseSound( uint16_t nId )  {
 
-            if( m_SoundManager.IsPlaying( id ) )
-                return m_SoundManager.Pause( id );
+            if( m_SoundManager.IsPlaying( nId ) )
+                return m_SoundManager.Pause( nId );
 
             return true;
         }
 
         /**
          * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to stop;
+         * @param nId The sound id to stop;
          */
-        bool EngineHost :: StopSound( uint16_t id )  {
+        bool EngineHost :: StopSound( uint16_t nId )  {
 
-            if( m_SoundManager.IsPlaying( id ) )
-                return m_SoundManager.Stop( id );
+            if( m_SoundManager.IsPlaying( nId ) )
+                return m_SoundManager.Stop( nId );
 
             return true;
         }
 
         /**
          * @brief Must be implemented to provide sprite sound handling.
-         * @param id The sound id to resume;
+         * @param nId The sound id to resume;
          */
-        bool EngineHost :: ResumeSound( uint16_t id )  {
+        bool EngineHost :: ResumeSound( uint16_t nId )  {
 
-            if( !m_SoundManager.IsPlaying( id ) )
-                return m_SoundManager.Resume( id );
+            if( !m_SoundManager.IsPlaying( nId ) )
+                return m_SoundManager.Resume( nId );
 
             return true;
         }
@@ -448,7 +460,13 @@ namespace Scarab  {
             CheckSpritesQueueEmpty();
             RunScriptMachine();
 
-            m_SpritePool.UpdateAll();
+            /*
+             * No per-frame sprite update here: sunlight's own layer pass advances and draws every
+             * sprite added to a layer, in its layer's place and honouring the layer's visibility and
+             * each view's layer mask. A second Update() of every pool sprite here (SpritePool::UpdateAll,
+             * removed in docs/history/master_plan_11_2026.md item V8a) drew them all again on top of the whole frame,
+             * so hiding a layer never hid its sprites.
+             */
             m_LuaEngine.CallOnUpdate( __FRAME_DELTA_MILLI );
         }
 
@@ -460,11 +478,17 @@ namespace Scarab  {
          * @param strEntryArg The entry argument main.cpp requires on the
          * command line (a .lua script path or a .json project file) -
          * resolved later, from RunEntryScript, since a failure
-         * there already has a normal fatal-error path to report through.
+         * there already has a normal fatal-error path to report through;
+         * @param strEntryOverride The command line's --entry, "" for none;
+         * @param bSandbox false for --no-sandbox: Lua's own io/os/require/loadfile/load (docs/history/master_plan_11_2026.md
+         * item C8);
          */
-        EngineHost :: EngineHost( Scarab :: Host :: RendererProvider *pRendererProvider,
+        EngineHost :: EngineHost( Scarab :: Host :: RendererProvider* pRendererProvider,
                                  std :: string strEntryArg,
-                                 std :: string strEntryOverride )  : m_LuaEngine( &m_ScriptProcessorMachine ) {
+                                 std :: string strEntryOverride,
+                                 bool bSandbox )  : m_LuaEngine( &m_ScriptProcessorMachine,
+                                                                 bSandbox ? Scarab :: Lua :: LUA_ENGINE_MODE_SANDBOX
+                                                                          : Scarab :: Lua :: LUA_ENGINE_MODE_NO_SANDBOX )  {
 
             m_CurrentStateHandler   = nullptr;
             m_nClearInactiveSpriteQueueMilli = 0;
@@ -486,16 +510,22 @@ namespace Scarab  {
              */
             m_bEntryScriptDone = false;
 
-            m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool );
+            m_LuaEngine.Init( pRendererProvider, &m_SoundManager, &m_SpritePool, &m_FontPool, &m_SaveDirectory );
+
+            // The save folder is mounted at APP_DIR too, ahead of the game's own files there (C8, decision 1b).
+            m_SaveDirectory.SetGameMountPoint( m_LuaEngine.GetApplicationDirectory() );
 
             /*
              * Whatever renderer the provider creates (explicitly or the
              * default), this host listens to its frame updates, and the Lua
-             * bridge attaches its collision listener to it.
+             * bridge attaches its collision listener and its gamepad hot-plug
+             * handler to it.
              */
-            pRendererProvider -> SetCreatedHook( [this]( SunLight :: Renderer :: TileMapRenderer &renderer )  {
+            pRendererProvider -> SetCreatedHook( [this, pRendererProvider]( SunLight :: Renderer :: TileMapRenderer& renderer )  {
                 renderer.AddTileMapListener( this );
                 m_LuaEngine.AttachToTileMap( renderer );
+                m_LuaEngine.AttachToControllerManager( renderer.GetControllerManager() );
+                m_LuaEngine.AttachHaptics( renderer.GetInputHandler(), pRendererProvider -> IsHeadless() );
             } );
 
             // Engine state handlers setup
@@ -530,6 +560,50 @@ namespace Scarab  {
         }
 
         /**
+         * @brief The command line's --save-dir: saves go into this real folder, whatever folder the game
+         * names itself (docs/history/master_plan_11_2026.md item C1b). Called by main() right after construction, before
+         * the entry script runs.
+         *
+         * @param strRealPath The folder, as the command line gives it;
+         * @param strError Receives the reason on failure;
+         * @return true if it is the save directory now;
+         */
+        bool EngineHost :: SetSaveDirectoryFromCommandLine( const std :: string& strRealPath, std :: string& strError )  {
+
+            return m_SaveDirectory.SetFromCommandLine( strRealPath, strError );
+        }
+
+        /**
+         * @brief A project file's optional "save_directory": the name of the game's save folder in the
+         * per-user data folder (docs/history/master_plan_11_2026.md item C1b). Applied before the entry script runs, so
+         * app_set_save_directory - called by the script, later - wins over it, and --save-dir (set earlier,
+         * from the command line) over both. A bad value is a fatal error, like a bad "main_script".
+         *
+         * @param strProjectPath The project file's path, for the error message;
+         * @param projectData The parsed project file;
+         * @return true if there is no "save_directory" or it was applied;
+         */
+        bool EngineHost :: ApplyProjectSaveDirectory( const std :: string& strProjectPath, const nlohmann :: json& projectData )  {
+
+            if( !projectData.contains( "save_directory" ) )
+                return true;
+
+            std :: string  strError;
+
+            if( !projectData["save_directory"].is_string() )  {
+                OnError( "Error in project file: \"save_directory\" must be a string => " + strProjectPath );
+                return false;
+            }
+
+            if( !m_SaveDirectory.SetByName( projectData["save_directory"].get<std :: string>(), strError ) )  {
+                OnError( "Error in project file's \"save_directory\": " + strError + " => " + strProjectPath );
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
          * Destructor. Finalize all class data.
          */
         EngineHost :: ~EngineHost( void )  {
@@ -545,6 +619,8 @@ namespace Scarab  {
 
             if( m_CurrentStateHandler )
                 m_CurrentStateHandler();
+
+            m_LuaEngine.UpdateHaptics();      // a timed rumble stops from this tick (docs/history/master_plan_11_2026.md item C1b)
         }
 
         /**
@@ -556,18 +632,21 @@ namespace Scarab  {
          * unloading GPU textures after the context is already gone.
          */
         void EngineHost :: OnStop( void )  {
+
             m_SpritePool.Clear();
+            m_FontPool.Clear();      // Lua's font handles, the same rule (docs/history/master_plan_11_2026.md item C6)
+            m_LuaEngine.ReleaseHaptics();   // stops any rumble, while the renderer's input handler still exists
         }
 
         /**
          * @brief Must be implemented to respond STOP_SONG_CMD command;
          *
-         * @param cmd The command received/
+         * @param cmd The command received/;
          * @param nEventId The event id;
          */
         void EngineHost :: OnCommand( SunLight :: Scripting :: Commands cmd, uint16_t nEventId )  {
 
-            switch ( cmd )  {
+            switch( cmd )  {
 
                 case SunLight :: Scripting :: Commands :: LOAD_STAGE_CMD :
                     /*
@@ -582,7 +661,7 @@ namespace Scarab  {
                         m_CurrentStateHandler = m_aEngineStateHandlers[STATE_STAGE_RUNNING];
                     }
                     else  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error loading stage id [%d]", nEventId );
                         OnError( szMsg );
@@ -600,7 +679,7 @@ namespace Scarab  {
                      * id was actually handled.
                      */
                     if( !m_LuaEngine.TryDispatchMoveSpritesToScreen( nEventId ) )  {
-                        char szMsg[50];
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Unhandled sprite move state [%d]", nEventId );
                         OnError( szMsg );
@@ -608,11 +687,11 @@ namespace Scarab  {
                 break;
 
                 case  SunLight :: Scripting :: Commands :: PLAY_SONG_CMD :
-                    m_CurrentSong = nEventId;
+                    m_nCurrentSong = nEventId;
                 case  SunLight :: Scripting :: Commands :: PLAY_SONG_DIRECT_CMD :
 
-                    if( !PlaySound( nEventId ) ) {
-                        char szMsg[50];
+                    if( !PlaySound( nEventId ) )  {
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error playing song id [%d]", nEventId );
                         OnError( szMsg );
@@ -635,11 +714,11 @@ namespace Scarab  {
                      * header comment for why queued sp_* commands enqueued
                      * from live Lua code can go permanently unreached).
                      */
-                    if( nEventId == m_CurrentSong )
-                        m_CurrentSong = __SOUND_ID_NO_AUDIO;
+                    if( nEventId == m_nCurrentSong )
+                        m_nCurrentSong = __SOUND_ID_NO_AUDIO;
 
-                    if( !StopSound( nEventId ) ) {
-                        char szMsg[50];
+                    if( !StopSound( nEventId ) )  {
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error stopping song id [%d]", nEventId );
                         OnError( szMsg );
@@ -659,11 +738,11 @@ namespace Scarab  {
                      * paused) and immediately restart it from the beginning
                      * the very next frame, making a paused BGM impossible.
                      */
-                    if( nEventId == m_CurrentSong )
-                        m_CurrentSong = __SOUND_ID_NO_AUDIO;
+                    if( nEventId == m_nCurrentSong )
+                        m_nCurrentSong = __SOUND_ID_NO_AUDIO;
 
-                    if( !PauseSound( nEventId ) ) {
-                        char szMsg[50];
+                    if( !PauseSound( nEventId ) )  {
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error pausing song id [%d]", nEventId );
                         OnError( szMsg );
@@ -678,18 +757,18 @@ namespace Scarab  {
                      * mirrors the untrack above without clobbering some
                      * other song that might legitimately be tracked already.
                      */
-                    if( m_CurrentSong == __SOUND_ID_NO_AUDIO )
-                        m_CurrentSong = nEventId;
+                    if( m_nCurrentSong == __SOUND_ID_NO_AUDIO )
+                        m_nCurrentSong = nEventId;
 
-                    if( !ResumeSound( nEventId ) ) {
-                        char szMsg[50];
+                    if( !ResumeSound( nEventId ) )  {
+                        char szMsg[__ERROR_MESSAGE_SIZE];
 
                         snprintf( szMsg, sizeof( szMsg ), "Error resuming song id [%d]", nEventId );
                         OnError( szMsg );
                     }
                 break;
 
-            default:
+            default :
                 break;
             }
 
@@ -700,7 +779,7 @@ namespace Scarab  {
          *
          * @param strError The engine error message received;
          */
-        void EngineHost :: OnError( std :: string strError ) {
+        void EngineHost :: OnError( std :: string strError )  {
 
             m_strLastError = strError;
 

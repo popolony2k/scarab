@@ -1,11 +1,31 @@
 --[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
     Renderer API smoke test - run by scripts/renderer_api_smoke.py (and ci.yml, every
     platform) once per scenario, because a process gets exactly ONE renderer:
 
         RENDERER_SMOKE_SCENARIO=<name> scarab --headless --fast --max-frames 200 \
             scripts/renderer_api_smoke/project.json
 
-    Scenarios: defaults, create, fullscreen, errors, lazy, nowindow, views, viewsmulti, views_norenderer. Each records its own failures and
+    Scenarios: defaults, create, fullscreen, errors, lazy, nowindow, views, viewsmulti, preferredzoom, views_norenderer. Each records its own failures and
     the script quits ITSELF only if there were none (exit 0); otherwise it prints every
     failure and never quits, so --max-frames runs out and scarab exits 3 - a failure with
     the details in the log, not a hang.
@@ -16,6 +36,7 @@ io.stdout:setvbuf( "line" )
 local scenario = os.getenv( "RENDERER_SMOKE_SCENARIO" ) or "?"
 local failures = {}
 
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
 local function check( ok, message )
     if not ok then failures[#failures + 1] = message end
 end
@@ -27,6 +48,7 @@ local function expect_error( label, needle, value, message )
            label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
 end
 
+-- Check every key of `want` in a renderer_get_config result, the values of a nested table (the viewport) included.
 local function check_config( label, cfg, want )
     for key, expected in pairs( want ) do
         if type( expected ) == "table" then
@@ -40,6 +62,8 @@ local function check_config( label, cfg, want )
     end
 end
 
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
 function on_load_stage( stageId ) return true end
 sp_wait( 1 )
 
@@ -52,7 +76,7 @@ if scenario == "defaults" then
     check( cur == r and origin == "created", "renderer_get_current after create: " .. tostring( cur ) .. ", " .. tostring( origin ) )
     check_config( "defaults", renderer_get_config( r ), {
         backend = RENDERER_BACKEND_NULL, width = 1260, height = 920, title = "Scarab", fps = 60,
-        resizeable = true, draw_fps = false, zoom = 3.8125, exit_key = KEY_ESCAPE,
+        resizeable = true, draw_fps = false, zoom = 3.8125, preferred_zoom = 1.0, exit_key = KEY_ESCAPE,
         stretch_to_fill = false, fullscreen = false, fullscreen_strategy = FULLSCREEN_STRATEGY_REAL, view_control_mode = VIEW_CONTROL_MODE_ACTIVE, use_default_key_handler = false,
         viewport = { x = 10, y = 10, w = 1240, h = 900 }, scroll_step = { w = 1, h = 1 } } )
 
@@ -60,7 +84,7 @@ elseif scenario == "create" then
     -- every option set to a NON-default value, then read back: proves the values are applied
     local r, err = renderer_create{
         title = "Smoke", width = 1000, height = 700, fps = 30, resizeable = false, draw_fps = true,
-        viewport = { x = 20, y = 30, w = 900, h = 600 }, zoom = 2.0625, scroll_step = { w = 2, h = 3 },
+        viewport = { x = 20, y = 30, w = 900, h = 600 }, zoom = 2.0625, preferred_zoom = 2.5, scroll_step = { w = 2, h = 3 },
         view_control_mode = VIEW_CONTROL_MODE_REACTIVE, use_default_key_handler = true,
         exit_key = KEY_NULL, stretch_to_fill = true,
         fullscreen = true, fullscreen_strategy = FULLSCREEN_STRATEGY_BORDERLESS_WINDOWED }
@@ -68,7 +92,7 @@ elseif scenario == "create" then
     local cfg = renderer_get_config( r )
     check_config( "create", cfg, {
         backend = RENDERER_BACKEND_NULL, width = 1000, height = 700, title = "Smoke", fps = 30,
-        resizeable = false, draw_fps = true, zoom = 2.0625, exit_key = KEY_NULL, stretch_to_fill = true,
+        resizeable = false, draw_fps = true, zoom = 2.0625, preferred_zoom = 2.5, exit_key = KEY_NULL, stretch_to_fill = true,
         view_control_mode = VIEW_CONTROL_MODE_REACTIVE, use_default_key_handler = true,
         viewport = { x = 20, y = 30, w = 900, h = 600 }, scroll_step = { w = 2, h = 3 },
         -- fullscreen was REQUESTED, but --headless is the null window: accepted and ignored, the live state stays windowed
@@ -107,6 +131,9 @@ elseif scenario == "errors" then
     expect_error( "zoom not a multiple", "nearest valid is 3.8125", renderer_create{ zoom = 3.8 } )
     expect_error( "zoom too big", "is outside [0.0625, 16]", renderer_create{ zoom = 20 } )
     expect_error( "zoom zero", "is outside [0.0625, 16]", renderer_create{ zoom = 0 } )
+    expect_error( "preferred_zoom string", "'preferred_zoom' must be a number", renderer_create{ preferred_zoom = "big" } )
+    expect_error( "preferred_zoom not a multiple", "option 'preferred_zoom': zoom factor 3.8 is not a multiple of 0.0625 - nearest valid is 3.8125", renderer_create{ preferred_zoom = 3.8 } )
+    expect_error( "preferred_zoom too big", "option 'preferred_zoom': zoom factor 20 is outside [0.0625, 16]", renderer_create{ preferred_zoom = 20 } )
     expect_error( "viewport missing field", "missing field 'h'", renderer_create{ viewport = { x = 0, y = 0, w = 10 } } )
     expect_error( "viewport unknown field", "unknown field 'z'", renderer_create{ viewport = { x = 0, y = 0, w = 10, h = 10, z = 1 } } )
     expect_error( "viewport too big", "must fit the render area", renderer_create{ viewport = { x = 10, y = 10, w = 2000, h = 900 } } )
@@ -142,6 +169,7 @@ elseif scenario == "lazy" then
     expect_error( "renderer_create after lazy", "'app_set_name'", r, err )
     expect_error( "renderer_create after lazy (rule)", "must be the first window-needing call", r, err )
     check( renderer_get_config( cur ).title == "Implicit", "the lazy default renderer lost its title" )
+    check( renderer_get_config( cur ).preferred_zoom == 1.0, "the lazy default renderer's preferred_zoom is not sunlight's own default, 1.0" )
 
 elseif scenario == "nowindow" then
     -- calls that need no window must NOT create a renderer as a side effect
@@ -365,12 +393,12 @@ elseif scenario == "viewsmulti" then
     check( sprite_configure_texture( sp, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR ) == true, "sprite_configure_texture failed" )
     check( sprite_get_world_space( sp ) == true, "configuring a texture changed the world-space mode" )
     check( sprite_release( sp ) == true, "sprite_release failed" )
-    check( sprite_get_world_space( sp ) == false, "a released handle must read as not world-space" )
+    check( sprite_get_world_space( sp ) == nil, "a released handle must read as an invalid handle" )
     local sp2 = sprite_acquire( "ws" )
     check( sp2 ~= 0 and sp2 ~= sp, "the recycled slot must come back under a new handle" )
     check( sprite_get_world_space( sp2 ) == false, "a recycled slot inherited the previous owner's world-space mode" )
-    sprite_set_world_space( 0, true )   -- an invalid handle is a quiet no-op, like every other sprite_set_*
-    check( sprite_get_world_space( 0 ) == false, "an invalid handle must read as not world-space" )
+    expect_error( "world space, invalid handle", "invalid sprite handle", sprite_set_world_space( 0, true ) )
+    expect_error( "world space read, invalid handle", "invalid sprite handle", sprite_get_world_space( 0 ) )
     sprite_release( sp2 )
 
     -- destroy: counted, then unknown; ids are never reused; the default view stays
@@ -386,6 +414,22 @@ elseif scenario == "viewsmulti" then
     expect_error( "destroy default", "the default view cannot be removed", view_destroy( 0 ) )
     check( renderer_get_view_count( r ) == 1, "the default view was removed" )
 
+elseif scenario == "preferredzoom" then
+    -- preferred_zoom is separate from zoom: the game starts at `zoom`, zoom_reset returns to
+    -- `preferred_zoom`. The top of the scale (ZOOM_FACTOR_MAX) is valid - sunlight keeps the
+    -- upper zoom limit as an exclusive bound internally, so this pins that it is not refused.
+    local r, err = renderer_create{ zoom = 3.8125, preferred_zoom = ZOOM_FACTOR_MAX }
+    check( r ~= nil, "renderer_create failed: " .. tostring( err ) )
+    check_config( "preferredzoom", renderer_get_config( r ), { zoom = 3.8125, preferred_zoom = ZOOM_FACTOR_MAX } )
+    check( view_get_preferred_zoom( 0 ) == ZOOM_FACTOR_MAX, "view_get_preferred_zoom does not agree with preferred_zoom" )
+    zoom_in(); zoom_reset()
+    check( viewport_get_zoom_factor() == ZOOM_FACTOR_MAX, "zoom_reset went to " .. viewport_get_zoom_factor() .. ", not preferred_zoom" )
+    -- live: a later view_set_preferred_zoom shows up in renderer_get_config, and zoom_reset follows it
+    check( view_set_preferred_zoom( 0, 2.0 ) == true, "view_set_preferred_zoom failed" )
+    check( renderer_get_config( r ).preferred_zoom == 2.0, "renderer_get_config preferred_zoom did not follow view_set_preferred_zoom" )
+    zoom_reset()
+    check( viewport_get_zoom_factor() == 2.0, "zoom_reset did not follow view_set_preferred_zoom" )
+
 elseif scenario == "views_norenderer" then
     -- a view handle can only exist once a renderer does: asking first is an error and creates nothing
     expect_error( "view before any renderer", "unknown view 0", view_get_zoom( 0 ) )
@@ -396,6 +440,8 @@ else
 end
 
 local frames = 0
+-- Called by Scarab every frame: the checks ran at load time, so on the first frame print OK and quit if none
+-- failed; otherwise print every failure, once, and keep running, so --max-frames runs out and the run fails (exit 3).
 function on_update( dt )
     frames = frames + 1
     if frames == 1 then

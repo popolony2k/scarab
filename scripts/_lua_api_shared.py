@@ -45,6 +45,7 @@ DOCS_DIR = REPO_ROOT / "docs" / "lua-api"
 # here explicitly when a new src/lua/*api.cpp file is added.
 SOURCE_TO_DOC = {
     "luaappapi.cpp":        "app.md",
+    "luablendapi.cpp":      "blend.md",
     "luacameraapi.cpp":     "camera.md",
     "luacollisionapi.cpp":  "collision.md",
     "luacryptoapi.cpp":     "crypto.md",
@@ -54,13 +55,17 @@ SOURCE_TO_DOC = {
     "luajsonapi.cpp":       "json.md",
     "luapackapi.cpp":       "pack.md",
     "luarendererapi.cpp":   "renderer.md",
+    "luasandboxapi.cpp":    "sandbox.md",
     "luascriptingapi.cpp":  "scripting.md",
+    "luasaveapi.cpp":       "save.md",
+    "luashapeapi.cpp":      "shape.md",
     "luasoundapi.cpp":      "sound.md",
     "luaspriteapi.cpp":     "sprite.md",
     "luatextapi.cpp":       "text.md",
     "luatilemapapi.cpp":    "tilemap.md",
     "luatimerapi.cpp":      "timers.md",
     "luaviewapi.cpp":       "views.md",
+    "luaworldapi.cpp":      "worlds.md",
 }
 
 # luaengine.cpp is the one file scanned for the REVERSE direction - Lua

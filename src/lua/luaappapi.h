@@ -21,8 +21,7 @@
 #ifndef __LUAAPPAPI_H__
 #define __LUAAPPAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -40,33 +39,47 @@ namespace Scarab  {
              * Application-level primitives — concerns that belong to the
              * running app/game itself, not to any one engine subsystem
              * (camera, sound, sprites, ...).
+             *
+             * ## Error reporting
+             *
+             * Every app and screen function reports a wrong argument as
+             * `nil, "message"` and never raises a Lua error; a setter returns
+             * `true` on success. Booleans must be `true`/`false` (not `nil`,
+             * not `0`/`1`), and integers must be whole numbers.
              */
             class LuaAppApi  {
 
-                static int SetAppName( lua_State *pLuaState );
-                static int ScreenFade( lua_State *pLuaState );
-                static int SetFullscreen( lua_State *pLuaState );
-                static int GetFullscreen( lua_State *pLuaState );
-                static int SetTargetFps( lua_State *pLuaState );
-                static int GetTargetFps( lua_State *pLuaState );
-                static int SetDrawFps( lua_State *pLuaState );
-                static int GetDrawFps( lua_State *pLuaState );
-                static int SetWindowResizeable( lua_State *pLuaState );
-                static int GetWindowResizeable( lua_State *pLuaState );
-                static int SetStretchToFill( lua_State *pLuaState );
-                static int GetStretchToFill( lua_State *pLuaState );
-                static int DrawFilledRectangle( lua_State *pLuaState );
-                static int GetPlatform( lua_State *pLuaState );
-                static int Quit( lua_State *pLuaState );
-                static int SetExitKey( lua_State *pLuaState );
-                static int GetExitKey( lua_State *pLuaState );
-                static int GetTime( lua_State *pLuaState );
-                static int VirtualOsTime( lua_State *pLuaState );
-                static int VirtualOsClock( lua_State *pLuaState );
+                static int SetAppName( lua_State* pLuaState );
+                static int ScreenFade( lua_State* pLuaState );
+                static int SetFullscreen( lua_State* pLuaState );
+                static int GetFullscreen( lua_State* pLuaState );
+                static int SetTargetFps( lua_State* pLuaState );
+                static int GetTargetFps( lua_State* pLuaState );
+                static int SetDrawFps( lua_State* pLuaState );
+                static int GetDrawFps( lua_State* pLuaState );
+                static int SetWindowResizeable( lua_State* pLuaState );
+                static int GetWindowResizeable( lua_State* pLuaState );
+                static int SetStretchToFill( lua_State* pLuaState );
+                static int GetStretchToFill( lua_State* pLuaState );
+                static int DrawFilledRectangle( lua_State* pLuaState );
+                static int GetScreenWidth( lua_State* pLuaState );
+                static int GetScreenHeight( lua_State* pLuaState );
+                static int GetPlatform( lua_State* pLuaState );
+                static int Quit( lua_State* pLuaState );
+                static int SetExitKey( lua_State* pLuaState );
+                static int GetExitKey( lua_State* pLuaState );
+                static int GetTime( lua_State* pLuaState );
+                static int VirtualOsTime( lua_State* pLuaState );
+                static int VirtualOsClock( lua_State* pLuaState );
+                static int SetSaveDirectory( lua_State* pLuaState );
+                static int GetSaveDirectory( lua_State* pLuaState );
 
-                static void RegisterEnums( lua_State *pLuaState );
+                static void RegisterEnums( lua_State* pLuaState );
 
                 public:
+
+                // The key LuaEngine::Init keeps the engine's SaveDirectory under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SAVE_DIRECTORY_KEY = "saveDirectoryPtr";
 
                 /**
                  * @brief Host platform Scarab itself was compiled for,
@@ -87,11 +100,11 @@ namespace Scarab  {
                     PLATFORM_UNKNOWN = 3  // compiled on something other than the three platforms above
                 };
 
-                static void Register( lua_State *pLuaState );
-                static void InstallVirtualClock( lua_State *pLuaState );
+                static void Register( lua_State* pLuaState );
+                static void InstallVirtualClock( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUAAPPAPI_H__ */
+#endif /* __LUAAPPAPI_H__ */

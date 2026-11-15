@@ -19,18 +19,32 @@
  */
 
 #include "lua/luaspriteapi.h"
+#include "lua/luaworldapi.h"
 #include "lua/luaengineutil.h"
+#include "lua/luablendapi.h"
 #include "engine/spritehandle.h"
+#include "engine/spritepool.h"
+#include "collision/collisionmanager.h"
+#include <climits>
 #include <cstdint>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
-using namespace SunLight :: Canvas;
 
-#define __CONST( name )  { #name, ( int ) name }
+#define __CONST( name )  { #name, ( int ) SunLight :: Canvas :: name }
+
+/** delayMilli's default and smallest value: a held frame (see sprite_configure_texture). */
+#define __HELD_FRAME_DELAY  -1
+
+/** The opacity range of sprite_set_opacity - sunlight's, the same as a layer's. */
+#define __SPRITE_OPACITY_MIN  0.0
+#define __SPRITE_OPACITY_MAX  1.0
+
+/** sprite_set_tint's colour channels (r, g, b; a is optional) and a collider's four inset sides. */
+#define __RGB_CHANNELS  3
+#define __INSET_SIDES   4
 
 
 namespace Scarab  {
@@ -38,63 +52,189 @@ namespace Scarab  {
         namespace Lua  {
 
             /**
-             * @luaname{pool_register_type(typeTag, capacity) -> success}
-             * @luadoc
-             * Reserve `capacity` slots for sprites acquired with this
-             * `typeTag` string. Must be called once before the first
-             * `sprite_acquire` for that tag.
+             * @brief Fetch the engine's SpritePool instance stashed as a Lua light userdata global.
+             *
+             * @param pLuaState Lua state to be used by engine call;
              */
-            int LuaSpriteApi :: RegisterType( lua_State *pLuaState )  {
+            static Engine :: SpritePool* GetSpritePool( lua_State* pLuaState )  {
 
-                const char  *szTypeTag = lua_tostring( pLuaState, 1 );
-                uint32_t    nCapacity  = ( uint32_t ) lua_tointeger( pLuaState, 2 );
-                bool        bResult   = LuaEngineUtil :: GetSpritePool( pLuaState ) -> RegisterType( szTypeTag, nCapacity );
-
-                lua_pushboolean( pLuaState, bResult );
-
-                return 1;
+                return static_cast<Engine :: SpritePool *>( LuaEngineUtil :: GetEnginePointer( pLuaState, LuaSpriteApi :: SPRITE_POOL_KEY ) );
             }
 
             /**
-             * @luaname{sprite_acquire(typeTag) -> handle}
+             * @luaconstants{Animation modes}
+             * @luadoc
+             * The `animationMode` argument `sprite_configure_texture`/
+             * `sprite_set_animation_mode` take — see either
+             * primitive's own doc for the full behavior of each mode.
+             */
+            static const stNamedConstant  s_aAnimationModes[] = {
+                __CONST( TEXTURE_ANIMATION_MODE_MANUAL ),
+                __CONST( TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR ),
+                __CONST( TEXTURE_ANIMATION_MODE_AUTOMATIC_RIGHT_LEFT ),
+                __CONST( TEXTURE_ANIMATION_MODE_ANIMATE_LEFT ),
+                __CONST( TEXTURE_ANIMATION_MODE_ANIMATE_RIGHT ),
+                __CONST( TEXTURE_ANIMATION_MODE_ANIMATE_CENTER ),
+            };
+
+            /** @brief Read an animationMode argument (a TEXTURE_ANIMATION_MODE_* constant). */
+            static bool ReadAnimationModeArg( lua_State* pLuaState, int nIndex, SunLight :: Canvas :: AnimationMode& mode, std :: string& strError )  {
+
+                int  nMode = 0;
+
+                if( !LuaEngineUtil :: ReadConstantArg( pLuaState, nIndex, "animationMode", s_aAnimationModes,
+                                                       sizeof( s_aAnimationModes ) / sizeof( s_aAnimationModes[0] ),
+                                                       "TEXTURE_ANIMATION_MODE_*", nMode, strError ) )
+                    return false;
+
+                mode = ( SunLight :: Canvas :: AnimationMode ) nMode;
+
+                return true;
+            }
+
+            /**
+             * @brief Read a layer id argument: sunlight keeps a sprite's collider in a fixed array
+             * of MAX_COLLIDER_LAYERS lists, so a layer id outside 0..MAX_COLLIDER_LAYERS-1 can't
+             * hold a sprite - checked here so a script gets that reason, not a plain refusal.
+             */
+            static bool ReadLayerIdArg( lua_State* pLuaState, int nIndex, int& nLayerId, std :: string& strError )  {
+
+                lua_Integer  nValue = 0;
+
+                if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, nIndex, "layerId", 0, MAX_COLLIDER_LAYERS - 1, nValue, strError ) )
+                    return false;
+
+                nLayerId = ( int ) nValue;
+
+                return true;
+            }
+
+            /**
+             * @brief Resolve a sprite handle argument strictly: a non-integer or a handle that is
+             * not live (never acquired, or already released) is an error.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param nIndex Stack index of the handle;
+             * @param strError Receives the reason on failure;
+             * @return The sprite, or nullptr (with strError set);
+             */
+            static SunLight :: Sprite :: Sprite* ResolveHandleArg( lua_State* pLuaState, int nIndex, std :: string& strError )  {
+
+                SunLight :: Sprite :: Sprite*  pSprite = nullptr;
+
+                if( lua_isinteger( pLuaState, nIndex ) )
+                    pSprite = GetSpritePool( pLuaState ) -> Resolve( ( SpriteHandle ) lua_tointeger( pLuaState, nIndex ) );
+
+                if( pSprite == nullptr )
+                    strError = "invalid sprite handle";
+
+                return pSprite;
+            }
+
+            /**
+             * @luaname{pool_register_type(typeTag, capacity) -> true | nil, message}
+             * @luadoc
+             * Reserve `capacity` slots (1 or more) for sprites acquired with this
+             * `typeTag` string. Must be called once before the first
+             * `sprite_acquire` for that tag. Fails for a tag already registered,
+             * and when the pool would hold more than 65535 sprites in all.
+             */
+            int LuaSpriteApi :: RegisterType( lua_State* pLuaState )  {
+
+                std :: string   strTypeTag;
+                lua_Integer     nCapacity = 0;
+                std :: string   strError;
+                SpritePool*     pPool    = GetSpritePool( pLuaState );
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "typeTag", strTypeTag, strError ) ||
+                    !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 2, "capacity", 1, MAX_SPRITE_SLOTS, nCapacity, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( pPool -> HasType( strTypeTag ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "pool type '" + strTypeTag + "' is already registered" );
+
+                if( !pPool -> RegisterType( strTypeTag, ( uint32_t ) nCapacity ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the pool holds at most " + std :: to_string( MAX_SPRITE_SLOTS ) +
+                                                       " sprites in all, and " + std :: to_string( pPool -> GetSlotCount() ) + " are registered" );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_acquire(typeTag) -> handle | nil, message}
              * @luadoc
              * Get a free handle from the pool registered for `typeTag`.
-             * Returns `0` if the pool is exhausted (every slot currently
-             * in use).
+             * Fails for a tag never registered and when every slot of that
+             * tag is in use (`"pool type 'x' is full"`). A handle is
+             * never `0`.
              */
-            int LuaSpriteApi :: Acquire( lua_State *pLuaState )  {
+            int LuaSpriteApi :: Acquire( lua_State* pLuaState )  {
 
-                const char    *szTypeTag = lua_tostring( pLuaState, 1 );
-                SpriteHandle  handle     = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Acquire( szTypeTag );
+                std :: string   strTypeTag;
+                std :: string   strError;
+                SpritePool*     pPool = GetSpritePool( pLuaState );
 
-                lua_pushinteger( pLuaState, ( lua_Integer ) handle );
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "typeTag", strTypeTag, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pPool -> HasType( strTypeTag ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "unknown pool type '" + strTypeTag + "' (see pool_register_type)" );
+
+                SpriteHandle  hSprite = pPool -> Acquire( strTypeTag );
+
+                if( hSprite == INVALID_SPRITE_HANDLE )
+                    return LuaEngineUtil :: PushError( pLuaState, "pool type '" + strTypeTag + "' is full" );
+
+                lua_pushinteger( pLuaState, ( lua_Integer ) hSprite );
 
                 return 1;
             }
 
             /**
-             * @luaname{sprite_release(handle) -> success}
+             * @brief Return a sprite to its pool, first taking it off every layer it is on, in whichever
+             * world (docs/history/master_plan_11_2026.md item C7) - so a recycled handle starts on no layer and in no
+             * world.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{sprite_release(handle) -> true | nil, message}
              * @luadoc
              * Return a handle to its pool, making the slot available for
-             * a future `sprite_acquire`. **Call
-             * `sprite_remove_from_layer` first** if the sprite was ever
-             * added to a layer (see the gotcha above).
+             * a future `sprite_acquire`. The sprite is first taken off every
+             * layer it is on, in whichever world, so it stops drawing and
+             * colliding and a recycled handle starts on no layer. (Up to C7
+             * it stayed registered, only hidden, and had to be taken off its
+             * layer with `sprite_remove_from_layer` first; doing so still
+             * works.)
              */
-            int LuaSpriteApi :: Release( lua_State *pLuaState )  {
+            int LuaSpriteApi :: Release( lua_State* pLuaState )  {
 
-                SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                bool          bResult = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Release( handle );
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                lua_pushboolean( pLuaState, bResult );
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                return 1;
+                SpriteHandle  hSprite = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+
+                for( const SpritePool :: stRegistration& registration : GetSpritePool( pLuaState ) -> TakeRegistrations( hSprite ) )  {
+                    std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: WorldById( pLuaState, registration.nWorldId );
+
+                    if( pWorld )
+                        pWorld -> RemoveSprite( registration.nLayerId, *pSprite );
+                }
+
+                GetSpritePool( pLuaState ) -> Release( hSprite );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
              * @brief Load a texture sequence's file and configure it's tiling/
              * animation, mirroring the old WorldBase::LoadSprite per-texture body.
              *
-             * @luaname{sprite_configure_texture(handle, sequenceId, path, framesByTexture, activeTileIndex, animationMode, delayMilli?) -> success}
+             * @luaname{sprite_configure_texture(handle, sequenceId, path, framesByTexture, activeTileIndex, animationMode, delayMilli?) -> true | nil, message}
              * @luadoc
              * Load a texture file and configure it as animation
              * `sequenceId` on `handle`. `path` points at a texture sheet
@@ -111,6 +251,13 @@ namespace Scarab  {
              * pool slot) reloads the texture and applies the new `delayMilli`;
              * the sequence keeps holding exactly one texture.
              *
+             * Fails for an invalid handle, a `framesByTexture` below 1, an
+             * `activeTileIndex` outside `0`..`framesByTexture - 1`, an unknown
+             * mode, a `delayMilli` below `-1`, and a texture that can't be loaded
+             * (`"cannot load texture '<path>'"`). The arguments are checked
+             * before anything is loaded, so a wrong call never creates the
+             * default renderer.
+             *
              * Animation mode constants:
              *
              * | Constant | Behavior |
@@ -123,7 +270,29 @@ namespace Scarab  {
              * -- a 5-frame strip, starting on frame 2, auto-animating
              * sprite_configure_texture(handle, 0, path, 5, 2, TEXTURE_ANIMATION_MODE_ANIMATE_CENTER, 100)
              */
-            int LuaSpriteApi :: ConfigureTexture( lua_State *pLuaState )  {
+            int LuaSpriteApi :: ConfigureTexture( lua_State* pLuaState )  {
+
+                std :: string                         strError;
+                std :: string                         strPath;
+                int                                   nSequenceId      = 0;
+                lua_Integer                           nFramesByTexture = 0;
+                lua_Integer                           nActiveTileIndex = 0;
+                lua_Integer                           nDelayMilli      = __HELD_FRAME_DELAY;
+                SunLight :: Canvas :: AnimationMode   animationMode    = SunLight :: Canvas :: TEXTURE_ANIMATION_MODE_MANUAL;
+
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "sequenceId", nSequenceId, strError ) ||
+                    !LuaEngineUtil :: ReadStringArg( pLuaState, 3, "path", strPath, strError ) ||
+                    !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 4, "framesByTexture", 1, INT_MAX, nFramesByTexture, strError ) ||
+                    !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 5, "activeTileIndex", 0, nFramesByTexture - 1, nActiveTileIndex, strError ) ||
+                    !ReadAnimationModeArg( pLuaState, 6, animationMode, strError ) ||
+                    !LuaEngineUtil :: ReadOptionalIntegerArg( pLuaState, 7, "delayMilli", __HELD_FRAME_DELAY, nDelayMilli, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( nDelayMilli < __HELD_FRAME_DELAY || nDelayMilli > INT_MAX )
+                    return LuaEngineUtil :: PushError( pLuaState, "argument 'delayMilli' must be -1 (a held frame) or more, got " + std :: to_string( nDelayMilli ) );
 
                 /*
                  * Loading a texture needs a live window/GL context, but this primitive never
@@ -132,23 +301,9 @@ namespace Scarab  {
                  */
                 LuaEngineUtil :: EnsureRenderer( pLuaState );
 
-                SpriteHandle  handle           = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                int           nSequenceId      = ( int ) lua_tointeger( pLuaState, 2 );
-                const char    *szPath          = lua_tostring( pLuaState, 3 );
-                int           nFramesByTexture = ( int ) lua_tointeger( pLuaState, 4 );
-                int           nActiveTileIndex = ( int ) lua_tointeger( pLuaState, 5 );
-                int           nAnimationMode   = ( int ) lua_tointeger( pLuaState, 6 );
-                int           nDelayMilli      = ( int ) luaL_optinteger( pLuaState, 7, -1 );
-
-                SpritePool                *pPool    = LuaEngineUtil :: GetSpritePool( pLuaState );
-                SunLight :: Sprite :: Sprite  *pSprite  = pPool -> Resolve( handle );
-                TextureCanvas             *pTexture = pPool -> GetOrCreateTexture( handle, nSequenceId );
-
-                if( ( pSprite == nullptr ) || ( pTexture == nullptr ) )  {
-                    lua_pushboolean( pLuaState, false );
-
-                    return 1;
-                }
+                SpriteHandle                          hSprite   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                SpritePool*                           pPool   = GetSpritePool( pLuaState );
+                SunLight :: Canvas :: TextureCanvas*  pTexture = pPool -> GetOrCreateTexture( hSprite, nSequenceId );
 
                 /*
                  * A recycled pool slot's TextureCanvas may already hold a
@@ -158,11 +313,8 @@ namespace Scarab  {
                  */
                 pTexture -> Unload();
 
-                if( !pTexture -> Load( szPath ) )  {
-                    lua_pushboolean( pLuaState, false );
-
-                    return 1;
-                }
+                if( !pTexture -> Load( strPath.c_str() ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot load texture '" + strPath + "'" );
 
                 /*
                  * pTexture->GetDimension2D() is only reliable the first time
@@ -174,8 +326,8 @@ namespace Scarab  {
                  * down the correct value the first time and returns it on every
                  * later call regardless of what's currently aliased.
                  */
-                int  nNativeWidth  = pPool -> GetOrCacheNativeWidth( handle, nSequenceId, pTexture -> GetDimension2D().size.nWidth );
-                int  nTextureWidth = nNativeWidth / nFramesByTexture;
+                int  nNativeWidth  = pPool -> GetOrCacheNativeWidth( hSprite, nSequenceId, pTexture -> GetDimension2D().size.nWidth );
+                int  nTextureWidth = nNativeWidth / ( int ) nFramesByTexture;
 
                 /*
                  * Same caching for height (not frame-divided, but equally
@@ -184,12 +336,12 @@ namespace Scarab  {
                  * differs from each other (not the case for Satellite's own
                  * assets today, but will be for other enemy types).
                  */
-                pPool -> GetOrCacheNativeHeight( handle, nSequenceId, pTexture -> GetDimension2D().size.nHeight );
+                pPool -> GetOrCacheNativeHeight( hSprite, nSequenceId, pTexture -> GetDimension2D().size.nHeight );
 
-                pTexture -> SetCenterTileIndex( nActiveTileIndex );
-                pTexture -> SetActiveTileIndex( nActiveTileIndex );
+                pTexture -> SetCenterTileIndex( ( int ) nActiveTileIndex );
+                pTexture -> SetActiveTileIndex( ( int ) nActiveTileIndex );
                 pTexture -> SetTileSize( nTextureWidth );
-                pTexture -> SetAnimationMode( ( AnimationMode ) nAnimationMode );
+                pTexture -> SetAnimationMode( animationMode );
 
                 /*
                  * A recycled pool slot already holds this sequence's canvas: adding it again would
@@ -199,15 +351,13 @@ namespace Scarab  {
                  * delay; the canvas's parent, dimension and mode were set the first time round.
                  */
                 if( pSprite -> GetTextureSequenceSize( nSequenceId ) > 0 )
-                    pSprite -> SetTextureSequenceDelay( nSequenceId, nDelayMilli );
+                    pSprite -> SetTextureSequenceDelay( nSequenceId, ( int ) nDelayMilli );
                 else
-                    pSprite -> AddTextureSequence( nSequenceId, pTexture, nDelayMilli );
+                    pSprite -> AddTextureSequence( nSequenceId, pTexture, ( int ) nDelayMilli );
 
                 pSprite -> SetVisible( true );
 
-                lua_pushboolean( pLuaState, true );
-
-                return 1;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -217,13 +367,15 @@ namespace Scarab  {
              * C++ path (and the old path never had to worry about a recycled,
              * reconfigured texture's size becoming unreliable to re-read).
              *
-             * @luaname{sprite_set_active_sequence(handle, sequenceId) -> success}
+             * @luaname{sprite_set_active_sequence(handle, sequenceId) -> true | nil, message}
              * @luadoc
              * Switch which configured sequence is currently
              * displayed/collided against (also syncs the sprite's
              * bounding box to that sequence's size — important since a
              * "main" and an "explosion" sequence are often different
-             * sizes).
+             * sizes). Fails for an invalid handle and for a sequence never
+             * configured with `sprite_configure_texture`
+             * (`"sequence N is not configured"`).
              *
              * **Gotcha: this unconditionally resets the target
              * sequence's own animation state**, even if it's already the
@@ -274,31 +426,27 @@ namespace Scarab  {
              * @luaexample
              * sprite_set_active_sequence(handle, 1)  -- switch to the explosion sequence
              */
-            int LuaSpriteApi :: SetActiveSequence( lua_State *pLuaState )  {
+            int LuaSpriteApi :: SetActiveSequence( lua_State* pLuaState )  {
 
-                SpriteHandle  handle      = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                int           nSequenceId = ( int ) lua_tointeger( pLuaState, 2 );
+                std :: string  strError;
+                int            nSequenceId = 0;
 
-                SpritePool                    *pPool    = LuaEngineUtil :: GetSpritePool( pLuaState );
-                SunLight :: Sprite :: Sprite  *pSprite  = pPool -> Resolve( handle );
-                TextureCanvas                 *pTexture = pPool -> GetTexture( handle, nSequenceId );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                if( ( pSprite == nullptr ) || ( pTexture == nullptr ) )  {
-                    lua_pushboolean( pLuaState, false );
+                if( pSprite == nullptr || !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "sequenceId", nSequenceId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                    return 1;
-                }
+                SpriteHandle                          hSprite   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                SpritePool*                           pPool   = GetSpritePool( pLuaState );
+                SunLight :: Canvas :: TextureCanvas*  pTexture = pPool -> GetTexture( hSprite, nSequenceId );
 
-                bool  bResult = pSprite -> SetActiveTextureSequence( nSequenceId );
+                if( pTexture == nullptr || !pSprite -> SetActiveTextureSequence( nSequenceId ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "sequence " + std :: to_string( nSequenceId ) + " is not configured" );
 
-                if( bResult )  {
-                    pSprite -> GetDimension2D().size.nWidth  = pTexture -> GetTileSize();
-                    pSprite -> GetDimension2D().size.nHeight = pPool -> GetOrCacheNativeHeight( handle, nSequenceId, 0 );
-                }
+                pSprite -> GetDimension2D().size.nWidth  = pTexture -> GetTileSize();
+                pSprite -> GetDimension2D().size.nHeight = pPool -> GetOrCacheNativeHeight( hSprite, nSequenceId, 0 );
 
-                lua_pushboolean( pLuaState, bResult );
-
-                return 1;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -308,51 +456,54 @@ namespace Scarab  {
              * response to input, unlike enemies which set their mode once at
              * ConfigureTexture time and never touch it again.
              *
-             * @luaname{sprite_set_animation_mode(handle, sequenceId, mode) -> success}
+             * @luaname{sprite_set_animation_mode(handle, sequenceId, mode) -> true | nil, message}
              * @luadoc
              * Change a sequence's animation mode *after* it's already
              * configured — for sprites that switch modes at runtime
              * (e.g. the player ship banking left/right based on input).
              * Enemies that only ever set their mode once typically just
              * pass the final mode to `sprite_configure_texture` and never
-             * call this.
+             * call this. Fails for an invalid handle, an unknown mode, and a
+             * sequence never configured.
              * @luaexample
              * sprite_set_animation_mode(handle, 0, TEXTURE_ANIMATION_MODE_ANIMATE_LEFT)
              */
-            int LuaSpriteApi :: SetAnimationMode( lua_State *pLuaState )  {
+            int LuaSpriteApi :: SetAnimationMode( lua_State* pLuaState )  {
 
-                SpriteHandle  handle      = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                int           nSequenceId = ( int ) lua_tointeger( pLuaState, 2 );
-                int           nMode       = ( int ) lua_tointeger( pLuaState, 3 );
+                std :: string                         strError;
+                int                                   nSequenceId = 0;
+                SunLight :: Canvas :: AnimationMode   mode        = SunLight :: Canvas :: TEXTURE_ANIMATION_MODE_MANUAL;
 
-                TextureCanvas  *pTexture = LuaEngineUtil :: GetSpritePool( pLuaState ) -> GetTexture( handle, nSequenceId );
+                if( ResolveHandleArg( pLuaState, 1, strError ) == nullptr ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "sequenceId", nSequenceId, strError ) ||
+                    !ReadAnimationModeArg( pLuaState, 3, mode, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( pTexture == nullptr )  {
-                    lua_pushboolean( pLuaState, false );
+                SunLight :: Canvas :: TextureCanvas*  pTexture = GetSpritePool( pLuaState ) -> GetTexture( ( SpriteHandle ) lua_tointeger( pLuaState, 1 ), nSequenceId );
 
-                    return 1;
-                }
+                if( pTexture == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, "sequence " + std :: to_string( nSequenceId ) + " is not configured" );
 
-                pTexture -> SetAnimationMode( ( AnimationMode ) nMode );
+                pTexture -> SetAnimationMode( mode );
 
-                lua_pushboolean( pLuaState, true );
-
-                return 1;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sprite_get_active_sequence(handle) -> sequenceId}
+             * @luaname{sprite_get_active_sequence(handle) -> sequenceId | nil, message}
+             * @luadoc
+             * Which configured sequence the sprite shows now (the last
+             * `sprite_set_active_sequence`; `-1` after `tilemap_unload_map`
+             * unloaded it), or `nil, "invalid sprite handle"`.
              */
-            int LuaSpriteApi :: GetActiveSequence( lua_State *pLuaState )  {
+            int LuaSpriteApi :: GetActiveSequence( lua_State* pLuaState )  {
 
-                SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
 
-                if( pSprite == nullptr )  {
-                    lua_pushnil( pLuaState );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                    return 1;
-                }
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, pSprite -> GetActiveTextureSequence() );
 
@@ -360,41 +511,51 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{sprite_set_visible(handle, visible)}
+             * @luaname{sprite_set_visible(handle, visible) -> true | nil, message}
              * @luagroup{visibility}
              * @luaheading{Visibility}
+             * @luadoc
+             * `visible` must be a boolean. `sprite_get_visible` returns
+             * `nil, "invalid sprite handle"` for a handle that isn't live.
              * @luaexample
-             * sprite_set_visible(handle, visible)
-             * sprite_get_visible(handle) -> visible
+             * -- sprite_set_visible(handle, visible)
+             * -- sprite_get_visible(handle) -> visible
              */
-            int LuaSpriteApi :: SetVisible( lua_State *pLuaState )  {
+            int LuaSpriteApi :: SetVisible( lua_State* pLuaState )  {
 
-                SpriteHandle  handle   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                bool          bVisible = lua_toboolean( pLuaState, 2 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
+                bool           bVisible = false;
 
-                if( pSprite != nullptr )
-                    pSprite -> SetVisible( bVisible );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                return 0;
+                if( pSprite == nullptr || !LuaEngineUtil :: ReadBooleanArg( pLuaState, 2, "visible", bVisible, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetVisible( bVisible );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sprite_get_visible(handle) -> visible}
+             * @luaname{sprite_get_visible(handle) -> visible | nil, message}
              * @luagroup{visibility}
              */
-            int LuaSpriteApi :: GetVisible( lua_State *pLuaState )  {
+            int LuaSpriteApi :: GetVisible( lua_State* pLuaState )  {
 
-                SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
 
-                lua_pushboolean( pLuaState, ( pSprite != nullptr ) && pSprite -> GetVisible() );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, pSprite -> GetVisible() );
 
                 return 1;
             }
 
             /**
-             * @luaname{sprite_set_world_space(handle, world_space)}
+             * @luaname{sprite_set_world_space(handle, world_space) -> true | nil, message}
              * @luagroup{world_space}
              * @luaheading{World space}
              * @luadoc
@@ -411,41 +572,258 @@ namespace Scarab  {
              * **Collisions:** a collider uses its sprite's position as it is, so a world-space
              * sprite collides in *map* coordinates and a screen-relative one does not — do not
              * put both kinds in one collision rule. **Games that never call this are unchanged.**
-             * `sprite_get_world_space` reads it back (`false` for an invalid handle).
+             * `sprite_get_world_space` reads it back (`nil, "invalid sprite handle"` for a
+             * handle that isn't live); `world_space` must be a boolean.
              * @luaexample
              * local enemy = sprite_acquire( "enemy" )
              * sprite_configure_texture( enemy, 0, ... )
              * sprite_set_world_space( enemy, true )
              * sprite_set_pos( enemy, 640, 320 )   -- a MAP position: shown right in every view
              */
-            int LuaSpriteApi :: SetWorldSpace( lua_State *pLuaState )  {
+            int LuaSpriteApi :: SetWorldSpace( lua_State* pLuaState )  {
 
-                SpriteHandle  handle      = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                bool          bWorldSpace = lua_toboolean( pLuaState, 2 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
+                bool           bWorldSpace = false;
 
-                if( pSprite != nullptr )
-                    pSprite -> SetWorldSpace( bWorldSpace );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                return 0;
+                if( pSprite == nullptr || !LuaEngineUtil :: ReadBooleanArg( pLuaState, 2, "world_space", bWorldSpace, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetWorldSpace( bWorldSpace );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sprite_get_world_space(handle) -> world_space}
+             * @luaname{sprite_get_world_space(handle) -> world_space | nil, message}
              * @luagroup{world_space}
              */
-            int LuaSpriteApi :: GetWorldSpace( lua_State *pLuaState )  {
+            int LuaSpriteApi :: GetWorldSpace( lua_State* pLuaState )  {
 
-                SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
 
-                lua_pushboolean( pLuaState, ( pSprite != nullptr ) && pSprite -> IsWorldSpace() );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushboolean( pLuaState, pSprite -> IsWorldSpace() );
 
                 return 1;
             }
 
             /**
-             * @luaname{sprite_get_pos(handle) -> x, y}
+             * @luaname{sprite_set_blend_mode(handle, mode) -> true | nil, message}
+             * @luagroup{sprite_blend}
+             * @luaheading{Blend mode}
+             * @luadoc
+             * Give the sprite its own blend mode (a `BLEND_MODE_*` constant, see the Blend modes
+             * page): it draws by that mode in every view and the mode in effect is restored
+             * right after, so it affects that sprite alone — a glow in `BLEND_MODE_ADD`, a soft
+             * shadow in `BLEND_MODE_MULTIPLY`. It stays until `sprite_clear_blend_mode`;
+             * `sprite_release` clears it, so a recycled handle never inherits it.
+             *
+             * `sprite_get_blend_mode` returns the sprite's mode, or `nil` when it has none of its
+             * own. That is different from `BLEND_MODE_NORMAL`: a sprite with no mode draws by
+             * whatever mode is in effect, one set to `BLEND_MODE_NORMAL` always draws normally.
+             * A sprite is drawn before `on_update`, so `draw_begin_blend_mode` never reaches it.
+             *
+             * Failures are `nil, "message"`, like every sprite function: `"invalid sprite
+             * handle"`, `"unknown blend mode N"` or `"expected a BLEND_MODE_* constant"`.
+             * **Games that never call them are unchanged.**
+             * @luaexample
+             * local glow = sprite_acquire( "glow" )
+             * sprite_configure_texture( glow, ... )
+             * assert( sprite_set_blend_mode( glow, BLEND_MODE_ADD ) )   -- always drawn as a light
+             * assert( sprite_get_blend_mode( glow ) == BLEND_MODE_ADD )
+             * sprite_clear_blend_mode( glow )
+             * assert( sprite_get_blend_mode( glow ) == nil )             -- no mode of its own
+             */
+            int LuaSpriteApi :: SetBlendMode( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                SunLight :: Base :: BlendMode   mode    = SunLight :: Base :: BLEND_MODE_NORMAL;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !LuaBlendApi :: ReadBlendMode( pLuaState, 2, mode, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetBlendMode( mode );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_clear_blend_mode(handle) -> true | nil, message}
+             * @luagroup{sprite_blend}
+             */
+            int LuaSpriteApi :: ClearBlendMode( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> ClearBlendMode();
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_get_blend_mode(handle) -> mode | nil | nil, message}
+             * @luagroup{sprite_blend}
+             */
+            int LuaSpriteApi :: GetBlendMode( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pSprite -> HasBlendMode() )  {
+                    lua_pushnil( pLuaState );
+                    return 1;
+                }
+
+                lua_pushinteger( pLuaState, pSprite -> GetBlendMode() );
+
+                return 1;
+            }
+
+            /**
+             * @luaname{sprite_set_opacity(handle, opacity) -> true | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             * @luaheading{Opacity and tint}
+             * @luadoc
+             * A sprite's own **opacity**, a number from `0` (transparent) to `1`
+             * (opaque, the default) - the same unit as a layer's opacity
+             * (`tilemap_set_layer`) - and its own **tint**, four integers
+             * `0`..`255`, opaque white (`255, 255, 255, 255`, no tint) by default.
+             * The tint's `r`, `g`, `b` multiply into the sprite's frame, as a
+             * layer's tint does into its tiles: `255, 255, 255` changes nothing,
+             * `255, 80, 80` reddens it (a hit flash), `120, 160, 255` turns it
+             * blue (a team colour). The tint's `a` is kept and read back but
+             * **ignored for drawing** - the opacity is the only alpha control.
+             *
+             * Both apply to whatever frame the sprite draws, in every sequence and
+             * every view, until changed; the next frame draws with them. They are
+             * the sprite's own: two sprites showing the same texture keep their
+             * own opacity and tint, and a sprite does **not** take its layer's
+             * opacity or tint. `sprite_release` resets both, so a recycled handle
+             * starts opaque and untinted. Opacity reads back exactly as written
+             * (`0.3` reads `0.3`).
+             *
+             * Failures are `nil, "message"`, like every sprite function: `"invalid
+             * sprite handle"`, an opacity outside `0`..`1` (or not a number), or a
+             * channel outside `0`..`255`. `a` may be left out (`255`).
+             * **Games that never call them are unchanged.**
+             * @luaexample
+             * sprite_set_opacity( ghost, 0.5 )                -- half transparent
+             * sprite_set_tint( player, 255, 80, 80 )         -- a red hit flash ...
+             * sprite_set_tint( player, 255, 255, 255 )       -- ... and back to none
+             * local r, g, b, a = sprite_get_tint( player )   -- 255, 255, 255, 255
+             * -- a fade-out over one second, from on_update
+             * fade = math.max( 0, fade - dt / 1000 )
+             * sprite_set_opacity( ghost, fade )
+             */
+            int LuaSpriteApi :: SetOpacity( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                double                          fOpacity = __SPRITE_OPACITY_MAX;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr ||
+                    !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2, "opacity", __SPRITE_OPACITY_MIN, __SPRITE_OPACITY_MAX, fOpacity, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetOpacity( ( float ) fOpacity );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_get_opacity(handle) -> opacity | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             */
+            int LuaSpriteApi :: GetOpacity( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushnumber( pLuaState, LuaEngineUtil :: ShortestDecimal( pSprite -> GetOpacity() ) );
+
+                return 1;
+            }
+
+            /**
+             * @luaname{sprite_set_tint(handle, r, g, b[, a]) -> true | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             */
+            int LuaSpriteApi :: SetTint( lua_State* pLuaState )  {
+
+                static const char * const  aszChannel[__RGB_CHANNELS] = { "r", "g", "b" };
+
+                std :: string                   strError;
+                lua_Integer                     anChannel[__RGB_CHANNELS] = { 0, 0, 0 };
+                lua_Integer                     nAlpha       = UCHAR_MAX;
+                SunLight :: Sprite :: Sprite*   pSprite     = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                for( int nArg = 0; nArg < __RGB_CHANNELS; nArg++ )
+                    if( !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 2 + nArg, aszChannel[nArg], 0, UCHAR_MAX, anChannel[nArg], strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !lua_isnoneornil( pLuaState, 5 ) &&
+                    !LuaEngineUtil :: ReadIntegerArgInRange( pLuaState, 5, "a", 0, UCHAR_MAX, nAlpha, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: Base :: stColor  tint;
+
+                tint.nRed   = ( unsigned char ) anChannel[0];
+                tint.nGreen = ( unsigned char ) anChannel[1];
+                tint.nBlue  = ( unsigned char ) anChannel[2];
+                tint.nAlpha = ( unsigned char ) nAlpha;
+
+                pSprite -> SetTint( tint );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @luaname{sprite_get_tint(handle) -> r, g, b, a | nil, message}
+             * @luagroup{sprite_opacity_tint}
+             */
+            int LuaSpriteApi :: GetTint( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                SunLight :: Base :: stColor  tint = pSprite -> GetTint();
+
+                lua_pushinteger( pLuaState, tint.nRed );
+                lua_pushinteger( pLuaState, tint.nGreen );
+                lua_pushinteger( pLuaState, tint.nBlue );
+                lua_pushinteger( pLuaState, tint.nAlpha );
+
+                return 4;
+            }
+
+            /**
+             * @luaname{sprite_get_pos(handle) -> x, y | nil, message}
              * @luagroup{position_size}
              * @luaheading{Position and size}
              * @luadoc
@@ -454,23 +832,26 @@ namespace Scarab  {
              * render clip rect and the AABB collision math. `pos -
              * height/2` means "above the sprite's own top edge," not
              * "above center."
+             *
+             * `x` and `y` must be integers: a fractional value like `3.5` is
+             * an error (it used to be silently written as `0`, which made a
+             * sprite moved by a fractional velocity look stuck) — round it
+             * with `math.floor` first.
              * @luaexample
-             * sprite_get_pos(handle) -> x, y
-             * sprite_set_pos(handle, x, y)
-             * sprite_get_size(handle) -> width, height
+             * -- sprite_get_pos(handle) -> x, y
+             * -- sprite_set_pos(handle, x, y)
+             * -- sprite_get_size(handle) -> width, height
              */
-            int LuaSpriteApi :: GetPos( lua_State *pLuaState )  {
+            int LuaSpriteApi :: GetPos( lua_State* pLuaState )  {
 
-                SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
 
-                if( pSprite == nullptr )  {
-                    lua_pushnil( pLuaState );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                    return 1;
-                }
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: stCoordinate2D&  pos = pSprite -> GetDimension2D().pos;
+                SunLight :: Base :: stCoordinate2D&  pos = pSprite -> GetDimension2D().pos;
 
                 lua_pushinteger( pLuaState, pos.x );
                 lua_pushinteger( pLuaState, pos.y );
@@ -479,40 +860,42 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{sprite_set_pos(handle, x, y)}
+             * @luaname{sprite_set_pos(handle, x, y) -> true | nil, message}
              * @luagroup{position_size}
              */
-            int LuaSpriteApi :: SetPos( lua_State *pLuaState )  {
+            int LuaSpriteApi :: SetPos( lua_State* pLuaState )  {
 
-                SpriteHandle  handle = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                int           nX     = ( int ) lua_tointeger( pLuaState, 2 );
-                int           nY     = ( int ) lua_tointeger( pLuaState, 3 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
+                int            nX = 0;
+                int            nY = 0;
 
-                if( pSprite != nullptr )  {
-                    pSprite -> GetDimension2D().pos.x = nX;
-                    pSprite -> GetDimension2D().pos.y = nY;
-                }
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                return 0;
+                if( pSprite == nullptr ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "x", nX, strError ) ||
+                    !LuaEngineUtil :: ReadIntArg( pLuaState, 3, "y", nY, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> GetDimension2D().pos.x = nX;
+                pSprite -> GetDimension2D().pos.y = nY;
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{sprite_get_size(handle) -> width, height}
+             * @luaname{sprite_get_size(handle) -> width, height | nil, message}
              * @luagroup{position_size}
              */
-            int LuaSpriteApi :: GetSize( lua_State *pLuaState )  {
+            int LuaSpriteApi :: GetSize( lua_State* pLuaState )  {
 
-                SpriteHandle  handle  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
 
-                if( pSprite == nullptr )  {
-                    lua_pushnil( pLuaState );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                    return 1;
-                }
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                SunLight :: TileMap :: stSize2D&  size = pSprite -> GetDimension2D().size;
+                SunLight :: Base :: stSize2D&  size = pSprite -> GetDimension2D().size;
 
                 lua_pushinteger( pLuaState, size.nWidth );
                 lua_pushinteger( pLuaState, size.nHeight );
@@ -533,7 +916,7 @@ namespace Scarab  {
              * sprite's drawn size/position and how other sprites see it are
              * untouched.
              *
-             * @luaname{sprite_set_collision_inset(handle, leftPct, topPct, rightPct, bottomPct)}
+             * @luaname{sprite_set_collision_inset(handle, leftPct, topPct, rightPct, bottomPct) -> true | nil, message}
              * @luaheading{Collision inset}
              * @luadoc
              * Shrinks the rectangle used for this sprite's own side of a
@@ -553,24 +936,30 @@ namespace Scarab  {
              * until called — only affects this sprite's own side of the
              * test, not how other sprites collide against each other.
              * Only shrinks the collision rectangle, never the drawn
-             * sprite or it's tracked position.
+             * sprite or it's tracked position. A fraction outside `0.0`-`1.0`,
+             * or a non-number, is an error.
              * @luaexample
              * sprite_set_collision_inset(handle, leftPct, topPct, rightPct, bottomPct)
              */
-            int LuaSpriteApi :: SetCollisionInset( lua_State *pLuaState )  {
+            int LuaSpriteApi :: SetCollisionInset( lua_State* pLuaState )  {
 
-                SpriteHandle  handle    = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                float         fLeftPct  = ( float ) lua_tonumber( pLuaState, 2 );
-                float         fTopPct   = ( float ) lua_tonumber( pLuaState, 3 );
-                float         fRightPct = ( float ) lua_tonumber( pLuaState, 4 );
-                float         fBottomPct = ( float ) lua_tonumber( pLuaState, 5 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                static const char * const  aszNames[__INSET_SIDES] = { "leftPct", "topPct", "rightPct", "bottomPct" };
 
-                if( pSprite != nullptr )  {
-                    pSprite -> GetCollider().SetInset( fLeftPct, fTopPct, fRightPct, fBottomPct );
-                }
+                std :: string  strError;
+                double         afInset[__INSET_SIDES] = { 0.0, 0.0, 0.0, 0.0 };
 
-                return 0;
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                for( int nArg = 0; nArg < __INSET_SIDES; nArg++ )
+                    if( !LuaEngineUtil :: ReadNumberArgInRange( pLuaState, 2 + nArg, aszNames[nArg], 0.0, 1.0, afInset[nArg], strError ) )
+                        return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> GetCollider().SetInset( ( float ) afInset[0], ( float ) afInset[1], ( float ) afInset[2], ( float ) afInset[3] );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
@@ -579,7 +968,7 @@ namespace Scarab  {
              * collision callback can decode which sprite collided without
              * exposing raw pointers to Lua.
              *
-             * @luaname{sprite_add_to_layer(handle, layerId) -> success}
+             * @luaname{sprite_add_to_layer(handle, layerId [, world]) -> true | nil, message}
              * @luagroup{layers}
              * @luaheading{Layers}
              * @luadoc
@@ -587,72 +976,176 @@ namespace Scarab  {
              * collision detection on that layer (see [collision.md](collision.md)) — a
              * sprite never added to any layer never collides with
              * anything, regardless of `collision_add_rule`.
+             *
+             * Fails for an invalid handle, for a layer id that isn't a layer of
+             * the loaded map (`"layer N is not a layer of the loaded map"` —
+             * before, that silently drew nothing), and for a sprite already on
+             * that layer. With no map loaded yet any layer id is accepted, and
+             * the sprite is drawn right away: without a map a layer id is a
+             * grouping key, drawn in ascending id order, that a view's layer
+             * mask hides by id (`samples/mapless`).
+             * Layer ids are integers from `0` to `254`.
+             * `sprite_remove_from_layer` fails when the sprite isn't on that
+             * layer.
+             *
+             * **Worlds** ([worlds.md](worlds.md)): the optional `world` is
+             * the world whose layer it is - the default world when left out,
+             * so existing code is unchanged. In a world of several maps the
+             * layer id is a world layer id (`world_layer_id`). A sprite is in
+             * one world at a time: adding it to a layer of another world fails
+             * with `"the sprite is in world N: take it off its layer there
+             * first"`. `sprite_remove_from_layer` takes the same `world`.
              * @luaexample
-             * sprite_add_to_layer(handle, layerId) -> success
-             * sprite_remove_from_layer(handle, layerId) -> success
+             * assert( sprite_add_to_layer(handle, layerId) )
+             * sprite_remove_from_layer(handle, layerId)
+             * assert( sprite_add_to_layer( hero, world_layer_id( dungeon, "objects" ), dungeon ) )
              */
-            int LuaSpriteApi :: AddToLayer( lua_State *pLuaState )  {
+            int LuaSpriteApi :: AddToLayer( lua_State* pLuaState )  {
 
-                SpriteHandle  handle   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                int           nLayerId = ( int ) lua_tointeger( pLuaState, 2 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
+                std :: string  strError;
+                int            nLayerId = 0;
 
-                if( pSprite == nullptr )  {
-                    lua_pushboolean( pLuaState, false );
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
 
-                    return 1;
-                }
+                if( pSprite == nullptr || !ReadLayerIdArg( pLuaState, 2, nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                bool  bResult = LuaEngineUtil :: GetTileMap( pLuaState ) -> AddSprite( nLayerId, *pSprite );
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 3, strError );
 
-                if( bResult )  {
-                    pSprite -> GetCollider().SetParent( pSprite );
-                    pSprite -> GetCollider().SetPtrData( PackSpriteHandleAsPtr( handle ) );
-                }
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                lua_pushboolean( pLuaState, bResult );
+                SpriteHandle                        hSprite  = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
+                SpritePool*                         pPool    = GetSpritePool( pLuaState );
+                int                                 nWorldId = pWorld -> GetId();
+                int                                 nHeldBy  = pPool -> GetWorld( hSprite );
+                SunLight :: TileMap :: stMapInfo    mapInfo;
+                SunLight :: TileMap :: stLayer      layer;
+
+                // With no map loaded any layer id is accepted, and the sprite is drawn right away (V8: a layer id is then a grouping key).
+                if( pWorld -> GetMapInfo( mapInfo ) && !pWorld -> GetLayer( nLayerId, layer ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "layer " + std :: to_string( nLayerId ) + " is not a layer of the loaded map" );
+
+                if( ( nHeldBy >= 0 ) && ( nHeldBy != nWorldId ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the sprite is in world " + std :: to_string( nHeldBy ) + ": take it off its layer there first" );
+
+                if( !pWorld -> AddSprite( nLayerId, *pSprite ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the sprite is already on layer " + std :: to_string( nLayerId ) );
+
+                pPool -> NoteRegistered( hSprite, nWorldId, nLayerId );
+                pSprite -> GetCollider().SetParent( pSprite );
+                pSprite -> GetCollider().SetPtrData( PackSpriteHandleAsPtr( hSprite ) );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Take a sprite off a layer of a world (the default world when none is given).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{sprite_remove_from_layer(handle, layerId [, world]) -> true | nil, message}
+             * @luagroup{layers}
+             */
+            int LuaSpriteApi :: RemoveFromLayer( lua_State* pLuaState )  {
+
+                std :: string  strError;
+                int            nLayerId = 0;
+
+                SunLight :: Sprite :: Sprite*  pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr || !ReadLayerIdArg( pLuaState, 2, nLayerId, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                std :: shared_ptr<SunLight :: TileMap :: IWorld>  pWorld = LuaWorldApi :: ReadOptionalWorldArg( pLuaState, 3, strError );
+
+                if( !pWorld )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                if( !pWorld -> RemoveSprite( nLayerId, *pSprite ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "the sprite is not on layer " + std :: to_string( nLayerId ) );
+
+                GetSpritePool( pLuaState ) -> NoteUnregistered( ( SpriteHandle ) lua_tointeger( pLuaState, 1 ), pWorld -> GetId(), nLayerId );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Set a sprite's z-order (sunlight's Sprite::SetZOrder): which of a layer's sprites draws on
+             * top. Every frame sunlight draws a layer's sprites in ascending z-order, so a higher one draws later.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{sprite_set_z_order(handle, z) -> true | nil, message}
+             * @luagroup{sprite_z_order}
+             * @luaheading{Z-order}
+             * @luadoc
+             * Which of a layer's sprites draws on top. Every frame, the sprites of
+             * one layer are drawn in ascending **z-order**: a higher `z` draws
+             * later, so on top of the others; `0` is the default, and `z` is any
+             * integer, negative too (to send a sprite behind the rest). It orders
+             * sprites **on the same layer only**: layers still draw in their own
+             * order, so a sprite on a higher layer is always above, whatever its
+             * z-order. It applies in every view.
+             *
+             * The z-order belongs to the sprite: it is kept when the sprite moves
+             * to another layer or is configured again, and `sprite_release` resets
+             * it to `0`, so a recycled handle never stays on top by accident.
+             * Sprites with the **same** z-order always draw in the order they were
+             * added to the layer, whatever z-orders they had before (a sprite
+             * removed and added again is last among its equals - that is its new
+             * place). Failures are `nil, "message"`: `"invalid sprite handle"`,
+             * or a `z` that is not a whole number within the range of a C `int`.
+             * **Games that never call them are unchanged.**
+             * @luaexample
+             * sprite_set_z_order( shadow, -1 )      -- under the others on its layer
+             * sprite_set_z_order( flash, 10 )       -- on top ...
+             * sprite_set_z_order( flash, 0 )        -- ... and back
+             * print( sprite_get_z_order( flash ) )  -- 0
+             */
+            int LuaSpriteApi :: SetZOrder( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                int                             nZOrder = 0;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr || !LuaEngineUtil :: ReadIntArg( pLuaState, 2, "z", nZOrder, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                pSprite -> SetZOrder( nZOrder );
+
+                return LuaEngineUtil :: PushTrue( pLuaState );
+            }
+
+            /**
+             * @brief Read a sprite's z-order (sunlight's Sprite::GetZOrder; 0 unless sprite_set_z_order changed it).
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @return int number of return data (if any - required by lua engine)
+             *
+             * @luaname{sprite_get_z_order(handle) -> z | nil, message}
+             * @luagroup{sprite_z_order}
+             */
+            int LuaSpriteApi :: GetZOrder( lua_State* pLuaState )  {
+
+                std :: string                   strError;
+                SunLight :: Sprite :: Sprite*   pSprite = ResolveHandleArg( pLuaState, 1, strError );
+
+                if( pSprite == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                lua_pushinteger( pLuaState, pSprite -> GetZOrder() );
 
                 return 1;
             }
 
             /**
-             * @luaname{sprite_remove_from_layer(handle, layerId) -> success}
-             * @luagroup{layers}
+             * @brief Register this module's constant groups as Lua globals (see each group's @luaconstants).
+             * @param pLuaState Lua state to be used by engine call;
              */
-            int LuaSpriteApi :: RemoveFromLayer( lua_State *pLuaState )  {
-
-                SpriteHandle  handle   = ( SpriteHandle ) lua_tointeger( pLuaState, 1 );
-                int           nLayerId = ( int ) lua_tointeger( pLuaState, 2 );
-                SunLight :: Sprite :: Sprite  *pSprite = LuaEngineUtil :: GetSpritePool( pLuaState ) -> Resolve( handle );
-
-                if( pSprite == nullptr )  {
-                    lua_pushboolean( pLuaState, false );
-
-                    return 1;
-                }
-
-                lua_pushboolean( pLuaState, LuaEngineUtil :: GetTileMap( pLuaState ) -> RemoveSprite( nLayerId, *pSprite ) );
-
-                return 1;
-            }
-
-            void LuaSpriteApi :: RegisterEnums( lua_State *pLuaState )  {
-
-                /**
-                 * @luaconstants{Animation modes}
-                 * @luadoc
-                 * The `animationMode` argument `sprite_configure_texture`/
-                 * `sprite_set_animation_mode` take — see either
-                 * primitive's own doc for the full behavior of each mode.
-                 */
-                static const stNamedConstant  s_aAnimationModes[] = {
-                    __CONST( TEXTURE_ANIMATION_MODE_MANUAL ),
-                    __CONST( TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR ),
-                    __CONST( TEXTURE_ANIMATION_MODE_AUTOMATIC_RIGHT_LEFT ),
-                    __CONST( TEXTURE_ANIMATION_MODE_ANIMATE_LEFT ),
-                    __CONST( TEXTURE_ANIMATION_MODE_ANIMATE_RIGHT ),
-                    __CONST( TEXTURE_ANIMATION_MODE_ANIMATE_CENTER ),
-                };
+            void LuaSpriteApi :: RegisterEnums( lua_State* pLuaState )  {
 
                 LuaEngineUtil :: RegisterConstants( pLuaState, s_aAnimationModes, sizeof( s_aAnimationModes ) / sizeof( s_aAnimationModes[0] ) );
             }
@@ -660,7 +1153,7 @@ namespace Scarab  {
             /**
              * @brief Register the sprite pool Lua-callable functions and enums.
              */
-            void LuaSpriteApi :: Register( lua_State *pLuaState )  {
+            void LuaSpriteApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "pool_register_type", LuaSpriteApi :: RegisterType );
                 lua_register( pLuaState, "sprite_acquire", LuaSpriteApi :: Acquire );
@@ -673,6 +1166,15 @@ namespace Scarab  {
                 lua_register( pLuaState, "sprite_get_visible", LuaSpriteApi :: GetVisible );
                 lua_register( pLuaState, "sprite_set_world_space", LuaSpriteApi :: SetWorldSpace );
                 lua_register( pLuaState, "sprite_get_world_space", LuaSpriteApi :: GetWorldSpace );
+                lua_register( pLuaState, "sprite_set_blend_mode", LuaSpriteApi :: SetBlendMode );
+                lua_register( pLuaState, "sprite_clear_blend_mode", LuaSpriteApi :: ClearBlendMode );
+                lua_register( pLuaState, "sprite_get_blend_mode", LuaSpriteApi :: GetBlendMode );
+                lua_register( pLuaState, "sprite_set_opacity", LuaSpriteApi :: SetOpacity );
+                lua_register( pLuaState, "sprite_get_opacity", LuaSpriteApi :: GetOpacity );
+                lua_register( pLuaState, "sprite_set_tint", LuaSpriteApi :: SetTint );
+                lua_register( pLuaState, "sprite_get_tint", LuaSpriteApi :: GetTint );
+                lua_register( pLuaState, "sprite_set_z_order", LuaSpriteApi :: SetZOrder );
+                lua_register( pLuaState, "sprite_get_z_order", LuaSpriteApi :: GetZOrder );
                 lua_register( pLuaState, "sprite_get_pos", LuaSpriteApi :: GetPos );
                 lua_register( pLuaState, "sprite_set_pos", LuaSpriteApi :: SetPos );
                 lua_register( pLuaState, "sprite_get_size", LuaSpriteApi :: GetSize );

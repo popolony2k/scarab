@@ -20,13 +20,13 @@
 
 #include "lua/luafilesystemapi.h"
 #include "lua/luacryptoapi.h"
+#include "lua/luasandboxapi.h"
 #include "filesystem/filesystemfactory.h"
 
 #include <string>
 #include <vector>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -64,7 +64,7 @@ namespace Scarab  {
              * which wouldn't run C++ destructors for anything still alive
              * on this stack frame at that point.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              * @return Number of values the loaded chunk itself returned
              * (required by the Lua C API calling convention);
              *
@@ -90,44 +90,26 @@ namespace Scarab  {
              * `SCARAB_CONTENT_KEY` is tried automatically, falling back
              * to the file as plain Lua source if it doesn't apply (no
              * key configured, or the file just isn't encrypted).
+             *
+             * The file is found by the path rule (the save directory,
+             * then the game's own files - see "The sandbox and how
+             * paths are found"), and in the sandbox only text chunks
+             * run: a precompiled one is an error.
              * @luaexample
              * -- runs identically whether the game is a loose directory or a mounted .zip
              * dofile( BASE_PATH .. "scripts/stages/1st_stage_corsair.lua" )
              */
-            int LuaFileSystemApi :: DoFile( lua_State *pLuaState )  {
+            int LuaFileSystemApi :: DoFile( lua_State* pLuaState )  {
 
-                const char  *szFileName = lua_tostring( pLuaState, 1 );
+                const char*  szFileName = lua_tostring( pLuaState, 1 );
 
                 if( !szFileName )
                     return luaL_error( pLuaState, "dofile: expected a file name" );
 
                 lua_settop( pLuaState, 1 );
 
-                int  nLoadStatus;
-
-                {
-                    std :: vector<unsigned char>  data;
-
-                    if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( szFileName, data ) )
-                        return luaL_error( pLuaState, "cannot open %s", szFileName );
-
-                    // Transparent content-encryption support (see the root
-                    // README.md's own "Content encryption" section) - see
-                    // LuaEngine::RunFile's own identical hook for the full
-                    // rationale; silently falls back to the raw bytes as-is
-                    // (plaintext) if decryption doesn't apply.
-                    std :: vector<unsigned char>  decrypted;
-
-                    if( LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )
-                        data = std :: move( decrypted );
-
-                    std :: string  strChunkName = std :: string( "@" ) + szFileName;
-
-                    nLoadStatus = luaL_loadbuffer( pLuaState, reinterpret_cast<const char *>( data.data() ), data.size(), strChunkName.c_str() );
-                }
-
-                if( nLoadStatus != LUA_OK )
-                    return lua_error( pLuaState );  // error message already pushed by luaL_loadbuffer
+                if( LoadChunk( pLuaState, szFileName, LuaSandboxApi :: GetChunkMode( pLuaState ) ) != LUA_OK )
+                    return lua_error( pLuaState );  // the message is already pushed
 
                 lua_call( pLuaState, 0, LUA_MULTRET );
 
@@ -135,13 +117,47 @@ namespace Scarab  {
             }
 
             /**
+             * @brief Load a Lua chunk from a file through SunLight::FileSystem (the path rule, docs/history/master_plan_11_2026.md
+             * item C8), shared by dofile, loadfile, require and the entry script: the whole file read, decrypted
+             * when it is content-encrypted (LuaCryptoApi::TryDecryptBytes, which leaves plain text as it is), and
+             * loaded with luaL_loadbufferx. The chunk is named '@' + the path, as luaL_loadfile names it, so
+             * errors and tracebacks show the file. The file's bytes are released before this returns, so a
+             * caller may raise the error right after.
+             *
+             * @param pLuaState Lua state to be used by engine call;
+             * @param strPath The file's path;
+             * @param szMode Lua's chunk mode: "t" (text only - the sandbox's) or "bt";
+             * @return LUA_OK with the chunk pushed, or an error status with the message pushed;
+             */
+            int LuaFileSystemApi :: LoadChunk( lua_State* pLuaState, const std :: string& strPath, const char* szMode )  {
+
+                std :: vector<unsigned char>  data;
+
+                if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strPath, data ) )  {
+                    lua_pushfstring( pLuaState, "cannot open %s", strPath.c_str() );
+                    return LUA_ERRFILE;
+                }
+
+                // Transparent content-encryption support (see the root README.md's own "Content encryption"
+                // section): plain text is left as it is.
+                std :: vector<unsigned char>  decrypted;
+
+                if( LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )
+                    data = std :: move( decrypted );
+
+                std :: string  strChunkName = std :: string( "@" ) + strPath;
+
+                return luaL_loadbufferx( pLuaState, reinterpret_cast<const char *>( data.data() ), data.size(), strChunkName.c_str(), szMode );
+            }
+
+            /**
              * @brief Register the file-loading Lua overrides. Must run
              * AFTER luaL_openlibs() - it's replacing that library's own
              * dofile, not adding a new global.
              *
-             * @param pLuaState Lua state to be used by engine call.
+             * @param pLuaState Lua state to be used by engine call;
              */
-            void LuaFileSystemApi :: Register( lua_State *pLuaState )  {
+            void LuaFileSystemApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "dofile", LuaFileSystemApi :: DoFile );
             }

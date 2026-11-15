@@ -27,12 +27,10 @@
 #include <cstring>
 #include <string>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
-using namespace SunLight :: Renderer;
 
 /*
  * Named constants for the values this file would otherwise hardcode.
@@ -43,32 +41,14 @@ using namespace SunLight :: Renderer;
 #define __ORIGIN_NAME_CREATED          "created"
 #define __ORIGIN_NAME_LAZY_DEFAULT     "lazy_default"
 
+/** A viewport's fields: x, y, w, h. */
+#define __RECT_FIELDS  4
+
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
 
-            /**
-             * @brief Push `nil, message` - the failure convention of every function in this file.
-             */
-            static int PushError( lua_State *pLuaState, const std :: string &strMessage )  {
 
-                lua_pushnil( pLuaState );
-                lua_pushstring( pLuaState, strMessage.c_str() );
-
-                return 2;
-            }
-
-            /**
-             * @brief Format a number the way a user would write it in a config file (3.8125, 16).
-             */
-            static std :: string FormatNumber( double fValue )  {
-
-                char  szBuffer[64];
-
-                snprintf( szBuffer, sizeof( szBuffer ), "%g", fValue );
-
-                return szBuffer;
-            }
 
             /**
              * @brief Check a zoom FACTOR and convert it to sunlight's zoom position.
@@ -84,7 +64,7 @@ namespace Scarab  {
              * @param nZoomPos Receives the zoom position on success;
              * @param strError Receives the reason on failure;
              */
-            bool LuaRendererApi :: ValidateZoomFactor( double fFactor, unsigned &nZoomPos, std :: string &strError )  {
+            bool LuaRendererApi :: ValidateZoomFactor( double fFactor, unsigned& nZoomPos, std :: string& strError )  {
 
                 double  fMin  = SunLight :: Base :: ZOOM_FACTOR_MIN;
                 double  fMax  = SunLight :: Base :: ZOOM_FACTOR_MAX;
@@ -100,14 +80,14 @@ namespace Scarab  {
                 double  fNearest      = fNearestSteps * SunLight :: Base :: ZOOM_STEP;
 
                 if( std :: fabs( fSteps - fWhole ) > __ZOOM_EXACT_TOLERANCE )  {
-                    strError = "zoom factor " + FormatNumber( fFactor ) + " is not a multiple of " +
-                               FormatNumber( SunLight :: Base :: ZOOM_STEP ) + " - nearest valid is " + FormatNumber( fNearest );
+                    strError = "zoom factor " + LuaEngineUtil :: FormatNumber( fFactor ) + " is not a multiple of " +
+                               LuaEngineUtil :: FormatNumber( SunLight :: Base :: ZOOM_STEP ) + " - nearest valid is " + LuaEngineUtil :: FormatNumber( fNearest );
                     return false;
                 }
 
                 if( fWhole < 1.0 || fWhole > ( double ) SunLight :: Base :: ZOOM_POS_COUNT )  {
-                    strError = "zoom factor " + FormatNumber( fFactor ) + " is outside [" + FormatNumber( fMin ) + ", " +
-                               FormatNumber( fMax ) + "] - nearest valid is " + FormatNumber( fNearest );
+                    strError = "zoom factor " + LuaEngineUtil :: FormatNumber( fFactor ) + " is outside [" + LuaEngineUtil :: FormatNumber( fMin ) + ", " +
+                               LuaEngineUtil :: FormatNumber( fMax ) + "] - nearest valid is " + LuaEngineUtil :: FormatNumber( fNearest );
                     return false;
                 }
 
@@ -116,19 +96,25 @@ namespace Scarab  {
                 return true;
             }
 
+            /** @brief factor(p) = (p + 1) x ZOOM_STEP - see sunlight's ZOOM_* constants. */
+            double LuaRendererApi :: FactorOfPosition( unsigned nZoomPos )  {
+
+                return ( ( double ) nZoomPos + 1.0 ) * SunLight :: Base :: ZOOM_STEP;
+            }
+
             /**
              * @brief Read an integer option: a Lua number with an exact integer value (a JSON
              * `1260` arrives as an integer, `1260.0` is accepted too; `1260.5` and strings are not).
              */
-            static bool ReadInteger( lua_State *pLuaState, int nIndex, const std :: string &strName,
-                                     lua_Integer nMin, lua_Integer nMax, lua_Integer &nOut, std :: string &strError )  {
+            static bool ReadInteger( lua_State* pLuaState, int nIndex, const std :: string& strName,
+                                     lua_Integer nMin, lua_Integer nMax, lua_Integer& nOut, std :: string& strError )  {
 
-                int  bIsInteger = 0;
+                int  nIsInteger = 0;
 
                 if( lua_type( pLuaState, nIndex ) == LUA_TNUMBER )
-                    nOut = lua_tointegerx( pLuaState, nIndex, &bIsInteger );
+                    nOut = lua_tointegerx( pLuaState, nIndex, &nIsInteger );
 
-                if( !bIsInteger )  {
+                if( !nIsInteger )  {
                     strError = "option '" + strName + "' must be an integer";
                     return false;
                 }
@@ -142,7 +128,16 @@ namespace Scarab  {
                 return true;
             }
 
-            static bool ReadBoolean( lua_State *pLuaState, int nIndex, const std :: string &strName, bool &bOut, std :: string &strError )  {
+            /**
+             * @brief Read a boolean option of renderer_create's table (strict: true or false, nothing else).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param nIndex Stack index of the option's value;
+             * @param strName The option's name, for the error message;
+             * @param bOut Receives the value;
+             * @param strError Receives the reason on failure;
+             * @return true if the value is a boolean;
+             */
+            static bool ReadBoolean( lua_State* pLuaState, int nIndex, const std :: string& strName, bool& bOut, std :: string& strError )  {
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TBOOLEAN )  {
                     strError = "option '" + strName + "' must be a boolean";
@@ -159,9 +154,9 @@ namespace Scarab  {
              * is required and any other key is rejected, so a misspelt field is an error, not a
              * silently ignored one.
              */
-            static bool ReadIntegerFields( lua_State *pLuaState, int nIndex, const std :: string &strName,
-                                           const char * const *aszFields, size_t nFields,
-                                           lua_Integer nMin, lua_Integer nMax, lua_Integer *aOut, std :: string &strError )  {
+            static bool ReadIntegerFields( lua_State* pLuaState, int nIndex, const std :: string& strName,
+                                           const char * const* aszFields, size_t nFields,
+                                           lua_Integer nMin, lua_Integer nMax, lua_Integer* aOut, std :: string& strError )  {
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TTABLE )  {
                     strError = "option '" + strName + "' must be a table";
@@ -176,7 +171,7 @@ namespace Scarab  {
                     bool  bKnown = false;
 
                     if( lua_type( pLuaState, -2 ) == LUA_TSTRING )  {
-                        const char  *szKey = lua_tostring( pLuaState, -2 );
+                        const char*  szKey = lua_tostring( pLuaState, -2 );
 
                         for( size_t nField = 0; nField < nFields; nField++ )
                             if( strcmp( szKey, aszFields[nField] ) == 0 )
@@ -222,8 +217,8 @@ namespace Scarab  {
              * exact reason. Options left out keep the value already in *pConfig (Scarab's
              * defaults). Also reports which of the null-backend-only options were given.
              */
-            static bool ParseOptions( lua_State *pLuaState, int nTable, RendererConfig &config,
-                                      bool &bNullOnlyGiven, std :: string &strError )  {
+            static bool ParseOptions( lua_State* pLuaState, int nTable, SunLight :: Renderer :: RendererConfig& config,
+                                      bool& bNullOnlyGiven, Engine :: stRendererCreateExtras& extras, std :: string& strError )  {
 
                 static const char * const  aszViewport[]   = { "x", "y", "w", "h" };
                 static const char * const  aszScrollStep[] = { "w", "h" };
@@ -243,10 +238,10 @@ namespace Scarab  {
                     bool           bOk    = true;
 
                     if( strKey == "backend" )  {
-                        bOk = ReadInteger( pLuaState, -1, strKey, RENDERER_BACKEND_DEFAULT, RENDERER_BACKEND_LAST - 1, nValue, strError );
+                        bOk = ReadInteger( pLuaState, -1, strKey, SunLight :: Renderer :: RENDERER_BACKEND_DEFAULT, SunLight :: Renderer :: RENDERER_BACKEND_LAST - 1, nValue, strError );
 
                         if( bOk )
-                            config.backend = ( RendererBackend ) nValue;
+                            config.backend = ( SunLight :: Renderer :: RendererBackend ) nValue;
                     }
                     else if( strKey == "width" )  {
                         bOk = ReadInteger( pLuaState, -1, strKey, 1, nIntMax, nValue, strError );
@@ -279,7 +274,7 @@ namespace Scarab  {
                     else if( strKey == "draw_fps" )
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bDrawFPS, strError );
                     else if( strKey == "use_default_key_handler" )
-                        bOk = ReadBoolean( pLuaState, -1, strKey, config.bUseDefaultKeyHandler, strError );
+                        bOk = ReadBoolean( pLuaState, -1, strKey, extras.bUseDefaultKeyHandler, strError );
                     else if( strKey == "stretch_to_fill" )
                         bOk = ReadBoolean( pLuaState, -1, strKey, config.bStretchToFill, strError );
                     else if( strKey == "fullscreen" )
@@ -298,10 +293,10 @@ namespace Scarab  {
                             config.exitKey = ( SunLight :: Input :: KeyboardKey ) nValue;
                     }
                     else if( strKey == "view_control_mode" )  {
-                        bOk = ReadInteger( pLuaState, -1, strKey, VIEW_CONTROL_MODE_ACTIVE, VIEW_CONTROL_MODE_REACTIVE, nValue, strError );
+                        bOk = ReadInteger( pLuaState, -1, strKey, SunLight :: Renderer :: VIEW_CONTROL_MODE_ACTIVE, SunLight :: Renderer :: VIEW_CONTROL_MODE_REACTIVE, nValue, strError );
 
                         if( bOk )
-                            config.viewControlMode = ( ViewControlMode ) nValue;
+                            config.viewControlMode = ( SunLight :: Renderer :: ViewControlMode ) nValue;
                     }
                     else if( strKey == "zoom" )  {
                         if( lua_type( pLuaState, -1 ) != LUA_TNUMBER )  {
@@ -319,13 +314,29 @@ namespace Scarab  {
                                 strError = "option 'zoom': " + strError;
                         }
                     }
-                    else if( strKey == "viewport" )  {
-                        lua_Integer  aRect[4] = { 0, 0, 0, 0 };
+                    else if( strKey == "preferred_zoom" )  {
+                        if( lua_type( pLuaState, -1 ) != LUA_TNUMBER )  {
+                            strError = "option 'preferred_zoom' must be a number (a zoom factor, eg. 3.8125)";
+                            bOk = false;
+                        }
+                        else  {
+                            unsigned  nZoomPos = 0;
 
-                        bOk = ReadIntegerFields( pLuaState, -1, strKey, aszViewport, 4, 0, nIntMax, aRect, strError );
+                            bOk = LuaRendererApi :: ValidateZoomFactor( lua_tonumber( pLuaState, -1 ), nZoomPos, strError );
+
+                            if( bOk )
+                                extras.nPreferredZoomPos = nZoomPos;
+                            else
+                                strError = "option 'preferred_zoom': " + strError;
+                        }
+                    }
+                    else if( strKey == "viewport" )  {
+                        lua_Integer  aRect[__RECT_FIELDS] = { 0, 0, 0, 0 };
+
+                        bOk = ReadIntegerFields( pLuaState, -1, strKey, aszViewport, __RECT_FIELDS, 0, nIntMax, aRect, strError );
 
                         if( bOk )  {
-                            SunLight :: TileMap :: stDimension2D  viewport;
+                            SunLight :: Base :: stDimension2D  viewport;
 
                             viewport.pos.x        = ( int ) aRect[0];
                             viewport.pos.y        = ( int ) aRect[1];
@@ -345,10 +356,10 @@ namespace Scarab  {
                         }
                     }
                     else if( strKey == "frame_pacing" )  {
-                        bOk = ReadInteger( pLuaState, -1, strKey, FRAME_PACING_REAL_TIME, FRAME_PACING_UNLIMITED, nValue, strError );
+                        bOk = ReadInteger( pLuaState, -1, strKey, SunLight :: Renderer :: FRAME_PACING_REAL_TIME, SunLight :: Renderer :: FRAME_PACING_UNLIMITED, nValue, strError );
 
                         if( bOk )  {
-                            config.framePacing = ( FramePacing ) nValue;
+                            config.framePacing = ( SunLight :: Renderer :: FramePacing ) nValue;
                             bNullOnlyGiven     = true;
                         }
                     }
@@ -377,7 +388,7 @@ namespace Scarab  {
             /**
              * @brief renderer_create's checks that need the whole configuration, not one option.
              */
-            static bool ValidateConfig( const RendererConfig &config, bool bNullOnlyGiven, bool bNullBackend, std :: string &strError )  {
+            static bool ValidateConfig( const SunLight :: Renderer :: RendererConfig& config, bool bNullOnlyGiven, bool bNullBackend, std :: string& strError )  {
 
                 if( bNullOnlyGiven && !bNullBackend )  {
                     strError = "frame_pacing/max_frames are only valid on the null backend";
@@ -385,7 +396,7 @@ namespace Scarab  {
                 }
 
                 if( config.viewport )  {
-                    const SunLight :: TileMap :: stDimension2D  &vp = *config.viewport;
+                    const SunLight :: Base :: stDimension2D&  vp = *config.viewport;
 
                     if( vp.size.nWidth < 1 || vp.size.nHeight < 1 )  {
                         strError = "option 'viewport' needs w and h of at least 1";
@@ -407,9 +418,9 @@ namespace Scarab  {
             /**
              * @brief Check that argument nIndex names the current renderer.
              */
-            bool LuaRendererApi :: CheckHandle( lua_State *pLuaState, int nIndex, std :: string &strError )  {
+            bool LuaRendererApi :: CheckHandle( lua_State* pLuaState, int nIndex, std :: string& strError )  {
 
-                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                Engine :: IRendererProvider*  pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
 
                 if( lua_type( pLuaState, nIndex ) != LUA_TNUMBER || !lua_isinteger( pLuaState, nIndex ) )  {
                     strError = "expected a renderer handle (the value renderer_create returned)";
@@ -443,6 +454,7 @@ namespace Scarab  {
              * | `draw_fps` | draw the FPS counter | `false` |
              * | `viewport` | `{ x =, y =, w =, h = }` — the visible rectangle, which must fit the render area | `{ x = 10, y = 10, w = 1240, h = 900 }` |
              * | `zoom` | the starting zoom **factor** (a multiple of `ZOOM_STEP`, within `ZOOM_FACTOR_MIN..ZOOM_FACTOR_MAX`) | `3.8125` |
+             * | `preferred_zoom` | the zoom **factor** `zoom_reset` / `view_zoom_reset(0)` return to (validated like `zoom`); see below | `1.0` |
              * | `scroll_step` | `{ w =, h = }` — how far one `camera_move_*` call moves | `{ w = 1, h = 1 }` |
              * | `view_control_mode` | `VIEW_CONTROL_MODE_ACTIVE` or `_REACTIVE` | `_ACTIVE` |
              * | `use_default_key_handler` | sunlight's built-in scroll/zoom key bindings | `false` |
@@ -458,6 +470,13 @@ namespace Scarab  {
              * `"zoom factor 3.8 is not a multiple of 0.0625 - nearest valid is 3.8125"`). Whole
              * JSON numbers loaded with `load_json` arrive as Lua integers, so a config file works
              * unchanged.
+             *
+             * **Preferred zoom.** The default view has two zoom settings: the *current* zoom
+             * (`zoom`, where the game starts) and the *preferred* zoom (`preferred_zoom`, where
+             * `zoom_reset` goes back to). They are separate, and setting `zoom` does not change
+             * the preferred one. Pass both with the same value to make a reset return to the
+             * starting zoom. Left out, the preferred zoom is sunlight's own default, `1.0`.
+             * `view_set_preferred_zoom` changes it later.
              *
              * **Fullscreen.** `fullscreen = true` creates the window fullscreen from the start, with
              * exactly the result `app_set_fullscreen( true, strategy )` gives afterwards (the same
@@ -483,6 +502,7 @@ namespace Scarab  {
              *     height     = config.height,
              *     viewport   = { x = 10, y = 10, w = 1240, h = 900 },
              *     zoom       = 3.8125,
+             *     preferred_zoom = 3.8125,   -- zoom_reset returns here, not to 1.0
              *     resizeable = false,
              *     exit_key   = KEY_NULL,
              * }
@@ -491,26 +511,27 @@ namespace Scarab  {
              *     error( "cannot create the renderer: " .. err )
              * end
              */
-            int LuaRendererApi :: RendererCreate( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererCreate( lua_State* pLuaState )  {
 
-                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
-                RendererConfig                config    = pProvider -> GetDefaultConfig();
-                bool                          bNullOnlyGiven = false;
-                std :: string                 strError;
+                Engine :: IRendererProvider*                              pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                SunLight :: Renderer :: RendererConfig                    config    = pProvider -> GetDefaultConfig();
+                bool                                                      bNullOnlyGiven        = false;
+                Engine :: stRendererCreateExtras                          extras;
+                std :: string                                             strError;
 
                 if( lua_gettop( pLuaState ) > 1 || ( lua_gettop( pLuaState ) == 1 && !lua_istable( pLuaState, 1 ) ) )
-                    return PushError( pLuaState, "renderer_create expects one argument: an options table" );
+                    return LuaEngineUtil :: PushError( pLuaState, "renderer_create expects one argument: an options table" );
 
-                if( lua_gettop( pLuaState ) == 1 && !ParseOptions( pLuaState, 1, config, bNullOnlyGiven, strError ) )
-                    return PushError( pLuaState, strError );
+                if( lua_gettop( pLuaState ) == 1 && !ParseOptions( pLuaState, 1, config, bNullOnlyGiven, extras, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                bool  bNullBackend = pProvider -> IsHeadless() || config.backend == RENDERER_BACKEND_NULL;
+                bool  bNullBackend = pProvider -> IsHeadless() || config.backend == SunLight :: Renderer :: RENDERER_BACKEND_NULL;
 
                 if( !ValidateConfig( config, bNullOnlyGiven, bNullBackend, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !pProvider -> CreateRenderer( config, &strError ) )
-                    return PushError( pLuaState, strError );
+                if( !pProvider -> CreateRenderer( config, extras, &strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, __RENDERER_HANDLE );
 
@@ -527,12 +548,12 @@ namespace Scarab  {
              * local renderer = renderer_get_current()
              * if renderer then renderer_destroy( renderer ) end
              */
-            int LuaRendererApi :: RendererDestroy( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererDestroy( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 LuaEngineUtil :: GetRendererProvider( pLuaState ) -> PeekDrawSurface() -> RequestExit();
 
@@ -553,9 +574,9 @@ namespace Scarab  {
              * local renderer, origin = renderer_get_current()
              * assert( renderer == nil, "a window call ran before renderer_create" )
              */
-            int LuaRendererApi :: RendererGetCurrent( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetCurrent( lua_State* pLuaState )  {
 
-                Engine :: IRendererProvider  *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                Engine :: IRendererProvider*  pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
 
                 if( pProvider -> GetOrigin() == Engine :: IRendererProvider :: ORIGIN_NONE )  {
                     lua_pushnil( pLuaState );
@@ -569,19 +590,37 @@ namespace Scarab  {
                 return 2;
             }
 
-            static void SetIntegerField( lua_State *pLuaState, const char *szName, lua_Integer nValue )  {
+            /**
+             * @brief Set field szName of the table on top of the stack to an integer (renderer_get_config's result).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The field's name;
+             * @param nValue The value;
+             */
+            static void SetIntegerField( lua_State* pLuaState, const char* szName, lua_Integer nValue )  {
 
                 lua_pushinteger( pLuaState, nValue );
                 lua_setfield( pLuaState, -2, szName );
             }
 
-            static void SetBooleanField( lua_State *pLuaState, const char *szName, bool bValue )  {
+            /**
+             * @brief Set field szName of the table on top of the stack to a boolean (renderer_get_config's result).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The field's name;
+             * @param bValue The value;
+             */
+            static void SetBooleanField( lua_State* pLuaState, const char* szName, bool bValue )  {
 
                 lua_pushboolean( pLuaState, bValue ? 1 : 0 );
                 lua_setfield( pLuaState, -2, szName );
             }
 
-            static void SetNumberField( lua_State *pLuaState, const char *szName, double fValue )  {
+            /**
+             * @brief Set field szName of the table on top of the stack to a number (renderer_get_config's result).
+             * @param pLuaState Lua state to be used by engine call;
+             * @param szName The field's name;
+             * @param fValue The value;
+             */
+            static void SetNumberField( lua_State* pLuaState, const char* szName, double fValue )  {
 
                 lua_pushnumber( pLuaState, fValue );
                 lua_setfield( pLuaState, -2, szName );
@@ -592,7 +631,8 @@ namespace Scarab  {
              * @luadoc
              * The renderer's effective settings as a table with the same names `renderer_create`
              * takes: `backend`, `width`, `height`, `title`, `fps`, `resizeable`, `draw_fps`,
-             * `viewport` (`{ x, y, w, h }`), `zoom` (the current factor), `scroll_step`
+             * `viewport` (`{ x, y, w, h }`), `zoom` (the current factor), `preferred_zoom` (the
+             * factor `zoom_reset` returns to), `scroll_step`
              * (`{ w, h }`), `view_control_mode`, `use_default_key_handler`, `exit_key`,
              * `stretch_to_fill`, `fullscreen`, `fullscreen_strategy`, `frame_pacing` and `max_frames`. It reflects the *current*
              * values, not a snapshot from creation — the title after `app_set_name`, the zoom
@@ -605,22 +645,22 @@ namespace Scarab  {
              * assert( config.title == "My Game" )
              * assert( config.zoom == 3.8125 )
              */
-            int LuaRendererApi :: RendererGetConfig( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetConfig( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                Engine :: IRendererProvider           *pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
-                RendererConfig                         config    = pProvider -> GetEffectiveConfig();
-                SunLight :: DrawSurface :: IDrawSurface  *pSurface  = pProvider -> PeekDrawSurface();
-                SunLight :: TileMap :: ITileMap          *pTileMap  = pProvider -> GetTileMap( "renderer_get_config" );
-                SunLight :: TileMap :: stDimension2D    &vp        = pTileMap -> GetViewport().GetDimension2D();
+                Engine :: IRendererProvider*                                      pProvider = LuaEngineUtil :: GetRendererProvider( pLuaState );
+                SunLight :: Renderer :: RendererConfig                            config    = pProvider -> GetEffectiveConfig();
+                SunLight :: DrawSurface :: IDrawSurface*                          pSurface  = pProvider -> PeekDrawSurface();
+                SunLight :: TileMap :: ITileMap*                                  pTileMap  = pProvider -> GetTileMap( "renderer_get_config" );
+                SunLight :: Base :: stDimension2D&                                vp        = pTileMap -> GetViewport().GetDimension2D();
 
                 lua_newtable( pLuaState );
 
-                SetIntegerField( pLuaState, "backend", config.backend == RENDERER_BACKEND_DEFAULT ? RENDERER_BACKEND_RAYLIB : config.backend );
+                SetIntegerField( pLuaState, "backend", config.backend == SunLight :: Renderer :: RENDERER_BACKEND_DEFAULT ? SunLight :: Renderer :: RENDERER_BACKEND_RAYLIB : config.backend );
                 SetIntegerField( pLuaState, "width", ( lua_Integer ) config.fWidth );
                 SetIntegerField( pLuaState, "height", ( lua_Integer ) config.fHeight );
                 lua_pushstring( pLuaState, config.strTitle.c_str() );
@@ -637,6 +677,7 @@ namespace Scarab  {
                 lua_setfield( pLuaState, -2, "viewport" );
 
                 SetNumberField( pLuaState, "zoom", pTileMap -> GetViewport().GetZoomProperties().fZoomFactor );
+                SetNumberField( pLuaState, "preferred_zoom", FactorOfPosition( pTileMap -> GetViewport().GetZoomProperties().nPreferredZoomPos ) );
 
                 int  nStepWidth  = 0;
                 int  nStepHeight = 0;
@@ -649,7 +690,7 @@ namespace Scarab  {
                 lua_setfield( pLuaState, -2, "scroll_step" );
 
                 SetIntegerField( pLuaState, "view_control_mode", config.viewControlMode );
-                SetBooleanField( pLuaState, "use_default_key_handler", config.bUseDefaultKeyHandler );
+                SetBooleanField( pLuaState, "use_default_key_handler", pProvider -> GetUseDefaultKeyHandler() );
                 SetIntegerField( pLuaState, "exit_key", pSurface -> GetExitKey() );
                 SetBooleanField( pLuaState, "stretch_to_fill", pSurface -> GetStretchToFill() );
                 SetBooleanField( pLuaState, "fullscreen", pSurface -> GetFullscreen() );
@@ -668,12 +709,12 @@ namespace Scarab  {
              * @luaexample
              * local view = renderer_get_default_view( renderer )
              */
-            int LuaRendererApi :: RendererGetDefaultView( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetDefaultView( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, __DEFAULT_VIEW_ID );
 
@@ -692,16 +733,16 @@ namespace Scarab  {
              *     print( "running headless" )
              * end
              */
-            int LuaRendererApi :: RendererGetBackend( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetBackend( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                RendererConfig  config = LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetEffectiveConfig();
+                SunLight :: Renderer :: RendererConfig  config = LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetEffectiveConfig();
 
-                lua_pushinteger( pLuaState, config.backend == RENDERER_BACKEND_DEFAULT ? RENDERER_BACKEND_RAYLIB : config.backend );
+                lua_pushinteger( pLuaState, config.backend == SunLight :: Renderer :: RENDERER_BACKEND_DEFAULT ? SunLight :: Renderer :: RENDERER_BACKEND_RAYLIB : config.backend );
 
                 return 1;
             }
@@ -714,12 +755,12 @@ namespace Scarab  {
              * @luaexample
              * print( renderer_get_view_count( renderer ) )   -- 1 until view_create is used
              */
-            int LuaRendererApi :: RendererGetViewCount( lua_State *pLuaState )  {
+            int LuaRendererApi :: RendererGetViewCount( lua_State* pLuaState )  {
 
                 std :: string  strError;
 
                 if( !CheckHandle( pLuaState, 1, strError ) )
-                    return PushError( pLuaState, strError );
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 lua_pushinteger( pLuaState, LuaEngineUtil :: GetRendererProvider( pLuaState ) -> GetTileMap( "renderer_get_view_count" ) -> GetViewCount() );
 
@@ -729,7 +770,7 @@ namespace Scarab  {
             /**
              * @brief Register the renderer/view constants exposed to Lua.
              */
-            void LuaRendererApi :: RegisterEnums( lua_State *pLuaState )  {
+            void LuaRendererApi :: RegisterEnums( lua_State* pLuaState )  {
 
                 /**
                  * @luaconstants{Renderer backends}
@@ -739,9 +780,9 @@ namespace Scarab  {
                  * `RENDERER_BACKEND_NULL` is the windowless, headless backend (see `--headless`).
                  */
                 static const stNamedConstant  s_aBackends[] = {
-                    { "RENDERER_BACKEND_DEFAULT", RENDERER_BACKEND_DEFAULT },
-                    { "RENDERER_BACKEND_RAYLIB", RENDERER_BACKEND_RAYLIB },
-                    { "RENDERER_BACKEND_NULL", RENDERER_BACKEND_NULL },
+                    { "RENDERER_BACKEND_DEFAULT", SunLight :: Renderer :: RENDERER_BACKEND_DEFAULT },
+                    { "RENDERER_BACKEND_RAYLIB", SunLight :: Renderer :: RENDERER_BACKEND_RAYLIB },
+                    { "RENDERER_BACKEND_NULL", SunLight :: Renderer :: RENDERER_BACKEND_NULL },
                 };
 
                 /**
@@ -750,8 +791,8 @@ namespace Scarab  {
                  * The `view_control_mode` option of `renderer_create`.
                  */
                 static const stNamedConstant  s_aViewControlModes[] = {
-                    { "VIEW_CONTROL_MODE_ACTIVE", VIEW_CONTROL_MODE_ACTIVE },
-                    { "VIEW_CONTROL_MODE_REACTIVE", VIEW_CONTROL_MODE_REACTIVE },
+                    { "VIEW_CONTROL_MODE_ACTIVE", SunLight :: Renderer :: VIEW_CONTROL_MODE_ACTIVE },
+                    { "VIEW_CONTROL_MODE_REACTIVE", SunLight :: Renderer :: VIEW_CONTROL_MODE_REACTIVE },
                 };
 
                 /**
@@ -762,8 +803,8 @@ namespace Scarab  {
                  * frames as fast as the game logic allows (the virtual clock is unchanged).
                  */
                 static const stNamedConstant  s_aFramePacings[] = {
-                    { "FRAME_PACING_REAL_TIME", FRAME_PACING_REAL_TIME },
-                    { "FRAME_PACING_UNLIMITED", FRAME_PACING_UNLIMITED },
+                    { "FRAME_PACING_REAL_TIME", SunLight :: Renderer :: FRAME_PACING_REAL_TIME },
+                    { "FRAME_PACING_UNLIMITED", SunLight :: Renderer :: FRAME_PACING_UNLIMITED },
                 };
 
                 /**
@@ -803,7 +844,7 @@ namespace Scarab  {
             /**
              * @brief Register the renderer lifecycle Lua-callable functions and constants.
              */
-            void LuaRendererApi :: Register( lua_State *pLuaState )  {
+            void LuaRendererApi :: Register( lua_State* pLuaState )  {
 
                 RegisterEnums( pLuaState );
 

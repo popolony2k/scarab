@@ -21,16 +21,43 @@
 #ifndef __IRENDERERPROVIDER_H__
 #define __IRENDERERPROVIDER_H__
 
+#include <memory>
+#include <optional>
 #include <string>
 #include "renderer/rendererconfig.h"
-
-namespace SunLight  {
-    namespace TileMap  { class ITileMap; }
-    namespace DrawSurface  { class IDrawSurface; }
-}
+#include "tilemap/itilemap.h"
+#include "drawsurface/idrawsurface.h"
+#include "drawsurface/ishapesurface.h"
+#include "font/ifont.h"
+#include "input/icontrollermanager.h"
 
 namespace Scarab  {
     namespace Engine  {
+
+        /**
+         * @brief What renderer_create asks for beyond sunlight's RendererConfig itself:
+         * things a provider applies once the renderer exists, not passive configuration
+         * values. Plain values only, so IRendererProvider stays Lua-agnostic and names no
+         * sunlight input type.
+         */
+        struct stRendererCreateExtras  {
+            /*
+             * Install sunlight's own default camera/zoom key and gamepad bindings (arrow
+             * keys, PageUp/Down, Home/End, and the matching gamepad buttons) -
+             * renderer_create's use_default_key_handler. Out of RendererConfig because
+             * sunlight removed its own equivalent field (docs/history/master_plan_11_2026.md item D1):
+             * installing a preset is an action, not a setting.
+             */
+            bool                         bUseDefaultKeyHandler = false;
+
+            /*
+             * The default view's preferred zoom POSITION - what zoom_reset returns to,
+             * renderer_create's preferred_zoom (docs/history/master_plan_11_2026.md item D2). Empty (left
+             * out) keeps sunlight's own default. RendererConfig has a current zoom
+             * (nZoomPos) but no preferred one.
+             */
+            std :: optional<unsigned>    nPreferredZoomPos;
+        };
 
         /**
          * @brief Where the Lua bridge gets the renderer from.
@@ -66,13 +93,28 @@ namespace Scarab  {
              * a later renderer_create can say which call created the
              * default renderer implicitly;
              */
-            virtual SunLight :: TileMap :: ITileMap* GetTileMap( const char *szTrigger ) = 0;
+            virtual SunLight :: TileMap :: ITileMap* GetTileMap( const char* szTrigger ) = 0;
 
             /**
              * @brief The draw surface, creating the default renderer first
              * if none exists yet - see @link GetTileMap.
              */
-            virtual SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char *szTrigger ) = 0;
+            virtual SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char* szTrigger ) = 0;
+
+            /**
+             * @brief The renderer's controller manager (connected pads, hot-plug, dead zones) -
+             * on the concrete renderer only, not on ITileMap; creates the default renderer first
+             * if none exists yet - see @link GetTileMap.
+             */
+            virtual SunLight :: Input :: IControllerManager* GetControllerManager( const char* szTrigger ) = 0;
+
+            /**
+             * @brief The renderer's shape surface (sunlight's IShapeSurface: outlines and points in map
+             * units, following the view's camera and zoom - docs/history/master_plan_11_2026.md item C2); on the concrete
+             * renderer only, not on ITileMap; creates the default renderer first if none exists yet - see
+             * @link GetTileMap.
+             */
+            virtual SunLight :: DrawSurface :: IShapeSurface* GetShapeSurface( const char* szTrigger ) = 0;
 
             /**
              * @brief The draw surface if a renderer already exists, else
@@ -86,8 +128,11 @@ namespace Scarab  {
              * window. Fails - with the reason in *pError - if one already exists (naming the
              * primitive that created the default one implicitly, when that's what happened),
              * or if the configuration can't work.
+             * @param extras What renderer_create asks for beyond RendererConfig itself, applied
+             * once the renderer exists - see stRendererCreateExtras;
              */
-            virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError ) = 0;
+            virtual bool CreateRenderer( const SunLight :: Renderer :: RendererConfig& config,
+                                         const stRendererCreateExtras& extras, std :: string* pError ) = 0;
 
             /** @brief How the current renderer came to exist (ORIGIN_NONE if it doesn't yet). */
             virtual Origin GetOrigin( void ) = 0;
@@ -105,9 +150,44 @@ namespace Scarab  {
             virtual SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void ) = 0;
 
             /** @brief Record a window-title change, so the effective configuration stays live. */
-            virtual void NoteWindowTitle( const std :: string &strTitle ) = 0;
+            virtual void NoteWindowTitle( const std :: string& strTitle ) = 0;
+
+            /**
+             * @brief What CreateRenderer's extras.bUseDefaultKeyHandler was last given (false if
+             * no renderer exists yet, or it was created implicitly - the lazy default never
+             * requests this). renderer_get_config's own use_default_key_handler field reads
+             * this back, the same "a creation-time value, not changed later" status its other
+             * creation-only fields already have (view_control_mode, frame_pacing, max_frames).
+             */
+            virtual bool GetUseDefaultKeyHandler( void ) = 0;
+
+            /**
+             * @brief Register a loaded font for the map's Tiled text objects: a text object whose
+             * fontfamily and bold/italic flags match draws with it (sunlight I3,
+             * TileMapRenderer::RegisterFont - on the concrete renderer only, not on ITileMap or
+             * IDrawSurface, hence here). The font is shared, not copied: the same font can also be
+             * the active font or serve other families. Creates the default renderer first if none
+             * exists yet, like GetTileMap.
+             * @return false for no family, no font, or an invalid font;
+             */
+            virtual bool RegisterFont( const char* szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
+                                       bool bBold, bool bItalic, const char* szTrigger ) = 0;
+
+            /**
+             * @brief Unregister a font from every family and style it serves.
+             * @return true if it was registered for at least one; false if no renderer exists yet
+             * (nothing can have been registered, and none is created for this);
+             */
+            virtual bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont>& pFont ) = 0;
+
+            /**
+             * @brief Unregister the font of one family and style, leaving its others.
+             * @return true if a font was registered for exactly that family and style; false if no
+             * renderer exists yet (none is created for this);
+             */
+            virtual bool UnregisterFont( const char* szFamily, bool bBold, bool bItalic ) = 0;
         };
     }
 }
 
-#endif  /* __IRENDERERPROVIDER_H__ */
+#endif /* __IRENDERERPROVIDER_H__ */

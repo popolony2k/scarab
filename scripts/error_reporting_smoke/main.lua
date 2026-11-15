@@ -1,0 +1,367 @@
+--[[
+ Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+
+ This software is provided 'as-is', without any express or implied
+ warranty. In no event will the authors be held liable for any damages
+ arising from the use of this software.
+
+ Permission is granted to anyone to use this software for any purpose,
+ including commercial applications, and to alter it and redistribute it
+ freely, subject to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not
+ claim that you wrote the original software. If you use this software
+ in a product, an acknowledgment in the product documentation would be
+ appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be
+ misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+]]
+
+--[[
+    Error-reporting smoke test - run by scripts/error_reporting_smoke.py (and ci.yml, every platform):
+
+        scarab --headless --fast --max-frames 200 scripts/error_reporting_smoke/project.json
+
+    Pins docs/history/master_plan_11_2026.md item D3: every Lua function that can fail reports it as
+    `nil, "message"` (never a Lua error, never a silent no-op or a "safe" value), a function with
+    nothing else to return returns `true`, and arguments are checked strictly (a wrong type, a
+    missing argument, a fractional number where an integer is expected, a value out of range or
+    not one of its constant group). One check per kind of failure of every module: sprite, pool,
+    scripting queue, sound and songs, tilemap, camera, collision, app, input, timer, json,
+    crypto, pack and text. It also checks that a call refused for its arguments creates no
+    renderer.
+
+    The script quits ITSELF only if every check passed (exit 0); otherwise it prints every
+    failure and never quits, so --max-frames runs out and scarab exits 3.
+]]
+
+io.stdout:setvbuf( "line" )
+
+local __MAP         <const> = "resources/tilemap/test.tmx"
+local __TEXTURE     <const> = "resources/sprites/sunny_idle_down.png"
+local __SOUND       <const> = "resources/sounds/stage_theme.wav"
+local __BAD_JSON    <const> = "scripts/error_reporting_smoke/bad.json"
+local __MISSING     <const> = "scripts/error_reporting_smoke/does-not-exist"
+local __FRAMES      <const> = 4      -- texture frames in sunny_idle_down.png
+local __MAP_LAYER   <const> = 7      -- "monke", a layer of test.tmx
+local __NO_LAYER    <const> = 200    -- a valid id no layer of test.tmx has
+local __SOUND_ID    <const> = 7
+local __NO_SOUND_ID <const> = 8
+local __TIMER_ID    <const> = 3
+local __SLOT_LIMIT  <const> = 65535  -- the pool's total slots (16-bit handles)
+local __QUEUE_LIMIT <const> = 65535  -- a queued command's 16-bit parameter
+
+local failures = {}
+
+-- Record a failure message when `ok` is false. Every check runs; the failures are printed together at the end.
+local function check( ok, message )
+    if not ok then failures[#failures + 1] = message end
+end
+
+-- calls f( ... ) protected: it must not raise, and must return nil + a message containing `needle`
+local function expect_error( label, needle, f, ... )
+    local ok, value, message = pcall( f, ... )
+
+    if not ok then
+        check( false, label .. ": raised a Lua error: " .. tostring( value ) )
+        return
+    end
+
+    check( value == nil, label .. ": expected nil, got " .. tostring( value ) )
+    check( type( message ) == "string" and message:find( needle, 1, true ) ~= nil,
+           label .. ": message '" .. tostring( message ) .. "' lacks '" .. needle .. "'" )
+end
+
+-- calls f( ... ) protected: it must return exactly true
+local function expect_true( label, f, ... )
+    local ok, value, message = pcall( f, ... )
+
+    check( ok and value == true, label .. ": expected true, got " .. tostring( value ) .. " " .. tostring( message ) )
+end
+
+-- The engine asks Lua to claim each stage id an sp_load_stage queues: claim any (this test loads its maps itself),
+-- so an unclaimed id can never stop the run.
+function on_load_stage( stageId ) return true end
+
+-- the queue: true once queued; only the parameter can fail (0..65535)
+expect_true( "sp_wait", sp_wait, 1 )
+expect_error( "sp_wait fraction", "argument 'milliseconds' must be an integer", sp_wait, 1.5 )
+expect_error( "sp_wait string", "must be an integer", sp_wait, "10" )
+expect_error( "sp_wait missing", "must be an integer", sp_wait )
+expect_error( "sp_wait too big", "must be between 0 and 65535", sp_wait, __QUEUE_LIMIT + 1 )
+expect_error( "sp_wait negative", "must be between 0 and 65535", sp_wait, -1 )
+expect_error( "sp_load_stage", "argument 'stageId'", sp_load_stage, "first" )
+expect_error( "sp_add_label", "argument 'id'", sp_add_label, nil )
+expect_error( "sp_play_song", "argument 'id'", sp_play_song, __QUEUE_LIMIT + 1 )
+
+-- refused for its arguments before any window: no renderer may exist after these
+expect_error( "app_set_name number", "argument 'name' must be a string", app_set_name, 5 )
+expect_error( "configure, invalid handle", "invalid sprite handle", sprite_configure_texture, 0, 0, __TEXTURE, __FRAMES, 0,
+              TEXTURE_ANIMATION_MODE_MANUAL )
+expect_error( "load_map number", "argument 'path' must be a string", tilemap_load_map, 5 )
+check( renderer_get_current() == nil, "a call refused for its arguments created the renderer" )
+
+-- pool
+expect_error( "pool tag number", "argument 'typeTag' must be a string", pool_register_type, 5, 1 )
+expect_error( "pool capacity 0", "argument 'capacity' must be between 1", pool_register_type, "a", 0 )
+expect_true( "pool register", pool_register_type, "a", 1 )
+expect_error( "pool duplicate", "is already registered", pool_register_type, "a", 1 )
+expect_error( "pool too big", "at most 65535 sprites", pool_register_type, "huge", __SLOT_LIMIT )
+expect_error( "acquire unknown", "unknown pool type 'nope'", sprite_acquire, "nope" )
+
+local sp = sprite_acquire( "a" )
+
+check( math.type( sp ) == "integer" and sp ~= 0, "sprite_acquire returned " .. tostring( sp ) )
+expect_error( "acquire full", "pool type 'a' is full", sprite_acquire, "a" )
+
+-- sprite: handle, then each argument
+expect_error( "configure frames 0", "argument 'framesByTexture'", sprite_configure_texture, sp, 0, __TEXTURE, 0, 0,
+              TEXTURE_ANIMATION_MODE_MANUAL )
+expect_error( "configure tile index", "argument 'activeTileIndex' must be between 0 and 3", sprite_configure_texture, sp, 0, __TEXTURE,
+              __FRAMES, __FRAMES, TEXTURE_ANIMATION_MODE_MANUAL )
+expect_error( "configure mode", "unknown TEXTURE_ANIMATION_MODE_* value 99", sprite_configure_texture, sp, 0, __TEXTURE, __FRAMES, 0, 99 )
+expect_error( "configure delay", "argument 'delayMilli' must be -1", sprite_configure_texture, sp, 0, __TEXTURE, __FRAMES, 0,
+              TEXTURE_ANIMATION_MODE_MANUAL, -2 )
+expect_error( "configure missing file", "cannot load texture", sprite_configure_texture, sp, 0, __MISSING .. ".png", __FRAMES, 0,
+              TEXTURE_ANIMATION_MODE_MANUAL )
+expect_true( "configure", sprite_configure_texture, sp, 0, __TEXTURE, __FRAMES, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
+expect_error( "active sequence unconfigured", "sequence 5 is not configured", sprite_set_active_sequence, sp, 5 )
+expect_true( "active sequence", sprite_set_active_sequence, sp, 0 )
+expect_error( "animation mode unconfigured", "sequence 5 is not configured", sprite_set_animation_mode, sp, 5,
+              TEXTURE_ANIMATION_MODE_MANUAL )
+expect_error( "animation mode bad", "TEXTURE_ANIMATION_MODE_* constant", sprite_set_animation_mode, sp, 0, "manual" )
+expect_error( "visible nil", "argument 'visible' must be a boolean", sprite_set_visible, sp, nil )
+expect_error( "visible 1", "must be a boolean", sprite_set_visible, sp, 1 )
+expect_true( "visible", sprite_set_visible, sp, true )
+expect_error( "world space 0", "argument 'world_space' must be a boolean", sprite_set_world_space, sp, 0 )
+expect_error( "opacity 255", "argument 'opacity' must be between 0 and 1", sprite_set_opacity, sp, 255 )
+expect_error( "opacity string", "argument 'opacity' must be a number", sprite_set_opacity, sp, "1" )
+expect_true( "opacity", sprite_set_opacity, sp, 0.5 )
+expect_error( "get opacity bad handle", "invalid sprite handle", sprite_get_opacity, 0 )
+expect_error( "tint channel", "argument 'g' must be between 0 and 255", sprite_set_tint, sp, 0, 256, 0 )
+expect_error( "tint alpha", "argument 'a' must be an integer", sprite_set_tint, sp, 0, 0, 0, 0.5 )
+expect_error( "z-order fraction", "argument 'z' must be an integer", sprite_set_z_order, sp, 0.5 )
+expect_error( "z-order range", "argument 'z'", sprite_set_z_order, sp, 2 ^ 40 // 1 )
+expect_error( "get z-order bad handle", "invalid sprite handle", sprite_get_z_order, 0 )
+expect_true( "tint", sprite_set_tint, sp, 255, 255, 255 )
+expect_error( "get tint bad handle", "invalid sprite handle", sprite_get_tint, 0 )
+expect_error( "set_pos fraction", "argument 'x' must be an integer", sprite_set_pos, sp, 3.5, 4 )
+expect_error( "set_pos missing y", "argument 'y' must be an integer", sprite_set_pos, sp, 3 )
+expect_true( "set_pos whole float", sprite_set_pos, sp, 3.0, 4 )
+check( select( 1, sprite_get_pos( sp ) ) == 3, "sprite_set_pos( 3.0 ) did not store 3" )
+expect_error( "inset range", "argument 'rightPct' must be between 0 and 1", sprite_set_collision_inset, sp, 0, 0, 1.5, 0 )
+expect_true( "inset", sprite_set_collision_inset, sp, 0.1, 0.1, 0.1, 0.1 )
+expect_error( "layer out of range", "argument 'layerId' must be between 0 and 254", sprite_add_to_layer, sp, 255 )
+
+for _, getter in ipairs( { sprite_get_visible, sprite_get_world_space, sprite_get_pos, sprite_get_size,
+                            sprite_get_active_sequence } ) do
+    expect_error( "getter, invalid handle", "invalid sprite handle", getter, 0 )
+end
+
+-- sound and songs
+expect_error( "sound_load missing", "cannot load sound", sound_load, __SOUND_ID, __MISSING .. ".wav" )
+expect_error( "sound_load id", "argument 'id' must be an integer", sound_load, "seven", __SOUND )
+
+-- a machine with no audio device (a CI runner) can't load a sound: then only the not-loaded checks run
+local soundLoaded, soundError = sound_load( __SOUND_ID, __SOUND )
+
+if soundLoaded then
+    expect_error( "sound_load twice", "is already loaded", sound_load, __SOUND_ID, __SOUND )
+    expect_error( "volume range", "argument 'volume' must be between 0 and 1", sound_set_volume, __SOUND_ID, 1.5 )
+    expect_true( "volume", sound_set_volume, __SOUND_ID, 0.5 )
+else
+    check( tostring( soundError ):find( "cannot load sound", 1, true ), "sound_load failed oddly: " .. tostring( soundError ) )
+    print( "ERROR REPORTING SMOKE NOTE: no audio here (" .. tostring( soundError ) .. "), loaded-sound checks skipped" )
+end
+
+for _, f in ipairs( { sound_play, sound_stop, sound_pause, sound_resume, sound_is_playing, sound_unload, play_song,
+                      pause_song, stop_song, resume_song, play_song_looping } ) do
+    expect_error( "sound, not loaded", "sound 8 is not loaded", f, __NO_SOUND_ID )
+end
+
+expect_error( "play_song range", "must be between 0 and 65535", play_song, __QUEUE_LIMIT + 1 )
+expect_true( "play_song no audio", play_song, 0 )
+if soundLoaded then
+    expect_true( "sound_unload", sound_unload, __SOUND_ID )
+end
+
+expect_error( "unloaded", "sound 7 is not loaded", sound_play, __SOUND_ID )
+
+-- tilemap and camera, before any map
+expect_error( "map info, no map", "no map is loaded", tilemap_get_map_info )
+expect_error( "unload, no map", "no map is loaded", tilemap_unload_map )
+expect_error( "layer, no map", "no map is loaded", tilemap_get_layer, 1 )
+expect_error( "camera up, no map", "no map is loaded", camera_move_up )
+expect_error( "camera left, no map", "no map is loaded", camera_move_left )
+expect_true( "camera down, no map", camera_move_down )
+expect_error( "load_map missing", "cannot load map", tilemap_load_map, __MISSING .. ".tmx" )
+expect_error( "load_map alignment", "unknown MAP_ALIGNMENT_* value 99", tilemap_load_map, __MAP, 99 )
+expect_true( "load_map", tilemap_load_map, __MAP, MAP_ALIGNMENT_TOP_LEFT )
+expect_error( "layer unknown", "no layer 200 in the loaded map", tilemap_get_layer, __NO_LAYER )
+expect_error( "layer by name unknown", "no layer named 'nope'", tilemap_get_layer_by_name, "nope" )
+expect_error( "set_layer visible", "argument 'visible' must be a boolean", tilemap_set_layer, 1, "yes", 1, 0, 0 )
+expect_error( "set_layer unknown", "no layer 200", tilemap_set_layer, __NO_LAYER, true, 1, 0, 0 )
+expect_error( "set_layer opacity", "argument 'opacity' must be between 0 and 1", tilemap_set_layer, 1, true, 255, 0, 0 )
+expect_error( "layer tint unknown", "no layer 200", tilemap_get_layer_tint, __NO_LAYER )
+expect_error( "layer tint by name", "no layer named 'nope'", tilemap_get_layer_tint_by_name, "nope" )
+expect_error( "tile frame unknown layer", "no layer 200", tilemap_get_tile_frame, 0, 0, __NO_LAYER )
+expect_error( "tile frame off the map", "is off the map", tilemap_get_tile_frame, -1, 0, 1 )
+expect_error( "tile frame fraction", "argument 'row' must be an integer", tilemap_get_tile_frame, 0.5, 0, 1 )
+expect_error( "object tile frame unknown", "no object named 'nope'", tilemap_get_object_tile_frame, "nope" )
+expect_error( "object tile frame name", "argument 'name' must be a string", tilemap_get_object_tile_frame, 1 )
+expect_error( "set tint channel", "argument 'b' must be between 0 and 255", tilemap_set_layer_tint, 1, 0, 0, 300, 0 )
+expect_error( "set tint by name", "argument 'layerName' must be a string", tilemap_set_layer_tint_by_name, 1, 0, 0, 0, 0 )
+expect_error( "tile outside", "no tile at row 999", tilemap_get_tile, 999, 0, 1 )
+expect_error( "matrix outside", "is outside the map", tilemap_to_tile_matrix, -100, -100 )
+expect_error( "object missing", "no object named 'nope'", tilemap_get_object_by_name, "nope" )
+expect_error( "camera fraction", "argument 'x' must be an integer", camera_set_position, 0.5, 0 )
+expect_true( "camera_set_position", camera_set_position, 0, 0 )
+expect_true( "camera up", camera_move_up )
+
+-- sprite layers, with a map loaded
+expect_error( "add_to_layer unknown", "layer 200 is not a layer of the loaded map", sprite_add_to_layer, sp, __NO_LAYER )
+expect_true( "add_to_layer", sprite_add_to_layer, sp, __MAP_LAYER )
+expect_error( "add_to_layer twice", "already on layer 7", sprite_add_to_layer, sp, __MAP_LAYER )
+expect_true( "remove_from_layer", sprite_remove_from_layer, sp, __MAP_LAYER )
+expect_error( "remove_from_layer twice", "is not on layer 7", sprite_remove_from_layer, sp, __MAP_LAYER )
+expect_true( "release", sprite_release, sp )
+expect_error( "release twice", "invalid sprite handle", sprite_release, sp )
+
+-- collision
+expect_error( "rule range", "argument 'layerB' must be between 0 and 254", collision_add_rule, 1, 255 )
+expect_true( "rule", collision_add_rule, 1, 2 )
+expect_error( "rule twice", "is already declared", collision_add_rule, 1, 2 )
+expect_error( "tile rule unknown", "layer 200 is not a layer of the loaded map", collision_add_tile_rule, 1, __NO_LAYER )
+expect_error( "handler", "argument 'fn' must be a function", collision_set_handler, "f" )
+expect_true( "handler", collision_set_handler, function() end )
+
+-- app
+expect_error( "fade range", "argument 'alpha' must be between 0 and 1", screen_fade, 1.5 )
+expect_true( "fade", screen_fade, 0 )
+expect_error( "fullscreen nil", "argument 'fullscreen' must be a boolean", app_set_fullscreen, nil )
+expect_error( "fullscreen strategy", "unknown FULLSCREEN_STRATEGY_* value 99", app_set_fullscreen, false, 99 )
+expect_error( "fps 0", "argument 'fps' must be between 1", app_set_target_fps, 0 )
+expect_error( "fps fraction", "argument 'fps' must be an integer", app_set_target_fps, 30.5 )
+expect_error( "draw_fps", "argument 'draw_fps' must be a boolean", app_set_draw_fps, 1 )
+expect_error( "rectangle colour", "argument 'a' must be between 0 and 255", draw_filled_rectangle, 0, 0, 1, 1, 0, 0, 0, 256 )
+expect_error( "exit key unknown", "unknown KEY_* value 99999", app_set_exit_key, 99999 )
+expect_true( "exit key off", app_set_exit_key, KEY_NULL )
+expect_true( "exit key back", app_set_exit_key, KEY_ESCAPE )
+
+-- input: a misspelt constant name is nil in Lua
+expect_error( "key nil", "argument 'key' must be a KEY_* constant", input_is_key_down, KEY_MISSPELT )
+expect_error( "key unknown", "unknown KEY_* value 99999", input_is_key_released, 99999 )
+check( input_is_key_down( KEY_A ) == false, "input_is_key_down( KEY_A ) must read false headless" )
+expect_error( "gamepad id", "argument 'gamepadId' must be between 0 and 9", input_is_gamepad_button_down, 10, GAMEPAD_BUTTON_LEFT_FACE_UP )
+expect_error( "gamepad button", "unknown GAMEPAD_BUTTON_* value 999", input_is_gamepad_button_up, 0, 999 )
+expect_error( "gamepad axis", "unknown GAMEPAD_AXIS_* value 999", input_get_gamepad_axis, 0, 999 )
+expect_error( "add gamepad", "argument 'gamepadId'", input_add_gamepad, -1 )
+expect_true( "add gamepad", input_add_gamepad, 0 )
+expect_error( "axis raw", "unknown GAMEPAD_AXIS_* value 999", input_get_gamepad_axis_raw, 0, 999 )
+expect_error( "pad available", "argument 'gamepadId'", input_is_gamepad_available, 10 )
+expect_error( "pad name", "argument 'gamepadId'", input_get_gamepad_name, -1 )
+expect_error( "connection handler", "argument 'fn' must be a function", input_set_gamepad_connection_handler, 42 )
+expect_error( "deadzone range", "argument 'deadzone' must be between 0 and 1", input_set_axis_deadzone, 0, GAMEPAD_AXIS_LEFT_X, 1.5 )
+expect_error( "deadzone trigger", "argument 'axis' must be a stick axis", input_get_axis_deadzone, 0, GAMEPAD_AXIS_LEFT_TRIGGER )
+expect_error( "slot negative", "argument 'slot'", input_claim_player_slot, -1, 0 )
+expect_error( "slot fraction", "argument 'slot' must be an integer", input_get_gamepad_for_slot, 1.5 )
+expect_error( "action name", "may hold only letters, digits", input_bind_action_key, "a=b", KEY_X )
+expect_error( "action key", "unknown KEY_* value 99999", input_bind_action_key, "jump", 99999 )
+expect_error( "action direction", "must be 1 or -1", input_bind_action_axis, "left", GAMEPAD_AXIS_LEFT_X, 0 )
+expect_error( "action path", "argument 'path'", input_load_action_map, 7 )
+expect_error( "save name", "may hold only letters, digits", app_set_save_directory, "a/b" )
+expect_error( "rumble strength", "argument 'right'", input_set_rumble, 0, 0, 2, 1 )
+
+-- timers
+expect_error( "timer interval", "argument 'intervalMilli' must be between 1", set_timer, __TIMER_ID, 0, function() end )
+expect_error( "timer callback", "argument 'callback' must be a function", set_timer, __TIMER_ID, 1000, "f" )
+expect_true( "timer", set_timer, __TIMER_ID, 100000, function() end )
+expect_error( "timer twice", "timer 3 is already set", set_timer, __TIMER_ID, 1000, function() end )
+expect_true( "reset_timer", reset_timer, __TIMER_ID )
+expect_error( "reset_timer twice", "timer 3 is not set", reset_timer, __TIMER_ID )
+
+-- layer parallax (refused before any window)
+expect_error( "parallax fx", "argument 'fx' must be a number", tilemap_set_layer_parallax, 1, "x", 1 )
+expect_error( "parallax infinite", "argument 'fy' must be a finite number", tilemap_set_layer_parallax_by_name, "sky", 1, math.huge )
+expect_error( "parallax layer", "argument 'layerId' must be an integer", tilemap_get_layer_parallax, 1.5 )
+
+-- shapes (refused before any window)
+expect_error( "shape width", "argument 'width' must be 0 or more", shape_draw_rectangle, 0, 0, -1, 1, 0, 0, 0, 255 )
+expect_error( "shape option", "unknown option 'thikness'", shape_draw_ellipse, 0, 0, 1, 1, 0, 0, 0, 255, { thikness = 1 } )
+expect_error( "shape points", "an even count of numbers", shape_draw_polyline, 0, 0, { 1, 2, 3 }, 0, 0, 0, 255 )
+expect_error( "shape polygon", "needs at least 3 points", shape_draw_polygon, 0, 0, { 1, 2, 3, 4 }, 0, 0, 0, 255 )
+expect_error( "shape point size", "argument 'size' must be greater than 0", shape_draw_point, 0, 0, 0, 0, 0, 255, 0 )
+
+-- saves (this project has no save directory: a good name and value then fail for that)
+expect_error( "save_write name", "argument 'name' can't have a '..' part", save_write, "../x.json", {} )
+expect_error( "save_write value", "argument 'value' must be a table", save_write, "x.json", 5 )
+expect_error( "save_write content", "argument 'value' can't be saved: value.f is a function", save_write, "x.json", { f = print } )
+expect_error( "save_write no dir", "no save directory", save_write, "x.json", {} )
+expect_error( "save_read name", "argument 'name' must be a string", save_read, 7 )
+expect_error( "save_read no dir", "no save directory", save_read, "x.json" )
+expect_error( "save_exists name", "argument 'name' can't be empty", save_exists, "" )
+expect_error( "save_delete name", "can't end in '.tmp'", save_delete, "x.tmp" )
+
+-- json, crypto, pack
+expect_error( "json missing", "cannot open", load_json, __MISSING .. ".json" )
+expect_error( "json bad", "cannot parse", load_json, __BAD_JSON )
+expect_error( "json path", "argument 'path' must be a string", load_json, nil )
+expect_error( "encrypt type", "argument 'data' must be a string", crypto_encrypt_data, 5 )
+expect_error( "decrypt garbage", "", crypto_decrypt_data, "not encrypted" )
+-- the pack_* functions read and write real OS paths: they exist only in the --pack tool, never in a game
+-- (docs/history/master_plan_11_2026.md item C8 - their own error checks are tests/test_packapi.cpp)
+for _, name in ipairs( { "pack_list_directory", "pack_read_file", "pack_write_file", "pack_create_archive",
+                         "pack_add_entry", "pack_close_archive" } ) do
+    check( _G[name] == nil, name .. " must not exist in a game" )
+end
+
+local frames = 0
+
+-- Called by Scarab every frame: on the first frame (a renderer exists now) the checks that need one - text, view
+-- opacity, worlds; on the second, then print OK and quit, or print every failure and keep running, so --max-frames runs out (exit 3).
+function on_update( dt )
+    frames = frames + 1
+
+    if frames == 1 then
+        -- text, inside a frame
+        expect_true( "draw_text", draw_text, "ok", 10, 10, 16, 255, 255, 255, 255 )
+        expect_true( "draw_text number", draw_text, 42, 10, 30, 16, 255, 255, 255, 255 )
+        expect_error( "draw_text size", "argument 'size' must be between 1", draw_text, "x", 10, 10, 0, 255, 255, 255, 255 )
+        expect_error( "draw_text colour", "argument 'g' must be between 0 and 255", draw_text, "x", 10, 10, 16, 0, 300, 0, 0 )
+        expect_error( "draw_text text", "argument 'text' must be a string", draw_text, {}, 10, 10, 16, 0, 0, 0, 0 )
+        expect_error( "measure size", "argument 'size'", measure_text, "x", 1.5 )
+        check( math.type( measure_text( 7, 16 ) ) == "integer", "measure_text of a number must return a width" )
+
+        -- view opacity (a renderer exists now: view 0 is real)
+        expect_error( "view opacity range", "argument 'opacity' must be between 0 and 1", view_set_opacity, 0, 1.5 )
+        expect_error( "view opacity type", "argument 'opacity'", view_set_opacity, 0, "x" )
+        expect_error( "view opacity view", "unknown view 99", view_get_opacity, 99 )
+
+        -- worlds (a renderer exists now: world 0 is real)
+        expect_error( "world handle", "expected a world handle", world_get_map_count, "w" )
+        expect_error( "world unknown", "unknown world 99", world_get_bounds, 99 )
+        expect_error( "world default", "the default world cannot be unloaded", world_unload, 0 )
+        expect_error( "world path", "must name a .tmx map or a .world file", world_load, "x.txt" )
+        expect_error( "world map id", "argument 'mapId' must be an integer", world_get_map_offset, 0, 1.5 )
+        expect_error( "world layer name", "argument 'name' must be a string", world_layer_id, 0, 3 )
+        expect_error( "world tile", "argument 'row' must be an integer", world_get_tile, 0, 0, "r", 0, 1 )
+        expect_error( "world pick", "argument 'y' must be an integer", world_to_tile_matrix, 0, 1, nil )
+        expect_error( "world add map", "argument 'path' must be a string", world_add_map, 0, 7, 0, 0 )
+        expect_error( "world remove map", "argument 'mapId' must be an integer", world_remove_map, 0, nil )
+        expect_error( "view world", "argument 'world': unknown world 99", view_set_world, 0, 99 )
+        expect_error( "view get world", "unknown view 99", view_get_world, 99 )
+        expect_error( "layer of a world", "argument 'world': unknown world 99", tilemap_set_layer, 1, true, 1, 0, 0, 99 )
+        expect_error( "tint of a world", "argument 'world': expected a world handle", tilemap_set_layer_tint_by_name, "x", 1, 2, 3, 4, "w" )
+        expect_error( "parallax of a world", "argument 'world': unknown world 99", tilemap_get_layer_parallax, 1, 99 )
+    elseif frames == 2 then
+        if #failures == 0 then
+            print( "ERROR REPORTING SMOKE OK" )
+            app_quit()
+        else
+            for _, message in ipairs( failures ) do
+                print( "ERROR REPORTING SMOKE FAIL: " .. message )
+            end
+        end
+    end
+end

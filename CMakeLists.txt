@@ -1,19 +1,55 @@
 #
 # CMake file for building Scarab, a thin, game-agnostic 2D engine host.
+#
 # Copyright (c) since 2021 by PopolonY2k and Leidson Campos A. Ferreira
+#
+# This software is provided 'as-is', without any express or implied
+# warranty. In no event will the authors be held liable for any damages
+# arising from the use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it
+# freely, subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not
+# claim that you wrote the original software. If you use this software
+# in a product, an acknowledgment in the product documentation would be
+# appreciated but is not required.
+# 2. Altered source versions must be plainly marked as such, and must not be
+# misrepresented as being the original software.
+# 3. This notice may not be removed or altered from any source distribution.
 #
 
 cmake_minimum_required(VERSION 3.24)
 
 #
-# SCARAB_SUNLIGHT_VERSION is the one place the pinned sunlight release lives -
-# both the FetchContent GIT_TAG below and the --version/-v CLI output (see
-# main.cpp) read it from here, so bumping a sunlight dependency never means
-# updating the tag in two places that could drift out of sync.
+# These two are the only place the pinned sunlight commit/release lives - both
+# the FetchContent GIT_TAG below and the --version/-v CLI output (see main.cpp)
+# read them from here, so bumping a sunlight dependency never means updating a
+# ref in two places that could drift out of sync. Each variable is used
+# VERBATIM at its one call site - neither main.cpp nor the GIT_TAG line below
+# prepends anything to it - so either can hold any ref shape without the other
+# needing to change:
+#   - a normal tagged release: SCARAB_SUNLIGHT_REF "v0.39.0",
+#     SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.39.0" (identical strings; the
+#     leading "v" is part of the value now, not hardcoded at either site);
+#   - a commit pinned while integrating unreleased sunlight work, as during
+#     Scarab's master_plan integration (see
+#     docs/history/master_plan_11_2026.md item P1): SCARAB_SUNLIGHT_REF is the full 40-character
+#     hash GIT_TAG needs, SCARAB_SUNLIGHT_DISPLAY_VERSION is a human-readable
+#     branch@shorthash for --version instead, eg.
+#     "feat/master_plan@772851c".
+# Before this split, one variable held a bare number ("0.38.0") and a literal
+# "v" was hardcoded separately at both call sites - which broke the moment
+# this project needed to pin a raw commit hash instead of a release tag (a
+# "v"-prefixed hash is not a valid ref, and "sunlight v<hash>" is not a
+# sensible version string either). See docs/history/master_plan_11_2026.md item P1 for the
+# full story.
 #
-set(SCARAB_SUNLIGHT_VERSION "0.38.0")
+set(SCARAB_SUNLIGHT_REF "v0.39.0")
+set(SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.39.0")
 
-project(scarab VERSION 0.1.25)
+project(scarab VERSION 0.2.0)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
@@ -66,6 +102,7 @@ option(SCARAB_CONTENT_KEY_IS_SHARED "Internal - set only by release.yml; marks t
 # dynamic-linking tradeoffs instead
 # (e.g. sharing one libsodium build across several binaries).
 #
+option(SCARAB_BUILD_TESTS "Build Scarab's unit tests (doctest, tests/) - docs/history/master_plan_11_2026.md item R2" OFF)
 option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library instead of static" OFF)
 
 ####################################################################
@@ -73,7 +110,7 @@ option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library inst
 ####################################################################
 FetchContent_Declare(sunlight
                      GIT_REPOSITORY https://github.com/popolony2k/sunlight.git
-                     GIT_TAG v${SCARAB_SUNLIGHT_VERSION})
+                     GIT_TAG ${SCARAB_SUNLIGHT_REF})
 FetchContent_MakeAvailable(sunlight)
 
 ####################################################################
@@ -302,23 +339,35 @@ if(UNIX)
     endif()
 endif()
 
-add_executable(scarab ${APPLICATION_SOURCES} ${APPLICATION_HEADERS})
+#
+# Everything but main.cpp is built once, as the static library scarab_core, which the scarab
+# executable and the unit tests (SCARAB_BUILD_TESTS, tests/) both link - docs/history/master_plan_11_2026.md item R2.
+# The tests then exercise exactly the code the executable runs, compiled once.
+#
+set(SCARAB_MAIN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+list(REMOVE_ITEM APPLICATION_SOURCES "${SCARAB_MAIN_SOURCE}")
+
+add_library(scarab_core STATIC ${APPLICATION_SOURCES} ${APPLICATION_HEADERS})
+add_executable(scarab "${SCARAB_MAIN_SOURCE}")
 
 if(SCARAB_USE_OFFICIAL_LUA_FTP)
-  add_dependencies(scarab lua_library_download)
+  add_dependencies(scarab_core lua_library_download)
 endif()
 
-target_link_libraries(scarab ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES} sodium miniz)
+target_link_libraries(scarab_core PUBLIC ${CMAKE_THREAD_LIBS_INIT} sunlight nlohmann_json CLI11::CLI11 ${LUA_LIBRARIES} sodium miniz)
+target_link_libraries(scarab scarab_core)
 
 #
 # Feeds --version/-v (main.cpp) - PROJECT_VERSION comes from this file's own
-# project(scarab VERSION ...) above; SCARAB_SUNLIGHT_VERSION is the same
-# variable the sunlight FetchContent_Declare's GIT_TAG already reads, so the
-# printed sunlight version always matches what was actually fetched.
+# project(scarab VERSION ...) above; SCARAB_SUNLIGHT_DISPLAY_VERSION is set
+# alongside SCARAB_SUNLIGHT_REF above (the sunlight FetchContent_Declare's own
+# GIT_TAG), so the printed sunlight version is always a human-readable account
+# of what was actually fetched, even when the fetched ref itself (a commit
+# hash) would not be.
 #
-target_compile_definitions(scarab PRIVATE
+target_compile_definitions(scarab_core PUBLIC
   SCARAB_VERSION="${PROJECT_VERSION}"
-  SCARAB_SUNLIGHT_VERSION="${SCARAB_SUNLIGHT_VERSION}"
+  SCARAB_SUNLIGHT_DISPLAY_VERSION="${SCARAB_SUNLIGHT_DISPLAY_VERSION}"
   SCARAB_CONTENT_KEY="${SCARAB_CONTENT_KEY}"
   SCARAB_CONTENT_KEY_IS_SHARED=$<BOOL:${SCARAB_CONTENT_KEY_IS_SHARED}>)
 
@@ -508,6 +557,15 @@ if(WIN32)
 endif()
 
 add_dependencies(scarab scarab_copy_binaries)
+
+#
+# Unit tests (doctest) - docs/history/master_plan_11_2026.md item R2. Off by default, like sunlight's own
+# BUILD_LIBRARY_TESTS; ci.yml turns them on. scarab_tests lands next to scarab, so it runs against
+# the same flattened runtime libraries (scarab_copy_binaries) with the same relocatable rpath.
+#
+if(SCARAB_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
 
 # Installation
 # INSTALL(

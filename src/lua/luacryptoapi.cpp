@@ -19,10 +19,14 @@
  */
 
 #include "lua/luacryptoapi.h"
+#include "lua/luaengineutil.h"
 #include <sodium.h>
 #include <cstdio>
 #include <cstring>
 #include <vector>
+
+/** crypto_*_data's failure when this build has no usable key. */
+#define __NO_CONTENT_KEY  "this build has no content key (SCARAB_CONTENT_KEY is not configured)"
 
 
 namespace Scarab  {
@@ -57,7 +61,7 @@ namespace Scarab  {
 
                 s_bResolved = true;
 
-                static const char  *szHexKey = SCARAB_CONTENT_KEY;
+                static const char*  szHexKey = SCARAB_CONTENT_KEY;
                 size_t              nHexLen  = std :: strlen( szHexKey );
 
                 if( nHexLen != ( crypto_secretbox_KEYBYTES * 2 ) )  {
@@ -87,15 +91,16 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{crypto_encrypt_data(data) -> encrypted}
+             * @luaname{crypto_encrypt_data(data) -> encrypted | nil, message}
              * @luagroup{crypto_data}
              * @luadoc
              * Encrypts `data` (any Lua string - binary-safe, may
              * contain embedded zero bytes) using the key compiled into
              * this build (`SCARAB_CONTENT_KEY` - see this class's own
              * doc above). Returns the encrypted blob as a Lua string,
-             * ready to write straight to a file, or `nil` (and logs an
-             * error) if this build has no valid key configured. A
+             * ready to write straight to a file, or `nil, "message"` if
+             * `data` isn't a string or this build has no valid key
+             * configured (never a Lua error). A
              * fresh random nonce is generated for every call and
              * prepended to the returned blob - callers never handle
              * the nonce themselves, `crypto_decrypt_data` reads it back
@@ -107,26 +112,26 @@ namespace Scarab  {
              *   error("content encryption not configured for this build")
              * end
              */
-            int LuaCryptoApi :: EncryptData( lua_State *pLuaState )  {
+            int LuaCryptoApi :: EncryptData( lua_State* pLuaState )  {
 
-                const unsigned char  *pKey = GetContentKey();
+                std :: string  strError;
+                std :: string  strPlain;
 
-                if( pKey == nullptr )  {
-                    lua_pushnil( pLuaState );
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "data", strPlain, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                    return 1;
-                }
+                const unsigned char*  pKey = GetContentKey();
 
-                size_t       nPlainLen;
-                const char   *szPlain = lua_tolstring( pLuaState, 1, &nPlainLen );
+                if( pKey == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, __NO_CONTENT_KEY );
 
-                std :: vector<unsigned char>  blob( crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES + nPlainLen );
-                unsigned char  *pNonce      = blob.data();
-                unsigned char  *pCiphertext = blob.data() + crypto_secretbox_NONCEBYTES;
+                std :: vector<unsigned char>  blob( crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES + strPlain.size() );
+                unsigned char*  pNonce      = blob.data();
+                unsigned char*  pCiphertext = blob.data() + crypto_secretbox_NONCEBYTES;
 
                 randombytes_buf( pNonce, crypto_secretbox_NONCEBYTES );
 
-                crypto_secretbox_easy( pCiphertext, ( const unsigned char * ) szPlain, nPlainLen, pNonce, pKey );
+                crypto_secretbox_easy( pCiphertext, ( const unsigned char * ) strPlain.data(), strPlain.size(), pNonce, pKey );
 
                 lua_pushlstring( pLuaState, ( const char * ) blob.data(), blob.size() );
 
@@ -150,14 +155,14 @@ namespace Scarab  {
              * untouched) if pKey is null, blob is too short to be
              * valid, or the AEAD authentication check itself fails.
              */
-            static bool DecryptCore( const unsigned char *pKey, const unsigned char *pBlob, size_t nBlobLen,
-                    std :: vector<unsigned char> &out )  {
+            static bool DecryptCore( const unsigned char* pKey, const unsigned char* pBlob, size_t nBlobLen,
+                    std :: vector<unsigned char>& out )  {
 
                 if( ( pKey == nullptr ) || ( nBlobLen < ( crypto_secretbox_NONCEBYTES + crypto_secretbox_MACBYTES ) ) )
                     return false;
 
-                const unsigned char  *pNonce      = pBlob;
-                const unsigned char  *pCiphertext = pBlob + crypto_secretbox_NONCEBYTES;
+                const unsigned char*  pNonce      = pBlob;
+                const unsigned char*  pCiphertext = pBlob + crypto_secretbox_NONCEBYTES;
                 size_t                nCipherLen  = nBlobLen - crypto_secretbox_NONCEBYTES;
 
                 std :: vector<unsigned char>  plain( nCipherLen - crypto_secretbox_MACBYTES );
@@ -171,14 +176,14 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{crypto_decrypt_data(encrypted) -> data}
+             * @luaname{crypto_decrypt_data(encrypted) -> data | nil, message}
              * @luagroup{crypto_data}
              * @luadoc
              * The inverse of `crypto_encrypt_data` - decrypts a blob it
              * produced, using this build's own compiled-in key. Returns
-             * the original data as a Lua string, or `nil` (and logs an
-             * error) either if this build has no valid key configured,
-             * or if decryption itself fails - a wrong key, truncated
+             * the original data as a Lua string, or `nil, "message"`
+             * either if this build has no valid key configured, or if
+             * decryption itself fails - a wrong key, truncated
              * data, or genuine tampering all report the same way, by
              * design (`crypto_secretbox_open_easy` is authenticated -
              * it detects any modification, it doesn't just silently
@@ -190,28 +195,23 @@ namespace Scarab  {
              *   error("failed to decrypt - wrong key or corrupted data")
              * end
              */
-            int LuaCryptoApi :: DecryptData( lua_State *pLuaState )  {
+            int LuaCryptoApi :: DecryptData( lua_State* pLuaState )  {
 
-                const unsigned char  *pKey = GetContentKey();
+                std :: string  strError;
+                std :: string  strBlob;
 
-                if( pKey == nullptr )  {
-                    lua_pushnil( pLuaState );
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "encrypted", strBlob, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                    return 1;
-                }
+                const unsigned char*  pKey = GetContentKey();
 
-                size_t       nBlobLen;
-                const char   *szBlob = lua_tolstring( pLuaState, 1, &nBlobLen );
+                if( pKey == nullptr )
+                    return LuaEngineUtil :: PushError( pLuaState, __NO_CONTENT_KEY );
 
                 std :: vector<unsigned char>  plain;
 
-                if( !DecryptCore( pKey, ( const unsigned char * ) szBlob, nBlobLen, plain ) )  {
-                    fprintf( stderr, "LuaCryptoApi: crypto_decrypt_data failed - wrong key, corrupted data, "
-                        "or a blob too short to be valid.\n" );
-                    lua_pushnil( pLuaState );
-
-                    return 1;
-                }
+                if( !DecryptCore( pKey, ( const unsigned char * ) strBlob.data(), strBlob.size(), plain ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot decrypt: wrong key, corrupted data, or a blob too short to be valid" );
 
                 lua_pushlstring( pLuaState, ( const char * ) plain.data(), plain.size() );
 
@@ -224,7 +224,7 @@ namespace Scarab  {
              * hook shared by LuaEngine::RunFile/LuaJsonApi::LoadJson/
              * LuaFileSystemApi::DoFile.
              */
-            bool LuaCryptoApi :: TryDecryptBytes( const std :: vector<unsigned char> &data, std :: vector<unsigned char> &out )  {
+            bool LuaCryptoApi :: TryDecryptBytes( const std :: vector<unsigned char>& data, std :: vector<unsigned char>& out )  {
 
                 return DecryptCore( GetContentKey(), data.data(), data.size(), out );
             }
@@ -242,7 +242,7 @@ namespace Scarab  {
              * the more explicit, "set up once at startup" shape this
              * codebase already follows elsewhere.
              */
-            void LuaCryptoApi :: Register( lua_State *pLuaState )  {
+            void LuaCryptoApi :: Register( lua_State* pLuaState )  {
 
                 if( sodium_init() < 0 )  {
                     fprintf( stderr, "LuaCryptoApi: sodium_init() failed - content encryption unavailable.\n" );

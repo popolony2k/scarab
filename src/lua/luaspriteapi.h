@@ -21,8 +21,7 @@
 #ifndef __LUASPRITEAPI_H__
 #define __LUASPRITEAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -43,15 +42,13 @@ namespace Scarab  {
              * ## Handles
              *
              * `sprite_acquire` returns an opaque integer **handle**, not
-             * an object. `0` always means "invalid"
-             * (`INVALID_SPRITE_HANDLE`) — check for it after
-             * `sprite_acquire` in case the pool for that type is
-             * exhausted. A handle from a released slot doesn't silently
-             * alias a new sprite that reuses the same slot — every
-             * operation on a stale handle simply fails (returns
-             * `false`/`nil`) instead of touching the wrong sprite, since
-             * each slot's internal generation counter is bumped on
-             * release.
+             * an object, and never `0`; when the pool for that type is
+             * full it returns `nil, "message"` - check for it. A handle
+             * from a released slot doesn't silently alias a new sprite
+             * that reuses the same slot — every operation on a stale
+             * handle fails with `nil, "invalid sprite handle"` instead of
+             * touching the wrong sprite, since each slot's internal
+             * generation counter is bumped on release.
              *
              * ## The full lifecycle
              *
@@ -61,7 +58,7 @@ namespace Scarab  {
              *
              * -- 2. Acquire a handle
              * local handle = sprite_acquire("enemy_satellite")
-             * if handle == 0 then
+             * if not handle then
              *   return  -- pool exhausted
              * end
              *
@@ -78,42 +75,62 @@ namespace Scarab  {
              *
              * -- ... later, on death/despawn ...
              *
-             * -- 5. Remove from the layer BEFORE releasing - the pool has no idea which
-             * --    layer(s) a handle was added to, so skipping this step leaves a
-             * --    dangling collider that keeps firing collision callbacks against a
-             * --    handle that no longer resolves to anything.
-             * sprite_remove_from_layer(handle, LAYER_ENEMIES_SHIPS)
+             * -- 5. Release it: it is taken off every layer it is on, so it stops
+             * --    drawing and colliding, and the slot is free for another acquire
              * sprite_release(handle)
              * ```
+             *
+             * ## Error reporting
+             *
+             * Every sprite function reports a failure as `nil, "message"` and
+             * never raises a Lua error: `local ok, err = sprite_set_pos( h, x, y )`.
+             * A function with nothing else to return returns `true` on success.
+             * Arguments are checked strictly: `"invalid sprite handle"` (never
+             * acquired, or already released), `"argument 'x' must be an integer"`
+             * (a string, a missing argument, or a fractional number like `3.5` —
+             * round it with `math.floor` first; `3.0` is fine), `"argument 'visible'
+             * must be a boolean"` (not `nil`, not `0`/`1`).
              */
             class LuaSpriteApi  {
 
-                static int RegisterType( lua_State *pLuaState );
-                static int Acquire( lua_State *pLuaState );
-                static int Release( lua_State *pLuaState );
-                static int ConfigureTexture( lua_State *pLuaState );
-                static int SetActiveSequence( lua_State *pLuaState );
-                static int GetActiveSequence( lua_State *pLuaState );
-                static int SetAnimationMode( lua_State *pLuaState );
-                static int SetVisible( lua_State *pLuaState );
-                static int GetVisible( lua_State *pLuaState );
-                static int GetPos( lua_State *pLuaState );
-                static int SetWorldSpace( lua_State *pLuaState );
-                static int GetWorldSpace( lua_State *pLuaState );
-                static int SetPos( lua_State *pLuaState );
-                static int GetSize( lua_State *pLuaState );
-                static int SetCollisionInset( lua_State *pLuaState );
-                static int AddToLayer( lua_State *pLuaState );
-                static int RemoveFromLayer( lua_State *pLuaState );
+                static int RegisterType( lua_State* pLuaState );
+                static int Acquire( lua_State* pLuaState );
+                static int Release( lua_State* pLuaState );
+                static int ConfigureTexture( lua_State* pLuaState );
+                static int SetActiveSequence( lua_State* pLuaState );
+                static int GetActiveSequence( lua_State* pLuaState );
+                static int SetAnimationMode( lua_State* pLuaState );
+                static int SetVisible( lua_State* pLuaState );
+                static int GetVisible( lua_State* pLuaState );
+                static int GetPos( lua_State* pLuaState );
+                static int SetWorldSpace( lua_State* pLuaState );
+                static int GetWorldSpace( lua_State* pLuaState );
+                static int SetBlendMode( lua_State* pLuaState );
+                static int ClearBlendMode( lua_State* pLuaState );
+                static int GetBlendMode( lua_State* pLuaState );
+                static int SetOpacity( lua_State* pLuaState );
+                static int GetOpacity( lua_State* pLuaState );
+                static int SetTint( lua_State* pLuaState );
+                static int GetTint( lua_State* pLuaState );
+                static int SetZOrder( lua_State* pLuaState );
+                static int GetZOrder( lua_State* pLuaState );
+                static int SetPos( lua_State* pLuaState );
+                static int GetSize( lua_State* pLuaState );
+                static int SetCollisionInset( lua_State* pLuaState );
+                static int AddToLayer( lua_State* pLuaState );
+                static int RemoveFromLayer( lua_State* pLuaState );
 
-                static void RegisterEnums( lua_State *pLuaState );
+                static void RegisterEnums( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                // The key LuaEngine::Init keeps the engine's SpritePool under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  SPRITE_POOL_KEY = "spritePoolPtr";
+
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUASPRITEAPI_H__ */
+#endif /* __LUASPRITEAPI_H__ */

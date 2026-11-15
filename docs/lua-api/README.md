@@ -10,19 +10,24 @@ Generated straight from `@luaname`/`@luadoc`/`@luaexample` tags on each primitiv
 
 | Page | Covers |
 |---|---|
+| [The sandbox and how paths are found](https://popolony2k.github.io/scarab/lua-api/sandbox.html) | The one path rule every loader follows (the save directory, then the game's own files; writes into the save directory), and the sandbox: Lua's own `io`, `os`, `require`, `loadfile` and `load` working the way Lua developers know them, but reaching only the game's files and its save directory (`--no-sandbox` turns it off) |
 | [Scripting](https://popolony2k.github.io/scarab/lua-api/scripting.html) | The `ScriptProcessor` command queue — `sp_wait`, `sp_clear`, `sp_wait_queue_empty`, `sp_move_sprites_to_screen`, `sp_add_label`/`sp_goto_label`, `sp_load_stage` |
 | [Sound](https://popolony2k.github.io/scarab/lua-api/sound.html) | Loading and playing sounds — `sound_*` (direct playback state) and the queued/direct song commands (`sp_play_song`/`play_song` and friends) |
 | [Timers](https://popolony2k.github.io/scarab/lua-api/timers.html) | `set_timer`/`reset_timer` — background-thread periodic/delayed callbacks |
-| [App](https://popolony2k.github.io/scarab/lua-api/app.html) | Application-level primitives — `app_set_name` (window title), `app_set_fullscreen`/`app_get_fullscreen`, `app_set_draw_fps`/`app_get_draw_fps`, `app_set_window_resizeable`/`app_get_window_resizeable` |
-| [Text](https://popolony2k.github.io/scarab/lua-api/text.html) | Font loading and screen-space text rendering — `set_font`, `draw_text`, `measure_text`, `screen_get_width`/`screen_get_height` |
+| [App](https://popolony2k.github.io/scarab/lua-api/app.html) | Application-level primitives — `app_set_name` (window title), `app_set_fullscreen`/`app_get_fullscreen`, `app_set_draw_fps`/`app_get_draw_fps`, `app_set_window_resizeable`/`app_get_window_resizeable`, `screen_get_width`/`screen_get_height` (the fixed render-area size every screen-space call uses) |
+| [Text](https://popolony2k.github.io/scarab/lua-api/text.html) | Fonts by handle and screen-space text — `load_font`/`release_font`, `set_font` (a path, a font or `nil`), `register_font`/`unregister_font` for the map's Tiled text objects, `draw_text`/`measure_text` (with an optional font) |
 | [Renderer](https://popolony2k.github.io/scarab/lua-api/renderer.html) | Creating the process's renderer with your own settings — `renderer_create`, `renderer_get_current`/`renderer_get_config`/`renderer_get_default_view`/`renderer_get_backend`/`renderer_get_view_count`, `renderer_destroy` — plus the `RENDERER_BACKEND_*`/`VIEW_CONTROL_MODE_*`/`FRAME_PACING_*`/`ZOOM_*` constants; includes the ordering rule (`renderer_create` must be the first window-needing call) |
+| [Worlds](https://popolony2k.github.io/scarab/lua-api/worlds.html) | Several maps at once — `world_create`/`world_load`/`world_unload`, maps at offsets (`world_add_map`, `world_get_bounds`), Tiled `.world` files, layer ids by name (`world_layer_id`), tiles and picking per map; a view shows one world (`view_set_world`), and the sprite and collision functions take an optional world |
 | [Views](https://popolony2k.github.io/scarab/lua-api/views.html) | Several views of one world — `view_create`/`view_destroy`, and the view-addressed zoom, viewport, camera, visibility, draw order, backdrop and layer-mask functions `view_*` (the renderer's default view is `0`; the older global `camera_*`/`zoom_*`/`viewport_*` act on it too) |
 | [Camera](https://popolony2k.github.io/scarab/lua-api/camera.html) | Camera panning and zoom — `camera_*`, `zoom_*`, `viewport_get_*` |
 | [Input](https://popolony2k.github.io/scarab/lua-api/input.html) | Keyboard and gamepad polling — `input_*`, plus the `KEY_*`/`GAMEPAD_BUTTON_*`/`GAMEPAD_AXIS_*`/`CONTROLLER_*` constants |
 | [Tile map](https://popolony2k.github.io/scarab/lua-api/tilemap.html) | Loading maps and reading/writing layers and tiles — `tilemap_*`, plus `MAP_ALIGNMENT_*` |
 | [Sprites](https://popolony2k.github.io/scarab/lua-api/sprite.html) | The sprite handle pool — `pool_register_type`, `sprite_*`, plus `TEXTURE_ANIMATION_MODE_*` |
+| [Blend modes](https://popolony2k.github.io/scarab/lua-api/blend.html) | How what is drawn next combines with what is already drawn (lights, glows, shadows, tints) — `draw_begin_blend_mode`/`draw_end_blend_mode` around a script's own drawing, plus the `BLEND_MODE_*` constants; a sprite's own mode is `sprite_set_blend_mode` on the Sprites page |
 | [Collision](https://popolony2k.github.io/scarab/lua-api/collision.html) | Collision rules and handlers — `collision_*` |
 | [JSON](https://popolony2k.github.io/scarab/lua-api/json.html) | `load_json` — the generic JSON→Lua config bridge |
+| [Shapes](https://popolony2k.github.io/scarab/lua-api/shape.html) | Shape outlines and points in map units, following the camera and zoom — `shape_draw_rectangle`/`shape_draw_ellipse`/`shape_draw_polyline`/`shape_draw_polygon`/`shape_draw_point`, with a thickness and a rotation (debug hitboxes, paths, range rings) |
+| [Save](https://popolony2k.github.io/scarab/lua-api/save.html) | The game's save files, kept as JSON in its save directory — `save_write`/`save_read`/`save_exists`/`save_delete` (safe writes, nothing outside the save directory, the same table back) |
 | [Engine callbacks](https://popolony2k.github.io/scarab/lua-api/callbacks.html) | The Lua-side hooks the engine calls **into** — `on_update`, `on_move_sprites_to_screen`, `on_load_stage`, `get_active_enemy_count` |
 
 ## Globals
@@ -42,11 +47,13 @@ BASE_PATH = APP_DIR .. "resources/"
 
 Every other Caravellius module reads `BASE_PATH`, never `APP_DIR` directly — a different game could lay its resources out completely differently and only this one line would need to change.
 
-A few other globals exist purely as internal plumbing between `LuaEngine`/the `Lua*Api` classes and are **not** meant to be read or written by game scripts directly: `scriptProcessorPtr`, `timerMapPtr`, `rendererProviderPtr`, `soundManagerPtr`, `spritePoolPtr` (opaque light-userdata pointers), and `__collision_handler`/`__collision_tile_handler` (the `__`-prefixed callback storage `collision_set_handler`/`collision_set_tile_handler` install). Interact with these through the documented functions, not by naming the globals themselves.
+A path starting with `APP_DIR` follows the same path rule as every other path ([The sandbox and how paths are found](https://popolony2k.github.io/scarab/lua-api/sandbox.html)): the save directory first, under the part after `APP_DIR`, then exactly where `APP_DIR` points — the executable's folder, or the game's `.zip`. Plain relative paths (`"resources/hero.png"`) are the recommended form for a new game.
+
+The engine's own objects (the script processor, the timers, the renderer, the sound manager, the sprite pool, the save directory, ...) are kept where no script can reach them - not as globals (they were, until docs/history/master_plan_11_2026.md item C8a, and overwriting one could crash the engine). A few other globals exist purely as internal plumbing and are **not** meant to be read or written by game scripts directly: `__collision_handler`/`__collision_tile_handler` (the `__`-prefixed callback storage `collision_set_handler`/`collision_set_tile_handler` install). Interact with these through the documented functions, not by naming the globals themselves.
 
 ## Conventions used in this reference
 
-- **Signature line** shows the Lua call shape: `function_name(param1, param2) -> return1, return2`. A function with no return value shows no `->`.
+- **Signature line** shows the Lua call shape: `primitive(param1, param2) -> return1, return2`. A function with no return value shows no `->`.
 - **Handle** means an opaque integer (`SpriteHandle`) returned by `sprite_acquire` — never construct one by hand, and `0` always means "invalid" (`sprite_acquire` returning `0` means the pool is exhausted).
 - Every example is a minimal, runnable snippet — most assume a sprite pool type has already been registered and a map is already loaded, since that's the real order engine code runs in.
 - Parameter types follow Lua's own dynamic typing — "int"/"number"/"string"/"bool"/"function" describe what the engine expects, not a Lua-enforced type.

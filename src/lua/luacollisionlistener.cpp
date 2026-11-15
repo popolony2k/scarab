@@ -21,9 +21,11 @@
 #include "lua/luacollisionlistener.h"
 #include "engine/spritehandle.h"
 #include "tilemap/tilemapdefs.h"
+#include "lua/luaengineutil.h"
+#include <cstdio>
+#include <mutex>
 
-extern "C"
-{
+extern "C"  {
   #include "lauxlib.h"
 }
 
@@ -36,10 +38,12 @@ namespace Scarab  {
              * @brief Constructor. Initialize all class data.
              *
              * @param pLuaState Lua state used to invoke the registered handlers;
+             * @param nWorldId The world this listener hears (0 = the default world), passed to the handlers;
              */
-            LuaCollisionListener :: LuaCollisionListener( lua_State *pLuaState )  {
+            LuaCollisionListener :: LuaCollisionListener( lua_State* pLuaState, int nWorldId )  {
 
                 m_pLuaState = pLuaState;
+                m_nWorldId  = nWorldId;
             }
 
             /**
@@ -58,19 +62,27 @@ namespace Scarab  {
              * Phase 9). The check is kept as a defensive guard rather than
              * assumed away.
              */
-            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                                      SunLight :: Collision :: Collider *pSecond )  {
+            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                                      SunLight :: Collision :: Collider* pSecond )  {
 
-                void  *pFirstData  = pFirst -> GetPtrData();
-                void  *pSecondData = pSecond -> GetPtrData();
-                bool  bFirstIsLua  = IsPackedSpriteHandle( pFirstData );
-                bool  bSecondIsLua = IsPackedSpriteHandle( pSecondData );
+                void*  pFirstData  = pFirst -> GetPtrData();
+                void*  pSecondData = pSecond -> GetPtrData();
+                bool   bFirstIsLua  = IsPackedSpriteHandle( pFirstData );
+                bool   bSecondIsLua = IsPackedSpriteHandle( pSecondData );
 
                 if( !( bFirstIsLua && bSecondIsLua ) )
                     return;
 
-                SpriteHandle  handleA = UnpackSpriteHandleFromPtr( pFirstData );
-                SpriteHandle  handleB = UnpackSpriteHandleFromPtr( pSecondData );
+                SpriteHandle  hFirst = UnpackSpriteHandleFromPtr( pFirstData );
+                SpriteHandle  hSecond = UnpackSpriteHandleFromPtr( pSecondData );
+
+                /*
+                 * sunlight dispatches collisions from TileMapRenderer::Run's HandleUserCollisions, after
+                 * on_update has returned and released the Lua mutex - so this takes it, like every other
+                 * C++ entry into the Lua state. Without it a set_timer callback (whose background thread
+                 * runs whenever the mutex is free) could run Lua at the same time as this handler.
+                 */
+                std :: lock_guard<std :: mutex>  lock( LuaEngineUtil :: s_LuaMutex );
 
                 lua_getglobal( m_pLuaState, "__collision_handler" );
 
@@ -80,10 +92,11 @@ namespace Scarab  {
                     return;
                 }
 
-                lua_pushinteger( m_pLuaState, ( lua_Integer ) handleA );
-                lua_pushinteger( m_pLuaState, ( lua_Integer ) handleB );
+                lua_pushinteger( m_pLuaState, ( lua_Integer ) hFirst );
+                lua_pushinteger( m_pLuaState, ( lua_Integer ) hSecond );
+                lua_pushinteger( m_pLuaState, m_nWorldId );
 
-                if( lua_pcall( m_pLuaState, 2, 0, 0 ) != 0 )  {
+                if( lua_pcall( m_pLuaState, 3, 0, 0 ) != 0 )  {
                     fprintf( stderr, "Error calling collision handler: %s\n", lua_tostring( m_pLuaState, -1 ) );
                     lua_pop( m_pLuaState, 1 );
                 }
@@ -94,15 +107,17 @@ namespace Scarab  {
              * check as the collider-to-collider overload, dispatching to the
              * handler registered via collision_set_tile_handler.
              */
-            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                                      SunLight :: TileMap :: stTile *pSecond )  {
+            void LuaCollisionListener :: OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                                      SunLight :: TileMap :: stTile* pSecond )  {
 
-                void  *pFirstData = pFirst -> GetPtrData();
+                void*  pFirstData = pFirst -> GetPtrData();
 
                 if( !IsPackedSpriteHandle( pFirstData ) )
                     return;
 
-                SpriteHandle  handle = UnpackSpriteHandleFromPtr( pFirstData );
+                SpriteHandle  hSprite = UnpackSpriteHandleFromPtr( pFirstData );
+
+                std :: lock_guard<std :: mutex>  lock( LuaEngineUtil :: s_LuaMutex );     // see the collider-to-collider overload
 
                 lua_getglobal( m_pLuaState, "__collision_tile_handler" );
 
@@ -112,14 +127,15 @@ namespace Scarab  {
                     return;
                 }
 
-                lua_pushinteger( m_pLuaState, ( lua_Integer ) handle );
+                lua_pushinteger( m_pLuaState, ( lua_Integer ) hSprite );
                 lua_pushinteger( m_pLuaState, ( lua_Integer ) pSecond -> nGID );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.pos.x );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.pos.y );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.size.nWidth );
                 lua_pushinteger( m_pLuaState, pSecond -> dimension.size.nHeight );
+                lua_pushinteger( m_pLuaState, m_nWorldId );
 
-                if( lua_pcall( m_pLuaState, 5, 0, 0 ) != 0 )  {
+                if( lua_pcall( m_pLuaState, 7, 0, 0 ) != 0 )  {
                     fprintf( stderr, "Error calling collision tile handler: %s\n", lua_tostring( m_pLuaState, -1 ) );
                     lua_pop( m_pLuaState, 1 );
                 }

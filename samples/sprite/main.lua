@@ -26,45 +26,117 @@
  pattern), sprite_configure_texture (a 4-frame auto-animating strip),
  sprite_add_to_layer (required before a sprite draws at all - see the
  layer-visibility gotcha in root CLAUDE.md), and keyboard-driven
- sprite_set_pos/sprite_get_pos/sprite_get_size.
+ sprite_set_pos/sprite_get_pos/sprite_get_size, and a sprite's own
+ opacity and tint (sprite_set_opacity/sprite_set_tint, keys O and T) - a
+ second, untouched Sunny on the same texture shows they are the sprite's
+ own, not its texture's.
 
- IMPORTANT - see root CLAUDE.md's own gotcha: acquiring/positioning/
- adding a sprite to a layer from top-level (load-time) code fails
- silently if that code runs BEFORE the map is loaded. This script is
- safe specifically because tilemap_load_map is called synchronously,
- first, and every sprite call below runs strictly after it in the same
- top-level script - not because top-level sprite setup is safe in
- general.
+ IMPORTANT - see root CLAUDE.md's own gotcha: a sprite added to a layer
+ before the map is loaded is drawn right away, over an empty background,
+ until the map appears (samples/mapless draws sprites with no map at
+ all). This script loads its map first: tilemap_load_map is called
+ synchronously, and every sprite call below runs strictly after it in
+ the same top-level script.
 ]]
 
-app_set_name( "Scarab - sprite sample" )
+assert( app_set_name( "Scarab - sprite sample" ) )
 
 -- See samples/hello-world/docs/README.md for why every entry script needs
 -- at least one sp_* command, even one with nothing to sequence.
 sp_wait( 1 )
 
-tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER )
+assert( tilemap_load_map( "resources/tilemap/test.tmx", MAP_ALIGNMENT_CENTER ) )
 
 -- "sunny" is sunlight's own sample character (resources/sprites/, shared
 -- from sunlight/samples/sprite/ - see resources/sprites/README.md), a
 -- 128x32 strip of four 32x32 frames.
-pool_register_type( "sunny", 1 )
+local __SUNNY_FRAMES      <const> = 4                     -- sunny_idle_down.png: four 32x32 frames side by side
+local __SUNNY_FRAME_MILLI <const> = 100                   -- the frame delay: WITHOUT it (the default, -1) the frame is held and sunny never animates
+local __SUNNY_START       <const> = { x = 100, y = 100 }  -- map pixels
+local __TWIN_POS          <const> = { x = 52, y = 100 }   -- left of sunny, over the open clouds (to its right the house covers it)
+local __SPRITE_LAYER      <const> = 4                     -- "clouds" in test.tmx
 
-local handle = sprite_acquire( "sunny" )
+assert( pool_register_type( "sunny", 2 ) )
 
--- The last argument is the frame delay in ms: WITHOUT it (the default, -1) the frame is held and sunny never animates.
-sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", 4, 0, TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, 100 )
-sprite_set_active_sequence( handle, 0 )
-sprite_set_pos( handle, 100, 100 )
+local handle = assert( sprite_acquire( "sunny" ) )
+local twin   = assert( sprite_acquire( "sunny" ) )   -- the same texture, never faded or tinted
+
+assert( sprite_configure_texture( handle, 0, "resources/sprites/sunny_idle_down.png", __SUNNY_FRAMES, 0,
+    TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, __SUNNY_FRAME_MILLI ) )
+assert( sprite_set_active_sequence( handle, 0 ) )
+-- World space: sunny's position is a MAP position in pixels, so the camera
+-- can follow it across the whole map (by default a sprite's position is
+-- relative to the view, and it would stay put on screen while the map moves).
+assert( sprite_set_world_space( handle, true ) )
+assert( sprite_set_pos( handle, __SUNNY_START.x, __SUNNY_START.y ) )
 
 -- Layer 4 ("clouds" in test.tmx) is visible by default (no visible="0")
 -- - a sprite added to a layer authored invisible would never draw at
 -- all, regardless of sprite_set_visible (see root CLAUDE.md).
-sprite_add_to_layer( handle, 4 )
+assert( sprite_add_to_layer( handle, __SPRITE_LAYER ) )
 
-local __SPEED = 3  -- pixels/frame, fine for a short demo - see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
+assert( sprite_configure_texture( twin, 0, "resources/sprites/sunny_idle_down.png", __SUNNY_FRAMES, 0,
+    TEXTURE_ANIMATION_MODE_AUTOMATIC_CIRCULAR, __SUNNY_FRAME_MILLI ) )
+assert( sprite_set_active_sequence( twin, 0 ) )
+assert( sprite_set_world_space( twin, true ) )
+assert( sprite_set_pos( twin, __TWIN_POS.x, __TWIN_POS.y ) )
+assert( sprite_add_to_layer( twin, __SPRITE_LAYER ) )
 
+-- O cycles sunny's opacity (0 transparent .. 1 opaque), T its tint (r, g, b
+-- multiply into the frame: white = none, a red hit flash, a blue team colour).
+local __OPACITIES <const> = { 1, 0.5, 0.25, 0 }
+local __TINTS     <const> = {
+    { name = "none (white)",    r = 255, g = 255, b = 255 },
+    { name = "red hit flash",   r = 255, g = 80,  b = 80 },
+    { name = "blue team",       r = 120, g = 160, b = 255 },
+}
+local opacityIndex = 1
+local tintIndex    = 1
+
+local __SPEED <const> = 3  -- pixels/frame, fine for a short demo - see CLAUDE.md's dt gotcha for why real games shouldn't scale movement by dt's fake fixed value either
+
+local Hud = dofile( "samples/shared/hud.lua" )
+
+local mapWidth, mapHeight, tileWidth, tileHeight = tilemap_get_map_info()
+local mapPixelWidth  = mapWidth * tileWidth
+local mapPixelHeight = mapHeight * tileHeight
+
+-- Keep a value between low and high.
+local function clamp( value, low, high )
+    return math.max( low, math.min( value, high ) )
+end
+
+-- The camera follows sunny: it keeps sunny centred in the view, clamped so it
+-- never shows anything past the map's edges (camera_set_position itself does
+-- not clamp). The camera position is the map point shown at the view's
+-- top-left; the view shows viewport size / zoom map pixels.
+local function follow( x, y, width, height )
+    local _, _, viewportWidth, viewportHeight = viewport_get_dimension()
+    local zoom          = viewport_get_zoom_factor()
+    local visibleWidth  = viewportWidth / zoom
+    local visibleHeight = viewportHeight / zoom
+    local cameraX = clamp( math.floor( x + width / 2 - visibleWidth / 2 ), 0, math.max( 0, math.floor( mapPixelWidth - visibleWidth ) ) )
+    local cameraY = clamp( math.floor( y + height / 2 - visibleHeight / 2 ), 0, math.max( 0, math.floor( mapPixelHeight - visibleHeight ) ) )
+
+    camera_set_position( cameraX, cameraY )
+
+    return cameraX, cameraY
+end
+
+-- Called by Scarab every frame (dt is a fixed step, not measured time): change Sunny's opacity (O) and tint (T),
+-- walk it (arrows/WASD), keep the camera centred on it (kept inside the map), and draw the HUD.
 function on_update( dt )
+
+    if input_is_key_released( KEY_O ) then
+        opacityIndex = opacityIndex % #__OPACITIES + 1
+        sprite_set_opacity( handle, __OPACITIES[opacityIndex] )
+    end
+
+    if input_is_key_released( KEY_T ) then
+        tintIndex = tintIndex % #__TINTS + 1
+        local tint = __TINTS[tintIndex]
+        sprite_set_tint( handle, tint.r, tint.g, tint.b )
+    end
 
     local x, y = sprite_get_pos( handle )
 
@@ -84,11 +156,22 @@ function on_update( dt )
         y = y + __SPEED
     end
 
-    sprite_set_pos( handle, x, y )
-
     local width, height = sprite_get_size( handle )
 
-    draw_text( "sprite sample - arrows/WASD to move", 20, 20, 20, 255, 255, 255, 255 )
-    draw_text( "sprite_get_pos: " .. x .. ", " .. y .. "   sprite_get_size: " .. width .. "x" .. height,
-        20, 50, 18, 200, 200, 200, 255 )
+    -- sunny stays on the map
+    x = clamp( x, 0, mapPixelWidth - width )
+    y = clamp( y, 0, mapPixelHeight - height )
+
+    sprite_set_pos( handle, x, y )
+
+    local cameraX, cameraY = follow( x, y, width, height )
+
+    local r, g, b = sprite_get_tint( handle )
+
+    Hud.line( "sprite sample - arrows/WASD move, the camera follows", 1, Hud.TITLE )
+    Hud.line( "O opacity, T tint - the twin on the left stays as it is", 2, Hud.TITLE )
+    Hud.line( "sprite_get_pos: " .. x .. ", " .. y .. "   sprite_get_size: " .. width .. "x" .. height, 3, Hud.INFO )
+    Hud.line( "camera_get_position: " .. cameraX .. ", " .. cameraY, 4, Hud.INFO )
+    Hud.line( string.format( "sprite_get_opacity: %g", sprite_get_opacity( handle ) ), 5, Hud.INFO )
+    Hud.line( string.format( "sprite_get_tint: %d, %d, %d (%s)", r, g, b, __TINTS[tintIndex].name ), 6, Hud.INFO )
 end

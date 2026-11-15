@@ -23,8 +23,7 @@
 
 #include "collision/icollisionlistener.h"
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
@@ -40,23 +39,28 @@ namespace Scarab  {
              * listener's job instead (it's the one that understands the legacy
              * sprite type well enough to decide response for a mixed collision
              * without a listener-ordering race).
+             *
+             * One listener per world (docs/history/master_plan_11_2026.md item C7): each world has its own collision
+             * manager, so the listener added to it knows its world and passes the world's id to the
+             * Lua handlers as their last argument.
              */
             class LuaCollisionListener : public SunLight :: Collision :: ICollisionListener  {
 
-                lua_State  *m_pLuaState;
+                lua_State*  m_pLuaState;
+                int         m_nWorldId;     // the world whose collision manager this listener is added to (item C7)
 
                 public:
 
-                LuaCollisionListener( lua_State *pLuaState );
+                LuaCollisionListener( lua_State* pLuaState, int nWorldId );
                 virtual ~LuaCollisionListener( void );
 
-                void OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                  SunLight :: Collision :: Collider *pSecond );
-                void OnCollision( SunLight :: Collision :: Collider *pFirst,
-                                  SunLight :: TileMap :: stTile *pSecond );
+                void OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                  SunLight :: Collision :: Collider* pSecond ) override;
+                void OnCollision( SunLight :: Collision :: Collider* pFirst,
+                                  SunLight :: TileMap :: stTile* pSecond ) override;
             };
         }
     }
 }
 
-#endif  /* __LUACOLLISIONLISTENER_H__ */
+#endif /* __LUACOLLISIONLISTENER_H__ */

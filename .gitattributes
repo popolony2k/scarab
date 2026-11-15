@@ -1,0 +1,3 @@
+# The sandbox smoke test compares these files byte for byte (a sandbox file is read as it is, on every OS):
+# never convert their line endings on checkout.
+scripts/sandbox_smoke/** -text

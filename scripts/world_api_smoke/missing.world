@@ -1,0 +1,7 @@
+{
+    "maps": [
+        { "fileName": "../../resources/tilemap/orthogonal/orthogonal.tmx", "x": 0,   "y": 0, "width": 256, "height": 192 },
+        { "fileName": "no_such_map.tmx",                                   "x": 256, "y": 0, "width": 256, "height": 192 }
+    ],
+    "type": "world"
+}

@@ -24,6 +24,7 @@
 #include "lua/luaappapi.h"
 #include "lua/luarendererapi.h"
 #include "lua/luaviewapi.h"
+#include "lua/luaworldapi.h"
 #include "lua/luatextapi.h"
 #include "lua/luacameraapi.h"
 #include "lua/luainputapi.h"
@@ -36,16 +37,23 @@
 #include "lua/luatimerapi.h"
 #include "lua/luacryptoapi.h"
 #include "lua/luapackapi.h"
+#include "lua/luablendapi.h"
+#include "lua/luasaveapi.h"
+#include "lua/luashapeapi.h"
+#include "lua/luasandboxapi.h"
 #include "tilemap/itilemap.h"
 #include "sound/soundmanager.h"
 #include "engine/spritepool.h"
 #include "engines/enginefactory.h"
 #include "filesystem/filesystemfactory.h"
+#include "filesystem/filepath.h"
+#include "input/gamepadhapticsfactory.h"
+#include "input/nullgamepadhaptics.h"
 #include <vector>
 
 
 namespace Scarab  {
-  namespace Lua {
+  namespace Lua  {
 
     /**
      * @brief Register all C++ calls to lua engine;
@@ -53,12 +61,11 @@ namespace Scarab  {
      */
     void LuaEngine :: RegisterCalls( void )  {
 
-        // Add all globals to lua engine
-        lua_pushlightuserdata( m_pLuaState, m_pScriptProcessor );
-        lua_setglobal( m_pLuaState, "scriptProcessorPtr" );
+        // The engine objects the primitives below reach (LuaEngineUtil::GetEnginePointer)
+        m_EngineObjects[Engine :: Lua :: LuaScriptingApi :: SCRIPT_PROCESSOR_KEY] = m_pScriptProcessor;
 
-        lua_pushlightuserdata( m_pLuaState, &m_Timers );
-        lua_setglobal( m_pLuaState, "timerMapPtr" );
+        m_EngineObjects[Engine :: Lua :: LuaTimerApi :: TIMER_MAP_KEY] = &m_Timers;
+        m_EngineObjects[Engine :: Lua :: LuaSandboxApi :: APP_DIRECTORY_KEY] = &m_strAppDirectory;   // where APP_DIR paths are written (C8)
 
         // Register the primitive API modules that only need
         // scriptProcessorPtr/timerMapPtr (both set just above) - everything
@@ -68,13 +75,21 @@ namespace Scarab  {
         Engine :: Lua :: LuaTimerApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaJsonApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCryptoApi :: Register( m_pLuaState );
-        Engine :: Lua :: LuaPackApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaBlendApi :: Register( m_pLuaState );   // renderer-free until a draw function is called
 
         // Overrides Lua's own built-in dofile() - must run after
         // luaL_openlibs() (guaranteed, since RegisterCalls() itself is
         // only ever called right after that) so this replaces the
         // standard library's version rather than being replaced by it.
         Engine :: Lua :: LuaFileSystemApi :: Register( m_pLuaState );
+
+        // The pack_* functions read and write real OS paths: the --pack tool's only (docs/history/master_plan_11_2026.md
+        // item C8). A game gets the sandbox instead - Lua's own io/os/require/loadfile/load replaced in
+        // place, before any script runs - unless the command line says --no-sandbox.
+        if( m_Mode == LUA_ENGINE_MODE_PACK )
+            Engine :: Lua :: LuaPackApi :: Register( m_pLuaState );
+        else if( m_Mode == LUA_ENGINE_MODE_SANDBOX )
+            Engine :: Lua :: LuaSandboxApi :: Install( m_pLuaState );
     }
 
     /**
@@ -86,7 +101,8 @@ namespace Scarab  {
      * @luaname{on_update(deltaMilli)}
      * @luadoc
      * Called once per frame, after the engine's own per-frame
-     * bookkeeping (script queue processing, sprite pool update). This
+     * bookkeeping (script queue processing) and after the map and
+     * its sprites are drawn - so what it draws is on top. This
      * is the main per-frame hook — virtually all real-time game logic
      * (movement, input polling, timers you're tracking by hand) lives
      * here.
@@ -309,37 +325,38 @@ namespace Scarab  {
      * (the renderer itself doesn't exist yet - see IRendererProvider);
      * @param pSoundManager Pointer to the engine's sound manager instance;
      * @param pSpritePool Pointer to the engine's sprite pool instance;
+     * @param pFontPool Pointer to the engine's font pool (load_font's handles);
      */
-    void LuaEngine :: Init( Engine :: IRendererProvider *pRendererProvider,
-                           SunLight :: Sound :: SoundManager *pSoundManager,
-                           Engine :: SpritePool *pSpritePool )  {
+    void LuaEngine :: Init( Engine :: IRendererProvider* pRendererProvider,
+                           SunLight :: Sound :: SoundManager* pSoundManager,
+                           Engine :: SpritePool* pSpritePool,
+                           Engine :: FontPool* pFontPool,
+                           Engine :: SaveDirectory* pSaveDirectory )  {
 
         std :: lock_guard<std :: mutex>  lock( Engine :: Lua :: LuaEngineUtil :: s_LuaMutex );
 
-        /*
-         * IFileSystem::ToVirtualPath() of the real application directory,
-         * not that raw real-OS-path value itself - main.cpp mounts that
-         * same real directory at this exact virtual-path conversion of
-         * itself (not at itself), since a raw Windows path is illegal as
-         * PHYSFS_mount()'s own mountPoint argument (see ToVirtualPath's
-         * own doc comment, ifilesystem.h). Every APP_DIR-anchored virtual
-         * path Lua/EngineHost build from this value must keep matching
-         * whatever main.cpp actually mounted things at - both derive from
-         * the same GetApplicationDirectory() call and apply the exact same
-         * deterministic conversion, so they agree without needing to
-         * coordinate explicitly.
-         */
-        m_strAppDirectory = SunLight :: FileSystem :: IFileSystem :: ToVirtualPath(
-                                 SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory() );
+        // m_strAppDirectory (APP_DIR) was computed by the constructor, which the sandbox needs already.
 
-        lua_pushlightuserdata( m_pLuaState, pRendererProvider );
-        lua_setglobal( m_pLuaState, "rendererProviderPtr" );
 
-        lua_pushlightuserdata( m_pLuaState, pSoundManager );
-        lua_setglobal( m_pLuaState, "soundManagerPtr" );
+        m_EngineObjects[Engine :: Lua :: LuaEngineUtil :: RENDERER_PROVIDER_KEY] = pRendererProvider;
 
-        lua_pushlightuserdata( m_pLuaState, pSpritePool );
-        lua_setglobal( m_pLuaState, "spritePoolPtr" );
+        m_EngineObjects[Engine :: Lua :: LuaSoundApi :: SOUND_MANAGER_KEY] = pSoundManager;
+
+        m_EngineObjects[Engine :: Lua :: LuaSpriteApi :: SPRITE_POOL_KEY] = pSpritePool;
+
+        m_EngineObjects[Engine :: Lua :: LuaTextApi :: FONT_POOL_KEY] = pFontPool;
+
+        m_EngineObjects[Engine :: Lua :: LuaInputApi :: PLAYER_SLOTS_KEY] = &m_PlayerSlots;
+
+        m_EngineObjects[Engine :: Lua :: LuaInputApi :: ACTION_MAP_KEY] = &m_ActionMap;
+
+        // The holder, not the haptics: they are made later, with the renderer (AttachHaptics), and setting
+        // a Lua global then could race a set_timer callback - the holder's address never changes.
+        m_EngineObjects[Engine :: Lua :: LuaInputApi :: HAPTICS_KEY] = &m_pHaptics;
+
+        m_EngineObjects[Engine :: Lua :: LuaWorldApi :: WORLD_TABLE_KEY] = &m_Worlds;
+
+        m_EngineObjects[Engine :: Lua :: LuaAppApi :: SAVE_DIRECTORY_KEY] = pSaveDirectory;
 
         lua_pushstring( m_pLuaState, m_strAppDirectory.c_str() );
         lua_setglobal( m_pLuaState, "APP_DIR" );
@@ -347,6 +364,7 @@ namespace Scarab  {
         Engine :: Lua :: LuaAppApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaRendererApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaViewApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaWorldApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaTextApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCameraApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaInputApi :: Register( m_pLuaState );
@@ -354,8 +372,10 @@ namespace Scarab  {
         Engine :: Lua :: LuaSoundApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaSpriteApi :: Register( m_pLuaState );
         Engine :: Lua :: LuaCollisionApi :: Register( m_pLuaState );
+        Engine :: Lua :: LuaShapeApi :: Register( m_pLuaState );   // checks its arguments, then reaches the renderer
+        Engine :: Lua :: LuaSaveApi :: Register( m_pLuaState );   // needs SAVE_DIRECTORY_KEY, set above
 
-        m_pCollisionListener = new Engine :: Lua :: LuaCollisionListener( m_pLuaState );
+        m_pCollisionListener = std :: make_unique<Engine :: Lua :: LuaCollisionListener>( m_pLuaState, 0 );   // the default world's
     }
 
     /**
@@ -366,9 +386,56 @@ namespace Scarab  {
      *
      * @param tileMap The just-created renderer's tile map;
      */
-    void LuaEngine :: AttachToTileMap( SunLight :: TileMap :: ITileMap &tileMap )  {
+    void LuaEngine :: AttachToTileMap( SunLight :: TileMap :: ITileMap& tileMap )  {
 
-        tileMap.GetCollisionManager().AddCollisionListener( m_pCollisionListener );
+        tileMap.GetCollisionManager().AddCollisionListener( m_pCollisionListener.get() );
+    }
+
+    /**
+     * @brief Install the gamepad hot-plug handler on a renderer's controller manager (see
+     * LuaInputApi::InstallConnectionHandler). Called by the renderer provider's created-hook,
+     * next to AttachToTileMap - the controller manager lives on the concrete renderer only.
+     *
+     * @param controllerManager The just-created renderer's controller manager;
+     */
+    void LuaEngine :: AttachToControllerManager( SunLight :: Input :: IControllerManager& controllerManager )  {
+
+        Engine :: Lua :: LuaInputApi :: InstallConnectionHandler( m_pLuaState, controllerManager );
+    }
+
+    /**
+     * @brief Make the rumble backend for a new renderer (docs/history/master_plan_11_2026.md item C1b), from the
+     * renderer-created hook: sunlight's SDL2 haptics in a window, sunlight's null haptics under
+     * --headless - the null input sees no pad there, so nothing could rumble, and CI never starts SDL.
+     *
+     * @param inputHandler The renderer's input handler (the haptics match SDL's pads to its ids);
+     * @param bHeadless Whether the process runs --headless;
+     */
+    void LuaEngine :: AttachHaptics( SunLight :: Input :: IInputHandler& inputHandler, bool bHeadless )  {
+
+        if( bHeadless )
+            m_pHaptics = std :: make_unique<SunLight :: Input :: NullGamepadHaptics>();
+        else
+            m_pHaptics = SunLight :: Input :: GamepadHapticsFactory :: CreateGamepadHaptics( inputHandler );
+    }
+
+    /**
+     * @brief Tick the rumble backend once per frame: sunlight stops a timed rumble from this tick (SDL's
+     * own auto-stop needs an event pump nothing else runs).
+     */
+    void LuaEngine :: UpdateHaptics( void )  {
+
+        if( m_pHaptics )
+            m_pHaptics -> Update();
+    }
+
+    /**
+     * @brief Release the rumble backend, which stops any rumble still running - from EngineHost::OnStop,
+     * while the renderer (whose input handler the haptics hold) still exists.
+     */
+    void LuaEngine :: ReleaseHaptics( void )  {
+
+        m_pHaptics.reset();
     }
 
     /**
@@ -391,7 +458,7 @@ namespace Scarab  {
      * bootstrap entry script on disk before any Lua exists to do so itself.
      *
      * @return The application's own directory (trailing separator
-     * included), or an empty string if Init hasn't run yet.
+     * included), computed by the constructor.
      */
     const std :: string& LuaEngine :: GetApplicationDirectory( void ) const  {
 
@@ -402,16 +469,36 @@ namespace Scarab  {
      * @brief Constructor. Initialize all class data;
      *
      * @param pScriptProcessor Pointer to an initialized script processor;
+     * @param mode What the engine runs: a game in the sandbox or not, or the --pack tool;
      *
      */
-    LuaEngine :: LuaEngine( SunLight :: Scripting :: ScriptProcessor *pScriptProcessor )  {
+    LuaEngine :: LuaEngine( SunLight :: Scripting :: ScriptProcessor* pScriptProcessor, LuaEngineMode mode )  {
 
+        /*
+         * FilePath::ToVirtualPath() of the real application directory,
+         * not that raw real-OS-path value itself - main.cpp mounts that
+         * same real directory at this exact virtual-path conversion of
+         * itself (not at itself), since a raw Windows path is illegal as
+         * PHYSFS_mount()'s own mountPoint argument (see ToVirtualPath's
+         * own doc comment, ifilesystem.h). Every APP_DIR-anchored virtual
+         * path Lua/EngineHost build from this value must keep matching
+         * whatever main.cpp actually mounted things at - both derive from
+         * the same GetApplicationDirectory() call and apply the exact same
+         * deterministic conversion, so they agree without needing to
+         * coordinate explicitly.
+         */
+        m_strAppDirectory = SunLight :: FileSystem :: FilePath :: ToVirtualPath(
+                                 SunLight :: Engines :: EngineFactory :: GetEngine().GetApplicationDirectory() );
+
+        m_Mode              = mode;
         m_pScriptProcessor  = pScriptProcessor;
         m_pLuaState         = luaL_newstate();
-        m_pCollisionListener = nullptr;
         m_Timers.clear();
 
         if( m_pLuaState )  {
+            // The engine objects, where no script can reach them (C8a) - before anything reads one.
+            Engine :: Lua :: LuaEngineUtil :: SetEngineObjects( m_pLuaState, &m_EngineObjects );
+
             // load Lua base libraries (print/math/etc)
             luaL_openlibs( m_pLuaState );
             RegisterCalls();
@@ -424,13 +511,11 @@ namespace Scarab  {
      */
     LuaEngine :: ~LuaEngine( void )  {
 
-        for( auto timer : m_Timers )  {
-            SunLight :: Concurrent :: Timer *pTimer = timer.second;
-
-            delete pTimer;
-        }
-
-        delete m_pCollisionListener;
+        // Released here, before lua_close: a timer's thread calls back into the Lua state, and the
+        // listener holds it - left to the members' own destructors, both would outlive it.
+        m_Timers.clear();
+        m_Worlds.clear();
+        m_pCollisionListener.reset();
 
         if( m_pLuaState )  {
             lua_close( m_pLuaState );
@@ -465,34 +550,10 @@ namespace Scarab  {
         if( !m_pLuaState )
             return false;
 
-        std :: vector<unsigned char>  data;
-
-        if( !SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().ReadFile( strFileName, data ) )  {
-            fprintf( stderr, "Lua error: cannot open %s\n", strFileName.c_str() );
-
-            return false;
-        }
-
-        /*
-         * Transparent content-encryption support (see the root
-         * README.md's own "Content encryption" section) - tries to
-         * decrypt whatever ReadFile() returned using this build's own
-         * SCARAB_CONTENT_KEY
-         * before treating it as Lua source; silently falls back to the
-         * raw bytes as-is (plaintext) if decryption doesn't apply - see
-         * LuaCryptoApi::TryDecryptBytes's own doc comment for exactly
-         * when that happens (no key configured, or data just isn't a
-         * genuine encrypted blob for this key). This is the entry
-         * script's own load path - the very first script a packed,
-         * encrypted .zip bundle needs to run.
-         */
-        std :: vector<unsigned char>  decrypted;
-
-        if( Engine :: Lua :: LuaCryptoApi :: TryDecryptBytes( data, decrypted ) )
-            data = std :: move( decrypted );
-
-        std :: string  strChunkName = std :: string( "@" ) + strFileName;
-        int            nLoadStatus  = luaL_loadbuffer( m_pLuaState, reinterpret_cast<const char *>( data.data() ), data.size(), strChunkName.c_str() );
+        // Through the same loader as dofile/loadfile/require (the path rule, content decryption; text only
+        // in the sandbox).
+        int  nLoadStatus = Engine :: Lua :: LuaFileSystemApi :: LoadChunk( m_pLuaState, strFileName,
+                                                                         Engine :: Lua :: LuaSandboxApi :: GetChunkMode( m_pLuaState ) );
 
         if( nLoadStatus != LUA_OK || lua_pcall( m_pLuaState, 0, LUA_MULTRET, 0 ) )  {
             fprintf( stderr, "Lua error: %s\n", lua_tostring( m_pLuaState, -1 ) );

@@ -61,44 +61,54 @@ namespace Scarab  {
 
             private:
 
-            SunLight :: Renderer :: RendererConfig                        m_DefaultConfig;
-            SunLight :: Renderer :: RendererConfig                        m_EffectiveConfig;
-            stHeadlessSettings                                            m_Headless;
-            std :: unique_ptr<SunLight :: Renderer :: TileMapRenderer>   m_pRenderer;
-            Origin                                                        m_Origin;
-            std :: string                                                 m_strTrigger;
-            CreatedHook                                                   m_CreatedHook;
+            SunLight :: Renderer :: RendererConfig                         m_DefaultConfig;
+            SunLight :: Renderer :: RendererConfig                         m_EffectiveConfig;
+            bool                                                           m_bUseDefaultKeyHandler;
+            stHeadlessSettings                                             m_Headless;
+            std :: unique_ptr<SunLight :: Renderer :: TileMapRenderer>     m_pRenderer;
+            Origin                                                         m_Origin;
+            std :: string                                                  m_strTrigger;
+            CreatedHook                                                    m_CreatedHook;
 
-            SunLight :: Renderer :: TileMapRenderer* GetOrCreateDefault( const char *szTrigger );
+            SunLight :: Renderer :: TileMapRenderer* GetOrCreateDefault( const char* szTrigger );
 
             public:
 
-            RendererProvider( const SunLight :: Renderer :: RendererConfig &defaults,
-                              const stHeadlessSettings &headless );
+            RendererProvider( const SunLight :: Renderer :: RendererConfig& defaults,
+                              const stHeadlessSettings& headless );
             virtual ~RendererProvider( void );
 
             void SetCreatedHook( CreatedHook hook );
-            bool Create( const SunLight :: Renderer :: RendererConfig &config,
+            bool Create( const SunLight :: Renderer :: RendererConfig& config,
                          Origin origin,
-                         const std :: string &strTrigger,
-                         std :: string *pError );
-            void EnsureCreated( const char *szTrigger );
+                         const std :: string& strTrigger,
+                         std :: string* pError,
+                         const Scarab :: Engine :: stRendererCreateExtras& extras = Scarab :: Engine :: stRendererCreateExtras() );
+            void EnsureCreated( const char* szTrigger );
 
             SunLight :: Renderer :: TileMapRenderer* GetRenderer( void );
             const stHeadlessSettings& GetHeadlessSettings( void ) const;
 
             // Scarab::Engine::IRendererProvider
-            SunLight :: TileMap :: ITileMap* GetTileMap( const char *szTrigger );
-            SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char *szTrigger );
-            SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void );
-            bool CreateRenderer( const SunLight :: Renderer :: RendererConfig &config, std :: string *pError );
-            Origin GetOrigin( void );
-            bool IsHeadless( void );
-            SunLight :: Renderer :: RendererConfig GetDefaultConfig( void );
-            SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void );
-            void NoteWindowTitle( const std :: string &strTitle );
+            SunLight :: TileMap :: ITileMap* GetTileMap( const char* szTrigger ) override;
+            SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( const char* szTrigger ) override;
+            SunLight :: Input :: IControllerManager* GetControllerManager( const char* szTrigger ) override;
+            SunLight :: DrawSurface :: IShapeSurface* GetShapeSurface( const char* szTrigger ) override;
+            SunLight :: DrawSurface :: IDrawSurface* PeekDrawSurface( void ) override;
+            bool CreateRenderer( const SunLight :: Renderer :: RendererConfig& config,
+                                const Scarab :: Engine :: stRendererCreateExtras& extras, std :: string* pError ) override;
+            Origin GetOrigin( void ) override;
+            bool IsHeadless( void ) override;
+            SunLight :: Renderer :: RendererConfig GetDefaultConfig( void ) override;
+            SunLight :: Renderer :: RendererConfig GetEffectiveConfig( void ) override;
+            void NoteWindowTitle( const std :: string& strTitle ) override;
+            bool GetUseDefaultKeyHandler( void ) override;
+            bool RegisterFont( const char* szFamily, std :: shared_ptr<SunLight :: Font :: IFont> pFont,
+                               bool bBold, bool bItalic, const char* szTrigger ) override;
+            bool UnregisterFont( const std :: shared_ptr<SunLight :: Font :: IFont>& pFont ) override;
+            bool UnregisterFont( const char* szFamily, bool bBold, bool bItalic ) override;
         };
     }
 }
 
-#endif  /* __RENDERERPROVIDER_H__ */
+#endif /* __RENDERERPROVIDER_H__ */

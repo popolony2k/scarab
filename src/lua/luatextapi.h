@@ -21,48 +21,57 @@
 #ifndef __LUATEXTAPI_H__
 #define __LUATEXTAPI_H__
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
+
+#include "engine/fontpool.h"
 
 
 namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
             /**
-             * @brief Text/font Lua primitives - a thin wrapper over
-             * IDrawSurface::SetFont/DrawText/MeasureText/GetWindowWidth/
-             * GetWindowHeight. All game-side HUD logic (what to draw,
-             * when, positioning, score/lives formatting) lives in Lua on
-             * top of these; this class knows nothing about what the text
-             * being drawn actually means.
+             * @brief Fonts and text Lua primitives (docs/history/master_plan_11_2026.md item C6, over sunlight I3
+             * "fonts by handle"): font handles (load_font/release_font, kept in the engine's
+             * FontPool), the active font (set_font -> IDrawSurface::SetFont), fonts for the map's
+             * Tiled text objects (register_font/unregister_font -> TileMapRenderer::RegisterFont/
+             * UnregisterFont, through IRendererProvider), and screen-space text
+             * (draw_text/measure_text, with the active font or a given IFont). All game-side HUD
+             * logic (what to draw, when, positioning, formatting) lives in Lua on top of these.
+             * The screen size (screen_get_width/height) is in LuaAppApi.
              *
              * @luacategory{Text}
              * @luadoc
-             * Font loading and screen-space text rendering — a thin
-             * wrapper over `ITileMap::SetFont`/`DrawText`/`MeasureText`/
-             * `GetWindowWidth`/`GetWindowHeight`. All HUD logic (what to
-             * draw, when, positioning, score/lives formatting) lives in
-             * game-side Lua on top of these; this API knows nothing about
-             * what the text being drawn actually means. Kept as its own
-             * page/file (not folded into [app.md](app.md)) since text/font is its
-             * own subsystem, not a generic app-level concern.
+             * Fonts and screen-space text. A font is **loaded once** (`load_font`) into a handle,
+             * and that one handle can be the font `draw_text`/`measure_text` use (`set_font`),
+             * serve the map's Tiled text objects (`register_font`), and be passed to
+             * `draw_text`/`measure_text` directly — one file, one load. `set_font` also still
+             * takes a path, for a font that only `draw_text` needs. All HUD logic (what to draw,
+             * when, positioning, formatting) lives in game-side Lua on top of these; to lay text out
+             * against the screen's edges, use `screen_get_width`/`screen_get_height` (App page).
+             * Every function here reports a failure as `nil, "message"` — it never raises a Lua
+             * error.
              */
             class LuaTextApi  {
 
-                static int SetFont( lua_State *pLuaState );
-                static int DrawText( lua_State *pLuaState );
-                static int MeasureText( lua_State *pLuaState );
-                static int GetWindowWidth( lua_State *pLuaState );
-                static int GetWindowHeight( lua_State *pLuaState );
+                static int LoadFont( lua_State* pLuaState );
+                static int ReleaseFont( lua_State* pLuaState );
+                static int SetFont( lua_State* pLuaState );
+                static int RegisterFont( lua_State* pLuaState );
+                static int UnregisterFont( lua_State* pLuaState );
+                static int DrawText( lua_State* pLuaState );
+                static int MeasureText( lua_State* pLuaState );
 
                 public:
 
-                static void Register( lua_State *pLuaState );
+                // The key LuaEngine::Init keeps the engine's FontPool under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*  FONT_POOL_KEY = "fontPoolPtr";
+
+                static void Register( lua_State* pLuaState );
             };
         }
     }
 }
 
-#endif  /* __LUATEXTAPI_H__ */
+#endif /* __LUATEXTAPI_H__ */

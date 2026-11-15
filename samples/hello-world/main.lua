@@ -32,7 +32,7 @@
 
 -- Runs once, before the first frame - see the "app" sample for the rest
 -- of what app_* covers (fullscreen, target FPS, window resizing, ...).
-app_set_name( "Hello, Scarab!" )
+assert( app_set_name( "Hello, Scarab!" ) )
 
 -- Every entry script must queue at least one ScriptProcessor command,
 -- even one that does nothing meaningful - sunlight's own
@@ -43,10 +43,16 @@ app_set_name( "Hello, Scarab!" )
 -- that satisfies this without doing anything observable.
 sp_wait( 1 )
 
+-- Where and how big the greeting is drawn, and its colour (opaque white).
+local __TEXT_X    <const> = 20
+local __TEXT_Y    <const> = 20
+local __TEXT_SIZE <const> = 32
+local __WHITE     <const> = 255
+
 -- draw_text has to be called every frame to keep showing anything - it's
 -- not "issue once and it persists". set_font is deliberately not called
 -- here: until it is, draw_text/measure_text just use the engine's own
 -- built-in default font, so this sample needs zero font asset of its own.
 function on_update( dt )
-    draw_text( "Hello, Scarab!", 20, 20, 32, 255, 255, 255, 255 )
+    draw_text( "Hello, Scarab!", __TEXT_X, __TEXT_Y, __TEXT_SIZE, __WHITE, __WHITE, __WHITE, __WHITE )
 end

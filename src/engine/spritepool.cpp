@@ -19,6 +19,13 @@
  */
 
 #include "engine/spritepool.h"
+#include <memory>
+#include <climits>
+
+/** A sprite's opacity and tint as sunlight creates it - what Release() puts back. */
+#define __SPRITE_OPAQUE   1.0f
+#define __SPRITE_DEFAULT_Z_ORDER  0     // sunlight's Sprite default: drawn in the order added
+#define __SPRITE_NO_TINT  SunLight :: Base :: stColor { UCHAR_MAX, UCHAR_MAX, UCHAR_MAX, UCHAR_MAX }
 
 
 namespace Scarab  {
@@ -41,14 +48,15 @@ namespace Scarab  {
         /**
          * @brief Reserve nCapacity fixed slots for the given type tag. Must be
          * called before Acquire() is used for that tag; a second call for a tag
-         * already registered is a no-op returning false.
+         * already registered, or a capacity that would take the pool past
+         * MAX_SPRITE_SLOTS in all, is a no-op returning false.
          *
          * @param strTypeTag The caller-defined type tag (opaque to the pool);
          * @param nCapacity Fixed number of slots to reserve for this type;
          */
-        bool SpritePool :: RegisterType( const std :: string &strTypeTag, uint32_t nCapacity )  {
+        bool SpritePool :: RegisterType( const std :: string& strTypeTag, uint32_t nCapacity )  {
 
-            if( m_FreeListsByType.find( strTypeTag ) != m_FreeListsByType.end() )
+            if( HasType( strTypeTag ) || ( nCapacity > MAX_SPRITE_SLOTS - GetSlotCount() ) )
                 return false;
 
             __FreeList  freeList;
@@ -77,6 +85,22 @@ namespace Scarab  {
         }
 
         /**
+         * @brief Whether a type tag has been registered.
+         */
+        bool SpritePool :: HasType( const std :: string& strTypeTag ) const  {
+
+            return m_FreeListsByType.find( strTypeTag ) != m_FreeListsByType.end();
+        }
+
+        /**
+         * @brief The number of slots registered, over every type tag (at most MAX_SPRITE_SLOTS).
+         */
+        uint32_t SpritePool :: GetSlotCount( void ) const  {
+
+            return ( uint32_t ) m_Slots.size();
+        }
+
+        /**
          * @brief Acquire a free slot for the given type tag, returning an opaque
          * handle.
          *
@@ -84,7 +108,7 @@ namespace Scarab  {
          * @return A valid handle on success, INVALID_SPRITE_HANDLE if the type
          * wasn't registered or has no free slots left;
          */
-        SpriteHandle SpritePool :: Acquire( const std :: string &strTypeTag )  {
+        SpriteHandle SpritePool :: Acquire( const std :: string& strTypeTag )  {
 
             auto  itFreeList = m_FreeListsByType.find( strTypeTag );
 
@@ -171,23 +195,28 @@ namespace Scarab  {
          * TextureCanvas its own always-private dimension storage instead
          * (a real sunlight-side change, not a one-line SpritePool fix).
          *
-         * @param handle The handle to release;
+         * @param hSprite The handle to release;
          */
-        bool SpritePool :: Release( SpriteHandle handle )  {
+        bool SpritePool :: Release( SpriteHandle hSprite )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return false;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return false;
 
             slot.bInUse = false;
+            slot.registrations.clear();           // the caller detached it (LuaSpriteApi::Release, item C7)
             slot.sprite.SetVisible( false );
             slot.sprite.SetWorldSpace( false );   // a recycled handle must not inherit the previous owner's coordinate space
+            slot.sprite.ClearBlendMode();         // ... nor its blend mode (docs/history/master_plan_11_2026.md item B1)
+            slot.sprite.SetOpacity( __SPRITE_OPAQUE );    // ... nor its opacity or tint (item P8)
+            slot.sprite.SetTint( __SPRITE_NO_TINT );
+            slot.sprite.SetZOrder( __SPRITE_DEFAULT_Z_ORDER );   // ... nor its z-order (item C3): a pooled sprite never stays on top
             slot.nGeneration++;
 
             m_FreeListsByType[slot.strTypeTag].push_back( ( uint32_t ) nIndex );
@@ -198,20 +227,20 @@ namespace Scarab  {
         /**
          * @brief Resolve a handle to it's live Sprite object.
          *
-         * @param handle The handle to resolve;
+         * @param hSprite The handle to resolve;
          * @return Pointer to the sprite, or nullptr if the handle is invalid,
          * stale, or out of range;
          */
-        SunLight :: Sprite :: Sprite* SpritePool :: Resolve( SpriteHandle handle )  {
+        SunLight :: Sprite :: Sprite* SpritePool :: Resolve( SpriteHandle hSprite )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nullptr;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nullptr;
 
             return &slot.sprite;
@@ -221,21 +250,21 @@ namespace Scarab  {
          * @brief Get a handle's texture canvas for the given sequence id, if it
          * was previously created via GetOrCreateTexture().
          *
-         * @param handle The sprite handle;
+         * @param hSprite The sprite handle;
          * @param nSequenceId The texture sequence id;
          * @return Pointer to the texture canvas, or nullptr if the handle is
          * invalid/stale or the sequence hasn't been created yet;
          */
-        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetTexture( SpriteHandle handle, int nSequenceId )  {
+        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetTexture( SpriteHandle hSprite, int nSequenceId )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nullptr;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nullptr;
 
             auto  itTexture = slot.textures.find( nSequenceId );
@@ -249,21 +278,21 @@ namespace Scarab  {
          * lifetime of the pool (std::map node storage), safe to hand to
          * Sprite::AddTextureSequence().
          *
-         * @param handle The sprite handle;
+         * @param hSprite The sprite handle;
          * @param nSequenceId The texture sequence id;
          * @return Pointer to the texture canvas, or nullptr if the handle is
          * invalid or stale;
          */
-        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetOrCreateTexture( SpriteHandle handle, int nSequenceId )  {
+        SunLight :: Canvas :: TextureCanvas* SpritePool :: GetOrCreateTexture( SpriteHandle hSprite, int nSequenceId )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nullptr;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nullptr;
 
             return &slot.textures[nSequenceId];
@@ -279,21 +308,21 @@ namespace Scarab  {
          * reported dimension can no longer be trusted (@see stSlot::nativeTextureSizes,
          * and Release()'s own comment above for the fully-confirmed mechanism).
          *
-         * @param handle The sprite handle;
+         * @param hSprite The sprite handle;
          * @param nSequenceId The texture sequence id;
          * @param nCurrentWidth The just-loaded texture's currently reported width;
          * @return The cached natural width, or nCurrentWidth if the handle is invalid/stale;
          */
-        int SpritePool :: GetOrCacheNativeWidth( SpriteHandle handle, int nSequenceId, int nCurrentWidth )  {
+        int SpritePool :: GetOrCacheNativeWidth( SpriteHandle hSprite, int nSequenceId, int nCurrentWidth )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nCurrentWidth;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nCurrentWidth;
 
             stNativeTextureSize&  size = slot.nativeTextureSizes[nSequenceId];
@@ -312,16 +341,16 @@ namespace Scarab  {
          * reconfigure after the first once Sprite::AddTextureSequence has
          * aliased it to the sprite.
          */
-        int SpritePool :: GetOrCacheNativeHeight( SpriteHandle handle, int nSequenceId, int nCurrentHeight )  {
+        int SpritePool :: GetOrCacheNativeHeight( SpriteHandle hSprite, int nSequenceId, int nCurrentHeight )  {
 
-            int32_t  nIndex = SpriteHandleIndex( handle );
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
 
             if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
                 return nCurrentHeight;
 
             stSlot&  slot = m_Slots[nIndex];
 
-            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( handle ) ) )
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
                 return nCurrentHeight;
 
             stNativeTextureSize&  size = slot.nativeTextureSizes[nSequenceId];
@@ -334,17 +363,6 @@ namespace Scarab  {
             return nCurrentHeight;
         }
 
-        /**
-         * @brief Advance the animation frame of every in-use sprite. Called once
-         * per frame by the engine so Lua never needs to remember to do it.
-         */
-        void SpritePool :: UpdateAll( void )  {
-
-            for( stSlot &slot : m_Slots )  {
-                if( slot.bInUse )
-                    slot.sprite.Update();
-            }
-        }
 
         /**
          * @brief Release every slot's textures now, while the caller still has a
@@ -371,10 +389,136 @@ namespace Scarab  {
          */
         void SpritePool :: Clear( void )  {
 
-            for( stSlot &slot : m_Slots )
+            for( stSlot& slot : m_Slots )
                 slot.sprite.Unload();
 
             m_FreeListsByType.clear();
+        }
+
+        /**
+         * @brief The slot a handle names, if it is live (in use, and of the handle's generation).
+         *
+         * @param hSprite The handle;
+         * @return The slot, or nullptr for an invalid, stale or out-of-range handle;
+         */
+        SpritePool :: stSlot* SpritePool :: FindLiveSlot( SpriteHandle hSprite )  {
+
+            int32_t  nIndex = SpriteHandleIndex( hSprite );
+
+            if( ( nIndex < 0 ) || ( ( uint32_t ) nIndex >= m_Slots.size() ) )
+                return nullptr;
+
+            stSlot&  slot = m_Slots[nIndex];
+
+            if( !slot.bInUse || ( slot.nGeneration != SpriteHandleGeneration( hSprite ) ) )
+                return nullptr;
+
+            return std :: addressof( slot );
+        }
+
+        /**
+         * @brief Record that a sprite was registered on a layer of a world (docs/history/master_plan_11_2026.md item
+         * C7) - sunlight does not say which world holds a sprite, so the pool keeps it.
+         *
+         * @param hSprite The sprite;
+         * @param nWorldId The world (0 = the default world);
+         * @param nLayerId The layer;
+         * @return false for an invalid handle, or when that registration is already recorded;
+         */
+        bool SpritePool :: NoteRegistered( SpriteHandle hSprite, int nWorldId, int nLayerId )  {
+
+            stSlot*  pSlot = FindLiveSlot( hSprite );
+
+            if( pSlot == nullptr )
+                return false;
+
+            for( const stRegistration& registration : pSlot -> registrations )
+                if( ( registration.nWorldId == nWorldId ) && ( registration.nLayerId == nLayerId ) )
+                    return false;
+
+            pSlot -> registrations.push_back( stRegistration { nWorldId, nLayerId } );
+
+            return true;
+        }
+
+        /**
+         * @brief Record that a sprite left a layer of a world.
+         *
+         * @param hSprite The sprite;
+         * @param nWorldId The world;
+         * @param nLayerId The layer;
+         * @return false for an invalid handle, or when that registration was not recorded;
+         */
+        bool SpritePool :: NoteUnregistered( SpriteHandle hSprite, int nWorldId, int nLayerId )  {
+
+            stSlot*  pSlot = FindLiveSlot( hSprite );
+
+            if( pSlot == nullptr )
+                return false;
+
+            for( auto it = pSlot -> registrations.begin(); it != pSlot -> registrations.end(); ++it )  {
+                if( ( it -> nWorldId == nWorldId ) && ( it -> nLayerId == nLayerId ) )  {
+                    pSlot -> registrations.erase( it );
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /**
+         * @brief The world a sprite is registered in (a sprite is in one world at a time).
+         *
+         * @param hSprite The sprite;
+         * @return The world's id, or -1 when the sprite is on no layer or the handle is invalid;
+         */
+        int SpritePool :: GetWorld( SpriteHandle hSprite )  {
+
+            stSlot*  pSlot = FindLiveSlot( hSprite );
+
+            if( ( pSlot == nullptr ) || pSlot -> registrations.empty() )
+                return -1;
+
+            return pSlot -> registrations.front().nWorldId;
+        }
+
+        /**
+         * @brief Every layer a sprite is registered on, forgotten as they are returned - so the caller
+         * can detach the sprite from each (LuaSpriteApi::Release).
+         *
+         * @param hSprite The sprite;
+         * @return Its registrations; empty for an invalid handle;
+         */
+        std :: vector<SpritePool :: stRegistration> SpritePool :: TakeRegistrations( SpriteHandle hSprite )  {
+
+            stSlot*                         pSlot = FindLiveSlot( hSprite );
+            std :: vector<stRegistration>   registrations;
+
+            if( pSlot != nullptr )
+                registrations.swap( pSlot -> registrations );
+
+            return registrations;
+        }
+
+        /**
+         * @brief Forget every registration in one world - after the world let go of its sprites
+         * (world_unload, or tilemap_unload_map for the default world).
+         *
+         * @param nWorldId The world;
+         */
+        void SpritePool :: ForgetWorld( int nWorldId )  {
+
+            for( stSlot& slot : m_Slots )  {
+                std :: vector<stRegistration>&  registrations = slot.registrations;
+
+                for( auto it = registrations.begin(); it != registrations.end(); )  {
+                    if( it -> nWorldId == nWorldId )
+                        it = registrations.erase( it );
+                    else
+                        ++it;
+                }
+            }
         }
     }
 }

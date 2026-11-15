@@ -10,7 +10,13 @@ From the repo root:
 ./build/scarab samples/<sample-name>/project.json
 ```
 
-**Not** `cd build && ./scarab ../samples/<sample-name>/project.json` — a `..`-relative entry path fails outright (the mount-based filesystem every resource load routes through, see the root [README.md](../README.md#running-rocket), rejects `..` path segments). Run from the repo root as shown above, or pass an absolute path instead.
+**Not** `cd build && ./scarab ../samples/<sample-name>/project.json` — a `..`-relative entry path fails outright (the mount-based filesystem every resource load routes through, see the root [README.md](../README.md#running-a-game), rejects `..` path segments). Run from the repo root as shown above, or pass an absolute path instead.
+
+## Shared code and style
+
+Every sample draws its heads-up display through [shared/hud.lua](shared/hud.lua): lines of text in the Caravellius 8x8 font on dark translucent plates, readable over any map, placed by row (`Hud.line( text, row, Hud.INFO )`, `Hud.line_from_bottom( ... )`). A sample loads it with `local Hud = dofile( "samples/shared/hud.lua" )` - one reason samples are run from the repo root. `hello-world` keeps the engine's built-in font on purpose: it is the smallest possible game, with no asset of its own.
+
+The samples follow Scarab's Lua style ([docs/CODE_STYLE.md](../docs/CODE_STYLE.md), "Lua"): private constants are `local __NAME <const>`, functions are `snake_case`, locals `lowerCamel`, numbers have names, and every call whose failure matters is checked (`assert( ... )`, or shown on the HUD). CI checks this with `scripts/style_audit.py --check`.
 
 ## Getting started
 
@@ -23,16 +29,29 @@ Everything past `hello-world` is grouped by exactly the categories the [Lua API 
 * [app](app/docs/README.md) — window/app-level basics: fullscreen, the FPS counter, window resizing, letterbox vs. stretch-to-fill, target FPS, a startup fade, a simple HUD bar
 * [text](text/docs/README.md) — HUD-style text layout: `measure_text`-based right-alignment, `screen_get_width`/`height`, `set_font`'s documented graceful-failure behavior, and two real custom-font loads (Press Start 2P and `caravellius8x8` — see [resources/fonts/](../resources/fonts/README.md))
 * [timers](timers/docs/README.md) — two independent background timers, and the "callbacks run on a background thread" gotcha handled correctly
-* [input](input/docs/README.md) — keyboard and gamepad reading: a rectangle moved with the keyboard, live gamepad axis/button state
+* [input](input/docs/README.md) — keyboard and gamepads for two players: pads joining player slots, hot-plug, and the stick dead zone (automatic vs raw reads)
+* [actions](actions/docs/README.md) — rebindable controls (actions bound to a key, button or stick), saved into the game's save directory and loaded back, with shipped defaults; and gamepad rumble
+* [saves](saves/docs/README.md) — a game's options and high scores kept between runs: tables saved as JSON into the save directory, read back, deleted
 * [tilemap](tilemap/docs/README.md) — loading a Tiled `.tmx` map, reporting its dimensions — the minimal map-on-screen sample, no sprites (map shared from [resources/tilemap/](../resources/tilemap/README.md))
 * [camera](camera/docs/README.md) — scrolling/zooming the camera (keyboard pan/zoom + an absolute `camera_set_position` jump) over the same map `tilemap` loads
 * [sprite](sprite/docs/README.md) — acquiring/configuring/moving an animated sprite (sunlight's own "sunny" character), built on `tilemap/`
 * [collision](collision/docs/README.md) — a keyboard-controlled sprite colliding with a fixed one, `collision_add_rule`/`collision_set_handler`, built on `sprite/`
 * [renderer](renderer/docs/README.md) — `renderer_create` (choosing your own window/render settings, strictly validated), `renderer_get_config` read back live, and the `view_*` functions driving the default view's zoom/zoom limits/camera; built on `tilemap/`
 * [views](views/docs/README.md) — several views of one world at once: a minimap and a follow-the-sprite close-up next to the main picture (`view_create`, `view_fit_to_map`, per-view layer masks, `sprite_set_world_space`); built on `renderer/` and `sprite/`
+* [fade](fade/docs/README.md) — view opacity (`view_set_opacity`): a cross-fade between two places of one map (two views over one rectangle, the upper one faded in over a second), and a menu view over the map at a chosen opacity; Kepi walks by keyboard or controller; built on `views/`
+* [worlds](worlds/docs/README.md) — several maps on screen at once, each in its own world (`world_load`, `view_set_world`): split screen, Kepi walking across the four maps of a Tiled `.world` file and stopped by their obstacles (a collision rule of that world only), a cross-fade between two different maps, and a world unloaded and loaded again; built on `fade/`
+* [blend](blend/docs/README.md) — blend modes: a glow sprite whose mode the number keys choose, a soft shadow that always multiplies, and four panels drawn per mode with `draw_begin_blend_mode`/`draw_end_blend_mode`; built on `renderer/` and `sprite/`
+* [objects](objects/docs/README.md) — Tiled tile objects (own size, stretched, clipped, animated, flip bits) and text objects drawn from a map, with one font loaded once and registered for the map's text objects; built on `renderer/` and `text/`
+* [shapes](shapes/docs/README.md) — Tiled shape objects and how the viewport clips them, objects turned by a Tiled rotation about their pivot, line widths and point objects scaled by zoom, per-object opacity, and layer tint changed at runtime, on five maps switched with keys 1-5; built on `objects/`
+* [surface](surface/docs/README.md) — shapes drawn from Lua in map units (`shape_draw_*`): outlines and points that scroll and zoom with the camera, a hitbox on a walking sprite, and the same shapes with no map
+* [backdrop](backdrop/docs/README.md) — a screen-space image layer: a full-window picture with the Tiled custom property `screen_space = true` stays whole and fixed while the camera pans and zooms, next to map-space image layers that move; Kepi stands on it
+* [parallax](parallax/docs/README.md) — Tiled's per-layer parallax: layers scrolling at the map's own speeds as the camera follows Kepi, changed live with `tilemap_set_layer_parallax`, on a map that wraps around
+* [projections](projections/docs/README.md) — the four Tiled map styles, isometric, staggered, hexagonal and orthogonal (keys 1-4, or L1/R1 on a controller): Kepi walks cell to cell around the obstacles (arrows or D-pad), its cell outlined from `tilemap_get_tile`, and a free cursor picks the cell under it with `tilemap_to_tile_matrix`, or none in an isometric map's empty corners; built on `surface/`
+* [mapless](mapless/docs/README.md) — sprites drawn with no map loaded at all: layer ids as grouping keys drawn in ascending id order, hidden by id through the view's layer mask (keys 1-3)
+* [zorder](zorder/docs/README.md) — which of a layer's sprites draws on top: four overlapping cards ordered by `sprite_set_z_order`, equal z-orders in the order they were added, and a higher layer above them all
 * [scripting](scripting/docs/README.md) — `ScriptProcessor`'s `sp_*` queued-command sequencing: a forever-repeating labeled loop dispatching wave-spawn events
 * [sound](sound/docs/README.md) — direct one-shot, direct looping, and queued song forms side by side, plus pause/stop/resume/volume
 * [json](json/docs/README.md) — `load_json`, walking a small nested object/array config file into an equivalent Lua table
-* [crypto](crypto/docs/README.md) — `crypto_encrypt_data`/`crypto_decrypt_data`: an encrypt → decrypt roundtrip, and a tamper test showing the authenticated-encryption failure mode; behavior depends on whether the running `scarab` was built with a real `SCARAB_CONTENT_KEY` (see the root [README.md](../README.md#content-encryption-lock)'s own "Content encryption" section)
+* [crypto](crypto/docs/README.md) — `crypto_encrypt_data`/`crypto_decrypt_data`: an encrypt → decrypt roundtrip, and a tamper test showing the authenticated-encryption failure mode; behavior depends on whether the running `scarab` was built with a real `SCARAB_CONTENT_KEY` (see the root [README.md](../README.md#content-encryption)'s own "Content encryption" section)
 
 Every Lua API category listed above now has a sample, except **Pack** (`pack_*`, `LuaPackApi`) — its own worked example is [tools/pack.lua](../tools/README.md), run via `scarab --pack <config.json>` rather than kept as a `samples/pack` here; packaging is a dev-time tool operating on real native OS paths (deliberately unmounted, see `tools/README.md`), not something that fits this repo's usual "opens a window, draws something" sample shape.

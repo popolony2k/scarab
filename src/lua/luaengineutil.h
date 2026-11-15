@@ -25,18 +25,14 @@
 #include <cstdint>
 #include <map>
 #include <mutex>
+#include <string>
 
-extern "C"
-{
+extern "C"  {
   #include "lua.h"
 }
 
 #include "tilemap/itilemap.h"
 #include "drawsurface/idrawsurface.h"
-#include "sound/soundmanager.h"
-#include "engine/spritepool.h"
-#include "scripting/scriptprocessor.h"
-#include "concurrent/timer.h"
 #include "engine/irendererprovider.h"
 
 
@@ -48,8 +44,8 @@ namespace Scarab  {
              * @brief A named integer constant, used to register enum values as Lua globals.
              */
             struct stNamedConstant  {
-                const char  *szName;
-                int         nValue;
+                const char*  szName;
+                int          nValue;
             };
 
             /**
@@ -58,19 +54,12 @@ namespace Scarab  {
              * form, which is what nearly every constant group is.
              */
             struct stNamedRealConstant  {
-                const char  *szName;
-                double      fValue;
+                const char*  szName;
+                double       fValue;
             };
 
             /**
-             * @brief Shared type for LuaEngine's m_Timers member and LuaTimerApi's
-             * casts of the timerMapPtr global - both need the exact same type,
-             * not just structurally identical ones.
-             */
-            typedef std :: map<int, SunLight :: Concurrent :: Timer*> TimerMap;
-
-            /**
-             * @brief Shared helpers used by every Lua primitive API module -
+             * @brief Helpers several Lua primitive API modules share -
              * and, for s_LuaMutex specifically, by LuaEngine itself too
              * (the orchestrator, not one of the primitive API modules -
              * see s_LuaMutex's own comment for why it lives here rather
@@ -108,19 +97,52 @@ namespace Scarab  {
                  */
                 static std :: mutex                       s_LuaMutex;
 
-                static Engine :: IRendererProvider* GetRendererProvider( lua_State *pLuaState );
-                static void EnsureRenderer( lua_State *pLuaState );
-                static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State *pLuaState );
-                static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State *pLuaState );
-                static SunLight :: Sound :: SoundManager* GetSoundManager( lua_State *pLuaState );
-                static Engine :: SpritePool* GetSpritePool( lua_State *pLuaState );
-                static SunLight :: Scripting :: ScriptProcessor* GetScriptProcessor( lua_State *pLuaState );
-                static void AddOneParmCommandScript( lua_State *pLuaState, SunLight :: Scripting :: Commands cmd );
-                static void RegisterConstants( lua_State *pLuaState, const stNamedConstant *pTable, size_t nCount );
-                static void RegisterRealConstants( lua_State *pLuaState, const stNamedRealConstant *pTable, size_t nCount );
+                // The key LuaEngine::Init keeps the renderer provider under (LuaEngineUtil::GetEnginePointer: out of every script's reach).
+                static constexpr const char*              RENDERER_PROVIDER_KEY = "rendererProviderPtr";
+
+                /**
+                 * @brief The engine objects a Lua state's primitives reach, by key (the *_KEY constants):
+                 * kept by LuaEngine, and found through the state's extra space (lua_getextraspace), which no
+                 * Lua code - the debug library included - can read or write. They used to be light-userdata
+                 * Lua globals, which a script could overwrite with another userdata (docs/history/master_plan_11_2026.md
+                 * item C8a).
+                 */
+                typedef std :: map<std :: string, void*>  EngineObjectMap;
+
+                static void SetEngineObjects( lua_State* pLuaState, EngineObjectMap* pObjects );
+                static void* GetEnginePointer( lua_State* pLuaState, const char* szKey );
+                static Engine :: IRendererProvider* GetRendererProvider( lua_State* pLuaState );
+                static void EnsureRenderer( lua_State* pLuaState );
+                static SunLight :: TileMap :: ITileMap* GetTileMap( lua_State* pLuaState );
+                static SunLight :: DrawSurface :: IDrawSurface* GetDrawSurface( lua_State* pLuaState );
+                static SunLight :: Input :: IControllerManager* GetControllerManager( lua_State* pLuaState );
+                static SunLight :: DrawSurface :: IShapeSurface* GetShapeSurface( lua_State* pLuaState );
+                static void RegisterConstants( lua_State* pLuaState, const stNamedConstant* pTable, size_t nCount );
+                static void RegisterRealConstants( lua_State* pLuaState, const stNamedRealConstant* pTable, size_t nCount );
+                static int PushError( lua_State* pLuaState, const std :: string& strMessage );
+                static int PushTrue( lua_State* pLuaState );
+                static std :: string FormatNumber( double fValue );
+                static double ShortestDecimal( float fValue );
+                static bool ReadIntegerArg( lua_State* pLuaState, int nIndex, const char* szName, lua_Integer& nOut, std :: string& strError );
+                static bool ReadIntegerArgInRange( lua_State* pLuaState, int nIndex, const char* szName, lua_Integer nMin, lua_Integer nMax,
+                                                   lua_Integer& nOut, std :: string& strError );
+                static bool ReadIntArg( lua_State* pLuaState, int nIndex, const char* szName, int& nOut, std :: string& strError );
+                static bool ReadOptionalIntegerArg( lua_State* pLuaState, int nIndex, const char* szName, lua_Integer nDefault,
+                                                    lua_Integer& nOut, std :: string& strError );
+                static bool ReadNumberArg( lua_State* pLuaState, int nIndex, const char* szName, double& fOut, std :: string& strError );
+                static bool ReadNumberArgInRange( lua_State* pLuaState, int nIndex, const char* szName, double fMin, double fMax,
+                                                  double& fOut, std :: string& strError );
+                static bool ReadBooleanArg( lua_State* pLuaState, int nIndex, const char* szName, bool& bOut, std :: string& strError );
+                static bool ReadOptionalBooleanArg( lua_State* pLuaState, int nIndex, const char* szName, bool bDefault,
+                                                    bool& bOut, std :: string& strError );
+                static bool ReadStringArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strOut, std :: string& strError );
+                static bool CheckFunctionArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strError );
+                static bool CheckTableArg( lua_State* pLuaState, int nIndex, const char* szName, std :: string& strError );
+                static bool ReadConstantArg( lua_State* pLuaState, int nIndex, const char* szName, const stNamedConstant* pTable,
+                                             size_t nCount, const char* szGroup, int& nOut, std :: string& strError );
             };
         }
     }
 }
 
-#endif  /* __LUAENGINEUTIL_H__ */
+#endif /* __LUAENGINEUTIL_H__ */

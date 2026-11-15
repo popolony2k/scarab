@@ -19,12 +19,14 @@
  */
 
 #include "lua/luapackapi.h"
+#include "lua/luaengineutil.h"
 #include "miniz.h"
 #include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <vector>
 
 
@@ -42,11 +44,11 @@ namespace Scarab  {
             // not a hot runtime path, unlike SpritePool's own handle
             // scheme (packed generation+index, built for per-frame
             // reuse) which would be overkill for this.
-            static std :: map<int, mz_zip_archive *>  s_ArchiveHandles;
-            static int                                s_nNextHandle = 1;
+            static std :: map<int, std :: unique_ptr<mz_zip_archive>>  s_ArchiveHandles;
+            static int                                                 s_nNextHandle = 1;
 
             /**
-             * @luaname{pack_list_directory(path) -> paths}
+             * @luaname{pack_list_directory(path) -> paths | nil, message}
              * @luagroup{pack_fs}
              * @luaheading{Filesystem (native paths)}
              * @luadoc
@@ -56,35 +58,42 @@ namespace Scarab  {
              * itself, each using `/` regardless of host OS (matching
              * this engine's own virtual-path convention elsewhere, so
              * an entry name built from one of these reads naturally
-             * once it's inside a `.zip`). Returns an empty table (not
-             * `nil`) if `path` doesn't exist or contains nothing.
+             * once it's inside a `.zip`). Returns an empty table if
+             * `path` contains nothing, and `nil, "message"` if it isn't
+             * a directory. Every `pack_*` function reports a failure as
+             * `nil, "message"` (never a Lua error, nothing printed);
+             * one with nothing else to return returns `true`.
              * @luaexample
              * for _, relativePath in ipairs(pack_list_directory(sourceDir)) do
              *   local data = pack_read_file(sourceDir .. "/" .. relativePath)
              *   -- ... encrypt data, pack_add_entry(archive, relativePath, encrypted) ...
              * end
              */
-            int LuaPackApi :: ListDirectory( lua_State *pLuaState )  {
+            int LuaPackApi :: ListDirectory( lua_State* pLuaState )  {
 
-                const char  *szPath = lua_tostring( pLuaState, 1 );
+                std :: string      strError;
+                std :: string      strPath;
+                std :: error_code  errorCode;
+
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                fs :: path  basePath( strPath );
+
+                if( !fs :: is_directory( basePath, errorCode ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "'" + strPath + "' is not a directory" );
 
                 lua_newtable( pLuaState );
 
-                std :: error_code  errorCode;
-                fs :: path         basePath( szPath );
-
-                if( !fs :: is_directory( basePath, errorCode ) )
-                    return 1;
-
                 int  nIndex = 1;
 
-                for( const fs :: directory_entry &entry :
+                for( const fs :: directory_entry& entry :
                         fs :: recursive_directory_iterator( basePath, fs :: directory_options :: skip_permission_denied, errorCode ) )  {
 
                     if( !entry.is_regular_file( errorCode ) )
                         continue;
 
-                    fs :: path   relativePath = fs :: relative( entry.path(), basePath, errorCode );
+                    fs :: path     relativePath = fs :: relative( entry.path(), basePath, errorCode );
                     std :: string  strRelative = relativePath.generic_string();  // generic_string() always uses '/'
 
                     lua_pushlstring( pLuaState, strRelative.c_str(), strRelative.size() );
@@ -95,25 +104,25 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{pack_read_file(path) -> data}
+             * @luaname{pack_read_file(path) -> data | nil, message}
              * @luagroup{pack_fs}
              * @luadoc
              * Reads the whole file at `path` (a real native OS path)
-             * as raw bytes. Returns `nil` (and logs an error) if it
-             * can't be opened.
+             * as raw bytes. Returns `nil, "message"` if it can't be
+             * read.
              */
-            int LuaPackApi :: ReadFile( lua_State *pLuaState )  {
+            int LuaPackApi :: ReadFile( lua_State* pLuaState )  {
 
-                const char  *szPath = lua_tostring( pLuaState, 1 );
+                std :: string  strError;
+                std :: string  strPath;
 
-                std :: ifstream  file( szPath, std :: ios :: binary | std :: ios :: ate );
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !file.is_open() )  {
-                    fprintf( stderr, "LuaPackApi: pack_read_file couldn't open [%s].\n", szPath );
-                    lua_pushnil( pLuaState );
+                std :: ifstream  file( strPath, std :: ios :: binary | std :: ios :: ate );
 
-                    return 1;
-                }
+                if( !file.is_open() )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot open '" + strPath + "'" );
 
                 std :: streamsize  nSize = file.tellg();
 
@@ -121,12 +130,8 @@ namespace Scarab  {
 
                 std :: vector<char>  data( ( size_t ) nSize );
 
-                if( nSize > 0 && !file.read( data.data(), nSize ) )  {
-                    fprintf( stderr, "LuaPackApi: pack_read_file failed reading [%s].\n", szPath );
-                    lua_pushnil( pLuaState );
-
-                    return 1;
-                }
+                if( nSize > 0 && !file.read( data.data(), nSize ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot read '" + strPath + "'" );
 
                 lua_pushlstring( pLuaState, data.data(), data.size() );
 
@@ -134,65 +139,64 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{pack_write_file(path, data) -> success}
+             * @luaname{pack_write_file(path, data) -> true | nil, message}
              * @luagroup{pack_fs}
              * @luadoc
              * Writes `data` (raw bytes) to `path` (a real native OS
              * path), creating any missing parent directories first.
              */
-            int LuaPackApi :: WriteFile( lua_State *pLuaState )  {
+            int LuaPackApi :: WriteFile( lua_State* pLuaState )  {
 
-                const char  *szPath = lua_tostring( pLuaState, 1 );
-                size_t       nDataLen;
-                const char   *szData = lua_tolstring( pLuaState, 2, &nDataLen );
+                std :: string  strError;
+                std :: string  strPath;
+                std :: string  strData;
 
-                fs :: path         targetPath( szPath );
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) ||
+                    !LuaEngineUtil :: ReadStringArg( pLuaState, 2, "data", strData, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
+
+                fs :: path         targetPath( strPath );
                 std :: error_code  errorCode;
 
                 if( targetPath.has_parent_path() )
                     fs :: create_directories( targetPath.parent_path(), errorCode );
 
-                std :: ofstream  file( szPath, std :: ios :: binary | std :: ios :: trunc );
+                std :: ofstream  file( strPath, std :: ios :: binary | std :: ios :: trunc );
 
-                if( !file.is_open() || !file.write( szData, nDataLen ) )  {
-                    fprintf( stderr, "LuaPackApi: pack_write_file couldn't write [%s].\n", szPath );
-                    lua_pushboolean( pLuaState, false );
+                if( !file.is_open() || !file.write( strData.data(), ( std :: streamsize ) strData.size() ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot write '" + strPath + "'" );
 
-                    return 1;
-                }
-
-                lua_pushboolean( pLuaState, true );
-
-                return 1;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{pack_create_archive(path) -> handle}
+             * @luaname{pack_create_archive(path) -> handle | nil, message}
              * @luagroup{pack_archive}
              * @luaheading{Archive (miniz-backed .zip writing)}
              * @luadoc
              * Creates a new `.zip` archive at `path` (a real native OS
              * path, overwritten if it already exists), ready for
-             * `pack_add_entry` calls. Returns `0` on failure (path not
-             * writable, etc).
+             * `pack_add_entry` calls. Returns `nil, "message"` on failure
+             * (path not writable, etc) — it used to return `0`.
              */
-            int LuaPackApi :: CreateArchive( lua_State *pLuaState )  {
+            int LuaPackApi :: CreateArchive( lua_State* pLuaState )  {
 
-                const char  *szPath = lua_tostring( pLuaState, 1 );
+                std :: string  strError;
+                std :: string  strPath;
 
-                mz_zip_archive  *pZip = new mz_zip_archive();  // value-init zeroes it, same as memset - required by miniz's own contract
+                if( !LuaEngineUtil :: ReadStringArg( pLuaState, 1, "path", strPath, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
-                if( !mz_zip_writer_init_file( pZip, szPath, 0 ) )  {
-                    fprintf( stderr, "LuaPackApi: pack_create_archive couldn't create [%s].\n", szPath );
-                    delete pZip;
-                    lua_pushinteger( pLuaState, 0 );
+                std :: unique_ptr<mz_zip_archive>  pZip = std :: make_unique<mz_zip_archive>();  // value-init zeroes it, same as memset - required by miniz's own contract
 
-                    return 1;
+                if( !mz_zip_writer_init_file( pZip.get(), strPath.c_str(), 0 ) )  {
+
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot create archive '" + strPath + "'" );
                 }
 
                 int  nHandle = s_nNextHandle++;
 
-                s_ArchiveHandles[nHandle] = pZip;
+                s_ArchiveHandles[nHandle] = std :: move( pZip );
 
                 lua_pushinteger( pLuaState, nHandle );
 
@@ -200,7 +204,7 @@ namespace Scarab  {
             }
 
             /**
-             * @luaname{pack_add_entry(handle, entryName, data) -> success}
+             * @luaname{pack_add_entry(handle, entryName, data) -> true | nil, message}
              * @luagroup{pack_archive}
              * @luadoc
              * Adds `data` (raw bytes) to the archive `handle` (from
@@ -210,34 +214,31 @@ namespace Scarab  {
              * `crypto_encrypt_data` (see LuaCryptoApi). Compressed at
              * miniz's own default level.
              */
-            int LuaPackApi :: AddEntry( lua_State *pLuaState )  {
+            int LuaPackApi :: AddEntry( lua_State* pLuaState )  {
 
-                int          nHandle    = ( int ) lua_tointeger( pLuaState, 1 );
-                const char   *szEntry   = lua_tostring( pLuaState, 2 );
-                size_t       nDataLen;
-                const char   *szData    = lua_tolstring( pLuaState, 3, &nDataLen );
+                std :: string  strError;
+                std :: string  strEntry;
+                std :: string  strData;
+                int            nHandle = 0;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "handle", nHandle, strError ) ||
+                    !LuaEngineUtil :: ReadStringArg( pLuaState, 2, "entryName", strEntry, strError ) ||
+                    !LuaEngineUtil :: ReadStringArg( pLuaState, 3, "data", strData, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 auto  it = s_ArchiveHandles.find( nHandle );
 
-                if( it == s_ArchiveHandles.end() )  {
-                    fprintf( stderr, "LuaPackApi: pack_add_entry given an invalid archive handle [%d].\n", nHandle );
-                    lua_pushboolean( pLuaState, false );
+                if( it == s_ArchiveHandles.end() )
+                    return LuaEngineUtil :: PushError( pLuaState, "invalid archive handle" );
 
-                    return 1;
-                }
+                if( !mz_zip_writer_add_mem( it -> second.get(), strEntry.c_str(), strData.data(), strData.size(), MZ_DEFAULT_COMPRESSION ) )
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot add '" + strEntry + "' to the archive" );
 
-                bool  bResult = mz_zip_writer_add_mem( it->second, szEntry, szData, nDataLen, MZ_DEFAULT_COMPRESSION );
-
-                if( !bResult )
-                    fprintf( stderr, "LuaPackApi: pack_add_entry failed adding [%s].\n", szEntry );
-
-                lua_pushboolean( pLuaState, bResult );
-
-                return 1;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
-             * @luaname{pack_close_archive(handle) -> success}
+             * @luaname{pack_close_archive(handle) -> true | nil, message}
              * @luagroup{pack_archive}
              * @luadoc
              * Finalizes and closes the archive `handle` - the `.zip`
@@ -245,38 +246,35 @@ namespace Scarab  {
              * called. The handle itself is no longer usable after this
              * call either way (success or failure).
              */
-            int LuaPackApi :: CloseArchive( lua_State *pLuaState )  {
+            int LuaPackApi :: CloseArchive( lua_State* pLuaState )  {
 
-                int  nHandle = ( int ) lua_tointeger( pLuaState, 1 );
+                std :: string  strError;
+                int            nHandle = 0;
+
+                if( !LuaEngineUtil :: ReadIntArg( pLuaState, 1, "handle", nHandle, strError ) )
+                    return LuaEngineUtil :: PushError( pLuaState, strError );
 
                 auto  it = s_ArchiveHandles.find( nHandle );
 
-                if( it == s_ArchiveHandles.end() )  {
-                    fprintf( stderr, "LuaPackApi: pack_close_archive given an invalid archive handle [%d].\n", nHandle );
-                    lua_pushboolean( pLuaState, false );
+                if( it == s_ArchiveHandles.end() )
+                    return LuaEngineUtil :: PushError( pLuaState, "invalid archive handle" );
 
-                    return 1;
-                }
-
-                mz_zip_archive  *pZip = it->second;
+                mz_zip_archive*  pZip    = it -> second.get();
                 bool             bResult = mz_zip_writer_finalize_archive( pZip );
 
                 mz_zip_writer_end( pZip );
-                delete pZip;
-                s_ArchiveHandles.erase( it );
+                s_ArchiveHandles.erase( it );           // frees the archive
 
                 if( !bResult )
-                    fprintf( stderr, "LuaPackApi: pack_close_archive failed to finalize handle [%d].\n", nHandle );
+                    return LuaEngineUtil :: PushError( pLuaState, "cannot finalize the archive" );
 
-                lua_pushboolean( pLuaState, bResult );
-
-                return 1;
+                return LuaEngineUtil :: PushTrue( pLuaState );
             }
 
             /**
              * @brief Register the packaging-tool Lua-callable functions.
              */
-            void LuaPackApi :: Register( lua_State *pLuaState )  {
+            void LuaPackApi :: Register( lua_State* pLuaState )  {
 
                 lua_register( pLuaState, "pack_list_directory", LuaPackApi :: ListDirectory );
                 lua_register( pLuaState, "pack_read_file", LuaPackApi :: ReadFile );
