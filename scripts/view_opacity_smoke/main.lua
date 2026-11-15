@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/view_opacity_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item C7, part 1 (sunlight I19a): view_set_opacity / view_get_opacity.
+    Pins docs/history/master_plan_11_2026.md item C7, part 1 (sunlight I19a): view_set_opacity / view_get_opacity.
     - Before any window: asking view 0 is "unknown view 0" and creates no renderer.
     - Every view starts at 1: the default view and a view made by view_create.
     - Exact round trips (0.3 reads 0.3) on the default view and an extra one; 0 and 1 as integers too.

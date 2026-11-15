@@ -50,7 +50,7 @@ namespace Scarab  {
 
         /** @brief What a Lua engine runs: a game (sandboxed, or not with --no-sandbox), or the --pack tool. */
         enum LuaEngineMode  {
-            LUA_ENGINE_MODE_SANDBOX,        // a game, in the sandbox (plans/MASTER_PLAN.md item C8): the default
+            LUA_ENGINE_MODE_SANDBOX,        // a game, in the sandbox (docs/history/master_plan_11_2026.md item C8): the default
             LUA_ENGINE_MODE_NO_SANDBOX,     // a game, with Lua's own io/os/require/loadfile/load (--no-sandbox)
             LUA_ENGINE_MODE_PACK,           // the --pack tool: no sandbox, and the pack_* functions
             LUA_ENGINE_MODE_LAST

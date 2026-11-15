@@ -104,7 +104,7 @@ namespace Scarab  {
                  * @brief The engine objects a Lua state's primitives reach, by key (the *_KEY constants):
                  * kept by LuaEngine, and found through the state's extra space (lua_getextraspace), which no
                  * Lua code - the debug library included - can read or write. They used to be light-userdata
-                 * Lua globals, which a script could overwrite with another userdata (plans/MASTER_PLAN.md
+                 * Lua globals, which a script could overwrite with another userdata (docs/history/master_plan_11_2026.md
                  * item C8a).
                  */
                 typedef std :: map<std :: string, void*>  EngineObjectMap;

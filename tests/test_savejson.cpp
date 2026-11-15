@@ -19,7 +19,7 @@
  */
 
 /**
- * @brief The save API's pure parts (plans/MASTER_PLAN.md item C1c), on a bare lua_State - no engine,
+ * @brief The save API's pure parts (docs/history/master_plan_11_2026.md item C1c), on a bare lua_State - no engine,
  * no window: LuaJsonApi's strict Lua -> JSON conversion (and its way back), its UTF-8 check, and
  * LuaSaveApi's save-name rules.
  */

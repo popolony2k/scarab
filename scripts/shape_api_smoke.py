@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the shape functions (plans/MASTER_PLAN.md item C2).
+Smoke test for the shape functions (docs/history/master_plan_11_2026.md item C2).
 
 Runs scripts/shape_api_smoke/main.lua headless once: every kind of refusal of every shape_draw_*
 function (and that a refused call never creates the renderer), then every function returning true,

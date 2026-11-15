@@ -29,7 +29,7 @@ namespace Scarab  {
     namespace Engine  {
 
         /**
-         * @brief The game's save directory (plans/MASTER_PLAN.md item C1b): the real folder sunlight writes
+         * @brief The game's save directory (docs/history/master_plan_11_2026.md item C1b): the real folder sunlight writes
          * a virtual path into (IFileSystem::SetWriteDirectory), mounted ahead of every mount so a save reads
          * back by the same virtual path and overrides a file of that name shipped in the game.
          *

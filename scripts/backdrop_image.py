@@ -20,7 +20,7 @@
 #
 """
 Draws resources/tilemap/screenspace/backdrop.png: a full-window (1260x920, Scarab's default render area)
-picture for the screen-space image layer of resources/tilemap/screenspace/screenspace.tmx (plans/MASTER_PLAN.md
+picture for the screen-space image layer of resources/tilemap/screenspace/screenspace.tmx (docs/history/master_plan_11_2026.md
 item C9). A night-blue to violet gradient, a gold border along every edge, a gold square in each corner and a
 ring in the middle: if any edge, corner or the ring's centre is missing, the layer is not being drawn whole at
 its window position - which is what an eye check of samples/backdrop looks for.

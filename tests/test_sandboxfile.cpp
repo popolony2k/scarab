@@ -19,7 +19,7 @@
  */
 
 /**
- * @brief The sandbox's in-memory file (plans/MASTER_PLAN.md item C8), checked against what standard
+ * @brief The sandbox's in-memory file (docs/history/master_plan_11_2026.md item C8), checked against what standard
  * Lua 5.4's own file handles do: the open modes, every read format, writing, append mode and seek.
  */
 

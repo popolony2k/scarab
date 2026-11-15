@@ -837,7 +837,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Name the game's save folder in the OS's per-user data folder (plans/MASTER_PLAN.md item
+             * @brief Name the game's save folder in the OS's per-user data folder (docs/history/master_plan_11_2026.md item
              * C1b); returns the real folder saves go into.
              *
              * @luaname{app_set_save_directory(name) -> folder | nil, message}

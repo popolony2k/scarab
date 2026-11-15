@@ -19,7 +19,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the save directory, the action map and rumble (plans/MASTER_PLAN.md item C1b).
+Smoke test for the save directory, the action map and rumble (docs/history/master_plan_11_2026.md item C1b).
 
 Runs scripts/action_map_smoke/main.lua headless in five scenarios (see that script's header):
   api       with --save-dir on a temp folder - every function, every error; the saved file is then

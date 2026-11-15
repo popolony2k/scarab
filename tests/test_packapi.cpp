@@ -19,7 +19,7 @@
  */
 
 /**
- * @brief The pack_* functions' failures (plans/MASTER_PLAN.md items D3 and C8), on a bare lua_State. They
+ * @brief The pack_* functions' failures (docs/history/master_plan_11_2026.md items D3 and C8), on a bare lua_State. They
  * exist only in the --pack tool since C8, so scripts/error_reporting_smoke (a game) can no longer call them:
  * its pack rows moved here, unchanged.
  */

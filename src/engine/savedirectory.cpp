@@ -74,7 +74,7 @@ namespace Scarab  {
         }
 
         /**
-         * @brief Mount the save folder at its extra mount points (plans/MASTER_PLAN.md item C8): the private
+         * @brief Mount the save folder at its extra mount points (docs/history/master_plan_11_2026.md item C8): the private
          * one the save functions read through (appended - nothing else is mounted there), and the game's own
          * mount point (APP_DIR) ahead of every other mount, so an APP_DIR path finds a save first. The write
          * directory's own mount at the root is sunlight's (SetWriteDirectory).
@@ -119,7 +119,7 @@ namespace Scarab  {
 
         /**
          * @brief Name the virtual folder where the game's own files are mounted (APP_DIR), so the save folder
-         * is mounted there too, ahead of them (plans/MASTER_PLAN.md item C8, decision 1b). Called once, before
+         * is mounted there too, ahead of them (docs/history/master_plan_11_2026.md item C8, decision 1b). Called once, before
          * any save directory is set.
          *
          * @param strMountPoint The virtual folder (APP_DIR);
@@ -154,7 +154,7 @@ namespace Scarab  {
 
         /**
          * @brief The virtual path a save of this name is read through: the private mount of the save folder
-         * alone, so a game file of the same name is never taken for a save (plans/MASTER_PLAN.md item C8 -
+         * alone, so a game file of the same name is never taken for a save (docs/history/master_plan_11_2026.md item C8 -
          * before, a host path, which the sandbox refuses).
          *
          * @param strName The save's name, relative to the save folder;

@@ -19,7 +19,7 @@
  */
 
 /**
- * @brief LuaShapeApi's argument parsers (plans/MASTER_PLAN.md item C2) on a bare lua_State - no engine,
+ * @brief LuaShapeApi's argument parsers (docs/history/master_plan_11_2026.md item C2) on a bare lua_State - no engine,
  * no window: the flat point list (LÖVE's { x1, y1, x2, y2, ... }) and the strict options table.
  */
 

@@ -37,7 +37,7 @@ jobs:
         run: python3 scripts/generate_lua_api_docs.py
 
   # Scarab, sunlight, raylib, libtmx and Lua all built with AddressSanitizer, and every headless
-  # check run under it with LeakSanitizer on (plans/MASTER_PLAN.md item R1, mirroring sunlight's own
+  # check run under it with LeakSanitizer on (docs/history/master_plan_11_2026.md item R1, mirroring sunlight's own
   # "AddressSanitizer (Linux)" job): the smoke tests, the headless smoke test and every sample.
   # Linux only - macOS's AddressSanitizer has no LeakSanitizer, and one platform keeps CI time down.
   # Any sanitizer report fails the job (scripts/asan_run.py); known third-party leaks are suppressed
@@ -171,7 +171,7 @@ jobs:
         run: cmake --build build --config Release -j 4
 
       # The code follows docs/CODE_STYLE.md: C++ (sunlight's guide) and Lua (Scarab's own rules), measured
-      # by scripts/style_audit.py - any finding of an enforced rule fails (plans/MASTER_PLAN.md item S2c).
+      # by scripts/style_audit.py - any finding of an enforced rule fails (docs/history/master_plan_11_2026.md item S2c).
       # Linux only, after configure: the documentation rule reads sunlight's headers from build/_deps.
       - name: Style check
         if: runner.os == 'Linux'
@@ -179,7 +179,7 @@ jobs:
 
       # Scarab's unit tests (doctest, tests/): what needs no window - the sprite and font
       # pools, LuaEngineUtil's argument readers, the zoom rule, content encryption -
-      # plans/MASTER_PLAN.md item R2.
+      # docs/history/master_plan_11_2026.md item R2.
       - name: Unit tests (Linux/macOS)
         if: runner.os != 'Windows'
         run: ./build/scarab_tests
@@ -324,7 +324,7 @@ jobs:
 
       # Every Lua function that can fail returns nil + the reason (never a Lua error, never a
       # silent no-op), a function with nothing else to return returns true, and arguments are
-      # checked strictly - one check per kind of failure of every module (plans/MASTER_PLAN.md
+      # checked strictly - one check per kind of failure of every module (docs/history/master_plan_11_2026.md
       # item D3) - see the script's own header.
       - name: Error reporting smoke test (Linux/macOS)
         if: runner.os != 'Windows'
@@ -339,7 +339,7 @@ jobs:
 
       # tilemap_unload_map unloads every sprite on a layer and takes their colliders out: no
       # collision while the map is unloaded, exactly one per frame after the sprites are added
-      # again (plans/MASTER_PLAN.md item V9) - see the script's own header.
+      # again (docs/history/master_plan_11_2026.md item V9) - see the script's own header.
       - name: Unload map smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/unload_map_smoke.py build/scarab
@@ -353,7 +353,7 @@ jobs:
 
       # tilemap_load_map over a loaded map: a map that fails to parse leaves the loaded one loaded,
       # sprites stay registered, and 1000 loads don't grow peak memory over 20 (Linux/macOS; the
-      # functional checks only on Windows) - plans/MASTER_PLAN.md item V10, see the script's header.
+      # functional checks only on Windows) - docs/history/master_plan_11_2026.md item V10, see the script's header.
       - name: Load map smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/load_map_smoke.py build/scarab
@@ -367,7 +367,7 @@ jobs:
 
       # Sprite-vs-tile collisions and tile lookups in map space: exact collision windows (view-
       # relative and world-space, camera offset, zoom 1 and 3.8125), the tile's map rectangle, one
-      # call per touched tile, two collision shapes, the far edge - plans/MASTER_PLAN.md item V11.
+      # call per touched tile, two collision shapes, the far edge - docs/history/master_plan_11_2026.md item V11.
       - name: Tile collision smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/tile_collision_smoke.py build/scarab
@@ -381,7 +381,7 @@ jobs:
 
       # tilemap_get/set_layer_tint (+ _by_name): every authored Tiled tintcolor read back exactly
       # (alpha included) for tile, image, object and group layers, set then get, a write-back
-      # changing nothing, and every error - plans/MASTER_PLAN.md item V12.
+      # changing nothing, and every error - docs/history/master_plan_11_2026.md item V12.
       - name: Layer tint smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/layer_tint_smoke.py build/scarab
@@ -395,7 +395,7 @@ jobs:
 
       # Path schemes (sunlight I12): a plain path, vpath://, virtualpath://, hpath:// and hostpath://
       # load the same file through load_json, dofile and tilemap_load_map (a map with external
-      # tilesets), and an unknown scheme is refused - plans/MASTER_PLAN.md item P9.
+      # tilesets), and an unknown scheme is refused - docs/history/master_plan_11_2026.md item P9.
       - name: Path scheme smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/path_scheme_smoke.py build/scarab
@@ -409,7 +409,7 @@ jobs:
 
       # Controllers (C1a): no pads headless, stick dead zones per pad and axis, the automatic
       # and raw stick reads, the connection handler, and the player slots in full -
-      # plans/MASTER_PLAN.md item C1a.
+      # docs/history/master_plan_11_2026.md item C1a.
       - name: Input API smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/input_api_smoke.py build/scarab
@@ -424,7 +424,7 @@ jobs:
       # Save directory, action map and rumble (C1b): every function under --save-dir, the
       # --save-dir > app_set_save_directory > project.json priority under a fake home, no save
       # directory, and a game's shipped defaults + a save from a .zip and an encrypted pack -
-      # plans/MASTER_PLAN.md item C1b.
+      # docs/history/master_plan_11_2026.md item C1b.
       - name: Action map smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/action_map_smoke.py build/scarab --require-encrypted
@@ -439,7 +439,7 @@ jobs:
       # Save files (C1c): save_write/save_read/save_exists/save_delete under --save-dir and a fake
       # home - every value type round trip, the exact bytes written (the same on two launches),
       # every refusal, no .tmp left, a shipped file never taken for a save, no save directory,
-      # hand-edited saves, and a save from a .zip and an encrypted pack - plans/MASTER_PLAN.md item C1c.
+      # hand-edited saves, and a save from a .zip and an encrypted pack - docs/history/master_plan_11_2026.md item C1c.
       - name: Save API smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/save_api_smoke.py build/scarab --require-encrypted
@@ -455,7 +455,7 @@ jobs:
       # files; writing goes into the save directory - through Lua's io/os/require/loadfile/load and
       # Scarab's loaders, loose, from a .zip and from an encrypted pack; no game file changed, no
       # host path or launch folder reachable, a save-folder change leaves no stale mount, and
-      # --no-sandbox gives Lua's own functions back - plans/MASTER_PLAN.md item C8.
+      # --no-sandbox gives Lua's own functions back - docs/history/master_plan_11_2026.md item C8.
       - name: Sandbox smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/sandbox_smoke.py build/scarab --require-encrypted
@@ -469,7 +469,7 @@ jobs:
 
       # sprite_set/get_opacity and sprite_set/get_tint: defaults, exact round trips, every
       # rejection, two sprites sharing a texture keeping their own values, a recycled slot
-      # starting opaque and untinted - plans/MASTER_PLAN.md item P8.
+      # starting opaque and untinted - docs/history/master_plan_11_2026.md item P8.
       - name: Sprite tint smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/sprite_tint_smoke.py build/scarab
@@ -483,7 +483,7 @@ jobs:
 
       # sprite_set/get_z_order: a fresh 0, round trips to the C int limits, every rejection,
       # own values per sprite, kept across a layer move and a reconfigure, a recycled slot
-      # starting at 0 - plans/MASTER_PLAN.md item C3.
+      # starting at 0 - docs/history/master_plan_11_2026.md item C3.
       - name: Sprite z-order smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/sprite_zorder_smoke.py build/scarab
@@ -497,7 +497,7 @@ jobs:
 
       # shape_draw_rectangle/_ellipse/_polyline/_polygon/_point: every kind of refusal (and no
       # renderer created by one), then every function drawing with no map and with a map loaded -
-      # plans/MASTER_PLAN.md item C2.
+      # docs/history/master_plan_11_2026.md item C2.
       - name: Shape API smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/shape_api_smoke.py build/scarab
@@ -511,7 +511,7 @@ jobs:
 
       # tilemap_get/set_layer_parallax (and _by_name), tilemap_get_parallax_origin: the factors and
       # origin parallax.tmx declares, exact round trips, other layer fields untouched, every refusal,
-      # the declared values back after a reload - plans/MASTER_PLAN.md item C4.
+      # the declared values back after a reload - docs/history/master_plan_11_2026.md item C4.
       - name: Layer parallax smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/layer_parallax_smoke.py build/scarab
@@ -525,7 +525,7 @@ jobs:
 
       # Isometric, staggered and hexagonal maps: map info, cell rectangles, tile picking at
       # every cell's centre and bottom tip (sunlight I17), scroll limits and view_fit_to_map,
-      # obstacle collisions by bounding box - plans/MASTER_PLAN.md item C5.
+      # obstacle collisions by bounding box - docs/history/master_plan_11_2026.md item C5.
       - name: Map projection smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/projection_smoke.py build/scarab
@@ -538,7 +538,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "map projection smoke test exited with code $LASTEXITCODE" }
 
       # view_set_opacity / view_get_opacity: every view starts at 1, exact round trips, each view its own, kept
-      # over a map load, every refusal, a destroyed view, frames drawn faded - plans/MASTER_PLAN.md item C7.
+      # over a map load, every refusal, a destroyed view, frames drawn faded - docs/history/master_plan_11_2026.md item C7.
       - name: View opacity smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/view_opacity_smoke.py build/scarab
@@ -552,7 +552,7 @@ jobs:
 
       # Worlds: lifetime, maps at offsets, .world files, layer ids by name, tiles and picking per map,
       # view_set_world, sprites in one world at a time and detached on release/unload, collisions per world with
-      # the world id in the handlers, across a map edge too - plans/MASTER_PLAN.md item C7, part 2.
+      # the world id in the handlers, across a map edge too - docs/history/master_plan_11_2026.md item C7, part 2.
       - name: World API smoke test (Linux/macOS)
         if: runner.os != 'Windows'
         run: python3 scripts/world_api_smoke.py build/scarab
@@ -566,7 +566,7 @@ jobs:
 
       # tilemap_get_tile_frame / tilemap_get_object_tile_frame: a Tiled tile animation runs by
       # time (frame = time since tilemap_load_map modulo the cycle), every copy in step, no pause
-      # while hidden or off screen, checked exactly every frame for 11 cycles - plans/MASTER_PLAN.md
+      # while hidden or off screen, checked exactly every frame for 11 cycles - docs/history/master_plan_11_2026.md
       # item V13.
       - name: Tile animation smoke test (Linux/macOS)
         if: runner.os != 'Windows'

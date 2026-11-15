@@ -474,7 +474,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief A stick or trigger, with the pad's dead zone applied to a stick (plans/MASTER_PLAN.md
+             * @brief A stick or trigger, with the pad's dead zone applied to a stick (docs/history/master_plan_11_2026.md
              * item C1a): a value strictly inside the dead zone reads 0, sunlight's own rule
              * (ControllerManager's dispatch); outside it, the value is returned unchanged (no rescaling).
              *

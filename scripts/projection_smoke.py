@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the existing functions on non-orthogonal maps (plans/MASTER_PLAN.md item C5).
+Smoke test for the existing functions on non-orthogonal maps (docs/history/master_plan_11_2026.md item C5).
 
 Runs scripts/projection_smoke/main.lua headless once, on sunlight's isometric, staggered and hexagonal
 maps: map info, exact cell rectangles, obstacle cells, picking (every cell's centre; the known isometric/

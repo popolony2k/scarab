@@ -136,7 +136,7 @@ namespace Scarab  {
 
             /**
              * @brief The path a save is read through: the private mount of the save folder alone
-             * (SaveDirectory::GetSavePath, plans/MASTER_PLAN.md item C8), so reading it finds only the save,
+             * (SaveDirectory::GetSavePath, docs/history/master_plan_11_2026.md item C8), so reading it finds only the save,
              * never a game file of the same name in another mount. Before C8 this was a host path, which the
              * sandbox refuses.
              *

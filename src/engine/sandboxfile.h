@@ -31,7 +31,7 @@ namespace Scarab  {
 
         /**
          * @brief A file's contents held in memory, read and written the way Lua's own file handles are
-         * (plans/MASTER_PLAN.md item C8): the in-memory side of the sandbox's `io.open`. Lua's file handles
+         * (docs/history/master_plan_11_2026.md item C8): the in-memory side of the sandbox's `io.open`. Lua's file handles
          * wrap a C FILE* opened straight from the operating system, which the sandbox must not do, and there
          * is no portable in-memory FILE* (none on Windows) - so a sandboxed file is read whole through the
          * file system when it is opened, changed here, and written back whole (atomically) by the Lua layer.

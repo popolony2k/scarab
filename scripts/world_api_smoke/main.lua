@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/world_api_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item C7, part 2 (sunlight I19b-f):
+    Pins docs/history/master_plan_11_2026.md item C7, part 2 (sunlight I19b-f):
     - Before any window: no world exists, every world call is "unknown world N", and none creates the renderer -
       except world_create, which creates the default one (as tilemap_load_map does).
     - Lifetime: world_create / world_load (.tmx and .world) / world_unload, world_get_count, ids never reused, a

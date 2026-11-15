@@ -17,7 +17,7 @@
 # misrepresented as being the original software.
 # 3. This notice may not be removed or altered from any source distribution.
 #
-# Scarab's unit tests (doctest) - plans/MASTER_PLAN.md item R2. Built only with
+# Scarab's unit tests (doctest) - docs/history/master_plan_11_2026.md item R2. Built only with
 # -DSCARAB_BUILD_TESTS=ON; run ./build/scarab_tests (build/Release/scarab_tests.exe on Windows).
 # Deliberately not registered with ctest: the fetched Lua project registers its own failing
 # "lua-testsuite" there, so ctest would run (and fail on) a suite that isn't Scarab's.

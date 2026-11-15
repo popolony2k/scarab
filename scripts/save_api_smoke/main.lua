@@ -34,7 +34,7 @@
         first / second   the game shipped as a .zip (and an encrypted pack): the first run finds no save
                   and saves, the second reads it back; the shipped file is still not a save
 
-    Pins plans/MASTER_PLAN.md item C1c. The script quits ITSELF only if every check passed (exit 0);
+    Pins docs/history/master_plan_11_2026.md item C1c. The script quits ITSELF only if every check passed (exit 0);
     otherwise it prints every failure and never quits, so --max-frames runs out and scarab exits 3.
 ]]
 

@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for tilemap_unload_map (plans/MASTER_PLAN.md item V9).
+Smoke test for tilemap_unload_map (docs/history/master_plan_11_2026.md item V9).
 
 Runs scripts/unload_map_smoke/main.lua headless once: unloading a map unloads every sprite on a
 layer and takes their colliders out, so unloaded sprites never collide and re-added ones collide

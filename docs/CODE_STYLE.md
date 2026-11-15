@@ -394,7 +394,7 @@ local __GLOW_LAYER     <const> = 4      -- "clouds" in test.tmx: drawn before Su
   It is the Lua counterpart of the C++ rule above: say what the function does, and what its name does not
   tell - what it returns, when the engine calls it, which keys or buttons it reads. For `on_update`, what
   the script does each frame. The samples are what people read to learn Scarab, and the smoke tests are
-  what people read to see what a function promises (`lua-function-comment`; `plans/MASTER_PLAN.md` item T4).
+  what people read to see what a function promises (`lua-function-comment`; `docs/history/master_plan_11_2026.md` item T4).
 
 ### Checking
 

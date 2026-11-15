@@ -1004,7 +1004,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Show a world in a view (sunlight's IView::SetWorld, plans/MASTER_PLAN.md item C7).
+             * @brief Show a world in a view (sunlight's IView::SetWorld, docs/history/master_plan_11_2026.md item C7).
              *
              * @param pLuaState Lua state to be used by engine call;
              * @return int number of return data (if any - required by lua engine)

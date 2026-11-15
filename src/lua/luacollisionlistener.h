@@ -40,7 +40,7 @@ namespace Scarab  {
              * sprite type well enough to decide response for a mixed collision
              * without a listener-ordering race).
              *
-             * One listener per world (plans/MASTER_PLAN.md item C7): each world has its own collision
+             * One listener per world (docs/history/master_plan_11_2026.md item C7): each world has its own collision
              * manager, so the listener added to it knows its world and passes the world's id to the
              * Lua handlers as their last argument.
              */

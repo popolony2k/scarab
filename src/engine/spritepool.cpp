@@ -213,7 +213,7 @@ namespace Scarab  {
             slot.registrations.clear();           // the caller detached it (LuaSpriteApi::Release, item C7)
             slot.sprite.SetVisible( false );
             slot.sprite.SetWorldSpace( false );   // a recycled handle must not inherit the previous owner's coordinate space
-            slot.sprite.ClearBlendMode();         // ... nor its blend mode (plans/MASTER_PLAN.md item B1)
+            slot.sprite.ClearBlendMode();         // ... nor its blend mode (docs/history/master_plan_11_2026.md item B1)
             slot.sprite.SetOpacity( __SPRITE_OPAQUE );    // ... nor its opacity or tint (item P8)
             slot.sprite.SetTint( __SPRITE_NO_TINT );
             slot.sprite.SetZOrder( __SPRITE_DEFAULT_Z_ORDER );   // ... nor its z-order (item C3): a pooled sprite never stays on top
@@ -417,7 +417,7 @@ namespace Scarab  {
         }
 
         /**
-         * @brief Record that a sprite was registered on a layer of a world (plans/MASTER_PLAN.md item
+         * @brief Record that a sprite was registered on a layer of a world (docs/history/master_plan_11_2026.md item
          * C7) - sunlight does not say which world holds a sprite, so the pool keeps it.
          *
          * @param hSprite The sprite;

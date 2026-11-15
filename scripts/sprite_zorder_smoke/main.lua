@@ -24,7 +24,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/sprite_zorder_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item C3 (sunlight L3, BREAKAGES 37; I15, BREAKAGES 64): sprite_set/get_z_order -
+    Pins docs/history/master_plan_11_2026.md item C3 (sunlight L3, BREAKAGES 37; I15, BREAKAGES 64): sprite_set/get_z_order -
     a fresh sprite's 0, round trips (negative, zero, positive, the C int limits), every rejection leaving the
     value as it was, two sprites keeping their own values, the value kept across a layer move, a texture
     reconfigure and real frames of drawing, a recycled slot starting at 0 (SpritePool::Release), and that none

@@ -34,7 +34,7 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
             /**
-             * @brief Shape outlines and points for Lua (plans/MASTER_PLAN.md item C2), drawn through
+             * @brief Shape outlines and points for Lua (docs/history/master_plan_11_2026.md item C2), drawn through
              * sunlight's IShapeSurface - the same code that draws Tiled shape objects - in map units,
              * with or without a loaded map.
              *

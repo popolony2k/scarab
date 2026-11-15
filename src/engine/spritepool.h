@@ -49,7 +49,7 @@ namespace Scarab  {
 
             /**
              * @brief Where a sprite is registered: a world (0 = the default world) and a layer of it
-             * (plans/MASTER_PLAN.md item C7). sunlight does not say which world holds a sprite, so the
+             * (docs/history/master_plan_11_2026.md item C7). sunlight does not say which world holds a sprite, so the
              * pool keeps it, to detach a released sprite and to name the world that holds one.
              */
             struct stRegistration  {

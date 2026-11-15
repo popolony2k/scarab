@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Run Scarab's headless checks under AddressSanitizer / LeakSanitizer (plans/MASTER_PLAN.md item R1).
+Run Scarab's headless checks under AddressSanitizer / LeakSanitizer (docs/history/master_plan_11_2026.md item R1).
 
 Runs, with a scarab built with -fsanitize=address (see ci.yml's "asan" job, or CLAUDE.md's ASan recipe):
 
@@ -94,7 +94,7 @@ def main():
     for project in sorted(glob.glob(os.path.join(repo_root, "samples", "*", "project.json"))):
         relative = os.path.relpath(project, repo_root)
         # --save-dir: a sample that names a save folder (samples/actions) must not create it in the real
-        # per-user data folder (plans/MASTER_PLAN.md item C1b)
+        # per-user data folder (docs/history/master_plan_11_2026.md item C1b)
         runs.append((relative, [scarab, "--headless", "--fast", "--max-frames", str(SAMPLE_FRAMES),
                                 "--save-dir", save_dir, relative], {0, BUDGET_EXHAUSTED}))
 

@@ -77,7 +77,7 @@ static void SetPackEnvVar( const char* szName, const std :: string& strValue )  
  * any stRendererCreateExtras to Create - see RendererProvider::Create):
  * every key a game reacts to goes through Lua's own input_* primitives
  * unless renderer_create{use_default_key_handler=true} asks for the preset
- * explicitly (plans/MASTER_PLAN.md item D1).
+ * explicitly (docs/history/master_plan_11_2026.md item D1).
  */
 static SunLight :: Renderer :: RendererConfig  MakeDefaultRendererConfig( void )  {
 
@@ -255,7 +255,7 @@ int main( int argc, char** argv )  {
     pPackOption -> excludes( pHeadlessOption );
 
     /*
-     * --save-dir names the real folder a game's saves go into (plans/MASTER_PLAN.md item C1b) and wins
+     * --save-dir names the real folder a game's saves go into (docs/history/master_plan_11_2026.md item C1b) and wins
      * over the folder the game names itself (project.json's "save_directory", app_set_save_directory) -
      * for tests and CI, which must not write into the user's own data folder, and for portable installs.
      */
@@ -270,7 +270,7 @@ int main( int argc, char** argv )  {
 
     /*
      * --no-sandbox gives a game Lua's own io/os/require/loadfile/load and host paths (hpath://) back
-     * (plans/MASTER_PLAN.md item C8). Only the command line can turn the sandbox off - a project file
+     * (docs/history/master_plan_11_2026.md item C8). Only the command line can turn the sandbox off - a project file
      * can't, or a game could opt out of its own sandbox. --pack never has one: the packing tool needs
      * real paths.
      */
@@ -463,7 +463,7 @@ int main( int argc, char** argv )  {
     bool  bZipEntry = !bPackMode && ( std :: filesystem :: path( strEntryPath ).extension() == ".zip" );
 
     // A game launched from a .zip has its files in the archive, mounted at the root by
-    // EngineHost::ResolveEntryScript (plans/MASTER_PLAN.md item C8: the save directory, then the game's
+    // EngineHost::ResolveEntryScript (docs/history/master_plan_11_2026.md item C8: the save directory, then the game's
     // own files) - the launch folder is not among them.
     if( !bZipEntry )
         SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem().Mount( std :: filesystem :: current_path().string(), "/", true );

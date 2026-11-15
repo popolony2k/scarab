@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the controller functions (plans/MASTER_PLAN.md item C1a).
+Smoke test for the controller functions (docs/history/master_plan_11_2026.md item C1a).
 
 Runs scripts/input_api_smoke/main.lua headless once: no pads under the null input, the
 connection handler accepted, stick dead zones per pad and axis (default 0.1, round trips,

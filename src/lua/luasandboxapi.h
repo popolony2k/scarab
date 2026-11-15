@@ -33,7 +33,7 @@ namespace Scarab  {
         namespace Lua  {
 
             /**
-             * @brief The sandbox (plans/MASTER_PLAN.md item C8): Lua's own file, process and code-loading
+             * @brief The sandbox (docs/history/master_plan_11_2026.md item C8): Lua's own file, process and code-loading
              * functions replaced IN PLACE, in C++, by ones that reach only the game's own files and its save
              * directory. Installed by LuaEngine right after luaL_openlibs, unless the command line says
              * --no-sandbox (or the engine runs the --pack tool); the originals are kept nowhere, so nothing -

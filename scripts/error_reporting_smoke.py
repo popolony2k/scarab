@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the error reporting of every Lua function (plans/MASTER_PLAN.md item D3).
+Smoke test for the error reporting of every Lua function (docs/history/master_plan_11_2026.md item D3).
 
 Runs scripts/error_reporting_smoke/main.lua headless once: every function that can fail
 returns nil + the reason (never a Lua error, never a silent no-op), a function with nothing

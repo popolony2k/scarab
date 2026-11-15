@@ -30,12 +30,12 @@
                   project.json's "save_directory" is used, app_set_save_directory then wins
         nodir     a project with no "save_directory": no save directory, a plain save is refused, and
                   an hpath:// save is refused in the sandbox but works with --no-sandbox
-                  (SMOKE_SANDBOX=0, plans/MASTER_PLAN.md item C8)
+                  (SMOKE_SANDBOX=0, docs/history/master_plan_11_2026.md item C8)
         default / saved   the game shipped as a .zip (and an encrypted pack): the first run has no save,
                   loads the default shipped under APP_DIR, rebinds and saves; the second run loads the
                   save
 
-    Pins plans/MASTER_PLAN.md item C1b. The script quits ITSELF only if every check passed (exit 0);
+    Pins docs/history/master_plan_11_2026.md item C1b. The script quits ITSELF only if every check passed (exit 0);
     otherwise it prints every failure and never quits, so --max-frames runs out and scarab exits 3.
 ]]
 
