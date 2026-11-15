@@ -44,7 +44,7 @@ namespace Scarab  {
              * (later) - nothing above this needed to change to notice the
              * difference, load_json/dofile call sites included.
              *
-             * Since plans/MASTER_PLAN.md item C8, require(), loadfile()
+             * Since docs/history/master_plan_11_2026.md item C8, require(), loadfile()
              * and io.* go through the file system too - in the sandbox,
              * LuaSandboxApi; they share LoadChunk with dofile and the
              * entry script, which is text only in the sandbox.

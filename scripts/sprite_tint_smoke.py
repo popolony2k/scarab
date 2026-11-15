@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the sprite opacity and tint functions (plans/MASTER_PLAN.md item P8).
+Smoke test for the sprite opacity and tint functions (docs/history/master_plan_11_2026.md item P8).
 
 Runs scripts/sprite_tint_smoke/main.lua headless once: a fresh sprite's defaults, exact round
 trips, every rejection, two sprites sharing a texture keeping their own values, a recycled slot

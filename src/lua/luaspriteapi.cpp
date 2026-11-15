@@ -192,7 +192,7 @@ namespace Scarab  {
 
             /**
              * @brief Return a sprite to its pool, first taking it off every layer it is on, in whichever
-             * world (plans/MASTER_PLAN.md item C7) - so a recycled handle starts on no layer and in no
+             * world (docs/history/master_plan_11_2026.md item C7) - so a recycled handle starts on no layer and in no
              * world.
              *
              * @param pLuaState Lua state to be used by engine call;

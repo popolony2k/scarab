@@ -20,7 +20,7 @@
 #
 """
 Smoke test for the save functions save_write / save_read / save_exists / save_delete
-(plans/MASTER_PLAN.md item C1c).
+(docs/history/master_plan_11_2026.md item C1c).
 
 Runs scripts/save_api_smoke/main.lua headless in these scenarios (see that script's header):
   api       --save-dir on a temp folder, from the script's own folder: every function and every

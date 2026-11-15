@@ -18,14 +18,14 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for path schemes (plans/MASTER_PLAN.md item P9, sunlight I12).
+Smoke test for path schemes (docs/history/master_plan_11_2026.md item P9, sunlight I12).
 
 Runs scripts/path_scheme_smoke/main.lua headless three times. With --no-sandbox, a plain path, vpath://,
 virtualpath://, hpath:// and hostpath:// all load the same file through load_json, dofile, io.open and
 tilemap_load_map, and an unknown scheme is refused: the first run starts from project.json (a plain
 "main_script"), the second from scheme_project.json, whose "main_script" is "vpath://..." - a scheme there
 is used as it stands, not joined onto the project file's folder. The third run is in the sandbox
-(plans/MASTER_PLAN.md item C8), where the host paths must be refused and the virtual ones still load. See
+(docs/history/master_plan_11_2026.md item C8), where the host paths must be refused and the virtual ones still load. See
 the Lua script's own header.
 
 The script quits itself only if every check passed (exit 0); otherwise it prints each

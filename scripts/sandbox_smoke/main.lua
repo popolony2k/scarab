@@ -20,7 +20,7 @@
 
 --[[
     Sandbox smoke test - run by scripts/sandbox_smoke.py (and ci.yml, every platform). Pins
-    plans/MASTER_PLAN.md item C8: the path rule (reading: the save directory, then the game's own files;
+    docs/history/master_plan_11_2026.md item C8: the path rule (reading: the save directory, then the game's own files;
     writing: the save directory) through Lua's own functions and Scarab's loaders, the sandbox's io/os/
     require/loadfile/load, and that nothing outside the game's files and its save directory is reachable.
 

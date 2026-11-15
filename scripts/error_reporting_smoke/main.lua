@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/error_reporting_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item D3: every Lua function that can fail reports it as
+    Pins docs/history/master_plan_11_2026.md item D3: every Lua function that can fail reports it as
     `nil, "message"` (never a Lua error, never a silent no-op or a "safe" value), a function with
     nothing else to return returns `true`, and arguments are checked strictly (a wrong type, a
     missing argument, a fractional number where an integer is expected, a value out of range or
@@ -310,7 +310,7 @@ expect_error( "json path", "argument 'path' must be a string", load_json, nil )
 expect_error( "encrypt type", "argument 'data' must be a string", crypto_encrypt_data, 5 )
 expect_error( "decrypt garbage", "", crypto_decrypt_data, "not encrypted" )
 -- the pack_* functions read and write real OS paths: they exist only in the --pack tool, never in a game
--- (plans/MASTER_PLAN.md item C8 - their own error checks are tests/test_packapi.cpp)
+-- (docs/history/master_plan_11_2026.md item C8 - their own error checks are tests/test_packapi.cpp)
 for _, name in ipairs( { "pack_list_directory", "pack_read_file", "pack_write_file", "pack_create_archive",
                          "pack_add_entry", "pack_close_archive" } ) do
     check( _G[name] == nil, name .. " must not exist in a game" )

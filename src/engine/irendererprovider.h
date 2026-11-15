@@ -45,14 +45,14 @@ namespace Scarab  {
              * Install sunlight's own default camera/zoom key and gamepad bindings (arrow
              * keys, PageUp/Down, Home/End, and the matching gamepad buttons) -
              * renderer_create's use_default_key_handler. Out of RendererConfig because
-             * sunlight removed its own equivalent field (plans/MASTER_PLAN.md item D1):
+             * sunlight removed its own equivalent field (docs/history/master_plan_11_2026.md item D1):
              * installing a preset is an action, not a setting.
              */
             bool                         bUseDefaultKeyHandler = false;
 
             /*
              * The default view's preferred zoom POSITION - what zoom_reset returns to,
-             * renderer_create's preferred_zoom (plans/MASTER_PLAN.md item D2). Empty (left
+             * renderer_create's preferred_zoom (docs/history/master_plan_11_2026.md item D2). Empty (left
              * out) keeps sunlight's own default. RendererConfig has a current zoom
              * (nZoomPos) but no preferred one.
              */
@@ -110,7 +110,7 @@ namespace Scarab  {
 
             /**
              * @brief The renderer's shape surface (sunlight's IShapeSurface: outlines and points in map
-             * units, following the view's camera and zoom - plans/MASTER_PLAN.md item C2); on the concrete
+             * units, following the view's camera and zoom - docs/history/master_plan_11_2026.md item C2); on the concrete
              * renderer only, not on ITileMap; creates the default renderer first if none exists yet - see
              * @link GetTileMap.
              */

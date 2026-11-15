@@ -151,7 +151,7 @@ namespace Scarab  {
                 SunLight :: FileSystem :: IFileSystem&  fileSystem = SunLight :: FileSystem :: FileSystemFactory :: GetFileSystem();
 
                 /*
-                 * The path rule (plans/MASTER_PLAN.md item C8): the archive IS the game's own files - at APP_DIR,
+                 * The path rule (docs/history/master_plan_11_2026.md item C8): the archive IS the game's own files - at APP_DIR,
                  * as before, and at the root too (after the save folder, which sunlight mounts there first), so a
                  * plain path reads the save, then the archive, exactly as a loose game reads the save, then the
                  * launch folder (main.cpp does not mount the launch folder for a .zip). The save folder's own
@@ -256,7 +256,7 @@ namespace Scarab  {
 
         /**
          * @brief A project file's "main_script", as the path the entry script is read from:
-         * relative to the project file's own folder, through sunlight's FilePath (plans/MASTER_PLAN.md
+         * relative to the project file's own folder, through sunlight's FilePath (docs/history/master_plan_11_2026.md
          * items P9, I13 in sunlight). A "main_script" with a scheme of its own ("vpath://...") is used
          * as it stands; backslashes become '/' - on Windows, a relative project file in a
          * subdirectory once gave "scripts/headless_smoke\\main.lua", which the FileSystem can't
@@ -464,7 +464,7 @@ namespace Scarab  {
              * No per-frame sprite update here: sunlight's own layer pass advances and draws every
              * sprite added to a layer, in its layer's place and honouring the layer's visibility and
              * each view's layer mask. A second Update() of every pool sprite here (SpritePool::UpdateAll,
-             * removed in plans/MASTER_PLAN.md item V8a) drew them all again on top of the whole frame,
+             * removed in docs/history/master_plan_11_2026.md item V8a) drew them all again on top of the whole frame,
              * so hiding a layer never hid its sprites.
              */
             m_LuaEngine.CallOnUpdate( __FRAME_DELTA_MILLI );
@@ -480,7 +480,7 @@ namespace Scarab  {
          * resolved later, from RunEntryScript, since a failure
          * there already has a normal fatal-error path to report through;
          * @param strEntryOverride The command line's --entry, "" for none;
-         * @param bSandbox false for --no-sandbox: Lua's own io/os/require/loadfile/load (plans/MASTER_PLAN.md
+         * @param bSandbox false for --no-sandbox: Lua's own io/os/require/loadfile/load (docs/history/master_plan_11_2026.md
          * item C8);
          */
         EngineHost :: EngineHost( Scarab :: Host :: RendererProvider* pRendererProvider,
@@ -561,7 +561,7 @@ namespace Scarab  {
 
         /**
          * @brief The command line's --save-dir: saves go into this real folder, whatever folder the game
-         * names itself (plans/MASTER_PLAN.md item C1b). Called by main() right after construction, before
+         * names itself (docs/history/master_plan_11_2026.md item C1b). Called by main() right after construction, before
          * the entry script runs.
          *
          * @param strRealPath The folder, as the command line gives it;
@@ -575,7 +575,7 @@ namespace Scarab  {
 
         /**
          * @brief A project file's optional "save_directory": the name of the game's save folder in the
-         * per-user data folder (plans/MASTER_PLAN.md item C1b). Applied before the entry script runs, so
+         * per-user data folder (docs/history/master_plan_11_2026.md item C1b). Applied before the entry script runs, so
          * app_set_save_directory - called by the script, later - wins over it, and --save-dir (set earlier,
          * from the command line) over both. A bad value is a fatal error, like a bad "main_script".
          *
@@ -620,7 +620,7 @@ namespace Scarab  {
             if( m_CurrentStateHandler )
                 m_CurrentStateHandler();
 
-            m_LuaEngine.UpdateHaptics();      // a timed rumble stops from this tick (plans/MASTER_PLAN.md item C1b)
+            m_LuaEngine.UpdateHaptics();      // a timed rumble stops from this tick (docs/history/master_plan_11_2026.md item C1b)
         }
 
         /**
@@ -634,7 +634,7 @@ namespace Scarab  {
         void EngineHost :: OnStop( void )  {
 
             m_SpritePool.Clear();
-            m_FontPool.Clear();      // Lua's font handles, the same rule (plans/MASTER_PLAN.md item C6)
+            m_FontPool.Clear();      // Lua's font handles, the same rule (docs/history/master_plan_11_2026.md item C6)
             m_LuaEngine.ReleaseHaptics();   // stops any rumble, while the renderer's input handler still exists
         }
 

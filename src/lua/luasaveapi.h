@@ -32,7 +32,7 @@ namespace Scarab  {
     namespace Engine  {
         namespace Lua  {
             /**
-             * @brief The game's save files (plans/MASTER_PLAN.md item C1c): Lua tables kept as JSON in the
+             * @brief The game's save files (docs/history/master_plan_11_2026.md item C1c): Lua tables kept as JSON in the
              * save directory (Engine::SaveDirectory, C1b), written atomically by sunlight's
              * IFileSystem::WriteFile and removed by IFileSystem::RemoveFile.
              *

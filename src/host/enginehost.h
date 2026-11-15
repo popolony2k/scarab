@@ -119,7 +119,7 @@ namespace Scarab  {
             // Headless (--headless) only - see LuaAppApi::InstallVirtualClock
             void UseVirtualTime( void );
 
-            // The command line's --save-dir (plans/MASTER_PLAN.md item C1b)
+            // The command line's --save-dir (docs/history/master_plan_11_2026.md item C1b)
             bool SetSaveDirectoryFromCommandLine( const std :: string& strRealPath, std :: string& strError );
 
             // World listener event handler implementation

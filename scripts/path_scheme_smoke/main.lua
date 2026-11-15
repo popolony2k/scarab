@@ -23,7 +23,7 @@
 
         SCARAB_SMOKE_REPO_ROOT=<repo> scarab --headless --fast --max-frames 200 scripts/path_scheme_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item P9 (sunlight I12, BREAKAGES 61): every path a Lua script hands a
+    Pins docs/history/master_plan_11_2026.md item P9 (sunlight I12, BREAKAGES 61): every path a Lua script hands a
     loader may carry a scheme, resolved by sunlight's FileSystem - none, "vpath://" or
     "virtualpath://" for a virtual path (mounts, archives, the read filter), "hpath://" or
     "hostpath://" for a real OS path, and any other "<letters>://" refused. Checked through Scarab's
@@ -31,7 +31,7 @@
     same file, and an unknown one is an error, not a file name.
 
     The driver passes the repo's absolute path in SCARAB_SMOKE_REPO_ROOT, for the host paths. Host paths
-    work only with --no-sandbox (plans/MASTER_PLAN.md item C8): the driver runs the script that way, and
+    work only with --no-sandbox (docs/history/master_plan_11_2026.md item C8): the driver runs the script that way, and
     once more in the sandbox with SCARAB_SMOKE_SANDBOX=1, where every loader - and io.open - must refuse
     them while the virtual schemes still load.
 

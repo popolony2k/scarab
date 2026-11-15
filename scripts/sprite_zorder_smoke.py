@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the sprite z-order functions (plans/MASTER_PLAN.md item C3).
+Smoke test for the sprite z-order functions (docs/history/master_plan_11_2026.md item C3).
 
 Runs scripts/sprite_zorder_smoke/main.lua headless once: a fresh sprite's 0, exact round trips, every
 rejection, two sprites keeping their own values, the value kept across a layer move and a reconfigure, a

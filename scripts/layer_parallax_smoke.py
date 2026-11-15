@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the layer parallax functions (plans/MASTER_PLAN.md item C4).
+Smoke test for the layer parallax functions (docs/history/master_plan_11_2026.md item C4).
 
 Runs scripts/layer_parallax_smoke/main.lua headless once on sunlight's parallax.tmx: refusals before any
 window (no renderer created), no map loaded, the factors and origin the map declares, exact round trips, the

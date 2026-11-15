@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/layer_parallax_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item C4 (sunlight L1, BREAKAGES 34 and 49): tilemap_get/set_layer_parallax
+    Pins docs/history/master_plan_11_2026.md item C4 (sunlight L1, BREAKAGES 34 and 49): tilemap_get/set_layer_parallax
     (and _by_name) and tilemap_get_parallax_origin, on sunlight's own parallax.tmx (resources/tilemap/
     parallax/). First, before any window: refusals for their arguments, and that none created the renderer.
     Then: no map loaded; the factors the map declares (terrain 1, sky and birds 0.25, clouds 0.5), by id and

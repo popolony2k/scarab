@@ -1091,7 +1091,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief debug.setmetatable in the sandbox (plans/MASTER_PLAN.md item C8a): Lua's own (lbaselib's
+             * @brief debug.setmetatable in the sandbox (docs/history/master_plan_11_2026.md item C8a): Lua's own (lbaselib's
              * db_setmetatable) for every value but a full userdata, whose metatable says what kind of engine object
              * it is - giving a Lua file the sandbox file's metatable, or the other way round, made one pass for the
              * other (shown: the process aborted when it was collected).
@@ -1118,7 +1118,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief debug.getregistry in the sandbox (plans/MASTER_PLAN.md item C8a): refused - the registry holds
+             * @brief debug.getregistry in the sandbox (docs/history/master_plan_11_2026.md item C8a): refused - the registry holds
              * the engine's metatables, and replacing one there makes one object pass for another, as
              * debug.setmetatable would.
              *
@@ -1630,7 +1630,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Where a path a script gave is written (the path rule, plans/MASTER_PLAN.md item C8): inside the
+             * @brief Where a path a script gave is written (the path rule, docs/history/master_plan_11_2026.md item C8): inside the
              * save directory, which must exist, by ToSavePath with this engine's APP_DIR. Used by the sandbox's
              * io/os and by every Scarab function that writes a path (input_save_action_map), sandboxed or not.
              *
@@ -1654,7 +1654,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Where a path is written, inside the save directory (plans/MASTER_PLAN.md item C8): the path
+             * @brief Where a path is written, inside the save directory (docs/history/master_plan_11_2026.md item C8): the path
              * relative to it, with a leading APP_DIR taken off (decision 1b: APP_DIR .. "x" reads the save's "x"
              * first, so that is where it is written), "vpath://" and leading '/'s dropped, and "." and ".."
              * collapsed. A host path, a path with an unknown scheme, one that climbs out, and one that names no

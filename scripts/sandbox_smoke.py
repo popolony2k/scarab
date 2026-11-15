@@ -19,7 +19,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the sandbox and the path rule (plans/MASTER_PLAN.md item C8).
+Smoke test for the sandbox and the path rule (docs/history/master_plan_11_2026.md item C8).
 
 Runs scripts/sandbox_smoke/main.lua headless (see its own header for each scenario):
   loose      the "rule" suite from the repo root, with --save-dir: reading finds the save directory, then

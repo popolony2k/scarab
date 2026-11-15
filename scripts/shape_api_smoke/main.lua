@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/shape_api_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item C2 (sunlight M1, BREAKAGES 38): shape_draw_rectangle / _ellipse /
+    Pins docs/history/master_plan_11_2026.md item C2 (sunlight M1, BREAKAGES 38): shape_draw_rectangle / _ellipse /
     _polyline / _polygon / _point. First, before any window: every kind of refusal of every function,
     and that a refused call never creates the renderer. Then, in frames: every function returns true
     with valid arguments - first with NO map loaded, then with a map loaded and the camera scrolled -

@@ -53,7 +53,7 @@ namespace Scarab  {
             typedef std :: map<int, stWorldEntry> WorldTable;
 
             /**
-             * @brief Worlds - several maps at once (plans/MASTER_PLAN.md item C7, sunlight I19).
+             * @brief Worlds - several maps at once (docs/history/master_plan_11_2026.md item C7, sunlight I19).
              *
              * @luacategory{Worlds}
              * @luadoc

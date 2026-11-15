@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for view opacity (plans/MASTER_PLAN.md item C7, part 1: sunlight I19a).
+Smoke test for view opacity (docs/history/master_plan_11_2026.md item C7, part 1: sunlight I19a).
 
 Runs scripts/view_opacity_smoke/main.lua headless once: every view starts at opacity 1, exact round trips on the
 default view and on extra views, each view keeps its own, the value survives a map load and frames drawn at

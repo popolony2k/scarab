@@ -19,7 +19,7 @@
  */
 
 /**
- * @brief Where the sandbox writes a path (plans/MASTER_PLAN.md item C8): LuaSandboxApi::ToSavePath, the pure
+ * @brief Where the sandbox writes a path (docs/history/master_plan_11_2026.md item C8): LuaSandboxApi::ToSavePath, the pure
  * rule that turns what a script gave into a path inside the save directory - or refuses it.
  */
 

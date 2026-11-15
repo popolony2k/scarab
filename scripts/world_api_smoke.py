@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for worlds (plans/MASTER_PLAN.md item C7, part 2: sunlight I19b-f).
+Smoke test for worlds (docs/history/master_plan_11_2026.md item C7, part 2: sunlight I19b-f).
 
 Runs scripts/world_api_smoke/main.lua headless once: world lifetime, maps at offsets, .world files (all or
 nothing, patterns refused), layer ids by name, tiles and picking per map, view_set_world, sprites in one world at a

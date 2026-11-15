@@ -117,7 +117,7 @@ namespace Scarab  {
             }
 
             /**
-             * @brief Load a Lua chunk from a file through SunLight::FileSystem (the path rule, plans/MASTER_PLAN.md
+             * @brief Load a Lua chunk from a file through SunLight::FileSystem (the path rule, docs/history/master_plan_11_2026.md
              * item C8), shared by dofile, loadfile, require and the entry script: the whole file read, decrypted
              * when it is content-encrypted (LuaCryptoApi::TryDecryptBytes, which leaves plain text as it is), and
              * loaded with luaL_loadbufferx. The chunk is named '@' + the path, as luaL_loadfile names it, so

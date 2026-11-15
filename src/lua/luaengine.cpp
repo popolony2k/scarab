@@ -83,7 +83,7 @@ namespace Scarab  {
         // standard library's version rather than being replaced by it.
         Engine :: Lua :: LuaFileSystemApi :: Register( m_pLuaState );
 
-        // The pack_* functions read and write real OS paths: the --pack tool's only (plans/MASTER_PLAN.md
+        // The pack_* functions read and write real OS paths: the --pack tool's only (docs/history/master_plan_11_2026.md
         // item C8). A game gets the sandbox instead - Lua's own io/os/require/loadfile/load replaced in
         // place, before any script runs - unless the command line says --no-sandbox.
         if( m_Mode == LUA_ENGINE_MODE_PACK )
@@ -404,7 +404,7 @@ namespace Scarab  {
     }
 
     /**
-     * @brief Make the rumble backend for a new renderer (plans/MASTER_PLAN.md item C1b), from the
+     * @brief Make the rumble backend for a new renderer (docs/history/master_plan_11_2026.md item C1b), from the
      * renderer-created hook: sunlight's SDL2 haptics in a window, sunlight's null haptics under
      * --headless - the null input sees no pad there, so nothing could rumble, and CI never starts SDL.
      *

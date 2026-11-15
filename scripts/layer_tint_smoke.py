@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Smoke test for the layer tint functions (plans/MASTER_PLAN.md item V12).
+Smoke test for the layer tint functions (docs/history/master_plan_11_2026.md item V12).
 
 Runs scripts/layer_tint_smoke/main.lua headless once on resources/tilemap/tint/tint.tmx:
 every authored Tiled tintcolor read back exactly (alpha included, white without one) for tile,

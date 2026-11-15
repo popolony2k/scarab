@@ -30,11 +30,12 @@ cmake_minimum_required(VERSION 3.24)
 # VERBATIM at its one call site - neither main.cpp nor the GIT_TAG line below
 # prepends anything to it - so either can hold any ref shape without the other
 # needing to change:
-#   - a normal tagged release: SCARAB_SUNLIGHT_REF "v0.38.0",
-#     SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.38.0" (identical strings; the
+#   - a normal tagged release: SCARAB_SUNLIGHT_REF "v0.39.0",
+#     SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.39.0" (identical strings; the
 #     leading "v" is part of the value now, not hardcoded at either site);
-#   - a commit pinned during Scarab's master_plan integration (see
-#     plans/MASTER_PLAN.md item P1): SCARAB_SUNLIGHT_REF is the full 40-character
+#   - a commit pinned while integrating unreleased sunlight work, as during
+#     Scarab's master_plan integration (see
+#     docs/history/master_plan_11_2026.md item P1): SCARAB_SUNLIGHT_REF is the full 40-character
 #     hash GIT_TAG needs, SCARAB_SUNLIGHT_DISPLAY_VERSION is a human-readable
 #     branch@shorthash for --version instead, eg.
 #     "feat/master_plan@772851c".
@@ -42,13 +43,13 @@ cmake_minimum_required(VERSION 3.24)
 # "v" was hardcoded separately at both call sites - which broke the moment
 # this project needed to pin a raw commit hash instead of a release tag (a
 # "v"-prefixed hash is not a valid ref, and "sunlight v<hash>" is not a
-# sensible version string either). See plans/MASTER_PLAN.md item P1 for the
+# sensible version string either). See docs/history/master_plan_11_2026.md item P1 for the
 # full story.
 #
-set(SCARAB_SUNLIGHT_REF "62985ef5ebe1262c07e7477df950bceeec8baa05")
-set(SCARAB_SUNLIGHT_DISPLAY_VERSION "feat/master_plan@62985ef")
+set(SCARAB_SUNLIGHT_REF "v0.39.0")
+set(SCARAB_SUNLIGHT_DISPLAY_VERSION "v0.39.0")
 
-project(scarab VERSION 0.1.25)
+project(scarab VERSION 0.2.0)
 
 include(CMakeDependentOption)
 include(GNUInstallDirs)
@@ -101,7 +102,7 @@ option(SCARAB_CONTENT_KEY_IS_SHARED "Internal - set only by release.yml; marks t
 # dynamic-linking tradeoffs instead
 # (e.g. sharing one libsodium build across several binaries).
 #
-option(SCARAB_BUILD_TESTS "Build Scarab's unit tests (doctest, tests/) - plans/MASTER_PLAN.md item R2" OFF)
+option(SCARAB_BUILD_TESTS "Build Scarab's unit tests (doctest, tests/) - docs/history/master_plan_11_2026.md item R2" OFF)
 option(SCARAB_LIBSODIUM_SHARED "Build libsodium as a shared/dynamic library instead of static" OFF)
 
 ####################################################################
@@ -340,7 +341,7 @@ endif()
 
 #
 # Everything but main.cpp is built once, as the static library scarab_core, which the scarab
-# executable and the unit tests (SCARAB_BUILD_TESTS, tests/) both link - plans/MASTER_PLAN.md item R2.
+# executable and the unit tests (SCARAB_BUILD_TESTS, tests/) both link - docs/history/master_plan_11_2026.md item R2.
 # The tests then exercise exactly the code the executable runs, compiled once.
 #
 set(SCARAB_MAIN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
@@ -558,7 +559,7 @@ endif()
 add_dependencies(scarab scarab_copy_binaries)
 
 #
-# Unit tests (doctest) - plans/MASTER_PLAN.md item R2. Off by default, like sunlight's own
+# Unit tests (doctest) - docs/history/master_plan_11_2026.md item R2. Off by default, like sunlight's own
 # BUILD_LIBRARY_TESTS; ci.yml turns them on. scarab_tests lands next to scarab, so it runs against
 # the same flattened runtime libraries (scarab_copy_binaries) with the same relocatable rpath.
 #

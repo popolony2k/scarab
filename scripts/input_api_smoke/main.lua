@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 200 scripts/input_api_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item C1a: connected pads, stick dead zones and player slots. Headless
+    Pins docs/history/master_plan_11_2026.md item C1a: connected pads, stick dead zones and player slots. Headless
     input sees no pad at all, so this pins everything that doesn't need one: the empty pad list and
     names, the connection handler being accepted, the automatic and raw stick reads, the dead zone
     per pad and axis (default 0.1, round trips, triggers refused), and the player slots in full

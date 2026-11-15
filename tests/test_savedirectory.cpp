@@ -19,7 +19,7 @@
  */
 
 /**
- * @brief The save directory's pure rules (plans/MASTER_PLAN.md item C1b): which names a game may give
+ * @brief The save directory's pure rules (docs/history/master_plan_11_2026.md item C1b): which names a game may give
  * its save folder, where the OS's per-user data folder is (from a fake environment), and which names an
  * action may have - nothing here touches the real disk or the real environment.
  */

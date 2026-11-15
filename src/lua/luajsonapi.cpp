@@ -426,7 +426,7 @@ namespace Scarab  {
 
             /**
              * @brief Convert a Lua value to JSON, strictly, so that reading the JSON back gives the same
-             * value (plans/MASTER_PLAN.md item C1c). A table whose keys are exactly 1..n becomes an
+             * value (docs/history/master_plan_11_2026.md item C1c). A table whose keys are exactly 1..n becomes an
              * array, one with only string keys an object, an empty one {}; integers stay integers and
              * floats floats. Refused, with where: mixed keys, holes, any other kind of key, a function,
              * userdata or thread, a table that contains itself, nesting deeper than MAX_DEPTH, NaN and

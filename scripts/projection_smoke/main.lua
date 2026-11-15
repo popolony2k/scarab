@@ -23,7 +23,7 @@
 
         scarab --headless --fast --max-frames 400 scripts/projection_smoke/project.json
 
-    Pins plans/MASTER_PLAN.md item C5: Scarab's existing functions on sunlight's isometric, staggered and
+    Pins docs/history/master_plan_11_2026.md item C5: Scarab's existing functions on sunlight's isometric, staggered and
     hexagonal maps, and on Scarab's orthogonal map of the same layout (resources/tilemap/<name>/). For each
     map: the map info; exact cell rectangles (tilemap_get_tile, projection-aware); the four obstacle cells;
     points outside the map refused by tilemap_to_tile_matrix; the camera's scroll limits; view_fit_to_map's zoom; and a world-space sprite

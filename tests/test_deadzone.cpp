@@ -20,7 +20,7 @@
 
 /**
  * @brief LuaInputApi::ApplyDeadzone: the rule input_get_gamepad_axis applies to a stick
- * (plans/MASTER_PLAN.md item C1a) - sunlight's own: strictly inside the dead zone reads 0, the
+ * (docs/history/master_plan_11_2026.md item C1a) - sunlight's own: strictly inside the dead zone reads 0, the
  * edge and beyond come back unchanged, never rescaled.
  */
 

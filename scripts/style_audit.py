@@ -18,7 +18,7 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 """
-Style audit - counts how far Scarab's code is from docs/CODE_STYLE.md (plans/MASTER_PLAN.md item S1).
+Style audit - counts how far Scarab's code is from docs/CODE_STYLE.md (docs/history/master_plan_11_2026.md item S1).
 
 C++ rules run over src/ and tests/, Lua rules over samples/, scripts/ and tools/, and the documentation
 rules (T1) over the tracked documents and the generated Lua API reference (the Lua example check needs
@@ -55,7 +55,7 @@ NOTICE_SEARCH_LINES = 40                  # the notice must start within a file'
 
 CPP_DIRS = ["src", "tests"]
 LUA_DIRS = ["samples", "scripts", "tools"]
-# Script, build and config files that take '#' comments (docs/CODE_STYLE.md, plans/MASTER_PLAN.md item T3). Documents
+# Script, build and config files that take '#' comments (docs/CODE_STYLE.md, docs/history/master_plan_11_2026.md item T3). Documents
 # (.md), JSON (no comments) and resources/ (its own per-folder licenses) are exempt.
 SCRIPT_GLOBS = ["scripts/**/*.py", "tools/**/*.py", "scripts/**/*.supp", ".github/workflows/*.yml",
                 "CMakeLists.txt", "src/**/CMakeLists.txt", "tests/**/CMakeLists.txt", "Doxyfile"]
@@ -112,10 +112,10 @@ RULES = {
     "lua-magic-number":     "number literal other than 0, 1, -1, 2 outside a constant (samples and tools)",
     "lua-magic-number-test":"the same, in a smoke test (expected values are allowed there)",
 
-    # Other files - plans/MASTER_PLAN.md item T3
+    # Other files - docs/history/master_plan_11_2026.md item T3
     "script-license":       "script, build or config file without the full zlib license notice (docs/HEADER.txt)",
 
-    # Documentation - plans/MASTER_PLAN.md item T1
+    # Documentation - docs/history/master_plan_11_2026.md item T1
     "doc-link":             "relative link in a document to a file that does not exist",
     "doc-lua-name":         "a Lua function a document or a reference example calls that Scarab does not have (nor the text defines)",
     "doc-example-parse":    "Lua code block in a document or the generated reference that is not valid Lua (luac -p)",
@@ -630,7 +630,7 @@ def lua_findings(path, rel, add_finding):
 
 
 # ---------------------------------------------------------------------------------------------
-# Documentation (plans/MASTER_PLAN.md item T1)
+# Documentation (docs/history/master_plan_11_2026.md item T1)
 
 LINK_RE      = re.compile(r"\]\(([^)#\s]+)(#[^)\s]*)?\)")
 CALL_RE      = re.compile(r"(?<![\w.:])([a-z][a-z0-9]*_[a-z0-9_]+)\s*\(")
@@ -639,9 +639,9 @@ LUA_BLOCK_RE = re.compile(r"```lua\n(.*?)```", re.S)
 
 
 def tracked_documents():
-    """Every tracked .md outside plans/ (the plans are history: they quote what was, on purpose)."""
+    """Every tracked .md outside docs/history/ (history quotes what was, on purpose)."""
     output = subprocess.run(["git", "ls-files", "*.md"], cwd=REPO_ROOT, capture_output=True, text=True).stdout
-    return [p for p in output.split() if not p.startswith("plans/")]
+    return [p for p in output.split() if not p.startswith("docs/history/")]
 
 
 def known_lua_functions():
