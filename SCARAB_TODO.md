@@ -274,3 +274,40 @@ see it's own `CLAUDE.md` for the full story.
    primitive) could optionally switch over to Image-based drawing instead
    - purely optional, a consumer's own call to make, not a prerequisite
    for anything in this repo.
+
+## 3. Linux release binary needs a newer GLIBC than many players have
+
+**Status:** not started - reported by Caravellius on 2026-11-18, planned later (the owner treats it
+as a production concern, not urgent; no release is needed for it now).
+
+### What happens
+
+The v0.2.0 `linux-x64` archive does not start on Debian 13 / BunsenLabs 10 (GLIBC 2.41), found by
+Caravellius running Scarab's binary on a Linux Phenom II:
+
+```
+build-binary/scarab: /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.43' not found (required by build-binary/libsunlight.so)
+build-binary/scarab: /lib/x86_64-linux-gnu/libm.so.6: version `GLIBC_2.43' not found (required by build-binary/libraylib.so.550)
+```
+
+A build from source on the same machine works (every check passes). The cause: `release.yml`
+builds `linux-x64` on `ubuntu-latest` (GLIBC 2.43 today), and a Linux binary only runs where GLIBC
+is at least as new as the build machine's. Ubuntu 24.04 and Mint 22 have 2.39, so many players
+can't run it.
+
+### Ideas to review when it is planned
+
+- **Build on the oldest system to support:** an `ubuntu-22.04` runner (GLIBC 2.35), or more
+  durably a container (eg. `debian:bullseye`, or the Steam Runtime "sniper" image if Steam is a
+  target).
+- **Link the C++ runtime statically** (`-static-libstdc++ -static-libgcc`), so a newer `GLIBCXX`
+  can't cause the same failure.
+- A **fully static** build (static glibc, or musl) does not really work for a game: GL/X11/Wayland,
+  ALSA/Pulse, udev and the GPU drivers are the system's own and must be loaded at run time, which a
+  static glibc can't do safely.
+- Maybe **AppImage/Flatpak** packaging later.
+- **A release smoke test on the oldest supported distro** (eg. run the archive in a container), so
+  this fails the release instead of shipping - `release.yml`'s smoke tests today run on the same
+  runner that built the archive, which is exactly why they could not see it.
+- sunlight's own `release.yml` likely has the same issue (its Linux library is built on
+  `ubuntu-latest` too) - check it, and tell sunlight, when this is planned.
