@@ -22,9 +22,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master_plan ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master_plan ]
+    branches: [ main ]
 
 jobs:
   lua-api-docs:
